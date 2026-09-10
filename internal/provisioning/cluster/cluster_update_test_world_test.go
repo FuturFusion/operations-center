@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -81,11 +82,19 @@ func clusterMemberServer(t *testing.T, name string) provisioning.Server {
 	}
 }
 
+// defaultRollingRestart is the rolling restart configuration, the cluster of the
+// test world is created with. The step timeout is far beyond the runtime of a
+// test, so only the tests, which exercise the watchdog, ever reach it.
+var defaultRollingRestart = api.ClusterConfigRollingRestart{
+	PostRestoreDelay: (2 * controlLoopInterval).String(),
+	StepTimeout:      time.Minute.String(),
+}
+
 // setupControlLoopCluster wires up a cluster service backed by a real SQLite
 // schema, with the given servers already registered. The fake servers are served
 // by the given client mock and availableVersion is the most recent update
 // version, which is available in the update channel of the cluster.
-func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *bytes.Buffer) {
+func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, rollingRestart api.ClusterConfigRollingRestart, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *bytes.Buffer) {
 	t.Helper()
 
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
@@ -108,9 +117,7 @@ func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName str
 		ServerNames:   serverNames,
 		Channel:       "stable",
 		Config: api.ClusterConfig{
-			RollingRestart: api.ClusterConfigRollingRestart{
-				PostRestoreDelay: (2 * controlLoopInterval).String(),
-			},
+			RollingRestart: rollingRestart,
 		},
 	}
 

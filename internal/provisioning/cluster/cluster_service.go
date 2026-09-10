@@ -2750,10 +2750,6 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 	var err error
 	var nextAction func(context.Context) error
 
-	noop := func(ctx context.Context) error {
-		return nil
-	}
-
 	for _, server := range servers {
 		// serverUpdateStateForRollingUpdate intentionally ignores pending updates
 		// during the rolling restart phase. All servers of a cluster have been updated
@@ -2789,7 +2785,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				}
 
 			case api.ServerUpdateStateEvacuating:
-				nextAction = noop
+				nextAction = s.inFlightStepAction(cluster, server, serverUpdateState)
 
 			case api.ServerUpdateStateInMaintenanceRebootPending:
 				nextAction = func(ctx context.Context) error {
@@ -2805,7 +2801,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				}
 
 			case api.ServerUpdateStateInMaintenanceRebooting:
-				nextAction = noop
+				nextAction = s.inFlightStepAction(cluster, server, serverUpdateState)
 
 			case api.ServerUpdateStateInMaintenanceRestorePending:
 				// Servers, which have been in evacuated state before the update was
@@ -2820,7 +2816,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				}
 
 			case api.ServerUpdateStateInMaintenanceRestoring:
-				nextAction = noop
+				nextAction = s.inFlightStepAction(cluster, server, serverUpdateState)
 
 			case api.ServerUpdateStateInMaintenancePostRestore:
 				// Check if the post restore delay has passed.
@@ -2830,7 +2826,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 						return s.serverSvc.PostRestoreSystemDoneByName(ctx, server.Name)
 					}
 				} else {
-					nextAction = noop
+					nextAction = rollingRestartNoop
 				}
 
 			default:
@@ -2873,6 +2869,10 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			api.ServerUpdateStateInMaintenancePostRestore,
 			api.ServerUpdateStateRebootPending,
 			api.ServerUpdateStateRebooting:
+			if isInFlightStep(serverUpdateState) && s.rollingRestartStepStalled(cluster, server) {
+				return s.failRollingRestart(ctx, cluster, stalledStepErr(cluster, server, serverUpdateState))
+			}
+
 			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, serverUpdateState)
 		}
 	}
@@ -2906,16 +2906,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				return nil
 			}
 
-			if errors.Is(err, domain.ErrTerminal) {
-				inProgressStatus := cluster.UpdateStatus.InProgressStatus
-				inProgressStatus.InProgress = api.ClusterUpdateInProgressError
-				inProgressStatus.Error = err.Error()
-
-				updateErr := s.updateInProgressStatus(ctx, cluster.Name, inProgressStatus)
-				if updateErr != nil {
-					err = errors.Join(err, updateErr)
-				}
-			}
+			err = s.failRollingRestart(ctx, cluster, err)
 
 			return fmt.Errorf("Failed to trigger next action for rolling update of cluster %q: %w", cluster.Name, err)
 		}
@@ -2932,6 +2923,87 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 	}
 
 	return nil
+}
+
+// failRollingRestart parks the run in the error state, if the given error is
+// terminal, so the reason why the rolling update stopped is reported to the
+// user. Any other error is returned unchanged, since the run continues and the
+// next tick retries.
+func (s *clusterService) failRollingRestart(ctx context.Context, cluster provisioning.Cluster, err error) error {
+	if !errors.Is(err, domain.ErrTerminal) {
+		return err
+	}
+
+	inProgressStatus := cluster.UpdateStatus.InProgressStatus
+	inProgressStatus.InProgress = api.ClusterUpdateInProgressError
+	inProgressStatus.Error = err.Error()
+
+	updateErr := s.updateInProgressStatus(ctx, cluster.Name, inProgressStatus)
+	if updateErr != nil {
+		return errors.Join(err, updateErr)
+	}
+
+	return err
+}
+
+// rollingRestartNoop keeps the run of the rolling update alive without
+// triggering an action, while it waits for a step to complete.
+func rollingRestartNoop(_ context.Context) error {
+	return nil
+}
+
+// inFlightSteps are the per server states, in which the rolling update waits for
+// an operation it has triggered to complete.
+var inFlightSteps = []api.ServerUpdateState{
+	api.ServerUpdateStateEvacuating,
+	api.ServerUpdateStateInMaintenanceRebooting,
+	api.ServerUpdateStateInMaintenanceRestoring,
+}
+
+func isInFlightStep(serverUpdateState api.ServerUpdateState) bool {
+	return slices.Contains(inFlightSteps, serverUpdateState)
+}
+
+// rollingRestartStepStalled reports whether the step, the server is waiting for,
+// has been in flight for longer than the step timeout of the cluster.
+func (s *clusterService) rollingRestartStepStalled(cluster provisioning.Cluster, server provisioning.Server) bool {
+	return s.now().After(server.LastStatusUpdated.Add(cluster.Config.RollingRestart.GetStepTimeout()))
+}
+
+// stalledStepErr reports a step, which did not complete within the step timeout
+// of the cluster and which Operations Center can not rewind on its own.
+func stalledStepErr(cluster provisioning.Cluster, server provisioning.Server, serverUpdateState api.ServerUpdateState) error {
+	return fmt.Errorf("Rolling update blocked, server %q (%s) did not leave state %q within %s: %w", server.Name, server.ConnectionURL, serverUpdateState, cluster.Config.RollingRestart.GetStepTimeout(), domain.ErrTerminal)
+}
+
+// inFlightStepAction returns the action for a server, which waits for an
+// evacuation, a reboot or a restore, that has been triggered for it, to
+// complete. As long as the step is within its timeout, there is nothing to do
+// but wait.
+//
+// A restore, that fails or never starts, is what wedges the rolling update,
+// because then there is nothing for polling to observe: Incus correctly keeps
+// reporting the member as evacuated.
+//
+// Past the timeout the step is therefore considered stalled and therefore
+// rewound, so the control loop triggers the restore again.
+// Everything else is stuck outside of Operations Center, which it can not
+// resolve on its own and therefore reports as a terminal error.
+func (s *clusterService) inFlightStepAction(cluster provisioning.Cluster, server provisioning.Server, serverUpdateState api.ServerUpdateState) func(context.Context) error {
+	if !s.rollingRestartStepStalled(cluster, server) {
+		return rollingRestartNoop
+	}
+
+	if serverUpdateState == api.ServerUpdateStateInMaintenanceRestoring &&
+		ptr.From(server.VersionData.InMaintenance) != api.InMaintenanceRestoring {
+		return func(ctx context.Context) error {
+			return s.serverSvc.ResetMaintenanceStateByName(ctx, server.Name)
+		}
+	}
+
+	return func(_ context.Context) error {
+		return stalledStepErr(cluster, server, serverUpdateState)
+	}
 }
 
 // markServerRebooted removes the server from the list of servers, which still

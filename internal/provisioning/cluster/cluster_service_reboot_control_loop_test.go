@@ -118,14 +118,14 @@ func setupRebootOnlyCluster(t *testing.T, ctx context.Context, listenerName stri
 
 	// The most recent available version matches the installed one, nothing is
 	// pending for any of the servers.
-	clusterSvc, _, logBuf := setupControlLoopCluster(t, ctx, listenerName, rebootOnlyServerClient(world), "1", servers...)
+	clusterSvc, _, logBuf := setupControlLoopCluster(t, ctx, listenerName, rebootOnlyServerClient(world), "1", defaultRollingRestart, servers...)
 
 	return clusterSvc, world, logBuf
 }
 
 // driveRebootToCompletion runs the control loop until the rolling reboot has
 // finished and returns the progress descriptions, a user would have observed.
-func driveRebootToCompletion(t *testing.T, ctx context.Context, clusterSvc provisioning.ClusterService, world *serverWorld, iterations int, beforeIteration ...func(ctx context.Context)) []string {
+func driveRollingRestartToCompletion(t *testing.T, ctx context.Context, clusterSvc provisioning.ClusterService, world *serverWorld, iterations int, beforeIteration ...func(ctx context.Context)) []string {
 	t.Helper()
 
 	var observed []string
@@ -165,7 +165,7 @@ func driveRebootToCompletion(t *testing.T, ctx context.Context, clusterSvc provi
 		time.Sleep(controlLoopInterval)
 	}
 
-	require.True(t, success, "rolling reboot did not complete, observed: %v", observed)
+	require.True(t, success, "rolling restart did not complete, observed: %v", observed)
 
 	return observed
 }
@@ -184,7 +184,7 @@ func TestClusterService_ClusterRollingRebootControlLoopSingleNodeCluster(t *test
 	require.Equal(t, api.ClusterUpdateInProgressRollingReboot, c.UpdateStatus.InProgressStatus.InProgress)
 	require.Equal(t, []string{"one"}, c.UpdateStatus.InProgressStatus.PendingReboot)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100)
+	observed := driveRollingRestartToCompletion(t, ctx, clusterSvc, world, 100)
 
 	requireProgressOnlyMovesForward(t, observed)
 
@@ -217,7 +217,7 @@ func TestClusterService_ClusterRollingRebootControlLoopMultiNodeCluster(t *testi
 	require.NoError(t, err)
 	require.Equal(t, []string{"serverA", "serverB", "serverC"}, c.UpdateStatus.InProgressStatus.PendingReboot)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 200)
+	observed := driveRollingRestartToCompletion(t, ctx, clusterSvc, world, 200)
 
 	requireProgressOnlyMovesForward(t, observed)
 
@@ -448,7 +448,7 @@ func TestClusterService_ClusterRollingRebootControlLoopTransientRestoreFailure(t
 	}
 
 	require.True(t, restoreFailed, "restore did not fail, observed: %v", dedupe(observed))
-	require.True(t, success, "rolling reboot did not complete, observed: %v", dedupe(observed))
+	require.True(t, success, "rolling restart did not complete, observed: %v", dedupe(observed))
 
 	requireProgressOnlyMovesForward(t, observed)
 

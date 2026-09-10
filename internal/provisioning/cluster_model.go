@@ -69,6 +69,17 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf(`Invalid cluster, cluster config for rolling restart restore mode is invalid, only "" and "skip" are supported.`)
 	}
 
+	if c.Config.RollingRestart.StepTimeout != "" {
+		stepTimeout, err := time.ParseDuration(c.Config.RollingRestart.StepTimeout)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid cluster, cluster config for rolling restart step timeout needs to be a valid time duration")
+		}
+
+		if stepTimeout <= 0 {
+			return domain.NewValidationErrf("Invalid cluster, cluster config for rolling restart step timeout needs to be a positive time duration")
+		}
+	}
+
 	return nil
 }
 

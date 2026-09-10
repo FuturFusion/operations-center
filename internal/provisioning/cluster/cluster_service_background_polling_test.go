@@ -93,7 +93,7 @@ func TestClusterService_ClusterUpdateControlLoopWithBackgroundPolling(t *testing
 
 	serverClient := rollingUpdateServerClient(world)
 
-	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterUpdateCycleWithBackgroundPolling", serverClient, "2", server)
+	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterUpdateCycleWithBackgroundPolling", serverClient, "2", defaultRollingRestart, server)
 
 	backgroundPolling := daemonBackgroundPolling(t, serverSvc)
 
@@ -177,12 +177,12 @@ func TestClusterService_ClusterRollingRebootControlLoopWithBackgroundPolling(t *
 	world := rebootOnlyWorld(server)
 	serverClient := rebootOnlyServerClient(world)
 
-	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterRollingRebootCycleWithBackgroundPolling", serverClient, "1", server)
+	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterRollingRebootCycleWithBackgroundPolling", serverClient, "1", defaultRollingRestart, server)
 
 	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
 	require.NoError(t, err)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100, daemonBackgroundPolling(t, serverSvc))
+	observed := driveRollingRestartToCompletion(t, ctx, clusterSvc, world, 100, daemonBackgroundPolling(t, serverSvc))
 
 	requireProgressOnlyMovesForward(t, observed)
 
