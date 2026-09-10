@@ -210,6 +210,31 @@ type ClusterConfigRollingRestart struct {
 	// previously) and "skip" (skip moving evacuated instances back).
 	// Example: skip
 	RestoreMode string `json:"restore_mode" yaml:"restore_mode"`
+
+	// StepTimeout holds the time.Duration (as string, e.g. "30m"), after which a
+	// step of the rolling restart (evacuation, reboot, restore), which has not
+	// completed, is considered stalled. It has to be generous enough to cover the
+	// evacuation of the busiest server of the cluster. An empty value falls back
+	// to DefaultRollingRestartStepTimeout.
+	// Example: 30m
+	StepTimeout string `json:"step_timeout" yaml:"step_timeout"`
+}
+
+// DefaultRollingRestartStepTimeout is the step timeout applied to a rolling
+// restart, if the cluster does not configure one of its own.
+const DefaultRollingRestartStepTimeout = 30 * time.Minute
+
+// GetStepTimeout returns the configured step timeout of the rolling restart.
+//
+// The value is validated when the cluster is saved, so an unparsable value can
+// only be an empty one, for which the default applies.
+func (c ClusterConfigRollingRestart) GetStepTimeout() time.Duration {
+	stepTimeout, err := time.ParseDuration(c.StepTimeout)
+	if err != nil {
+		return DefaultRollingRestartStepTimeout
+	}
+
+	return stepTimeout
 }
 
 // ClusterConfig contains cluster wide configuration used by Operations Center
