@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
@@ -23,6 +24,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+// clusterMemberStateOperationTimeout bounds how long the completion of an Incus
+// cluster member state change (evacuate, restore) is awaited. It is a guard
+// against a leaked wait, not an operational limit: the rolling update has its
+// own, shorter and configurable step timeout, so this one only has to be
+// generous enough for the slowest evacuation of a cluster.
+const clusterMemberStateOperationTimeout = 2 * time.Hour
 
 type environment interface {
 	GetUnixSocket() string
@@ -564,7 +572,10 @@ func (c client) Evacuate(ctx context.Context, server provisioning.Server, callba
 		// Use detached context for async background operation.
 		ctx := logger.DetachedContext(ctx)
 
-		callback(ctx, op.Wait())
+		waitCtx, cancel := context.WithTimeout(ctx, clusterMemberStateOperationTimeout)
+		defer cancel()
+
+		callback(ctx, op.WaitContext(waitCtx))
 	}()
 
 	return nil
@@ -636,14 +647,17 @@ func (c client) Restore(ctx context.Context, server provisioning.Server, restore
 		Mode:   restoreMode,
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to update cluster member state to restored on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	go func() {
 		// Use detached context for async background operation.
 		ctx := logger.DetachedContext(ctx)
 
-		callback(ctx, op.Wait())
+		waitCtx, cancel := context.WithTimeout(ctx, clusterMemberStateOperationTimeout)
+		defer cancel()
+
+		callback(ctx, op.WaitContext(waitCtx))
 	}()
 
 	return nil
