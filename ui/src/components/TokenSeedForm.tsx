@@ -87,10 +87,10 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
     enableReinitialize: true,
     validate: validateForm,
     onSubmit: (values: TokenSeedFormValues) => {
-      let parsedInstall = {};
-      let parsedNetwork = {};
-      let parsedMigrationManager = {};
-      let parsedOperationsCenter = {};
+      let parsedInstall: TokenSeed["seeds"]["install"];
+      let parsedNetwork: TokenSeed["seeds"]["network"];
+      let parsedMigrationManager: TokenSeed["seeds"]["migration_manager"];
+      let parsedOperationsCenter: TokenSeed["seeds"]["operations_center"];
       try {
         parsedInstall = YAML.parse(values.seeds.install);
         parsedNetwork = YAML.parse(values.seeds.network);

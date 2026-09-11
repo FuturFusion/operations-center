@@ -28,7 +28,7 @@ const OSServiceDetails: FC<Props> = ({ name: nameProp }) => {
   });
 
   const updateService = (value: string): Promise<boolean> => {
-    let serviceConfig = {} as IncusOSConfig;
+    let serviceConfig: IncusOSConfig;
 
     try {
       serviceConfig = YAML.parse(value);

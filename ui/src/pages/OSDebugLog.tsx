@@ -121,7 +121,9 @@ const OSDebugLog: FC = () => {
       )}
       {!isLoading && logs.length > 0 && (
         <pre className="bg-body-tertiary" style={{ width: "80vw" }}>
-          {logs?.map((item, i) => <span key={i}>{JournalLine(item)}</span>)}
+          {logs?.map((item, i) => (
+            <span key={i}>{JournalLine(item)}</span>
+          ))}
         </pre>
       )}
     </div>

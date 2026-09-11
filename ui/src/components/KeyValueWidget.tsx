@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useState } from "react";
 import { Button, Form, Table } from "react-bootstrap";
 import { BsPlus, BsTrash } from "react-icons/bs";
 
@@ -10,34 +10,25 @@ interface Props {
 }
 
 const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
-  const [entries, setEntries] = useState<KeyValueMap>(value || {});
+  const entries = value || {};
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
 
   const handleAdd = () => {
     if (!newKey || newKey in entries) return;
-    const newValues = { ...entries, [newKey]: newValue };
-    setEntries(newValues);
-    onChange(newValues);
+    onChange({ ...entries, [newKey]: newValue });
     setNewKey("");
     setNewValue("");
   };
 
-  useEffect(() => {
-    setEntries(value || {});
-  }, [value]);
-
   const handleDelete = (key: string) => {
     const { [key]: _, ...rest } = entries;
 
-    setEntries(rest);
     onChange(rest);
   };
 
   const handleEdit = (key: string, value: string) => {
-    const newValues = { ...entries, [key]: value };
-    setEntries(newValues);
-    onChange(newValues);
+    onChange({ ...entries, [key]: value });
   };
 
   return (

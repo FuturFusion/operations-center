@@ -1,5 +1,5 @@
 import type { FC, KeyboardEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Form } from "react-bootstrap";
 import LoadingButton from "components/LoadingButton";
 
@@ -12,10 +12,13 @@ const YamlEditor: FC<Props> = ({ yamlData, onSubmit }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmiting, setIsSubmiting] = useState(false);
   const [yaml, setYaml] = useState(yamlData);
+  const [prevYamlData, setPrevYamlData] = useState(yamlData);
 
-  useEffect(() => {
+  // Reset the edited YAML, if the data passed in changes.
+  if (yamlData !== prevYamlData) {
+    setPrevYamlData(yamlData);
     setYaml(yamlData);
-  }, [yamlData]);
+  }
 
   const submitForm = async (value: string) => {
     setIsSubmiting(true);

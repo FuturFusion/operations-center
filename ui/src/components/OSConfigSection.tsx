@@ -34,7 +34,7 @@ const OSConfigSection: FC<Props> = ({
   });
 
   const update = (value: string): Promise<boolean> => {
-    let parsed = {} as IncusOSConfig;
+    let parsed: IncusOSConfig;
 
     try {
       parsed = YAML.parse(value);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Nav, Navbar, Collapse } from "react-bootstrap";
 import { useLocation } from "react-router";
 import { AiOutlineCluster } from "react-icons/ai";
@@ -31,7 +31,6 @@ import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
   const { isAuthenticated } = useAuth();
-  const [openSubmenu, setOpenSubmenu] = useState(["", ""]);
   const { pathname } = useLocation();
   const { data: settings = null } = useQuery({
     queryKey: ["settings"],
@@ -190,10 +189,10 @@ const Sidebar = () => {
     return activeMenuItem == name;
   };
 
-  useEffect(() => {
-    setOpenSubmenu(menuItems[activeMenuItem]?.menu ?? ["", ""]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Open the submenu of the active menu item on the initial render.
+  const [openSubmenu, setOpenSubmenu] = useState(
+    () => menuItems[activeMenuItem]?.menu ?? ["", ""],
+  );
 
   return (
     <>

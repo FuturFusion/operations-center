@@ -75,7 +75,7 @@ const ServerConfiguration = () => {
   const onNetworkSubmit = async (
     values: ServerFormValues,
   ): Promise<APIResponse<null> | void> => {
-    let networkConfig = {};
+    let networkConfig: unknown;
     try {
       networkConfig = YAML.parse(values.network_configuration);
     } catch (error) {
@@ -104,7 +104,7 @@ const ServerConfiguration = () => {
   const onStorageSubmit = async (
     values: ServerFormValues,
   ): Promise<APIResponse<null> | void> => {
-    let storageConfig = {};
+    let storageConfig: unknown;
     try {
       storageConfig = YAML.parse(values.storage_configuration);
     } catch (error) {

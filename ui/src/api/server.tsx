@@ -238,7 +238,7 @@ export const restartServerBMC = (
   return serverBMCPowerAction(name, "server-restart", force);
 };
 
-export const ServerSetLocationIndicatorBMC = (
+export const setServerLocationIndicatorBMC = (
   name: string,
   active: boolean,
 ): Promise<void> => {

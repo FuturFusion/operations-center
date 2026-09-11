@@ -24,7 +24,7 @@ const ClusterBulkActionModal: FC<Props> = ({ cluster, show, handleClose }) => {
   const formik = useFormik({
     initialValues: formikInitialValues,
     onSubmit: (values: ClusterBulkUpdateFormValues, { resetForm }) => {
-      let argumentsValue = {};
+      let argumentsValue: unknown;
 
       try {
         argumentsValue = YAML.parse(values.arguments);

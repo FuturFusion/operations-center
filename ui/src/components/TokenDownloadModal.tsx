@@ -67,9 +67,9 @@ const TokenDownloadModal: FC<Props> = ({
     initialValues: formikInitialValues,
     validate: validateForm,
     onSubmit: (values: TokenImageFormValues, { resetForm }) => {
-      let parsedNetwork = null;
-      let parsedMigrationManager = null;
-      let parsedOperationsCenter = null;
+      let parsedNetwork: unknown;
+      let parsedMigrationManager: unknown;
+      let parsedOperationsCenter: unknown;
       try {
         parsedNetwork = YAML.parse(values.seeds.network);
         parsedMigrationManager = YAML.parse(values.seeds.migration_manager);

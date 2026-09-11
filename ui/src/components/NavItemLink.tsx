@@ -8,8 +8,9 @@ export interface MenuItem {
   menu: string[];
 }
 
-export interface NavItemLinkProps
-  extends React.ComponentProps<typeof Nav.Link> {
+export interface NavItemLinkProps extends React.ComponentProps<
+  typeof Nav.Link
+> {
   item?: MenuItem;
   isActive?: boolean;
   children: React.ReactNode;

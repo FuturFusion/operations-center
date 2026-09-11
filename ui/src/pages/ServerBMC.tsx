@@ -11,7 +11,7 @@ import {
   powerOnServerBMC,
   refreshServerBMC,
   restartServerBMC,
-  ServerSetLocationIndicatorBMC,
+  setServerLocationIndicatorBMC,
 } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import LoadingButton from "components/LoadingButton";
@@ -231,7 +231,7 @@ const ServerBMC = () => {
           label="LED on"
           mode="confirm"
           confirmMessage={`Turn on the indicator LED of the server "${name}" via its BMC?`}
-          run={() => ServerSetLocationIndicatorBMC(name, true)}
+          run={() => setServerLocationIndicatorBMC(name, true)}
           successMessage="Indicator LED turned on"
           invalidateKeys={[["servers", name]]}
         />
@@ -239,7 +239,7 @@ const ServerBMC = () => {
           label="LED off"
           mode="confirm"
           confirmMessage={`Turn off the indicator LED of the server "${name}" via its BMC?`}
-          run={() => ServerSetLocationIndicatorBMC(name, false)}
+          run={() => setServerLocationIndicatorBMC(name, false)}
           successMessage="Indicator LED turned off"
           invalidateKeys={[["servers", name]]}
         />

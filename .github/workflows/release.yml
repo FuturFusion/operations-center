@@ -40,6 +40,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: UI - Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+
       - name: UI - Install dependencies
         uses: borales/actions-yarn@v5
         with:

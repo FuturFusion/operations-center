@@ -1,4 +1,4 @@
-import { FC, ReactNode, useState, useRef } from "react";
+import { FC, ReactNode, useState } from "react";
 import { Col, Form, Row, Table } from "react-bootstrap";
 import { MdArrowDropDown, MdArrowDropUp } from "react-icons/md";
 
@@ -22,8 +22,8 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [sortProps, setSortProps] = useState({ order: "", column: "" });
-  const headersMap = useRef(
-    Object.fromEntries(headers.map((item, index) => [item, index])),
+  const headersMap = Object.fromEntries(
+    headers.map((item, index) => [item, index]),
   );
 
   const totalPages = Math.ceil(rows.length / itemsPerPage);
@@ -32,7 +32,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
   const isSortable = (column: string) => {
-    const itemIndex = headersMap.current[column];
+    const itemIndex = headersMap[column];
 
     if (
       column !== "" &&
@@ -44,9 +44,11 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
     return false;
   };
 
+  // Sort a copy, the rows are owned by the caller.
+  const sortedRows = [...rows];
   if (isSortable(sortProps.column)) {
-    rows.sort((a, b) => {
-      const itemIndex = headersMap.current[sortProps.column];
+    sortedRows.sort((a, b) => {
+      const itemIndex = headersMap[sortProps.column];
 
       const aSortKey = a.cols[itemIndex].sortKey;
       const bSortKey = b.cols[itemIndex].sortKey;
@@ -81,7 +83,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
     });
   }
 
-  const paginatedData = rows.slice(indexOfFirstItem, indexOfLastItem);
+  const paginatedData = sortedRows.slice(indexOfFirstItem, indexOfLastItem);
 
   // After changing the number of items per page,
   // it may turn out that currentPage > totalPages. So, set currentPage to 1.

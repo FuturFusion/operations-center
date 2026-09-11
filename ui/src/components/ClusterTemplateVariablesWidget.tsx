@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useState } from "react";
 import { Button, Form, Table } from "react-bootstrap";
 import { BsPlus, BsTrash } from "react-icons/bs";
 import { ClusterTemplateVariable } from "types/cluster_template";
@@ -11,43 +11,34 @@ interface Props {
 }
 
 const ClusterTemplateVariablesWidget: FC<Props> = ({ value, onChange }) => {
-  const [entries, setEntries] = useState<ClusterTemplateVariables>(value || {});
+  const entries = value || {};
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState({ description: "", default: "" });
 
   const handleAdd = () => {
     if (!newName || newName in entries) return;
-    const newValues = {
+    onChange({
       ...entries,
       [newName]: {
         description: newValue.description,
         default: newValue.default,
       },
-    };
-    setEntries(newValues);
-    onChange(newValues);
+    });
     setNewName("");
     setNewValue({ description: "", default: "" });
   };
 
-  useEffect(() => {
-    setEntries(value || {});
-  }, [value]);
-
   const handleDelete = (key: string) => {
     const { [key]: _, ...rest } = entries;
 
-    setEntries(rest);
     onChange(rest);
   };
 
   const handleEdit = (key: string, value: ClusterTemplateVariable) => {
-    const newValues = {
+    onChange({
       ...entries,
       [key]: value,
-    };
-    setEntries(newValues);
-    onChange(newValues);
+    });
   };
 
   return (

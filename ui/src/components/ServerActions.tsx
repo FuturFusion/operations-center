@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 import { MdOutlineSync } from "react-icons/md";
 import { useQueryClient } from "@tanstack/react-query";
 import { resyncServer } from "api/server";
@@ -21,40 +21,29 @@ interface Props {
 const ServerActions: FC<Props> = ({ server }) => {
   const { notify } = useNotification();
   const queryClient = useQueryClient();
-  const [recommendedAction, setRecommendedAction] = useState("");
 
   const actionStyle = {
     cursor: "pointer",
     color: "grey",
   };
 
-  useEffect(() => {
-    let action = "";
-    if (server.version_data.needs_update) {
-      action = ServerAction.Update;
-    } else if (server.version_data.needs_reboot) {
-      if (
-        server.version_data.in_maintenance == 0 &&
-        server.cluster != "" &&
-        (server.server_type == ServerType.Incus ||
-          server.server_type == ServerType.IncusLTS70)
-      ) {
-        action = ServerAction.Evacuate;
-      } else {
-        action = ServerAction.Reboot;
-      }
-    } else if (server.version_data.in_maintenance == 2) {
-      action = ServerAction.Restore;
+  let recommendedAction = "";
+  if (server.version_data.needs_update) {
+    recommendedAction = ServerAction.Update;
+  } else if (server.version_data.needs_reboot) {
+    if (
+      server.version_data.in_maintenance == 0 &&
+      server.cluster != "" &&
+      (server.server_type == ServerType.Incus ||
+        server.server_type == ServerType.IncusLTS70)
+    ) {
+      recommendedAction = ServerAction.Evacuate;
+    } else {
+      recommendedAction = ServerAction.Reboot;
     }
-
-    setRecommendedAction(action);
-  }, [
-    server.cluster,
-    server.server_type,
-    server.version_data.needs_update,
-    server.version_data.needs_reboot,
-    server.version_data.in_maintenance,
-  ]);
+  } else if (server.version_data.in_maintenance == 2) {
+    recommendedAction = ServerAction.Restore;
+  }
 
   const onResyncServer = () => {
     resyncServer(server.name)

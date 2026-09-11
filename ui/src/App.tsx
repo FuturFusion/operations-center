@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Sidebar from "components/Sidebar";
@@ -8,14 +9,18 @@ import { routes } from "util/routes";
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
 
-  if (isAuthLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    if (window.location.pathname !== "/ui/") {
+  useEffect(() => {
+    if (
+      !isAuthLoading &&
+      !isAuthenticated &&
+      window.location.pathname !== "/ui/"
+    ) {
       window.location.href = "/ui/";
     }
+  }, [isAuthLoading, isAuthenticated]);
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
   }
 
   return (

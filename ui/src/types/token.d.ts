@@ -10,12 +10,7 @@ export type DriveSortOrderType =
   (typeof DriveSortOrder)[keyof typeof DriveSortOrder];
 
 type YamlValue =
-  | string
-  | number
-  | boolean
-  | null
-  | YamlValue[]
-  | { [key: string]: YamlValue };
+  string | number | boolean | null | YamlValue[] | { [key: string]: YamlValue };
 
 export interface Token {
   uuid: string;

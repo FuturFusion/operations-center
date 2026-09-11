@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent, useEffect, useState } from "react";
+import { FC, KeyboardEvent, useState } from "react";
 import { MdViewList } from "react-icons/md";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateUpdate } from "api/update";
@@ -26,10 +26,6 @@ const UpdateChannelBtn: FC<Props> = ({ update }) => {
     cursor: "pointer",
     color: "grey",
   };
-
-  useEffect(() => {
-    setChannels(update.channels);
-  }, [update.channels]);
 
   const onSubmit = () => {
     setOpInProgress(true);
@@ -67,6 +63,7 @@ const UpdateChannelBtn: FC<Props> = ({ update }) => {
         title="Channels update"
         style={actionStyle}
         onClick={() => {
+          setChannels(update.channels);
           setShowModal(true);
         }}
       />
