@@ -93,6 +93,15 @@ func RetryableWrapper() func(err error) error {
 			return NewRetryableErr(err)
 		}
 
+		// An Incus daemon, that is still starting up, rejects the request. It is
+		// reported either verbatim or as the transport symptom of the rejected
+		// upgrade of the connection, e.g. while an instance is migrated to a
+		// cluster member, whose daemon has not finished starting yet.
+		if strings.Contains(err.Error(), "Daemon is starting up") ||
+			strings.Contains(err.Error(), "websocket: bad handshake") {
+			return NewRetryableErr(err)
+		}
+
 		if retryableIncusConnectErrors.MatchString(err.Error()) {
 			return NewRetryableErr(err)
 		}
