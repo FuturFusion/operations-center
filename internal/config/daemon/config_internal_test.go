@@ -15,12 +15,10 @@ import (
 
 func Test_validate(t *testing.T) {
 	tests := []struct {
-		name                              string
-		oldCfg                            *config
-		cfg                               config
-		isIncusOS                         bool
-		updateValidateSignalListenerErr   error
-		settingsValidateSignalListenerErr error
+		name      string
+		oldCfg    *config
+		cfg       config
+		isIncusOS bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -225,22 +223,6 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
-		{
-			name: "update validation signal error",
-			cfg: config{
-				Updates: system.Updates{
-					UpdatesPut: system.UpdatesPut{
-						SignatureVerificationRootCA: signatureVerificationRootCA,
-						FilterExpression:            `invalid`, // invalid
-						UpdatesDefaultChannel:       "stable",
-						ServerDefaultChannel:        "stable",
-					},
-				},
-			},
-			updateValidateSignalListenerErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
 
 		// Security
 		{
@@ -412,17 +394,77 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			oldCfg := config{}
+			if tc.oldCfg != nil {
+				oldCfg = *tc.oldCfg
+			}
+
+			err := validate(oldCfg, tc.cfg, tc.isIncusOS)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func Test_validateDelegated(t *testing.T) {
+	tests := []struct {
+		name                              string
+		oldCfg                            config
+		cfg                               config
+		updateValidateSignalListenerErr   error
+		settingsValidateSignalListenerErr error
+		securityValidateSignalListenerErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
 		{
-			name: "settings validation signal error",
+			name: "success",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                            "update validation signal error",
+			updateValidateSignalListenerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                              "settings validation signal error",
+			settingsValidateSignalListenerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "security validation signal is not emitted if oidc and openfga are unchanged",
 			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
-						ServerRegistrationScriptlet: "invalid", // invalid script
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedHTTPSProxies: []string{"127.0.0.1"},
 					},
 				},
-				Updates: defaultUpdates,
 			},
-			settingsValidateSignalListenerErr: boom.Error,
+			securityValidateSignalListenerErr: boom.Error,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "security validation signal error on oidc change",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						OIDC: system.SecurityOIDC{
+							Issuer: "https://oidc.local",
+						},
+					},
+				},
+			},
+			securityValidateSignalListenerErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -430,40 +472,22 @@ func Test_validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			env := &mock.EnvironmentMock{
-				IsIncusOSFunc: func() bool {
-					return tc.isIncusOS
-				},
-			}
-
-			InitTest(t, env, nil)
-			lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Updates) error {
+			lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.Updates) error {
 				return tc.updateValidateSignalListenerErr
 			}, tc.name)
 			defer lifecycle.UpdatesValidateSignal.RemoveListener(tc.name)
 
-			lifecycle.SettingsValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Settings) error {
+			lifecycle.SettingsValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.Settings) error {
 				return tc.settingsValidateSignalListenerErr
 			}, tc.name)
 			defer lifecycle.SettingsValidateSignal.RemoveListener(tc.name)
 
-			if tc.oldCfg != nil {
-				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.NetworkPut)
-				require.NoError(t, err)
+			lifecycle.SecurityValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.Security) error {
+				return tc.securityValidateSignalListenerErr
+			}, tc.name)
+			defer lifecycle.SecurityValidateSignal.RemoveListener(tc.name)
 
-				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SecurityPut)
-				require.NoError(t, err)
-
-				err = UpdateSettings(t.Context(), tc.oldCfg.Settings.SettingsPut)
-				require.NoError(t, err)
-
-				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.UpdatesPut)
-				require.NoError(t, err)
-			}
-
-			globalConfigInstanceMu.Lock()
-			err := validate(t.Context(), tc.cfg)
-			globalConfigInstanceMu.Unlock()
+			err := validateDelegated(t.Context(), tc.oldCfg, tc.cfg)
 
 			tc.assertErr(t, err)
 		})
