@@ -23,6 +23,7 @@ FuturFusion
 gapped
 github
 GitHub
+goroutine
 GPG
 hostname
 HPE
