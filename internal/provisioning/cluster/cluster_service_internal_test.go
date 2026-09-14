@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -10,9 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
-	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
-	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -425,6 +424,8 @@ func Test_clusterUpdateState(t *testing.T) {
 		clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus
 		serverStates                  []api.ServerUpdateState
 		newUpdateAvailable            bool
+		evacuatedBefore               []string
+		pendingReboot                 []string
 
 		want string
 	}{
@@ -619,9 +620,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "apply update with reboot - server evacuated before is not restored",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:      api.ClusterUpdateInProgressApplyUpdateWithReboot,
-				EvacuatedBefore: []string{"serverA"},
+				InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
 			},
+			evacuatedBefore: []string{"serverA"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateEvacuationPending,
@@ -633,9 +634,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling restart - server evacuated before is not restored",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:      api.ClusterUpdateInProgressRollingRestart,
-				EvacuatedBefore: []string{"serverA"},
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
 			},
+			evacuatedBefore: []string{"serverA"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateEvacuationPending,
@@ -649,9 +650,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling restart - all servers done, server evacuated before stays evacuated",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:      api.ClusterUpdateInProgressRollingRestart,
-				EvacuatedBefore: []string{"serverA"},
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
 			},
+			evacuatedBefore: []string{"serverA"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateUpToDate,
@@ -720,9 +721,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling reboot - all servers pending",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:    api.ClusterUpdateInProgressRollingReboot,
-				PendingReboot: []string{"serverA", "serverB", "serverC"},
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
 			},
+			pendingReboot: []string{"serverA", "serverB", "serverC"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateUpToDate,
 				api.ServerUpdateStateUpToDate,
@@ -734,9 +735,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling reboot - first server evacuated, awaiting its reboot",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:    api.ClusterUpdateInProgressRollingReboot,
-				PendingReboot: []string{"serverA", "serverB", "serverC"},
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
 			},
+			pendingReboot: []string{"serverA", "serverB", "serverC"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateUpToDate,
@@ -748,9 +749,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling reboot - first server rebooted, awaiting its restore",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:    api.ClusterUpdateInProgressRollingReboot,
-				PendingReboot: []string{"serverB", "serverC"},
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
 			},
+			pendingReboot: []string{"serverB", "serverC"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateUpToDate,
@@ -762,9 +763,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling reboot - server off the pending list is up to date",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:    api.ClusterUpdateInProgressRollingReboot,
-				PendingReboot: []string{"serverB", "serverC"},
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
 			},
+			pendingReboot: []string{"serverB", "serverC"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateUpToDate,
 				api.ServerUpdateStateUpToDate,
@@ -789,9 +790,9 @@ func Test_clusterUpdateState(t *testing.T) {
 		{
 			name: "rolling reboot - newly available update does not rewind the progress",
 			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
-				InProgress:    api.ClusterUpdateInProgressRollingReboot,
-				PendingReboot: []string{"serverA", "serverB", "serverC"},
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
 			},
+			pendingReboot: []string{"serverA", "serverB", "serverC"},
 			serverStates: []api.ServerUpdateState{
 				api.ServerUpdateStateInMaintenanceRestorePending,
 				api.ServerUpdateStateUpToDate,
@@ -812,6 +813,11 @@ func Test_clusterUpdateState(t *testing.T) {
 				server := clusterUpdateStateTestServer(t, serverNames[i], state)
 				if tc.newUpdateAvailable {
 					server.VersionData.NeedsUpdate = new(true)
+				}
+
+				server.StatusInternal.Update = &provisioning.ServerUpdate{
+					KeepEvacuated: slices.Contains(tc.evacuatedBefore, server.Name),
+					RebootPending: slices.Contains(tc.pendingReboot, server.Name),
 				}
 
 				servers = append(servers, server)
@@ -1074,84 +1080,59 @@ func TestClusterService_getClusterUpdateStatus_progressOnlyMovesForward(t *testi
 	require.Equal(t, `[ 1/27] update pending server "serverA"`, ptr.From(relaunched.InProgressStatus.StatusDescription))
 }
 
-func TestClusterService_markServerRebooted(t *testing.T) {
-	tests := []struct {
-		name             string
-		repoGetByNameErr error
-		repoUpdateErr    error
+func Test_rollingUpdateStates(t *testing.T) {
+	for state, definition := range rollingUpdateStates {
+		t.Run(state.String(), func(t *testing.T) {
+			switch definition.kind {
+			case rollingUpdateStateKindTrigger, rollingUpdateStateKindWait:
+				require.NotEmpty(t, definition.step, "a trigger and a wait name the step they issue or wait for")
 
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "success",
-
-			assertErr: require.NoError,
-		},
-		{
-			name:             "error - repo.GetByName",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:          "error - repo.Update",
-			repoUpdateErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	fixedTime := time.Date(2026, 3, 12, 8, 54, 35, 123, time.UTC)
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &repoMock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					if tc.repoGetByNameErr != nil {
-						return nil, tc.repoGetByNameErr
-					}
-
-					return &provisioning.Cluster{
-						Name: "clusterA",
-
-						UpdateStatus: api.ClusterUpdateStatus{
-							InProgressStatus: api.ClusterUpdateInProgressStatus{
-								InProgress:    api.ClusterUpdateInProgressRollingReboot,
-								PendingReboot: []string{"serverA", "serverB"},
-							},
-						},
-					}, nil
-				},
-				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
-					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
-					require.Equal(t, []string{"serverB"}, cluster.UpdateStatus.InProgressStatus.PendingReboot)
-					return tc.repoUpdateErr
-				},
+			default:
+				require.Empty(t, definition.step, "only a trigger and a wait have a step")
 			}
 
-			clusterSvc := New(
-				repo, nil, nil, nil, nil, nil, nil, nil,
-				WithNow(func() time.Time {
-					return fixedTime
-				}),
-			)
-
-			cluster := provisioning.Cluster{
-				Name: "clusterA",
-
-				UpdateStatus: api.ClusterUpdateStatus{
-					InProgressStatus: api.ClusterUpdateInProgressStatus{
-						InProgress: api.ClusterUpdateInProgressRollingReboot,
-					},
-				},
+			if definition.kind != rollingUpdateStateKindWait {
+				require.False(t, definition.retrigger, "only a wait falls back to issuing its step again")
 			}
 
-			// Run test
-			err := clusterSvc.markServerRebooted(context.Background(), cluster, "serverA")
+			switch definition.kind {
+			case rollingUpdateStateKindTrigger:
+				require.Equal(t, definition.step.Retries(), definition.retries, "a trigger shows the attempts its step is granted")
+				require.NotZero(t, definition.retries)
+				require.Zero(t, definition.timeout, "a trigger is instantaneous, the wait of its step carries the timeout")
+				require.Zero(t, definition.settleDelay)
 
-			// Assert
-			tc.assertErr(t, err)
+			case rollingUpdateStateKindWait:
+				require.Equal(t, definition.step.Timeout(), definition.timeout, "a wait shows the time its step is granted")
+				require.NotZero(t, definition.timeout)
+				require.Zero(t, definition.retries, "the attempts of a step are spent by its trigger")
+				require.Zero(t, definition.settleDelay)
+
+			case rollingUpdateStateKindSettle:
+				require.NotZero(t, definition.settleDelay, "a settle without a delay moves the server on right away")
+				require.Zero(t, definition.timeout)
+				require.Zero(t, definition.retries)
+
+			default:
+				require.Zero(t, definition.retries)
+				require.Zero(t, definition.timeout)
+				require.Zero(t, definition.settleDelay)
+			}
 		})
 	}
+
+	// Neither state is driven by the machine, both end the run wherever they are
+	// observed.
+	require.NotContains(t, rollingUpdateStates, api.ServerUpdateStateUndefined)
+	require.NotContains(t, rollingUpdateStates, api.ServerUpdateStateUpdating)
+}
+
+func Test_rollingRestartPostRestoreDelay(t *testing.T) {
+	// A cluster, which configures no delay, is granted the one of the settle state
+	// rather than none at all.
+	require.Equal(t, time.Minute, rollingRestartPostRestoreDelay(provisioning.Cluster{}, time.Minute))
+
+	cluster := provisioning.Cluster{}
+	cluster.Config.RollingRestart.PostRestoreDelay = "20s"
+	require.Equal(t, 20*time.Second, rollingRestartPostRestoreDelay(cluster, time.Minute))
 }

@@ -88,19 +88,18 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstSt
 // version before entering the rolling restart, so a newly published update must
 // not interrupt the ongoing restart cycle.
 //
-// During the rolling reboot phase, the need for a reboot is synthesized for all
-// servers, which still have to be rebooted. A server is removed from
-// PendingReboot as soon as its reboot has been triggered, which is what lets it
-// advance to the restore step afterwards.
+// During both phases, the need for a reboot is taken from what the run has
+// recorded about the server, rather than from VersionData.NeedsReboot alone.
+// IncusOS reports the staged version and the need for a reboot from two
+// different endpoints, which do not flip together. A server stops reporting a
+// pending reboot as soon as its reboot has been triggered, which is what lets
+// it advance to the restore step afterwards.
 func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdateState {
 	switch inProgressStatus.InProgress {
-	case api.ClusterUpdateInProgressRollingRestart:
+	case api.ClusterUpdateInProgressRollingRestart, api.ClusterUpdateInProgressRollingReboot:
 		server.VersionData.NeedsUpdate = new(false)
 
-	case api.ClusterUpdateInProgressRollingReboot:
-		server.VersionData.NeedsUpdate = new(false)
-
-		if slices.Contains(inProgressStatus.PendingReboot, server.Name) {
+		if server.StatusInternal.Update.RebootOwed() {
 			server.VersionData.NeedsReboot = new(true)
 		}
 	}
@@ -158,8 +157,8 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 
 		// Servers, which have been evacuated before the update was triggered, are kept
 		// in the evacuated state and therefore have no restore step ahead of them.
-		if state == api.ServerUpdateStateInMaintenanceRestorePending &&
-			slices.Contains(clusterUpdateInProgressStatus.EvacuatedBefore, server.Name) {
+		if rollingUpdateStates[state].keptEvacuated == rollingUpdateKeptEvacuatedDone &&
+			server.StatusInternal.Update.KeepsEvacuated() {
 			continue
 		}
 
