@@ -37,6 +37,9 @@ type ServerService interface {
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 	ResyncBMCData(ctx context.Context) error
 
+	BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) error
+	EndUpdateRunByCluster(ctx context.Context, clusterName string) error
+
 	EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error
 	PoweroffSystemByName(ctx context.Context, name string, force bool) error
 	RebootSystemByName(ctx context.Context, name string, force bool) error
