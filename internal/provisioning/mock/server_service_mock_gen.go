@@ -73,6 +73,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			BMCServerSetLocationIndicatorByNameFunc: func(ctx context.Context, name string, active bool) error {
 //				panic("mock out the BMCServerSetLocationIndicatorByName method")
 //			},
+//			BeginUpdateRunByClusterFunc: func(ctx context.Context, clusterName string, rebootPending bool) error {
+//				panic("mock out the BeginUpdateRunByCluster method")
+//			},
 //			CancelDeploymentByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the CancelDeploymentByName method")
 //			},
@@ -84,6 +87,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			},
 //			DeploymentControlLoopFunc: func(ctx context.Context, serverNameFilter *string) error {
 //				panic("mock out the DeploymentControlLoop method")
+//			},
+//			EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
+//				panic("mock out the EndUpdateRunByCluster method")
 //			},
 //			EvacuateSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool) error {
 //				panic("mock out the EvacuateSystemByName method")
@@ -251,6 +257,9 @@ type ServerServiceMock struct {
 	// BMCServerSetLocationIndicatorByNameFunc mocks the BMCServerSetLocationIndicatorByName method.
 	BMCServerSetLocationIndicatorByNameFunc func(ctx context.Context, name string, active bool) error
 
+	// BeginUpdateRunByClusterFunc mocks the BeginUpdateRunByCluster method.
+	BeginUpdateRunByClusterFunc func(ctx context.Context, clusterName string, rebootPending bool) error
+
 	// CancelDeploymentByNameFunc mocks the CancelDeploymentByName method.
 	CancelDeploymentByNameFunc func(ctx context.Context, name string) error
 
@@ -262,6 +271,9 @@ type ServerServiceMock struct {
 
 	// DeploymentControlLoopFunc mocks the DeploymentControlLoop method.
 	DeploymentControlLoopFunc func(ctx context.Context, serverNameFilter *string) error
+
+	// EndUpdateRunByClusterFunc mocks the EndUpdateRunByCluster method.
+	EndUpdateRunByClusterFunc func(ctx context.Context, clusterName string) error
 
 	// EvacuateSystemByNameFunc mocks the EvacuateSystemByName method.
 	EvacuateSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool) error
@@ -514,6 +526,15 @@ type ServerServiceMock struct {
 			// Active is the active argument value.
 			Active bool
 		}
+		// BeginUpdateRunByCluster holds details about calls to the BeginUpdateRunByCluster method.
+		BeginUpdateRunByCluster []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// RebootPending is the rebootPending argument value.
+			RebootPending bool
+		}
 		// CancelDeploymentByName holds details about calls to the CancelDeploymentByName method.
 		CancelDeploymentByName []struct {
 			// Ctx is the ctx argument value.
@@ -543,6 +564,13 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// ServerNameFilter is the serverNameFilter argument value.
 			ServerNameFilter *string
+		}
+		// EndUpdateRunByCluster holds details about calls to the EndUpdateRunByCluster method.
+		EndUpdateRunByCluster []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
 		}
 		// EvacuateSystemByName holds details about calls to the EvacuateSystemByName method.
 		EvacuateSystemByName []struct {
@@ -864,10 +892,12 @@ type ServerServiceMock struct {
 	lockBMCServerPowerOnByName               sync.RWMutex
 	lockBMCServerRestartByName               sync.RWMutex
 	lockBMCServerSetLocationIndicatorByName  sync.RWMutex
+	lockBeginUpdateRunByCluster              sync.RWMutex
 	lockCancelDeploymentByName               sync.RWMutex
 	lockDeleteByName                         sync.RWMutex
 	lockDeployByName                         sync.RWMutex
 	lockDeploymentControlLoop                sync.RWMutex
+	lockEndUpdateRunByCluster                sync.RWMutex
 	lockEvacuateSystemByName                 sync.RWMutex
 	lockFactoryResetByName                   sync.RWMutex
 	lockGetAll                               sync.RWMutex
@@ -1535,6 +1565,46 @@ func (mock *ServerServiceMock) BMCServerSetLocationIndicatorByNameCalls() []stru
 	return calls
 }
 
+// BeginUpdateRunByCluster calls BeginUpdateRunByClusterFunc.
+func (mock *ServerServiceMock) BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) error {
+	if mock.BeginUpdateRunByClusterFunc == nil {
+		panic("ServerServiceMock.BeginUpdateRunByClusterFunc: method is nil but ServerService.BeginUpdateRunByCluster was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		RebootPending bool
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		RebootPending: rebootPending,
+	}
+	mock.lockBeginUpdateRunByCluster.Lock()
+	mock.calls.BeginUpdateRunByCluster = append(mock.calls.BeginUpdateRunByCluster, callInfo)
+	mock.lockBeginUpdateRunByCluster.Unlock()
+	return mock.BeginUpdateRunByClusterFunc(ctx, clusterName, rebootPending)
+}
+
+// BeginUpdateRunByClusterCalls gets all the calls that were made to BeginUpdateRunByCluster.
+// Check the length with:
+//
+//	len(mockedServerService.BeginUpdateRunByClusterCalls())
+func (mock *ServerServiceMock) BeginUpdateRunByClusterCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	RebootPending bool
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		RebootPending bool
+	}
+	mock.lockBeginUpdateRunByCluster.RLock()
+	calls = mock.calls.BeginUpdateRunByCluster
+	mock.lockBeginUpdateRunByCluster.RUnlock()
+	return calls
+}
+
 // CancelDeploymentByName calls CancelDeploymentByNameFunc.
 func (mock *ServerServiceMock) CancelDeploymentByName(ctx context.Context, name string) error {
 	if mock.CancelDeploymentByNameFunc == nil {
@@ -1680,6 +1750,42 @@ func (mock *ServerServiceMock) DeploymentControlLoopCalls() []struct {
 	mock.lockDeploymentControlLoop.RLock()
 	calls = mock.calls.DeploymentControlLoop
 	mock.lockDeploymentControlLoop.RUnlock()
+	return calls
+}
+
+// EndUpdateRunByCluster calls EndUpdateRunByClusterFunc.
+func (mock *ServerServiceMock) EndUpdateRunByCluster(ctx context.Context, clusterName string) error {
+	if mock.EndUpdateRunByClusterFunc == nil {
+		panic("ServerServiceMock.EndUpdateRunByClusterFunc: method is nil but ServerService.EndUpdateRunByCluster was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+	}
+	mock.lockEndUpdateRunByCluster.Lock()
+	mock.calls.EndUpdateRunByCluster = append(mock.calls.EndUpdateRunByCluster, callInfo)
+	mock.lockEndUpdateRunByCluster.Unlock()
+	return mock.EndUpdateRunByClusterFunc(ctx, clusterName)
+}
+
+// EndUpdateRunByClusterCalls gets all the calls that were made to EndUpdateRunByCluster.
+// Check the length with:
+//
+//	len(mockedServerService.EndUpdateRunByClusterCalls())
+func (mock *ServerServiceMock) EndUpdateRunByClusterCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+	}
+	mock.lockEndUpdateRunByCluster.RLock()
+	calls = mock.calls.EndUpdateRunByCluster
+	mock.lockEndUpdateRunByCluster.RUnlock()
 	return calls
 }
 
