@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	incus "github.com/lxc/incus/v7/client"
+	"github.com/lxc/incus/v7/client"
 	"github.com/lxc/incus/v7/shared/api"
 	"github.com/pkg/sftp"
 
