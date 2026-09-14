@@ -28,6 +28,8 @@ type Parser struct {
 	exprStructs map[string]*StructResult
 	converters  []*ast.FuncDecl
 
+	usedPkgs map[string]string
+
 	structMappings map[string]string
 }
 
@@ -54,6 +56,7 @@ func NewParser(localPkg string, pkgs []*packages.Package, aliases map[string]str
 		structs:        structs,
 		exprStructs:    map[string]*StructResult{},
 		converters:     []*ast.FuncDecl{},
+		usedPkgs:       map[string]string{},
 		aliases:        aliases,
 		structMappings: map[string]string{},
 	}, nil
@@ -63,6 +66,7 @@ func NewParser(localPkg string, pkgs []*packages.Package, aliases map[string]str
 func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 	p.exprStructs = map[string]*StructResult{}
 	p.converters = []*ast.FuncDecl{}
+	p.usedPkgs = map[string]string{}
 
 	structDef, ok := p.structs[p.localPkg][structName]
 	if !ok {
@@ -79,31 +83,9 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 		p.converters = append(p.converters, p.generateConverter(exprName, result.Struct))
 	}
 
-	imports := []ast.Spec{}
-	for pkgName := range p.structs {
-		if pkgName == p.localPkg {
-			continue
-		}
-
-		var alias *ast.Ident
-		if p.aliases[pkgName] != filepath.Base(pkgName) {
-			alias = ast.NewIdent(p.aliases[pkgName])
-		}
-
-		importSpec := &ast.ImportSpec{
-			Name: alias,
-			Path: &ast.BasicLit{Kind: token.STRING, Value: `"` + pkgName + `"`},
-		}
-
-		imports = append(imports, importSpec)
-	}
-
 	fileDecl := &ast.File{
-		Name: ast.NewIdent(structDef.Pkg.Name()),
-		Decls: []ast.Decl{&ast.GenDecl{
-			Tok:   token.IMPORT,
-			Specs: imports,
-		}},
+		Name:  ast.NewIdent(structDef.Pkg.Name()),
+		Decls: []ast.Decl{},
 	}
 
 	for _, d := range p.exprStructs {
@@ -123,31 +105,23 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 				// t1 is a type decl, compare to t2.
 				switch t2 := fileDecl.Decls[j].(type) {
 				case *ast.GenDecl:
-					switch t2 := t2.Specs[0].(type) {
-					case *ast.TypeSpec:
+					typeSpec, ok := t2.Specs[0].(*ast.TypeSpec)
+					if ok {
 						// t2 is also a type decl, compare names.
-						return t1.Name.String() < t2.Name.String()
-
-					case *ast.ImportSpec:
-						// t2 is an import so it wins.
-						return false
+						return t1.Name.String() < typeSpec.Name.String()
 					}
 
 				case *ast.FuncDecl:
 					// t2 is a function so it loses.
 					return true
 				}
-
-			case *ast.ImportSpec:
-				// t1 is an import so it wins.
-				return true
 			}
 
 		case *ast.FuncDecl:
 			// t1 is a func, compare to t2.
 			switch t2 := fileDecl.Decls[j].(type) {
 			case *ast.GenDecl:
-				// t2 is a type or an import, so it wins.
+				// t2 is a type, so it wins.
 				return false
 
 			case *ast.FuncDecl:
@@ -179,7 +153,22 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 
 	defer outFile.Close()
 
-	_, err = outFile.Write(splitAssignmentLines(buf.Bytes()))
+	src := splitAssignmentLines(buf.Bytes())
+
+	qualifiers, err := usedQualifiers(src)
+	if err != nil {
+		return fmt.Errorf("Failed to parse the generated code for %q: %w", structName, err)
+	}
+
+	imports := p.importBlock(qualifiers)
+
+	// Insert the import block right after the package clause.
+	idx := bytes.IndexByte(src, '\n')
+	if len(imports) > 0 && idx >= 0 {
+		src = slices.Concat(src[:idx+1], []byte("\n"), imports, src[idx+1:])
+	}
+
+	_, err = outFile.Write(src)
 	if err != nil {
 		return err
 	}
@@ -222,6 +211,8 @@ func (p *Parser) parseType(t types.Type) ast.Expr {
 		if pkg.Path() == p.localPkg {
 			return ast.NewIdent(typeName)
 		}
+
+		p.usedPkgs[pkg.Path()] = pkgName
 
 		return &ast.SelectorExpr{
 			X:   &ast.Ident{Name: pkgName},
@@ -317,6 +308,7 @@ func (p *Parser) generateConverter(exprName string, strct *Struct) *ast.FuncDecl
 	arg := strings.ToLower(string(structName[0]))
 	if strct.Pkg.Path() != p.localPkg {
 		structName = p.aliases[strct.Pkg.Path()] + "." + structName
+		p.usedPkgs[strct.Pkg.Path()] = p.aliases[strct.Pkg.Path()]
 	}
 
 	assignFields := []ast.Expr{}
@@ -624,4 +616,128 @@ func splitAssignmentLines(src []byte) []byte {
 	}
 
 	return result
+}
+
+// usedQualifiers returns the set of package qualifiers actually referenced in the
+// given source. The generator emits some references as plain identifiers, so the
+// printed source is re-parsed instead of inspecting the AST it was printed from.
+func usedQualifiers(src []byte) (map[string]struct{}, error) {
+	file, err := parser.ParseFile(token.NewFileSet(), "", src, parser.SkipObjectResolution)
+	if err != nil {
+		return nil, err
+	}
+
+	qualifiers := map[string]struct{}{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		selector, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+
+		ident, ok := selector.X.(*ast.Ident)
+		if ok {
+			qualifiers[ident.Name] = struct{}{}
+		}
+
+		return true
+	})
+
+	return qualifiers, nil
+}
+
+// importBlock renders the import declaration for the file currently being
+// generated, limited to the packages whose qualifier appears in qualifiers.
+//
+// The imports are split into the standard library, third party packages and
+// packages of this module.
+func (p *Parser) importBlock(qualifiers map[string]struct{}) []byte {
+	const (
+		groupStandard = iota
+		groupThirdParty
+		groupLocal
+		groupCount
+	)
+
+	groups := make([][]string, groupCount)
+	count := 0
+
+	for path, qualifier := range p.usedPkgs {
+		_, ok := qualifiers[qualifier]
+		if !ok {
+			continue
+		}
+
+		// Two packages can share a qualifier. Only one of them can be imported
+		// without renaming the references in the generated code, so a package
+		// that was explicitly passed with -p wins over a discovered one.
+		_, declared := p.aliases[path]
+		if !declared && p.declaresQualifier(qualifier) {
+			continue
+		}
+
+		spec := `"` + path + `"`
+		if qualifier != filepath.Base(path) {
+			spec = qualifier + " " + spec
+		}
+
+		group := groupThirdParty
+		switch {
+		case !strings.Contains(strings.Split(path, "/")[0], "."):
+			group = groupStandard
+
+		case path == LocalModule || strings.HasPrefix(path, LocalModule+"/"):
+			group = groupLocal
+		}
+
+		groups[group] = append(groups[group], spec)
+		count++
+	}
+
+	if count == 0 {
+		return nil
+	}
+
+	for _, group := range groups {
+		slices.Sort(group)
+	}
+
+	if count == 1 {
+		return fmt.Appendf(nil, "import %s\n", slices.Concat(groups...)[0])
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("import (\n")
+	separator := ""
+	for _, group := range groups {
+		if len(group) == 0 {
+			continue
+		}
+
+		buf.WriteString(separator)
+		for _, spec := range group {
+			fmt.Fprintf(&buf, "\t%s\n", spec)
+		}
+
+		separator = "\n"
+	}
+
+	buf.WriteString(")\n")
+
+	return buf.Bytes()
+}
+
+// declaresQualifier reports whether one of the packages passed with -p is
+// referenced through the given qualifier.
+func (p *Parser) declaresQualifier(qualifier string) bool {
+	for path, alias := range p.aliases {
+		if alias == "" {
+			alias = filepath.Base(path)
+		}
+
+		if alias == qualifier {
+			return true
+		}
+	}
+
+	return false
 }
