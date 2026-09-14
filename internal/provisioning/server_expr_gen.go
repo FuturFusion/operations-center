@@ -537,7 +537,14 @@ type ExprServerTriggeredUpdate struct {
 }
 
 type ExprServerUpdate struct {
-	Triggered *ExprServerTriggeredUpdate `json:"triggered,omitempty" expr:"triggered"`
+	Step            ServerUpdateStep           `json:"step,omitempty" expr:"step"`
+	StepTriggeredAt time.Time                  `json:"step_triggered_at,omitzero" expr:"step_triggered_at"`
+	RebootPending   bool                       `json:"reboot_pending,omitempty" expr:"reboot_pending"`
+	KeepEvacuated   bool                       `json:"keep_evacuated,omitempty" expr:"keep_evacuated"`
+	Retries         int                        `json:"retries,omitempty" expr:"retries"`
+	LastError       string                     `json:"last_error,omitempty" expr:"last_error"`
+	StartedAt       time.Time                  `json:"started_at,omitzero" expr:"started_at"`
+	Triggered       *ExprServerTriggeredUpdate `json:"triggered,omitempty" expr:"triggered"`
 }
 
 func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
@@ -1174,6 +1181,13 @@ func ToExprServerTriggeredUpdate(s ServerTriggeredUpdate) ExprServerTriggeredUpd
 
 func ToExprServerUpdate(s ServerUpdate) ExprServerUpdate {
 	return ExprServerUpdate{
-		Triggered: toPtr(ToExprServerTriggeredUpdate(fromPtr(s.Triggered))),
+		Step:            s.Step,
+		StepTriggeredAt: s.StepTriggeredAt,
+		RebootPending:   s.RebootPending,
+		KeepEvacuated:   s.KeepEvacuated,
+		Retries:         s.Retries,
+		LastError:       s.LastError,
+		StartedAt:       s.StartedAt,
+		Triggered:       toPtr(ToExprServerTriggeredUpdate(fromPtr(s.Triggered))),
 	}
 }
