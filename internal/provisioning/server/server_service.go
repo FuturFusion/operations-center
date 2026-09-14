@@ -890,6 +890,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			server.Status = api.ServerStatusReady
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			server.VersionData.OS.NeedsReboot = false
 
@@ -902,13 +903,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
-			// Only update the server status detail, if an application update is
-			// processed,since applications also get updated as part of the OS update.
-			if server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
-				server.StatusDetail = api.ServerStatusDetailNone
-				server.LastStatusUpdated = s.now()
-				triggerBackgroundPolling = true
-			}
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
 			triggerBackgroundPolling = true
@@ -1605,6 +1600,17 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
 	slog.InfoContext(ctx, "System update initiated", slog.String("server", name), slog.Bool("force", force))
 
+	applications := make([]string, 0, len(updateRequest.Applications))
+	for _, application := range updateRequest.Applications {
+		if application.TriggerUpdate {
+			applications = append(applications, application.Name)
+		}
+	}
+
+	if updateRequest.OS.TriggerUpdate && len(applications) > 0 {
+		return domain.NewValidationErrf("An update of the OS covers the applications as well and can not be combined with an update of individual applications")
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -1627,9 +1633,63 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		// Reject applications, which are not installed on the serer.
+		for _, application := range applications {
+			isInstalled := slices.ContainsFunc(server.VersionData.Applications, func(installed api.ApplicationVersionData) bool {
+				return installed.Name == application
+			})
+
+			if !isInstalled {
+				return domain.NewValidationErrf("Application %q is not installed on server %q", application, name)
+			}
+		}
+
 		previousServer = server.Clone()
 
-		server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
+		// An application update is applied right away, while an OS update is only
+		// staged and applied on the next reboot.
+		switch {
+		case updateRequest.OS.TriggerUpdate:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
+
+		case len(applications) > 0:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
+		}
+
+		// Remember, which components the update covers, so that polling can tell
+		// when it is done. Components, for which no version is available, have no
+		// expectation to reach and are left out.
+		if updateRequest.OS.TriggerUpdate || len(applications) > 0 {
+			triggeredUpdate := provisioning.ServerTriggeredUpdate{
+				TriggeredAt: s.now(),
+			}
+
+			if updateRequest.OS.TriggerUpdate {
+				triggeredUpdate.OS = ptr.From(server.VersionData.OS.AvailableVersion)
+			}
+
+			for _, application := range server.VersionData.Applications {
+				// An OS update makes IncusOS update every application as well, so all
+				// of those in need of an update are covered by it.
+				isCovered := slices.Contains(applications, application.Name) ||
+					(updateRequest.OS.TriggerUpdate && ptr.From(application.NeedsUpdate))
+
+				if !isCovered || application.AvailableVersion == nil {
+					continue
+				}
+
+				if triggeredUpdate.Applications == nil {
+					triggeredUpdate.Applications = make(map[string]string, len(server.VersionData.Applications))
+				}
+
+				triggeredUpdate.Applications[application.Name] = *application.AvailableVersion
+			}
+
+			server.StatusInternal.Update = &provisioning.ServerUpdate{
+				Triggered: &triggeredUpdate,
+			}
+		}
+
 		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false, false)
@@ -1669,9 +1729,12 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		}
 	}
 
-	// FIXME: iterate over the applications and trigger the update for the applications
-	// as well, if the TriggerUpdate flag is set to true for the particular application.
-	// https://github.com/FuturFusion/operations-center/issues/616
+	for _, application := range applications {
+		err = s.client.UpdateApplication(ctx, *server, application)
+		if err != nil {
+			return fmt.Errorf("Failed to update application %q of server %q by name: %w", application, name, err)
+		}
+	}
 
 	reverter.Success()
 
@@ -2185,6 +2248,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
 		}
@@ -2236,8 +2300,9 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		// If an update has been triggered, check if an update is still needed.
 		// If not, updating is done.
-		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
-			needsUpdate := ptr.From(server.VersionData.NeedsUpdate)
+		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS ||
+			server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
+			currentVersionData := server.VersionData
 
 			if updateServerConfiguration {
 				freshServer := *server
@@ -2249,11 +2314,22 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 					return fmt.Errorf("Failed to enrich version data of server %q: %w", server.Name, err)
 				}
 
-				needsUpdate = ptr.From(freshServer.VersionData.NeedsUpdate)
+				currentVersionData = freshServer.VersionData
 			}
 
-			if !needsUpdate {
+			// Only the components, the update has been triggered for, decide whether
+			// it is done. Updates, which have been triggered before the covered
+			// components were recorded, fall back to the aggregate over all of them.
+			updatePending := ptr.From(currentVersionData.NeedsUpdate)
+
+			update := server.StatusInternal.Update
+			if update != nil && update.Triggered != nil {
+				updatePending = update.Triggered.IsPending(currentVersionData)
+			}
+
+			if !updatePending {
 				server.StatusDetail = api.ServerStatusDetailNone
+				server.StatusInternal.Update = nil
 				server.LastStatusUpdated = s.now()
 			}
 		}

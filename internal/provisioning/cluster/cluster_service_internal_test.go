@@ -903,7 +903,8 @@ func Test_clusterUpdateState_doesNotReorderServers(t *testing.T) {
 }
 
 // serverUpdateStateUpdatingApplication is a test only marker for a server, which is
-// updating its applications. api.Server.UpdateState reports "undefined" for it.
+// updating its applications. api.Server.UpdateState reports "updating" for it,
+// same as for a server updating the OS.
 const serverUpdateStateUpdatingApplication = api.ServerUpdateState("updating application")
 
 func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpdateState) provisioning.Server {
@@ -978,7 +979,7 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 
 	case serverUpdateStateUpdatingApplication:
 		server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
-		wantState = api.ServerUpdateStateUndefined
+		wantState = api.ServerUpdateStateUpdating
 
 	default:
 		t.Fatalf("unsupported server update state %q", state)

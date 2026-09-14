@@ -79,6 +79,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
 //				panic("mock out the SystemFactoryReset method")
 //			},
+//			UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+//				panic("mock out the UpdateApplication method")
+//			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
@@ -163,6 +166,9 @@ type ServerClientPortMock struct {
 
 	// SystemFactoryResetFunc mocks the SystemFactoryReset method.
 	SystemFactoryResetFunc func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
+
+	// UpdateApplicationFunc mocks the UpdateApplication method.
+	UpdateApplicationFunc func(ctx context.Context, server provisioning.Server, application string) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -336,6 +342,15 @@ type ServerClientPortMock struct {
 			// ProviderConfig is the providerConfig argument value.
 			ProviderConfig api.TokenProviderConfig
 		}
+		// UpdateApplication holds details about calls to the UpdateApplication method.
+		UpdateApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Application is the application argument value.
+			Application string
+		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -413,6 +428,7 @@ type ServerClientPortMock struct {
 	lockRestartApplication   sync.RWMutex
 	lockRestore              sync.RWMutex
 	lockSystemFactoryReset   sync.RWMutex
+	lockUpdateApplication    sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
@@ -1135,6 +1151,46 @@ func (mock *ServerClientPortMock) SystemFactoryResetCalls() []struct {
 	mock.lockSystemFactoryReset.RLock()
 	calls = mock.calls.SystemFactoryReset
 	mock.lockSystemFactoryReset.RUnlock()
+	return calls
+}
+
+// UpdateApplication calls UpdateApplicationFunc.
+func (mock *ServerClientPortMock) UpdateApplication(ctx context.Context, server provisioning.Server, application string) error {
+	if mock.UpdateApplicationFunc == nil {
+		panic("ServerClientPortMock.UpdateApplicationFunc: method is nil but ServerClientPort.UpdateApplication was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		Application: application,
+	}
+	mock.lockUpdateApplication.Lock()
+	mock.calls.UpdateApplication = append(mock.calls.UpdateApplication, callInfo)
+	mock.lockUpdateApplication.Unlock()
+	return mock.UpdateApplicationFunc(ctx, server, application)
+}
+
+// UpdateApplicationCalls gets all the calls that were made to UpdateApplication.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateApplicationCalls())
+func (mock *ServerClientPortMock) UpdateApplicationCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	Application string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}
+	mock.lockUpdateApplication.RLock()
+	calls = mock.calls.UpdateApplication
+	mock.lockUpdateApplication.RUnlock()
 	return calls
 }
 

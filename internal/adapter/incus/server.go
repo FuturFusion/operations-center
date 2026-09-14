@@ -598,6 +598,22 @@ func (c Client) RestartApplication(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
+func (c Client) UpdateApplication(ctx context.Context, server provisioning.Server, application string) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, path.Join("/os/1.0/applications", application, ":check-update"), http.NoBody, "")
+	if err != nil {
+		err = api.AsNotIncusOSError(err)
+
+		return fmt.Errorf("Failed to trigger update check for application %q on %q (%s): %w", application, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
 func (c Client) GetSystem(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
 	if strings.Contains(resource, "/") {
 		return nil, fmt.Errorf(`Resource name must not contain forward slashes ("/")`)

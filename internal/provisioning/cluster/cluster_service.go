@@ -2649,6 +2649,13 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 	return errors.Join(errs...)
 }
 
+// isServerUpdating reports whether an update has been triggered on the server
+// and has not completed yet.
+func isServerUpdating(server provisioning.Server) bool {
+	return server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS ||
+		server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication
+}
+
 func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provisioning.Cluster, servers provisioning.Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
@@ -2658,7 +2665,7 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 	// updates for the applications and the next OS.
 	for _, server := range servers {
 		if !ptr.From(server.VersionData.NeedsUpdate) {
-			if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
+			if isServerUpdating(server) {
 				// Server status detail needs to be updated first, not yet ready to proceed.
 				return nil
 			}
@@ -2673,28 +2680,19 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 			log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 		}
 
-		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
+		if isServerUpdating(server) {
 			// Update servers one by one, one server already updating, so we have
 			// to wait.
 			return nil
 		}
 
-		applicationUpdate := make([]api.ServerUpdateApplication, 0, len(server.VersionData.Applications))
-		for _, app := range server.VersionData.Applications {
-			if ptr.From(app.NeedsUpdate) {
-				applicationUpdate = append(applicationUpdate, api.ServerUpdateApplication{
-					Name:          app.Name,
-					TriggerUpdate: true,
-				})
-			}
-		}
-
+		// An update of the OS covers the applications as well, so the whole server
+		// is brought up to date with a single trigger.
 		err := s.serverSvc.UpdateSystemByName(ctx, server.Name, api.ServerUpdatePost{
 			OS: api.ServerUpdateApplication{
 				Name:          "os",
 				TriggerUpdate: true,
 			},
-			Applications: applicationUpdate,
 		}, true)
 		if err != nil {
 			return fmt.Errorf("Failed to trigger server update on %q (%s): %w", server.Name, server.ConnectionURL, err)

@@ -343,8 +343,9 @@ func (c *cmdServerRestore) run(cmd *cobra.Command, args []string) error {
 type cmdServerUpdate struct {
 	ocClient *client.OperationsCenterClient
 
-	flagForce    bool
-	flagUpdateOS bool
+	flagForce        bool
+	flagUpdateOS     bool
+	flagApplications []string
 }
 
 func (c *cmdServerUpdate) Command() *cobra.Command {
@@ -355,10 +356,14 @@ func (c *cmdServerUpdate) Command() *cobra.Command {
   Update a server
 
   Triggers an update on a server.
+
+  An update of the OS makes IncusOS update every installed application as well,
+  so "--os" can not be combined with "--application".
 `
 
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger an update")
-	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger OS update")
+	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger update of the OS and of all installed applications")
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", nil, "trigger update for the given application, can be provided multiple times")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -373,6 +378,14 @@ func (c *cmdServerUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string
 		return err
 	}
 
+	if c.flagUpdateOS && len(c.flagApplications) > 0 {
+		return fmt.Errorf(`"--os" already covers the applications and can not be combined with "--application"`)
+	}
+
+	if !c.flagUpdateOS && len(c.flagApplications) == 0 {
+		return fmt.Errorf(`One of "--os" or "--application" is required`)
+	}
+
 	return nil
 }
 
@@ -384,6 +397,13 @@ func (c *cmdServerUpdate) run(cmd *cobra.Command, args []string) error {
 			Name:          "os",
 			TriggerUpdate: c.flagUpdateOS,
 		},
+	}
+
+	for _, application := range c.flagApplications {
+		updateRequest.Applications = append(updateRequest.Applications, api.ServerUpdateApplication{
+			Name:          application,
+			TriggerUpdate: true,
+		})
 	}
 
 	err := c.ocClient.UpdateServerSystem(cmd.Context(), name, updateRequest, c.flagForce)

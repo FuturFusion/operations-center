@@ -305,6 +305,20 @@ func (_d ServerClientPortWithPrometheus) SystemFactoryReset(ctx context.Context,
 	return _d.base.SystemFactoryReset(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
 }
 
+// UpdateApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateApplication(ctx, server, application)
+}
+
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()

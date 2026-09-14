@@ -92,10 +92,6 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstSt
 // servers, which still have to be rebooted. A server is removed from
 // PendingReboot as soon as its reboot has been triggered, which is what lets it
 // advance to the restore step afterwards.
-//
-// During the update phase, a server updating its applications is reported as
-// updating instead of the undefined state, api.Server.UpdateState reports for it,
-// since applications are updated as part of the OS update.
 func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdateState {
 	switch inProgressStatus.InProgress {
 	case api.ClusterUpdateInProgressRollingRestart:
@@ -106,12 +102,6 @@ func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgr
 
 		if slices.Contains(inProgressStatus.PendingReboot, server.Name) {
 			server.VersionData.NeedsReboot = new(true)
-		}
-
-	case api.ClusterUpdateInProgressApplyUpdate,
-		api.ClusterUpdateInProgressApplyUpdateWithReboot:
-		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
-			return api.ServerUpdateStateUpdating
 		}
 	}
 

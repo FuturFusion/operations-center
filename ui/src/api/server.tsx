@@ -175,12 +175,19 @@ export const restoreServer = (name: string): Promise<APIResponse<null>> => {
 
 export const updateSystemServer = (
   name: string,
+  updateOS: boolean,
+  applications: string[],
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:update`, {
       method: "POST",
-      // TODO: Hardcoded because the server currently supports only OS updates.
-      body: JSON.stringify({ os: { trigger_update: true } }),
+      body: JSON.stringify({
+        os: { name: "os", trigger_update: updateOS },
+        applications: applications.map((name) => ({
+          name: name,
+          trigger_update: true,
+        })),
+      }),
     })
       .then((response) => response.json())
       .then((data) => resolve(data))

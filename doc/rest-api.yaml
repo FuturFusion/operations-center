@@ -5710,11 +5710,13 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerUpdatePost:
         description: |-
-            ServerUpdatePost defines the update trigger information for an update
-            request for a server including the OS and/or its applications.
+            ServerUpdatePost defines the update trigger information for an update request
+            for a server, either for the OS or for individual applications.
         properties:
             applications:
-                description: Applications holds the update trigger information for the installed applications.
+                description: |-
+                    Applications holds the update trigger information for the installed
+                    applications.
                 items:
                     $ref: '#/definitions/ServerUpdateApplication'
                 type: array
@@ -12338,7 +12340,10 @@ paths:
         post:
             consumes:
                 - application/json
-            description: Triggers an update operation on the server.
+            description: |-
+                Triggers an update operation on the server, either for the operating system,
+                which covers the installed applications as well, or for the given
+                applications.
             operationId: server_system_update_post
             parameters:
                 - description: Name of the server

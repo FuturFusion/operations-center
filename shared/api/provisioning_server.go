@@ -878,7 +878,7 @@ const (
 	ServerUpdateStateUndefined                   ServerUpdateState = "undefined"                       // Returned for undefined states
 	ServerUpdateStateUpToDate                    ServerUpdateState = "up to date"                      // ServerStatusReady, NeedsUpdate: false, NeedsReboot: false, InMaintenance: NotInMaintenance
 	ServerUpdateStateUpdatePending               ServerUpdateState = "update pending"                  // ServerStatusReady, NeedsUpdate: true
-	ServerUpdateStateUpdating                    ServerUpdateState = "updating"                        // ServerStatusReady, ServerStatusDetailReadyUpdating
+	ServerUpdateStateUpdating                    ServerUpdateState = "updating"                        // ServerStatusReady, ServerStatusDetailReadyUpdatingOS or ServerStatusDetailReadyUpdatingApplication
 	ServerUpdateStateEvacuationPending           ServerUpdateState = "evacuation pending"              // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, IsIncusCluster: true, InMaintenance: NotInMaintenance
 	ServerUpdateStateEvacuating                  ServerUpdateState = "evacuating"                      // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceEvacuating
 	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, InMaintenance: InMaintenanceEvacuated
@@ -918,7 +918,7 @@ func (s Server) UpdateState() ServerUpdateState {
 		return ServerUpdateStateUpdating
 
 	case ServerStatusDetailReadyUpdatingApplication:
-		return ServerUpdateStateUndefined
+		return ServerUpdateStateUpdating
 	}
 
 	if !ptr.From(s.VersionData.NeedsUpdate) &&
@@ -1109,12 +1109,13 @@ type ServerSystemLogging = incusosapi.SystemLogging
 // ServerSystemSecurity is a type alias to hold the system security configuration from IncusOS.
 type ServerSystemSecurity = incusosapi.SystemSecurity
 
-// ServerUpdatePost defines the update trigger information for an update
-// request for a server including the OS and/or its applications.
+// ServerUpdatePost defines the update trigger information for an update request
+// for a server, either for the OS or for individual applications.
 //
 // swagger:model
 type ServerUpdatePost struct {
-	// Applications holds the update trigger information for the installed applications.
+	// Applications holds the update trigger information for the installed
+	// applications.
 	Applications []ServerUpdateApplication `json:"applications" yaml:"applications"`
 
 	// OS holds the update trigger information for the operating system.

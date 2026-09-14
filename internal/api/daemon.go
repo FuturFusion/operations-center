@@ -1391,6 +1391,19 @@ func (d *Daemon) setupBackgroundTasks(
 		config.UpdatingServerPollInterval,
 	)
 
+	// Start background task to poll servers updating an application to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"updating application",
+		provisioning.ServerFilter{
+			Status:       new(api.ServerStatusReady),
+			StatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
+		},
+		true,
+		config.UpdatingServerPollInterval,
+	)
+
 	// Start background task to poll servers in evacuating state to become available.
 	d.startBackgroundPollingTask(
 		ctx,

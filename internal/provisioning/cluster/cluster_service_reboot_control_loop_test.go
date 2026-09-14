@@ -62,6 +62,9 @@ func rebootOnlyServerClient(world *serverWorld) *adapterMock.ServerClientPortMoc
 		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
 			return errors.New("no update must be triggered during an on demand rolling reboot")
 		},
+		UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+			return errors.New("no application update must be triggered during an on demand rolling reboot")
+		},
 		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 			world.set(server.Name, versionDataRebootOnlyEvacuating, false)
 			world.deferTransition(serverWorldTransition{
@@ -296,9 +299,9 @@ func TestClusterService_LaunchClusterRebootRejectsUnsuitableServers(t *testing.T
 		wantErrIs string
 	}{
 		{
-			name: "server is applying an application update",
+			name: "server is evacuating",
 			mutate: func(server *provisioning.Server) {
-				server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
+				server.StatusDetail = api.ServerStatusDetailReadyEvacuating
 			},
 			wantErrIs: "is busy",
 		},

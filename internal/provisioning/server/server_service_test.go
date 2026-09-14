@@ -3207,7 +3207,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertErr:              require.NoError,
 			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
-			wantServerStatusDetail: api.ServerStatusDetailNone,
+			wantServerStatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
 		},
 		{
 			name: "success - cause network interface state changed",
@@ -4698,11 +4698,12 @@ func TestServerService_PollServer(t *testing.T) {
 		updateSvcGetAllWithFilter      provisioning.Updates
 		updateSvcGetAllWithFilterErr   error
 
-		assertErr               require.ErrorAssertionFunc
-		assertLog               log.MatcherFunc
-		wantServerStatusDetail  *api.ServerStatusDetail
-		wantServerVersionData   *api.ServerVersionData
-		wantServerConnectionURL *string
+		assertErr                 require.ErrorAssertionFunc
+		assertLog                 log.MatcherFunc
+		wantServerStatusDetail    *api.ServerStatusDetail
+		wantServerVersionData     *api.ServerVersionData
+		wantServerConnectionURL   *string
+		wantServerTriggeredUpdate *provisioning.ServerTriggeredUpdate
 	}{
 		{
 			name: "success",
@@ -4849,6 +4850,190 @@ func TestServerService_PollServer(t *testing.T) {
 			assertErr:              require.NoError,
 			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+		},
+		{
+			name: "success - updating application, update has been applied",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
+				Channel:      "stable",
+				VersionData:  pollServerVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerVersionData("2"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+		},
+		{
+			// The update has been triggered for the application only, so the OS being
+			// out of date must not keep the server in the updating state.
+			name: "success - updating application, triggered application is up to date while the OS is not",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
+				Channel:      "stable",
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						Triggered: &provisioning.ServerTriggeredUpdate{
+							Applications: map[string]string{
+								"incus": "2",
+							},
+							TriggeredAt: fixedDate,
+						},
+					},
+				},
+				VersionData: pollServerApplicationVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerApplicationVersionData("2"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+		},
+		{
+			name: "success - updating application, triggered application is still pending",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
+				Channel:      "stable",
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						Triggered: &provisioning.ServerTriggeredUpdate{
+							Applications: map[string]string{
+								"incus": "2",
+							},
+							TriggeredAt: fixedDate,
+						},
+					},
+				},
+				VersionData: pollServerApplicationVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerApplicationVersionData("1"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
+			wantServerTriggeredUpdate: &provisioning.ServerTriggeredUpdate{
+				Applications: map[string]string{
+					"incus": "2",
+				},
+				TriggeredAt: fixedDate,
+			},
 		},
 		{
 			name: "success - updating, update is still pending",
@@ -5526,6 +5711,15 @@ func TestServerService_PollServer(t *testing.T) {
 
 					if tc.wantServerConnectionURL != nil {
 						require.Equal(t, *tc.wantServerConnectionURL, server.ConnectionURL)
+					}
+
+					if tc.repoGetByName != nil && tc.repoGetByName.StatusInternal.Update != nil {
+						var gotTriggeredUpdate *provisioning.ServerTriggeredUpdate
+						if server.StatusInternal.Update != nil {
+							gotTriggeredUpdate = server.StatusInternal.Update.Triggered
+						}
+
+						require.Equal(t, tc.wantServerTriggeredUpdate, gotTriggeredUpdate)
 					}
 
 					return tc.repoUpdateErr
@@ -8049,12 +8243,18 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		repoGetByNameErr                                error
 		repoUpdateErrs                                  queue.Errs
 		clientUpdateOSErr                               error
+		clientUpdateApplicationErr                      error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		registerUnreachableBMCClient                    bool
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		updateSvcGetAllWithFilter provisioning.Updates
+
+		assertErr               require.ErrorAssertionFunc
+		assertLog               log.MatcherFunc
+		wantUpdatedApplications []string
+		wantStatusDetail        *api.ServerStatusDetail
+		wantTriggeredUpdate     *provisioning.ServerTriggeredUpdate
 	}{
 		{
 			name: "success - no update triggered",
@@ -8264,6 +8464,255 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: log.Noop,
 		},
+		{
+			name: "success - trigger application update only",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+					{
+						Name:          "openfga",
+						TriggerUpdate: false,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+						{Name: "openfga"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               require.NoError,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: []string{"incus"},
+			wantStatusDetail:        new(api.ServerStatusDetailReadyUpdatingApplication),
+		},
+		{
+			// The versions the triggered components are expected to reach are taken
+			// from the update channel and recorded, so that polling can tell which of
+			// them the update is waiting for.
+			name: "success - trigger application update, expected versions are recorded",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+					{
+						Name:          "openfga",
+						TriggerUpdate: false,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "IncusOS",
+						Version: "1",
+					},
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus", Version: "1"},
+						{Name: "openfga", Version: "1"},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+						{
+							Filename: "x86_64/openfga.raw.gz",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               require.NoError,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: []string{"incus"},
+			wantStatusDetail:        new(api.ServerStatusDetailReadyUpdatingApplication),
+			wantTriggeredUpdate: &provisioning.ServerTriggeredUpdate{
+				Applications: map[string]string{
+					"incus": "2",
+				},
+			},
+		},
+		{
+			name: "success - trigger OS update, covered applications are recorded",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "IncusOS",
+						Version: "1",
+					},
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus", Version: "1"},
+						{Name: "openfga", Version: "2"},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+						{
+							Filename: "x86_64/openfga.raw.gz",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               require.NoError,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+			wantStatusDetail:        new(api.ServerStatusDetailReadyUpdatingOS),
+			wantTriggeredUpdate: &provisioning.ServerTriggeredUpdate{
+				OS: "2",
+				Applications: map[string]string{
+					"incus": "2",
+				},
+			},
+		},
+		{
+			name: "error - OS update combined with application update",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               errassert.ValidationErrorContains(`An update of the OS covers the applications as well`),
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+		},
+		{
+			name: "error - application not installed on server",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "not-installed",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               errassert.ValidationErrorContains(`Application "not-installed" is not installed on server "one"`),
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+		},
+		{
+			name: "error - client.UpdateApplication",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			clientUpdateApplicationErr:                      boom.Error,
+
+			assertErr:               boom.ErrorIs,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: []string{"incus"},
+		},
 	}
 
 	for _, tc := range tests {
@@ -8272,6 +8721,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			logBuf := &bytes.Buffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
+
+			var gotStatusDetail *api.ServerStatusDetail
+			var gotTriggeredUpdate *provisioning.ServerTriggeredUpdate
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -8288,6 +8740,16 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 						return nil
 					}
 
+					// Record the status detail the update has been started with. Later
+					// updates are the reverter restoring the previous state.
+					if gotStatusDetail == nil {
+						gotStatusDetail = &server.StatusDetail
+
+						if server.StatusInternal.Update != nil {
+							gotTriggeredUpdate = server.StatusInternal.Update.Triggered
+						}
+					}
+
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -8295,6 +8757,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			client := &adapterMock.ServerClientPortMock{
 				UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.clientUpdateOSErr
+				},
+				UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+					return tc.clientUpdateApplicationErr
 				},
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return errors.New("") // short circuit pollServer, since we don't care about this part in this test.
@@ -8321,7 +8786,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return provisioning.Updates{}, nil
+					return tc.updateSvcGetAllWithFilter, nil
 				},
 			}
 
@@ -8353,6 +8818,24 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			tc.assertLog(t, logBuf)
 
 			require.Empty(t, tc.repoUpdateErrs)
+
+			var updatedApplications []string
+			for _, call := range client.UpdateApplicationCalls() {
+				updatedApplications = append(updatedApplications, call.Application)
+			}
+
+			require.Equal(t, tc.wantUpdatedApplications, updatedApplications)
+
+			if tc.wantStatusDetail != nil {
+				require.Equal(t, *tc.wantStatusDetail, ptr.From(gotStatusDetail))
+			}
+
+			if tc.wantTriggeredUpdate != nil {
+				require.NotNil(t, gotTriggeredUpdate)
+				require.Equal(t, tc.wantTriggeredUpdate.OS, gotTriggeredUpdate.OS)
+				require.Equal(t, tc.wantTriggeredUpdate.Applications, gotTriggeredUpdate.Applications)
+				require.False(t, gotTriggeredUpdate.TriggeredAt.IsZero())
+			}
 		})
 	}
 }
@@ -11058,6 +11541,24 @@ func pollServerClusteredVersionData(osVersion string, osVersionNext string, need
 				Name:          "incus",
 				Version:       osVersionNext,
 				InMaintenance: inMaintenance,
+			},
+		},
+		UpdateChannel: "stable",
+	}
+}
+
+// pollServerApplicationVersionData is pollServerVersionData for the cases, where
+// only the application has been updated, so the OS stays behind at version 1.
+func pollServerApplicationVersionData(incusVersion string) api.ServerVersionData {
+	return api.ServerVersionData{
+		OS: api.OSVersionData{
+			Name:    "IncusOS",
+			Version: "1",
+		},
+		Applications: []api.ApplicationVersionData{
+			{
+				Name:    "incus",
+				Version: incusVersion,
 			},
 		},
 		UpdateChannel: "stable",
