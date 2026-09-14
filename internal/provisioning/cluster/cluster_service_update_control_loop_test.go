@@ -587,8 +587,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Name: "one",
 							UpdateStatus: api.ClusterUpdateStatus{
 								InProgressStatus: api.ClusterUpdateInProgressStatus{
-									InProgress:      api.ClusterUpdateInProgressRollingRestart,
-									EvacuatedBefore: []string{"server1", "server3"},
+									InProgress: api.ClusterUpdateInProgressRollingRestart,
 								},
 							},
 						},
@@ -607,6 +606,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
+							StatusInternal: provisioning.ServerStatusInternal{
+								Update: &provisioning.ServerUpdate{KeepEvacuated: true},
+							},
 							VersionData: api.ServerVersionData{
 								NeedsUpdate:   new(false),
 								NeedsReboot:   new(false),
@@ -624,6 +626,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
+							StatusInternal: provisioning.ServerStatusInternal{
+								Update: &provisioning.ServerUpdate{RebootPending: true},
+							},
 							VersionData: api.ServerVersionData{
 								NeedsUpdate:   new(false),
 								NeedsReboot:   new(true),
@@ -641,6 +646,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
+							StatusInternal: provisioning.ServerStatusInternal{
+								Update: &provisioning.ServerUpdate{KeepEvacuated: true, RebootPending: true},
+							},
 							VersionData: api.ServerVersionData{
 								NeedsUpdate:   new(false),
 								NeedsReboot:   new(true),
@@ -1425,6 +1433,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					return tc.serverSvcRebootSystemByNameErr
 				},
 				RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
+					return nil
+				},
+				EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
 					return nil
 				},
 			}

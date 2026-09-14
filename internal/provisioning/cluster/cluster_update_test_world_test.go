@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -81,11 +82,58 @@ func clusterMemberServer(t *testing.T, name string) provisioning.Server {
 	}
 }
 
+// testClock is the clock of the services under test. It passes in real time, so
+// the millisecond scale delays, the tests configure, elapse on their own, and it
+// can additionally be jumped forward, so the deadlines of a rolling update, which
+// are compile time constants on the minute to hour scale, are reachable.
+type testClock struct {
+	mu     sync.Mutex
+	offset time.Duration
+}
+
+func newTestClock() *testClock {
+	return &testClock{}
+}
+
+func (c *testClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return time.Now().Add(c.offset)
+}
+
+func (c *testClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.offset += d
+}
+
+// controlLoopEnv is everything of a control loop test, that outlives the
+// services, so a test can rebuild them against the same database and observe
+// what a restart of the daemon does to an ongoing run.
+type controlLoopEnv struct {
+	clusterDB provisioning.ClusterRepo
+	serverDB  provisioning.ServerRepo
+	clock     *testClock
+	logBuf    *bytes.Buffer
+}
+
 // setupControlLoopCluster wires up a cluster service backed by a real SQLite
 // schema, with the given servers already registered. The fake servers are served
 // by the given client mock and availableVersion is the most recent update
 // version, which is available in the update channel of the cluster.
 func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *bytes.Buffer) {
+	t.Helper()
+
+	env := setupControlLoopEnv(t, ctx, servers...)
+	clusterSvc, serverSvc := newControlLoopServices(t, env, listenerName, serverClient, availableVersion)
+
+	return clusterSvc, serverSvc, env.logBuf
+}
+
+// setupControlLoopEnv seeds the database of a control loop test.
+func setupControlLoopEnv(t *testing.T, ctx context.Context, servers ...provisioning.Server) *controlLoopEnv {
 	t.Helper()
 
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
@@ -150,6 +198,20 @@ func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName str
 		require.NoError(t, err)
 	}
 
+	return &controlLoopEnv{
+		clusterDB: clusterDB,
+		serverDB:  serverDB,
+		clock:     newTestClock(),
+		logBuf:    logBuf,
+	}
+}
+
+// newControlLoopServices builds the services of a control loop test against the
+// given environment. Calling it a second time is a restart of the daemon: the
+// services and everything they keep in memory are new, the database is not.
+func newControlLoopServices(t *testing.T, env *controlLoopEnv, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string) (provisioning.ClusterService, provisioning.ServerService) {
+	t.Helper()
+
 	channelSvc := &serviceMock.ChannelServiceMock{
 		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
 			return &provisioning.Channel{}, nil
@@ -173,14 +235,16 @@ func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName str
 	}
 
 	serverSvc := provisioningServer.New(
-		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+		env.serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
 		provisioningServer.WithRebootStatusUpdateGracePeriod(0),
+		provisioningServer.WithNow(env.clock.Now),
 	)
 
 	clusterSvc := provisioningCluster.New(
-		clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
+		env.clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
 		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
 		provisioningCluster.WithWarningEmitter(provisioning.LogWarningService{}),
+		provisioningCluster.WithNow(env.clock.Now),
 	)
 
 	serverSvc.SetClusterService(clusterSvc)
@@ -198,7 +262,7 @@ func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName str
 		lifecycle.ServerLifecycleSignal.RemoveListener(listenerName)
 	})
 
-	return clusterSvc, serverSvc, logBuf
+	return clusterSvc, serverSvc
 }
 
 // The version data, the fake servers report while passing through a rolling
@@ -223,15 +287,20 @@ func versionData(osVersion string, osVersionNext string, needsReboot bool, incus
 }
 
 var (
-	versionDataInitial    = versionData("1", "1", false, "1", api.NotInMaintenance)
-	versionDataUpdating   = versionData("1", "1", false, "1", api.NotInMaintenance)
-	versionDataUpdated    = versionData("1", "2", true, "2", api.NotInMaintenance)
+	versionDataInitial  = versionData("1", "1", false, "1", api.NotInMaintenance)
+	versionDataUpdating = versionData("1", "1", false, "1", api.NotInMaintenance)
+	versionDataUpdated  = versionData("1", "2", true, "2", api.NotInMaintenance)
+
 	versionDataEvacuating = versionData("1", "2", true, "2", api.InMaintenanceEvacuating)
 	versionDataEvacuated  = versionData("1", "2", true, "2", api.InMaintenanceEvacuated)
 	versionDataRebooting  = versionData("2", "2", true, "2", api.InMaintenanceEvacuated)
 	versionDataRebooted   = versionData("2", "2", false, "2", api.InMaintenanceEvacuated)
 	versionDataRestoring  = versionData("2", "2", false, "2", api.InMaintenanceRestoring)
 	versionDataRestored   = versionData("2", "2", false, "2", api.NotInMaintenance)
+
+	// The state of a server, which has staged its update, while IncusOS does not
+	// report the need for a reboot yet.
+	versionDataUpdatedRebootNotReported = versionData("1", "2", false, "2", api.NotInMaintenance)
 )
 
 var (
@@ -295,9 +364,9 @@ func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPort
 			return nil
 		},
 		UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
-			// A rolling update triggers the OS and the applications together, and
-			// the applications are updated as part of the OS update, so the world
-			// transition is driven by UpdateOS alone.
+			// A rolling update only ever triggers the OS, which covers the
+			// applications, so the world transition is driven by UpdateOS alone and
+			// an application update never completes on its own.
 			return nil
 		},
 		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
@@ -426,6 +495,44 @@ func (w *serverWorld) release(ctx context.Context) {
 
 	if transition.callback != nil {
 		transition.callback(ctx, nil)
+	}
+}
+
+// drop discards the action, that has been triggered first, without completing it
+// and without reporting anything about it, the way a lost connection to the Incus
+// operation or a restart of Operations Center does. The server keeps reporting
+// the state it was left in.
+func (w *serverWorld) drop() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if len(w.pending) == 0 {
+		return
+	}
+
+	w.pending = w.pending[1:]
+}
+
+// releaseFailure completes the action, that has been triggered first, as a
+// failure: the server falls back to the given state and the callback reports the
+// error.
+func (w *serverWorld) releaseFailure(ctx context.Context, versionData api.ServerVersionData, actionErr error) {
+	w.mu.Lock()
+
+	if len(w.pending) == 0 {
+		w.mu.Unlock()
+		return
+	}
+
+	transition := w.pending[0]
+	w.pending = w.pending[1:]
+
+	w.versionData[transition.server] = versionData
+
+	w.mu.Unlock()
+
+	if transition.callback != nil {
+		transition.callback(ctx, actionErr)
 	}
 }
 
