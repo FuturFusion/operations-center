@@ -104,15 +104,10 @@ type ClusterUpdateInProgressStatus struct {
 	// Example: [3/20] Evacuating server xyz
 	StatusDescription *string `json:"status_description,omitempty" yaml:"status_description"`
 
-	// EvacuatedBefore contains the list of server names of the servers, that have
-	// been manually evacuated already before the rolling update has been
-	// triggered.
-	EvacuatedBefore []string `json:"evacuated_before" yaml:"evacuated_before"`
-
 	// PendingReboot contains the list of server names of the servers, which still
-	// have to be rebooted as part of an on demand rolling reboot. A server is
-	// removed from the list as soon as its reboot has been triggered. The list is
-	// only populated during the rolling reboot, it is empty for all other phases.
+	// have to be rebooted as part of the ongoing operation. A server is removed
+	// from the list as soon as its reboot has been triggered. It is read only and
+	// calculated.
 	PendingReboot []string `json:"pending_reboot" yaml:"pending_reboot"`
 
 	// LastUpdated is the time, when this information has been updated for the
@@ -165,6 +160,7 @@ func (c ClusterUpdateStatus) Value() (driver.Value, error) {
 	clusterUpdateStatus.NeedsReboot = nil
 	clusterUpdateStatus.InMaintenance = nil
 	clusterUpdateStatus.InProgressStatus.StatusDescription = nil
+	clusterUpdateStatus.InProgressStatus.PendingReboot = nil
 
 	return json.Marshal(clusterUpdateStatus)
 }
