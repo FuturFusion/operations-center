@@ -1,27 +1,18 @@
+// Package config holds the runtime configuration of the daemon.
+//
+// The configuration is a process wide singleton, backed by a store which
+// documents the locking rules that apply to every change.
 package config
 
 import (
+	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net"
-	"net/url"
-	"os"
-	"path/filepath"
-	"slices"
-	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 
-	"go.yaml.in/yaml/v4"
-
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/lifecycle"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
-	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
-	"github.com/FuturFusion/operations-center/internal/util/certificate"
-	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -45,33 +36,50 @@ type enver interface {
 	IsIncusOS() bool
 }
 
-// Global variables to hold the config singleton.
-var (
-	globalConfigInstanceMu sync.Mutex
-	globalConfigInstance   config
-	globalInternalConfig   InternalConfig
+// defaultStore holds the config singleton. It is only ever replaced as a whole,
+// by Init and by InitTest.
+var defaultStore atomic.Pointer[store]
 
-	saveFunc = saveToDisk
+func init() {
+	defaultStore.Store(newStore(environment.New(ApplicationName, ApplicationEnvPrefix), saveToDisk, config{}))
+}
 
-	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
-)
-
-func Init(vardir enver) error {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
+func Init(env enver) error {
 	initInternalConfig()
 
-	env = vardir
-
-	ctx := context.Background()
-
-	err := loadConfig()
+	cfg, contents, err := loadConfig(env)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
 
-	err = validateAndSave(ctx, globalConfigInstance)
+	cfg, err = normalize(cfg)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize global config: %w", err)
+	}
+
+	// Only the validation owned by the config package runs here. The subsystems
+	// which validate the settings they own are wired up after Init, and making
+	// their probes a prerequisite for the daemon to come up would keep an
+	// offline installation from starting at all.
+	err = validate(cfg, cfg, env.IsIncusOS())
+	if err != nil {
+		return fmt.Errorf("Failed to initialize global config: %w", err)
+	}
+
+	defaultStore.Store(newStore(env, saveToDisk, cfg))
+
+	// Only write the config file if it is missing or if normalization changed
+	// something, so an unchanged config survives a restart untouched.
+	normalized, err := marshalConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("Failed to persist initialized global config: %w", err)
+	}
+
+	if bytes.Equal(contents, normalized) {
+		return ensureConfigFileMode(env)
+	}
+
+	err = saveToDisk(env, cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to persist initialized global config: %w", err)
 	}
@@ -79,90 +87,16 @@ func Init(vardir enver) error {
 	return nil
 }
 
-func initInternalConfig() {
-	env := os.Getenv(ApplicationEnvPrefix + "_DISABLE_BACKGROUND_TASKS")
-	isBackgroundTasksDisabled, _ := strconv.ParseBool(env)
-
-	env = os.Getenv(ApplicationEnvPrefix + "_SOURCE_POLL_SKIP_FIRST")
-	sourcePollSkipFirst, _ := strconv.ParseBool(env)
-
-	globalInternalConfig = InternalConfig{
-		IsBackgroundTasksDisabled: isBackgroundTasksDisabled,
-		SourcePollSkipFirst:       sourcePollSkipFirst,
-	}
-}
-
-func loadConfig() error {
-	cfg := config{}
-
-	err := yaml.Unmarshal(defaultConfig, &cfg)
-	if err != nil {
-		return fmt.Errorf("Failed to unmarshal built in default config: %w", err)
-	}
-
-	filename := filepath.Join(env.VarDir(), ConfigFilename)
-	contents, err := os.ReadFile(filename)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			globalConfigInstance = cfg
-
-			return nil
-		}
-
-		return err
-	}
-
-	err = yaml.Unmarshal(contents, &cfg)
-	if err != nil {
-		return fmt.Errorf("Failed to unmarshal config %q: %w", filename, err)
-	}
-
-	cfg.Network.NetworkPut, err = NetworkSetDefaults(cfg.Network.NetworkPut)
-	if err != nil {
-		return fmt.Errorf("Invalid network config: %w", err)
-	}
-
-	globalConfigInstance = cfg
-
-	return nil
-}
-
 func GetNetwork() system.Network {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
-	return globalConfigInstance.Network
+	return defaultStore.Load().get().Network
 }
 
 func UpdateNetwork(ctx context.Context, cfg system.NetworkPut) error {
-	err := func() error {
-		globalConfigInstanceMu.Lock()
-		defer globalConfigInstanceMu.Unlock()
+	return defaultStore.Load().update(ctx, sectionNetwork, func(c config) config {
+		c.Network.NetworkPut = cfg
 
-		var err error
-
-		newCfg := globalConfigInstance
-		newCfg.Network.NetworkPut, err = NetworkSetDefaults(cfg)
-		if err != nil {
-			return err
-		}
-
-		err = validateAndSave(ctx, newCfg)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	lifecycle.NetworkUpdateSignal.Emit(ctx, system.Network{
-		NetworkPut: cfg,
+		return c
 	})
-
-	return nil
 }
 
 func NetworkSetDefaults(cfg system.NetworkPut) (system.NetworkPut, error) {
@@ -189,6 +123,7 @@ func NetworkSetDefaults(cfg system.NetworkPut) (system.NetworkPut, error) {
 			}
 
 			newCfg.RestServerAddress = net.JoinHostPort(ip.String(), DefaultRestServerPort)
+
 			return newCfg, nil
 		}
 
@@ -212,407 +147,37 @@ func NetworkSetDefaults(cfg system.NetworkPut) (system.NetworkPut, error) {
 }
 
 func GetSecurity() system.Security {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
-	return globalConfigInstance.Security
+	return defaultStore.Load().get().Security
 }
 
 func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
-	var (
-		isSecurityConfigChanged      bool
-		isTrustedHTTPSProxiesChanged bool
-		isACMEChanged                bool
-	)
+	return defaultStore.Load().update(ctx, sectionSecurity, func(c config) config {
+		c.Security.SecurityPut = cfg
 
-	err := func() error {
-		globalConfigInstanceMu.Lock()
-		defer globalConfigInstanceMu.Unlock()
-
-		newCfg := globalConfigInstance
-		newCfg.Security.SecurityPut = cfg
-
-		currentCfg := globalConfigInstance.Security
-
-		isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
-		isTrustedTLSClientCertificatesChanged := !slices.Equal(currentCfg.TrustedTLSClientCertificates, newCfg.Security.TrustedTLSClientCertificates)
-		isSecurityConfigChanged = isTrustedTLSClientCertFingerprintsChanged || isTrustedTLSClientCertificatesChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
-		isTrustedHTTPSProxiesChanged = !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
-		isACMEChanged = acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
-
-		err := validateAndSave(ctx, newCfg)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	if isSecurityConfigChanged {
-		lifecycle.SecurityUpdateSignal.Emit(ctx, system.Security{
-			SecurityPut: cfg,
-		})
-	}
-
-	if isTrustedHTTPSProxiesChanged {
-		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, cfg.TrustedHTTPSProxies)
-	}
-
-	if isACMEChanged {
-		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, cfg.ACME)
-	}
-
-	return nil
+		return c
+	})
 }
 
 func GetSettings() system.Settings {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
-	return globalConfigInstance.Settings
+	return defaultStore.Load().get().Settings
 }
 
 func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
-	var (
-		isLogLevelChanged bool
-		newCfg            config
-	)
+	return defaultStore.Load().update(ctx, sectionSettings, func(c config) config {
+		c.Settings.SettingsPut = cfg
 
-	err := func() error {
-		globalConfigInstanceMu.Lock()
-		defer globalConfigInstanceMu.Unlock()
-
-		newCfg = globalConfigInstance
-		newCfg.Settings.SettingsPut = cfg
-
-		isLogLevelChanged = globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
-
-		err := validateAndSave(ctx, newCfg)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	if isLogLevelChanged {
-		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
-		if err != nil {
-			return err
-		}
-	}
-
-	err = lifecycle.SettingsUpdateSignal.TryEmit(ctx, system.Settings{
-		SettingsPut: cfg,
+		return c
 	})
-
-	return err
 }
 
 func GetUpdates() system.Updates {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
-	return globalConfigInstance.Updates
+	return defaultStore.Load().get().Updates
 }
 
 func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
-	err := func() error {
-		globalConfigInstanceMu.Lock()
-		defer globalConfigInstanceMu.Unlock()
+	return defaultStore.Load().update(ctx, sectionUpdates, func(c config) config {
+		c.Updates.UpdatesPut = cfg
 
-		newCfg := globalConfigInstance
-		newCfg.Updates.UpdatesPut = cfg
-
-		err := validateAndSave(ctx, newCfg)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	lifecycle.UpdatesUpdateSignal.Emit(ctx, system.Updates{
-		UpdatesPut: cfg,
+		return c
 	})
-
-	return nil
-}
-
-func validateAndSave(ctx context.Context, cfg config) error {
-	applyDefaults(&cfg)
-	err := validate(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("Failed to validate configuration: %w", err)
-	}
-
-	return saveFunc(cfg)
-}
-
-func applyDefaults(cfg *config) {
-	// Only apply ACME defaults if the mandatory settings are provided.
-	if cfg.Security.ACME.Domain != "" && cfg.Security.ACME.Email != "" && cfg.Security.ACME.AgreeTOS {
-		if cfg.Security.ACME.Challenge == "" {
-			cfg.Security.ACME.Challenge = "HTTP-01"
-		}
-
-		if cfg.Security.ACME.Address == "" {
-			cfg.Security.ACME.Address = ":80"
-		}
-
-		if cfg.Security.ACME.CAURL == "" {
-			cfg.Security.ACME.CAURL = "https://acme-v02.api.letsencrypt.org/directory"
-		}
-	}
-
-	// Setting updates.updates_default_channel can not be empty, use default value instead.
-	if cfg.Updates.UpdatesDefaultChannel == "" {
-		cfg.Updates.UpdatesDefaultChannel = "stable"
-	}
-
-	// Setting updates.server_default_channel can not be empty, use default value instead.
-	if cfg.Updates.ServerDefaultChannel == "" {
-		cfg.Updates.ServerDefaultChannel = "stable"
-	}
-}
-
-func saveToDisk(cfg config) error {
-	filename := filepath.Join(env.VarDir(), ConfigFilename)
-	f, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("Failed to open config %q for writing: %w", filename, err)
-	}
-
-	defer f.Close()
-
-	enc := yaml.NewEncoder(f)
-	enc.SetIndent(2)
-	err = enc.Encode(cfg)
-	if err != nil {
-		return err
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Errorf("Failed to close config %q: %w", filename, err)
-	}
-
-	// Update in-memory copy of the config.
-	globalConfigInstance = cfg
-
-	return nil
-}
-
-func validate(ctx context.Context, cfg config) error {
-	// Network configuration
-	err := validateNetworkConfig(cfg.Network)
-	if err != nil {
-		return err
-	}
-
-	// Updates configuration
-	err = validateURI(cfg.Updates.Source, false, false, true)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "updates.source" property is expected to be a valid source URL: %v`, err)
-	}
-
-	if cfg.Updates.SignatureVerificationRootCA == "" {
-		return domain.NewValidationErrf(`Invalid config, "updates.signature_verification_root_ca" can not be empty`)
-	}
-
-	_, err = certificate.Decode([]byte(cfg.Updates.SignatureVerificationRootCA))
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed: %v`, err)
-	}
-
-	// Security configuration
-	err = validateURI(cfg.Security.OIDC.Issuer, false, false, true)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "security.oidc.issuer" property is expected to be a valid issuer URL: %v`, err)
-	}
-
-	err = validateURI(cfg.Security.OpenFGA.APIURL, false, false, true)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
-	}
-
-	err = acme.ValidateACMEConfig(cfg.Security.ACME)
-	if err != nil {
-		return err
-	}
-
-	_, err = securitytls.CertificateFingerprints(cfg.Security.TrustedTLSClientCertificates)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_certificates" contains an invalid certificate: %v`, err)
-	}
-
-	for _, p := range cfg.Security.TrustedHTTPSProxies {
-		if net.ParseIP(p) == nil {
-			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
-		}
-	}
-
-	// Updating the configuration requires at least one certificate fingerprint or
-	// trusted client certificate to be present in order to have a fallback
-	// authentication method.
-	isTrustedTLSClientsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints) ||
-		!slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertificates, cfg.Security.TrustedTLSClientCertificates)
-	hasNoTrustedTLSClients := len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 && len(cfg.Security.TrustedTLSClientCertificates) == 0
-	if env.IsIncusOS() && isTrustedTLSClientsUpdated && hasNoTrustedTLSClients {
-		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" and "security.trusted_tls_client_certificates" properties can not both be empty when running on IncusOS`)
-	}
-
-	// Settings configuration
-	err = logger.ValidateLevel(cfg.Settings.LogLevel)
-	if err != nil {
-		return err
-	}
-
-	isOIDCChanged := globalConfigInstance.Security.OIDC != cfg.Security.OIDC
-	isOpenFGAChanged := globalConfigInstance.Security.OpenFGA != cfg.Security.OpenFGA
-
-	{
-		// This is not ideal, but we can not have a direct dependency from the config
-		// because we get a dependency cycles otherwise.
-		// Make sure we don't hold any lock in case config gets called from any of
-		// the listeners.
-		globalConfigInstanceMu.Unlock()
-		defer globalConfigInstanceMu.Lock()
-
-		err = lifecycle.UpdatesValidateSignal.TryEmit(ctx, cfg.Updates)
-		if err != nil {
-			return err
-		}
-
-		err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
-		if err != nil {
-			return err
-		}
-
-		// Only emitted on change, since the connectivity probes performed
-		// during validation should not get in the way of unrelated updates.
-		if isOIDCChanged || isOpenFGAChanged {
-			err = lifecycle.SecurityValidateSignal.TryEmit(ctx, cfg.Security)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func ValidateNetworkConfig(cfg system.Network) error {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
-	return validateNetworkConfig(cfg)
-}
-
-func validateNetworkConfig(cfg system.Network) error {
-	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.RestServerAddress
-	if env.IsIncusOS() && isRestServerAddressChanged && cfg.RestServerAddress == "" {
-		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
-	}
-
-	if cfg.RestServerAddress != "" {
-		host, portStr, err := net.SplitHostPort(cfg.RestServerAddress)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" is not a valid address: %v`, err)
-		}
-
-		if host != "" {
-			ip := net.ParseIP(host)
-			if ip == nil {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid ip`)
-			}
-		}
-
-		if portStr != "" {
-			port, err := strconv.ParseInt(portStr, 10, 64)
-			if err != nil {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid port`)
-			}
-
-			if port < 1 || port > 0xffff {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" port out of range (%d - %d)`, 1, 0xffff)
-			}
-		}
-	}
-
-	if (cfg.RestServerAddress != "" && cfg.OperationsCenterAddress == "") ||
-		(cfg.RestServerAddress == "" && cfg.OperationsCenterAddress != "") {
-		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
-	}
-
-	err := validateURI(cfg.OperationsCenterAddress, false, false, true)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
-	}
-
-	return nil
-}
-
-func validateURI(inURI string, required bool, enforceNoPath bool, enforceNoQuery bool) error {
-	if required && inURI == "" {
-		return fmt.Errorf("Required URI is empty")
-	}
-
-	if inURI != "" {
-		endpoint, err := url.ParseRequestURI(inURI)
-		if err != nil {
-			return err
-		}
-
-		if endpoint.Scheme == "" {
-			return fmt.Errorf("Failed to determine scheme")
-		}
-
-		if endpoint.Hostname() == "" {
-			return fmt.Errorf("Failed to determine host")
-		}
-
-		if endpoint.Port() != "" {
-			portInt, err := strconv.Atoi(endpoint.Port())
-			if err != nil {
-				return fmt.Errorf("Port %q is invalid: %w", endpoint.Port(), err)
-			}
-
-			if portInt < 1 || portInt > 0xffff {
-				return fmt.Errorf("Port %d is invalid", portInt)
-			}
-		}
-
-		if enforceNoPath && endpoint.Path != "" {
-			return fmt.Errorf("Contains path")
-		}
-
-		if enforceNoQuery && endpoint.RawQuery != "" {
-			return fmt.Errorf("Contains query")
-		}
-
-		if strings.Contains(inURI, "#") {
-			return fmt.Errorf("Contains fragment")
-		}
-
-		if endpoint.User.Username() != "" {
-			return fmt.Errorf("Contains username")
-		}
-
-		_, hasPassword := endpoint.User.Password()
-		if hasPassword {
-			return fmt.Errorf("Contains password")
-		}
-	}
-
-	return nil
 }

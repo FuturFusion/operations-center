@@ -7,33 +7,32 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// InitTest replaces the config singleton with one that keeps the configuration
+// in memory only. The previous singleton is restored when the test ends.
 func InitTest(t *testing.T, testEnv enver, saveErr error, internalConfig ...InternalConfig) {
 	t.Helper()
 
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	previousStore := defaultStore.Load()
+	previousInternalConfig := globalInternalConfig.Load()
+
+	t.Cleanup(func() {
+		defaultStore.Store(previousStore)
+		globalInternalConfig.Store(previousInternalConfig)
+	})
 
 	initInternalConfig()
+
 	if len(internalConfig) > 0 {
-		globalInternalConfig = internalConfig[0]
+		testInternalConfig := internalConfig[0]
+		globalInternalConfig.Store(&testInternalConfig)
 	}
-
-	saveFunc = func(cfg config) error {
-		if saveErr != nil {
-			return saveErr
-		}
-
-		globalConfigInstance = cfg
-
-		return nil
-	}
-
-	env = testEnv
 
 	cfg := config{}
 
 	err := yaml.Unmarshal(defaultConfig, &cfg)
 	require.NoError(t, err)
 
-	globalConfigInstance = cfg
+	defaultStore.Store(newStore(testEnv, func(_ enver, _ config) error {
+		return saveErr
+	}, cfg))
 }
