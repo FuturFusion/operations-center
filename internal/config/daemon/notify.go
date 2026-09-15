@@ -8,6 +8,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+var componentConfig = logger.RegisterComponent("config")
+
 // notify informs the subsystems about a configuration that has already been
 // persisted and committed. It can not fail the update anymore, so everything
 // that may reject a configuration belongs in validate or validateDelegated and
@@ -22,6 +24,11 @@ import (
 // Every other section is only notified if it actually changed, so an update of
 // one section does not disturb the others.
 func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
+	// The component is only applied to the records emitted here. The context
+	// passed to the listeners keeps the component of the caller, so they are
+	// not attributed to the config package.
+	logCtx := logger.ContextWithComponent(ctx, componentConfig)
+
 	if updated == sectionNetwork || isNetworkChanged(oldCfg, newCfg) {
 		lifecycle.NetworkUpdateSignal.Emit(ctx, newCfg.Network)
 	}
@@ -41,21 +48,21 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 	if isLogLevelChanged(oldCfg, newCfg) {
 		err := logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to apply log level from updated config", logger.Err(err))
+			slog.ErrorContext(logCtx, "Failed to apply log level from updated config", logger.Err(err))
 		}
 	}
 
 	if isLogLevelsChanged(oldCfg, newCfg) {
 		err := logger.SetComponentLevels(logger.ParseComponentLevels(newCfg.Settings.LogLevels))
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to apply per component log levels from updated config", logger.Err(err))
+			slog.ErrorContext(logCtx, "Failed to apply per component log levels from updated config", logger.Err(err))
 		}
 	}
 
 	if updated == sectionSettings || isSettingsChanged(oldCfg, newCfg) {
 		err := lifecycle.SettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to apply updated settings config", logger.Err(err))
+			slog.ErrorContext(logCtx, "Failed to apply updated settings config", logger.Err(err))
 		}
 	}
 
