@@ -219,6 +219,47 @@ Since a tolerated stall costs up to the 5 minute timeout of Incus, the timeouts
 of `createIncusOSInstances` and of the cleanup registered by `cleanupIncusOS`
 contain the corresponding headroom.
 
+### Waiting for an IncusOS VM
+
+`waitAgentRunningWithContext` and `waitExpectedLogWithContext` keep waiting until
+the incus agent shows up, respectively until the wanted log line appears. Both
+give up early on a state the VM can not recover from:
+
+* The instance status `Error`, see `errUnrecoverableStatus`. The cause is on the
+  host, most likely an exhausted storage pool or filesystem.
+* A failed start of incus-osd, see `errIncusOSStartupFailure`. The known instance
+  of this is incus-osd aborting the boot with `unable to configure incus-agent`,
+  because restarting `incus-agent.service` failed. incus-osd exits in this case
+  and IncusOS paints `!! IncusOS critical startup error !!` on the console, while
+  the instance itself stays in the status `Running`, so neither the instance
+  status nor `incus exec` reveals it. The console log is the only source.
+
+  Since this is a flaky condition, the VM is restarted once and only then the
+  test is failed. Restarting is not guaranteed to help, so the final error names
+  the failure, even if the VM recovered but the incus agent stayed away.
+
+### Debug output
+
+The debug output is collected in two places, both only written on a failing test:
+
+* `logVMDebugInfo` writes to the test log. It collects the information for every
+  VM at most once per test, since a failure propagated through an errgroup
+  cancels and therefore fails every sibling goroutine as well. The output of each
+  command is truncated, the console log through `sanitizeConsoleLog`, everything
+  else through `tailMsg`.
+* `onTestFailDebugOutput` writes the buffer filled by `debugf`, the journals and
+  the complete console log of every VM to files in
+  `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`.
+
+The console log of an IncusOS VM contains the redraws of its boot splash, which
+is stripped of the terminal escape sequences and truncated by size, not by lines.
+
+Commands, which are executed in a poll loop, use `runQuietWithContext` or
+`mustRunQuiet`. Of a successful run only a summary is recorded, since a loop,
+which polls e.g. a growing journal once per second for several minutes, would
+otherwise fill the debug output with hundreds of copies of the very same log.
+Failures are always recorded in full.
+
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in

@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -95,6 +96,7 @@ type cmdResponse struct {
 	output   *bytes.Buffer
 	exitCode int
 	err      error
+	ctxErr   error
 }
 
 func (c cmdResponse) Output() string {
@@ -110,7 +112,18 @@ func (c cmdResponse) Success() bool {
 }
 
 func (c cmdResponse) Error() string {
-	return fmt.Sprintf("run %q produced exit code: %d and error: %v\nOutput:\n%s\n", c.command, c.exitCode, c.err, c.Output())
+	return fmt.Sprintf("run %q produced %s\nOutput:\n%s\n", c.command, c.reason(), c.Output())
+}
+
+// reason describes, why the command failed. A command, which is killed, because
+// its context is done, reports the exit code -1 and no error of its own, so the
+// error of the context is the only hint about the actual reason.
+func (c cmdResponse) reason() string {
+	if c.ctxErr != nil {
+		return fmt.Sprintf("exit code: %d and error: %v (killed, context done: %v)", c.exitCode, c.err, c.ctxErr)
+	}
+
+	return fmt.Sprintf("exit code: %d and error: %v", c.exitCode, c.err)
 }
 
 // mustRun executes the provided command in a shell.
@@ -121,6 +134,21 @@ func mustRun(t *testing.T, command string, args ...any) cmdResponse {
 
 	resp := runWithContext(t.Context(), t, command, args...)
 	require.NoError(t, resp.err)
+	if !resp.Success() {
+		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
+	}
+
+	return resp
+}
+
+// mustRunQuiet is mustRun for commands, which are executed in a poll loop.
+// see mustRun and runQuietWithContext for details.
+func mustRunQuiet(t *testing.T, command string, args ...any) cmdResponse {
+	t.Helper()
+
+	resp := runQuietWithContext(t.Context(), t, command, args...)
+	require.NoError(t, resp.err)
+
 	if !resp.Success() {
 		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
@@ -182,6 +210,23 @@ func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ..
 func runWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
+	return runCmdWithContext(ctx, t, false, command, args...)
+}
+
+// runQuietWithContext is runWithContext for commands, which are executed in a
+// poll loop. Of a successful run only a summary is recorded in the debug
+// output.
+func runQuietWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
+	t.Helper()
+
+	return runCmdWithContext(ctx, t, true, command, args...)
+}
+
+// runCmdWithContext executes the provided command in a shell. If quiet is true,
+// the output of a successful run is not recorded in the debug output.
+func runCmdWithContext(ctx context.Context, t *testing.T, quiet bool, command string, args ...any) cmdResponse {
+	t.Helper()
+
 	name := "bash"
 	cmdArgs := []string{
 		"-o", "pipefail", // fail the whole pipeline on error
@@ -211,15 +256,21 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 		exitErr := &exec.ExitError{}
 		if !errors.As(err, &exitErr) {
 			debugf("command: %q\nerr: %v\noutput:\n%s", resp.command, err, resp.Output())
-			return cmdResponse{
-				err: fmt.Errorf("run: %q: %w", resp.command, err),
-			}
+
+			resp.err = fmt.Errorf("run: %q: %w", resp.command, err)
+
+			return resp
 		}
 
 		resp.exitCode = exitErr.ExitCode()
+		resp.ctxErr = ctx.Err()
 	}
 
-	debugf("command: %q\nexit code: %d\noutput:\n%s", resp.command, resp.exitCode, resp.Output())
+	if quiet && resp.Success() {
+		debugf("command: %q\nexit code: %d\noutput suppressed: %d bytes", resp.command, resp.exitCode, resp.output.Len())
+	} else {
+		debugf("command: %q\nexit code: %d\noutput:\n%s", resp.command, resp.exitCode, resp.Output())
+	}
 
 	return resp
 }
@@ -234,7 +285,7 @@ func waitForSuccessWithTimeout(ctx context.Context, t *testing.T, desc string, c
 
 	count := 0
 	for {
-		resp := runWithContext(ctx, t, command, args...)
+		resp := runQuietWithContext(ctx, t, command, args...)
 		if resp.err != nil {
 			return false, resp.err
 		}
@@ -262,21 +313,69 @@ func waitForSuccessWithTimeout(ctx context.Context, t *testing.T, desc string, c
 	return true, nil
 }
 
+const (
+	debugInfoLines        = 100
+	debugInfoConsoleBytes = 32 * 1024
+	hostDebugInfoKey      = "<host>"
+)
+
+var (
+	debugInfoLoggedMu sync.Mutex
+	debugInfoLogged   = map[string]bool{}
+)
+
+// debugInfoTodo returns the subset of vms, for which the debug information has
+// not been collected yet, and reports, whether the host level debug information
+// is still to be collected. Everything it returns is marked as collected.
+func debugInfoTodo(vms []string) (todo []string, host bool) {
+	debugInfoLoggedMu.Lock()
+	defer debugInfoLoggedMu.Unlock()
+
+	todo = make([]string, 0, len(vms))
+
+	for _, vm := range vms {
+		if debugInfoLogged[vm] {
+			continue
+		}
+
+		debugInfoLogged[vm] = true
+
+		todo = append(todo, vm)
+	}
+
+	host = !debugInfoLogged[hostDebugInfoKey]
+	debugInfoLogged[hostDebugInfoKey] = true
+
+	return todo, host
+}
+
+func resetVMDebugInfo() {
+	debugInfoLoggedMu.Lock()
+	defer debugInfoLoggedMu.Unlock()
+
+	debugInfoLogged = map[string]bool{}
+}
+
 // logVMDebugInfo collects debug information for the given VMs and writes it to
 // the test log. It is meant to be used on failure paths, where the error of the
 // failing operation alone does not explain, what went wrong inside of the VM.
 func logVMDebugInfo(t *testing.T, vms ...string) {
 	t.Helper()
 
+	vms, logHost := debugInfoTodo(vms)
+	if len(vms) == 0 && !logHost {
+		return
+	}
+
 	// Use detached contexts, since the context of the failing operation is
 	// likely already cancelled at this stage.
-	logCmd := func(what string, command string, args ...any) {
+	logCmd := func(what string, truncate func(string) string, command string, args ...any) {
 		debugCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		resp := runWithContext(debugCtx, t, command, args...)
+		resp := runQuietWithContext(debugCtx, t, command, args...)
 		if resp.Success() {
-			t.Logf("%s:\n%s", what, resp.Output())
+			t.Logf("%s:\n%s", what, truncate(resp.Output()))
 
 			return
 		}
@@ -284,17 +383,27 @@ func logVMDebugInfo(t *testing.T, vms ...string) {
 		t.Logf("failed to get %s: %s", what, resp.Error())
 	}
 
-	logCmd("incus list", "incus list")
-	logCmd("storage pool", "incus storage info default")
-	logCmd("storage volumes", "incus storage volume list default")
-	logCmd("free disk space", "df -h")
-	logCmd("zpool list", "zpool list")
+	lines := func(s string) string {
+		return tailMsg(s, debugInfoLines)
+	}
+
+	console := func(s string) string {
+		return sanitizeConsoleLog(s, debugInfoConsoleBytes)
+	}
+
+	if logHost {
+		logCmd("incus list", lines, "incus list")
+		logCmd("storage pool", lines, "incus storage info default")
+		logCmd("storage volumes", lines, "incus storage volume list default")
+		logCmd("free disk space", lines, "df -h")
+		logCmd("zpool list", lines, "zpool list")
+	}
 
 	for _, vm := range vms {
-		logCmd(fmt.Sprintf("incus info for %q", vm), "incus info %s --show-log", vm)
-		logCmd(fmt.Sprintf("incus console log for %q", vm), "incus console %s --show-log", vm)
-		logCmd(fmt.Sprintf("incus-osd log for %q", vm), `incus exec %s -- bash -c "journalctl -b -u incus-osd --no-pager -n 100"`, vm)
-		logCmd(fmt.Sprintf("incus-osd unit state for %q", vm), `incus exec %s -- bash -c "systemctl status --no-pager incus-osd"`, vm)
+		logCmd(fmt.Sprintf("incus info for %q", vm), lines, "incus info %s --show-log", vm)
+		logCmd(fmt.Sprintf("incus console log for %q", vm), console, "incus console %s --show-log", vm)
+		logCmd(fmt.Sprintf("incus-osd log for %q", vm), lines, `incus exec %s -- bash -c "journalctl -b -u incus-osd --no-pager -n 100"`, vm)
+		logCmd(fmt.Sprintf("incus-osd unit state for %q", vm), lines, `incus exec %s -- bash -c "systemctl status --no-pager incus-osd"`, vm)
 	}
 }
 
@@ -318,7 +427,11 @@ func mustWaitAgentRunningWithTimeout(ctx context.Context, t *testing.T, vm strin
 	mustWaitAgentRunning(timeoutCtx, t, vm, args...)
 }
 
-const agentWaitAttemptTimeout = 30 * time.Second
+const (
+	agentWaitAttemptTimeout     = 30 * time.Second
+	incusOSStartupProbeInterval = 10 * time.Second
+	incusOSStartupRestartGrace  = 2 * time.Minute
+)
 
 // waitAgentRunningWithContext waits for the incus agent to be running inside
 // the given VM. It keeps waiting until the agent shows up or the context is
@@ -334,6 +447,11 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 	lastStatus := ""
 	lastErr := ""
+
+	nextStartupProbe := time.Now().Add(incusOSStartupProbeInterval)
+	startupRestarted := false
+
+	var startupErrSeen error
 
 	// errGiveUp reports the given unrecoverable instance state, after dumping
 	// the debug information. Once the instance is in such a state, waiting for
@@ -361,7 +479,7 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 			timeoutSeconds = max(int(min(remaining, agentWaitAttemptTimeout).Seconds()), 1)
 		}
 
-		resp := runWithContext(ctx, t, `incus wait %s agent --timeout %d`, vm, timeoutSeconds)
+		resp := runQuietWithContext(ctx, t, `incus wait %s agent --timeout %d`, vm, timeoutSeconds)
 		if resp.Success() {
 			t.Logf("Agent running on %q after %s", vm, time.Since(start).String())
 
@@ -394,8 +512,34 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 			if startErr != nil {
 				t.Logf(`failed to re-start incus: %v`, startErr)
 			}
-		} else if attempt%10 == 0 {
-			t.Logf("Waiting %s for agent on %s, instance status %q", time.Since(start).Truncate(time.Second), vm, lastStatus)
+		} else {
+			if attempt%10 == 0 {
+				t.Logf("Waiting %s for agent on %s, instance status %q", time.Since(start).Truncate(time.Second), vm, lastStatus)
+			}
+
+			if time.Now().After(nextStartupProbe) {
+				nextStartupProbe = time.Now().Add(incusOSStartupProbeInterval)
+
+				startupErr := errIncusOSStartupFailure(ctx, t, vm)
+				if startupErr != nil {
+					startupErrSeen = startupErr
+
+					if startupRestarted {
+						return errGiveUp(startupErr)
+					}
+
+					startupRestarted = true
+
+					t.Logf("Restarting %s once, since incus-osd failed to start: %v", vm, startupErr)
+
+					restartErr := restartInstanceWithContext(ctx, t, vm)
+					if restartErr != nil {
+						t.Logf("failed to restart %s: %v", vm, restartErr)
+					}
+
+					nextStartupProbe = time.Now().Add(incusOSStartupRestartGrace)
+				}
+			}
 		}
 
 		select {
@@ -409,6 +553,10 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 	if lastErr == "" {
 		lastErr = fmt.Sprintf("context done: %v", ctx.Err())
+	}
+
+	if startupErrSeen != nil {
+		return fmt.Errorf("Failed to wait for incus agent on %q after %s, last instance status %q, incus-osd failed to start on it earlier (%v): %s", vm, time.Since(start).String(), lastStatus, startupErrSeen, lastErr)
 	}
 
 	return fmt.Errorf("Failed to wait for incus agent on %q after %s, last instance status %q: %s", vm, time.Since(start).String(), lastStatus, lastErr)
@@ -452,6 +600,42 @@ func tail(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
+// tailMsg returns the last n lines of s, prefixed with a note, if lines were
+// dropped.
+func tailMsg(s string, n int) string {
+	total := len(strings.Split(strings.TrimRight(s, "\n"), "\n"))
+	if total <= n {
+		return tail(s, n)
+	}
+
+	return fmt.Sprintf("[truncated, showing the last %d of %d lines]\n%s", n, total, tail(s, n))
+}
+
+// ansiEscapeSequence matches the terminal escape sequences, which make up the
+// bulk of a console log. The escape character is allowed to repeat, since it
+// does so in the console log of an IncusOS VM. A leftover escape character,
+// which does not introduce a sequence understood here, is dropped as well.
+var ansiEscapeSequence = regexp.MustCompile(`\x1b+\[[0-?]*[ -/]*[@-~]|\x1b+[()][AB012]|\x1b+[=>]|\x1b+\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b`)
+
+// sanitizeConsoleLog strips the terminal escape sequences from a console log
+// and returns at most the last maxBytes bytes of the result, prefixed with a
+// note, if content was dropped.
+func sanitizeConsoleLog(in string, maxBytes int) string {
+	out := ansiEscapeSequence.ReplaceAllString(in, "")
+	if len(out) <= maxBytes {
+		return out
+	}
+
+	truncated := out[len(out)-maxBytes:]
+
+	// Do not cut a multi byte rune in half.
+	for len(truncated) > 0 && !utf8.RuneStart(truncated[0]) {
+		truncated = truncated[1:]
+	}
+
+	return fmt.Sprintf("[truncated, showing the last %d of %d bytes]\n%s", len(truncated), len(out), truncated)
+}
+
 // waitExpectedLogWithContext waits for the wanted content to appear in the logs
 // of the unit in the vm.
 func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, unit string, want string, isRegex bool, args ...any) error {
@@ -464,7 +648,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 	lastLog := ""
 
 	for {
-		resp := runWithContext(ctx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
+		resp := runQuietWithContext(ctx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
 		if resp.err != nil {
 			return resp.err
 		}
@@ -495,6 +679,13 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 				// readable. If the instance can not recover, there is no point
 				// in waiting for the remainder of the timeout.
 				stateErr := errUnrecoverableInstanceState(ctx, t, vm)
+				if stateErr == nil {
+					// The instance stays in the status "Running", if incus-osd
+					// aborted the boot, so the console log is the only source,
+					// which reveals this.
+					stateErr = errIncusOSStartupFailure(ctx, t, vm)
+				}
+
 				if stateErr != nil {
 					logVMDebugInfo(t, vm)
 
@@ -511,6 +702,10 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 		select {
 		case <-ctx.Done():
+			if lastLog != "" {
+				debugf("last log of unit %q on %s:\n%s", unit, vm, lastLog)
+			}
+
 			if lastErr != "" {
 				return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last error: %s: %w", count, want, vm, lastErr, ctx.Err())
 			}
@@ -751,6 +946,10 @@ func fmtRunErr(resp cmdResponse) error {
 	}
 
 	if resp.exitCode != 0 {
+		if resp.ctxErr != nil {
+			return fmt.Errorf("exit code %d (killed, context done: %v):\nOutput:\n%s\n", resp.exitCode, resp.ctxErr, resp.Output())
+		}
+
 		return fmt.Errorf("exit code %d:\nOutput:\n%s\n", resp.exitCode, resp.Output())
 	}
 
@@ -897,6 +1096,56 @@ func errUnrecoverableStatus(name string, status string) error {
 	}
 
 	return fmt.Errorf("Instance %[1]q is in status %[2]q and can not recover on its own. The cause is on the host, most likely an exhausted storage pool or filesystem, see the output of `incus info %[1]s --show-log` in the debug information below", name, status)
+}
+
+// incusOSStartupErrors are fragments, which appear on the console of an IncusOS
+// VM, if incus-osd failed to start. The known instance of this is incus-osd
+// aborting the boot with "unable to configure incus-agent", if restarting
+// incus-agent.service fails.
+//
+// incus-osd exits in this case and IncusOS paints the error on the console,
+// while the instance itself stays in the status "Running". Neither the instance
+// status nor waiting any longer for the incus agent therefore reveals or
+// resolves the situation.
+var incusOSStartupErrors = []string{
+	"incus-osd.service: Failed with result",
+	"IncusOS critical startup error",
+}
+
+// errIncusOSStartupFailure returns an error, if incus-osd failed to start
+// inside the given VM. It returns nil, if this can not be determined, since
+// this is most likely a transient condition.
+func errIncusOSStartupFailure(ctx context.Context, t *testing.T, name string) error {
+	t.Helper()
+
+	resp := runQuietWithContext(ctx, t, `incus console %s --show-log`, name)
+	if !resp.Success() {
+		return nil
+	}
+
+	fragment, found := incusOSStartupError(resp.Output())
+	if !found {
+		return nil
+	}
+
+	return fmt.Errorf("incus-osd failed to start on %[1]q, the console log contains %[2]q, see the output of `incus console %[1]s --show-log` in the debug information below", name, fragment)
+}
+
+// incusOSStartupError returns the fragment of incusOSStartupErrors found in the
+// given console log, if any.
+func incusOSStartupError(console string) (fragment string, found bool) {
+	// The messages of systemd appear as plain text on the console, while the
+	// error screen of IncusOS is drawn with escape sequences in between, so
+	// match against both the raw and the sanitized console log.
+	sanitized := ansiEscapeSequence.ReplaceAllString(console, "")
+
+	for _, fragment := range incusOSStartupErrors {
+		if strings.Contains(console, fragment) || strings.Contains(sanitized, fragment) {
+			return fragment, true
+		}
+	}
+
+	return "", false
 }
 
 func mustInstanceStatus(ctx context.Context, t *testing.T, name string) string {
@@ -1306,12 +1555,42 @@ func strechedTimeout(timeout time.Duration) time.Duration {
 	return time.Duration(float64(timeout) * timeoutStretchFactor)
 }
 
-var debugOutput = &bytes.Buffer{}
+var (
+	// debugOutputMu guards debugOutput, which is written concurrently by the
+	// errgroup goroutines, which set up the VMs.
+	debugOutputMu sync.Mutex
+	debugOutput   = &bytes.Buffer{}
+)
+
+// resetDebugOutput discards the debug output collected so far. It has to be
+// called at the start of every test, since the test binary runs all the test
+// cases in the same process.
+func resetDebugOutput() {
+	debugOutputMu.Lock()
+	defer debugOutputMu.Unlock()
+
+	debugOutput = &bytes.Buffer{}
+}
+
+// takeDebugOutput returns the debug output collected so far.
+func takeDebugOutput() []byte {
+	debugOutputMu.Lock()
+	defer debugOutputMu.Unlock()
+
+	return debugOutput.Bytes()
+}
 
 // debugf prints debug messages to stdout, if the global debug variable is true.
 // This can be configured by the
 // OPERATIONS_CENTER_E2E_TEST_DEBUG env var.
+//
+// Note, that with the debug output enabled, everything goes to stdout instead
+// of the buffer, which leaves the debug_output_*.log written by
+// onTestFailDebugOutput empty.
 func debugf(format string, args ...any) {
+	debugOutputMu.Lock()
+	defer debugOutputMu.Unlock()
+
 	var out io.Writer = debugOutput
 
 	if debug {
@@ -1342,13 +1621,15 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 		fmt.Println("===[ DEBUG OUTPUT ]===")
 		debugOutputFilename := filepath.Join(tmpDir, fmt.Sprintf("debug_output_%s.log", timestamp))
 		fmt.Printf("Debug output saved in %q\n", debugOutputFilename)
-		err := os.WriteFile(debugOutputFilename, debugOutput.Bytes(), 0o600)
+		collectedDebugOutput := takeDebugOutput()
+
+		err := os.WriteFile(debugOutputFilename, collectedDebugOutput, 0o600)
 		if err != nil {
 			t.Errorf("Failed to write debug output to %q: %v", debugOutputFilename, err)
 
 			// Writing fails, if the filesystem is full, so fall back to
 			// stdout.
-			fmt.Println(debugOutput.String())
+			fmt.Println(string(collectedDebugOutput))
 		}
 
 		operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_journal_%s.log", timestamp))
@@ -1369,8 +1650,23 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 		} else {
 			for instance := range strings.Lines(resp.OutputTrimmed()) {
 				instance = strings.TrimSpace(instance)
+
+				consoleFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_console_%s.log", instance, timestamp))
+				fmt.Printf("incus %q console log saved in %q\n", instance, consoleFilename)
+
+				consoleResp := runQuietWithContext(ctx, t, `incus console %s --show-log`, instance)
+				if !consoleResp.Success() {
+					t.Error(consoleResp.Error())
+				} else {
+					err = os.WriteFile(consoleFilename, []byte(ansiEscapeSequence.ReplaceAllString(consoleResp.Output(), "")), 0o600)
+					if err != nil {
+						t.Errorf("Failed to write incus %q console log to %q: %v", instance, consoleFilename, err)
+					}
+				}
+
 				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
 				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
+
 				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)
 				if !resp.Success() {
 					t.Error(resp.Error())
