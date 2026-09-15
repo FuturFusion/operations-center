@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -1567,10 +1569,13 @@ func (s *serverHandler) serverDeployPost(r *http.Request) response.Response {
 //
 //	Cancel the deployment of a server
 //
-//	Asks the deployment in progress for the server to stop. The installation
-//	media is ejected and the server is powered off.
+//	Asks the deployment in progress for the server to stop. By default the
+//	installation media is ejected and the server is powered off, which
+//	"skip_cleanup" turns off.
 //
 //	---
+//	consumes:
+//	  - application/json
 //	produces:
 //	  - application/json
 //	parameters:
@@ -1579,6 +1584,12 @@ func (s *serverHandler) serverDeployPost(r *http.Request) response.Response {
 //	    description: Name of the server
 //	    type: string
 //	    required: true
+//	  - in: body
+//	    name: cancel
+//	    description: Cancellation options
+//	    required: false
+//	    schema:
+//	      $ref: "#/definitions/ServerDeploymentCancelPost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1593,7 +1604,16 @@ func (s *serverHandler) serverDeployPost(r *http.Request) response.Response {
 func (s *serverHandler) serverCancelDeployPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.CancelDeploymentByName(r.Context(), name)
+	var cancel api.ServerDeploymentCancelPost
+
+	// An empty body is accepted, so a client, that does not care about the
+	// options, can keep posting nothing at all.
+	err := json.NewDecoder(r.Body).Decode(&cancel)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.CancelDeploymentByName(r.Context(), name, cancel.SkipCleanup)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to cancel the deployment of server %q: %w", name, err))
 	}
