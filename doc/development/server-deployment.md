@@ -17,7 +17,9 @@ POST /1.0/provisioning/servers/{name}/:cancel-deploy
 ```
 
 Canceling interrupts the step in flight, so the clean up does not have to wait
-out a BMC, that is not answering anymore.
+out a BMC, that is not answering anymore. With `skip_cleanup`, the deployment
+ends right away without the clean up, so the server is left untouched the way a
+deployment, that failed on its own, is.
 
 The deployment request carries the token and the token seed the installation
 media is generated from, and optionally the virtual media device, the image
@@ -171,6 +173,7 @@ stateDiagram-v2
 
     RefreshBMCData --> Cancel: cancel requested
     WaitInstall --> Cancel: cancel requested
+    WaitInstall --> Canceled: cancel requested, clean up skipped
     Cancel --> WaitCancel
     WaitCancel --> Cancel: timeout
     WaitCancel --> Canceled: power state off
@@ -180,7 +183,9 @@ stateDiagram-v2
 To keep the diagram readable, only some of the edges into `failed` and `cancel`
 are drawn. Every state can reach both: a trigger, that exhausts its retry
 budget, and a wait, that has no fallback and times out, end in `failed`, and a
-cancellation preempts every state but the clean up it triggers itself.
+cancellation preempts every state but the clean up it triggers itself. A
+cancellation, that skips the clean up, has nothing to trigger and goes straight
+to `canceled`.
 
 ### BIOS attributes are applied in two passes
 
@@ -242,7 +247,8 @@ BMC accepts the request and the server quietly ignores it.
 **A failed deployment is not cleaned up.** The installation media stays attached
 and the power state is left as it is, so an operator can look at the server
 through the BMC console. A canceled deployment, in contrast, does eject the
-media and power the server off.
+media and power the server off, unless the cancellation sets `skip_cleanup`, in
+which case the server is left untouched as well.
 
 ## Booting the installation media
 

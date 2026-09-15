@@ -44,15 +44,16 @@ func deploymentTestRequest(tokenUUID uuid.UUID) provisioning.ServerDeploymentReq
 
 func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *testing.T) {
 	tests := []struct {
-		name           string
-		forceReboot    bool
-		resolution     *provisioning.BIOSProfileResolution
-		trackMedia     bool
-		worldOptions   []func(*bmcWorld)
-		request        func(request *provisioning.ServerDeploymentRequest)
-		rebuildService bool
-		cancelAt       api.ServerDeploymentState
-		cancelTwice    bool
+		name              string
+		forceReboot       bool
+		resolution        *provisioning.BIOSProfileResolution
+		trackMedia        bool
+		worldOptions      []func(*bmcWorld)
+		request           func(request *provisioning.ServerDeploymentRequest)
+		rebuildService    bool
+		cancelAt          api.ServerDeploymentState
+		cancelTwice       bool
+		cancelSkipCleanup bool
 
 		wantStates           []api.ServerDeploymentState
 		wantStatus           api.ServerStatus
@@ -659,6 +660,33 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			},
 		},
 		{
+			name:              "cancelled - skipping the clean up",
+			forceReboot:       true,
+			resolution:        deploymentTestResolution(),
+			cancelAt:          api.ServerDeploymentStateWaitInstall,
+			cancelSkipCleanup: true,
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBoot,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesCancelSkipCleanup,
+			),
+			wantStatus:       api.ServerStatusUnregistered,
+			wantStatusDetail: api.ServerStatusDetailUnregisteredDeploymentCancelled,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.NotEmpty(t, world.mediaInserted(), "the clean up is skipped, so the installation media stays attached")
+				require.True(t, world.isPoweredOn(), "the clean up is skipped, so the server is left running")
+			},
+		},
+		{
 			name:        "cancelled - the BMC completes the ejection after the power off",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),
@@ -722,10 +750,10 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 						return
 					}
 
-					require.NoError(t, svc.CancelDeploymentByName(ctx, worldServerName))
+					require.NoError(t, svc.CancelDeploymentByName(ctx, worldServerName, tc.cancelSkipCleanup))
 
 					if tc.cancelTwice {
-						require.NoError(t, svc.CancelDeploymentByName(ctx, worldServerName), "cancelling twice is a no-op")
+						require.NoError(t, svc.CancelDeploymentByName(ctx, worldServerName, tc.cancelSkipCleanup), "cancelling twice is a no-op")
 					}
 				})
 			}

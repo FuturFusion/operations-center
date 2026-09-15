@@ -442,7 +442,12 @@ operations-center provisioning server deploy-cancel <server-name>
 
 This ejects the installation media and powers the server off. A deployment,
 that failed on its own, is deliberately left untouched instead, so the server
-can be inspected through the BMC console.
+can be inspected through the BMC console. Add `--skip-cleanup` to stop the
+deployment and leave the server untouched the same way:
+
+```shell
+operations-center provisioning server deploy-cancel <server-name> --skip-cleanup
+```
 
 ## After the Deployment
 

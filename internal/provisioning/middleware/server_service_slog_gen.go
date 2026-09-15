@@ -607,12 +607,13 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 }
 
 // CancelDeploymentByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("skipCleanup", skipCleanup),
 		)
 	}
 	log.DebugContext(ctx, "=> calling CancelDeploymentByName")
@@ -637,7 +638,7 @@ func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name
 			log.DebugContext(ctx, "<= method CancelDeploymentByName finished")
 		}
 	}()
-	return _d._base.CancelDeploymentByName(ctx, name)
+	return _d._base.CancelDeploymentByName(ctx, name, skipCleanup)
 }
 
 // DeleteByName implements provisioning.ServerService.
