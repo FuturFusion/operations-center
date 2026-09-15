@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
+// componentSystemService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentSystemService = logger.RegisterComponent("system.system_service")
+
 // SystemServiceWithSlog implements system0.SystemService that is instrumented with slog logger.
 type SystemServiceWithSlog struct {
 	_base                 system0.SystemService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type SystemServiceWithSlogOption func(s *SystemServiceWithSlog)
@@ -26,11 +31,21 @@ func SystemServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 	}
 }
 
+// SystemServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func SystemServiceWithSlogWithComponent(component logger.Component) SystemServiceWithSlogOption {
+	return func(_base *SystemServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewSystemServiceWithSlog instruments an implementation of the system0.SystemService with simple logging.
 func NewSystemServiceWithSlog(base system0.SystemService, opts ...SystemServiceWithSlogOption) SystemServiceWithSlog {
 	this := SystemServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentSystemService,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewSystemServiceWithSlog(base system0.SystemService, opts ...SystemServiceW
 
 // CleanCache implements system0.SystemService.
 func (_d SystemServiceWithSlog) CleanCache(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -75,6 +91,7 @@ func (_d SystemServiceWithSlog) CleanCache(ctx context.Context) (err error) {
 
 // GetCertificate implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate system.Certificate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -109,6 +126,7 @@ func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate
 
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network system.Network) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -131,6 +149,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network s
 
 // GetSecurityConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (security system.Security) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -153,6 +172,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (security
 
 // GetSettingsConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (settings system.Settings) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -175,6 +195,7 @@ func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (settings
 
 // GetUpdatesConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (updates system.Updates) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -197,6 +218,7 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (updates s
 
 // TriggerCertificateRenew implements system0.SystemService.
 func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -232,6 +254,7 @@ func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, for
 
 // UpdateCertificate implements system0.SystemService.
 func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -267,6 +290,7 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 
 // UpdateNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -301,6 +325,7 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg sys
 
 // UpdateSecurityConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg system.SecurityPut) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -335,6 +360,7 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg sy
 
 // UpdateSettingsConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -369,6 +395,7 @@ func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg sy
 
 // UpdateUpdatesConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
