@@ -662,8 +662,9 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 
 // CancelDeploymentByName asks a running deployment to stop. In contrast to a
 // failed deployment, a cancelled one is cleaned up: the installation media is
-// ejected and the server is powered off.
-func (s *serverService) CancelDeploymentByName(ctx context.Context, name string) error {
+// ejected and the server is powered off. With skipCleanup, the deployment is
+// stopped right away and the server is left untouched instead.
+func (s *serverService) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error {
 	if name == "" {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -686,6 +687,7 @@ func (s *serverService) CancelDeploymentByName(ctx context.Context, name string)
 		}
 
 		deployment.CancelRequested = true
+		deployment.CancelSkipCleanup = skipCleanup
 
 		err = s.repo.Update(ctx, *server)
 		if err != nil {
@@ -835,13 +837,20 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 		slog.String("deployment_state", deployment.State.String()),
 	)
 
-	// Cancellation preempts everything but the clean up it triggers itself.
+	// Cancellation preempts everything but the clean up it triggers itself. A
+	// cancellation, that skips the clean up, has nothing to trigger and ends the
+	// deployment right here.
 	if deployment.CancelRequested &&
 		deployment.State != api.ServerDeploymentStateCancel &&
 		deployment.State != api.ServerDeploymentStateWaitCancel {
-		log.InfoContext(ctx, "Deployment cancelled")
+		log.InfoContext(ctx, "Deployment cancelled", slog.Bool("skip_cleanup", deployment.CancelSkipCleanup))
 
-		return true, s.advanceDeployment(ctx, name, api.ServerDeploymentStateCancel, nil)
+		next := api.ServerDeploymentStateCancel
+		if deployment.CancelSkipCleanup {
+			next = api.ServerDeploymentStateCancelled
+		}
+
+		return true, s.advanceDeployment(ctx, name, next, nil)
 	}
 
 	if !deployment.CancelRequested && now.Sub(deployment.StartedAt) > config.ServerDeploymentTimeout {

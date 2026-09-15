@@ -198,10 +198,11 @@ type ServerDeployment struct {
 	InstallSnapshot    ServerDeploymentBMCSnapshot `json:"install_snapshot"`
 
 	// Retries counts the attempts already spent on the current state.
-	Retries         int                       `json:"retries"`
-	LastError       string                    `json:"last_error"`
-	FailedState     api.ServerDeploymentState `json:"failed_state"`
-	CancelRequested bool                      `json:"cancel_requested"`
+	Retries           int                       `json:"retries"`
+	LastError         string                    `json:"last_error"`
+	FailedState       api.ServerDeploymentState `json:"failed_state"`
+	CancelRequested   bool                      `json:"cancel_requested"`
+	CancelSkipCleanup bool                      `json:"cancel_skip_cleanup"`
 
 	StartedAt      time.Time `json:"started_at"`
 	StateEnteredAt time.Time `json:"state_entered_at"`
