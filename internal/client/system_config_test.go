@@ -227,6 +227,19 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			},
 			assertFunc: noop,
 		},
+		{
+			name:   "error - validation, unknown component",
+			client: d.socketClient,
+
+			settingsConfig: system.SettingsPut{
+				LogLevels: map[string]string{"provisionning": "DEBUG"},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `unknown components "provisionning"`)
+			},
+			assertFunc: noop,
+		},
 	}
 
 	for _, tc := range tests {
