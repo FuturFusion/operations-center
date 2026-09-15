@@ -131,7 +131,7 @@ func TestE2E_WithTokenAndUpdateChannel_CreateAndUpdateCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"token with update channel - create cluster and perform a rolling update",
-		setupIncusOSWithTokenAndUpdateChannel,
+		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		createClusterAndThenClusterUpdate,
 	)
 }

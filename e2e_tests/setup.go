@@ -71,26 +71,26 @@ func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.
 	}
 }
 
-func setupIncusOSWithTokenAndUpdateChannel(ctx context.Context, t *testing.T, tmpDir string) {
-	t.Helper()
+func setupIncusOSWithTokenAndUpdateChannel(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
 
-	stop := timeTrack(t)
-	defer stop()
+		stop := timeTrack(t)
+		defer stop()
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+		// Register cleanup
+		t.Cleanup(cleanupIncusOS(t, names))
 
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t, names))
+		token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
 
-	token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
+		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
-	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
+		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
 
-	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-	printServerList(t)
+		printServerList(t)
+	}
 }
 
 func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir string) {
