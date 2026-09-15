@@ -265,6 +265,20 @@ func (_d ServerServiceWithPrometheus) BMCServerSetLocationIndicatorByName(ctx co
 	return _d.base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// BeginUpdateRunByCluster implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BeginUpdateRunByCluster", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BeginUpdateRunByCluster(ctx, clusterName, rebootPending)
+}
+
 // CancelDeploymentByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -319,6 +333,20 @@ func (_d ServerServiceWithPrometheus) DeploymentControlLoop(ctx context.Context,
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeploymentControlLoop", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeploymentControlLoop(ctx, serverNameFilter)
+}
+
+// EndUpdateRunByCluster implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) EndUpdateRunByCluster(ctx context.Context, clusterName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "EndUpdateRunByCluster", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.EndUpdateRunByCluster(ctx, clusterName)
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.

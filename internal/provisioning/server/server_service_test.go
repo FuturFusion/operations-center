@@ -6751,7 +6751,6 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		clusterSvcUpdateErr                             error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(ctx context.Context, err error))
-		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -6847,6 +6846,13 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 						Cluster: new("cluster"),
 						Status:  api.ServerStatusReady,
 						Type:    api.ServerTypeIncus,
+						StatusInternal: provisioning.ServerStatusInternal{
+							Update: &provisioning.ServerUpdate{
+								StartedAt:       time.Now(),
+								Step:            provisioning.ServerUpdateStepEvacuate,
+								StepTriggeredAt: time.Now(),
+							},
+						},
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
@@ -6860,11 +6866,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			doCallback: func(_ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
-			initVolatileServerState: func(serverSvc provisioning.ServerService) {
-				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
-			},
 
-			assertErr: errassert.RetryableErrorContains("server operation in flight"),
+			assertErr: errassert.RetryableErrorContains(`Step "evacuate" for server "one" is in flight`),
 			assertLog: log.Noop,
 		},
 		{
@@ -6877,36 +6880,14 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 						Cluster: new("cluster"),
 						Status:  api.ServerStatusReady,
 						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
+						StatusInternal: provisioning.ServerStatusInternal{
+							Update: &provisioning.ServerUpdate{
+								StartedAt: time.Now(),
+								Step:      provisioning.ServerUpdateStepEvacuate,
+								Retries:   3,
+								LastError: "boom!",
 							},
 						},
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
@@ -6917,17 +6898,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			clientEvacuateErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
-			},
-			initVolatileServerState: func(serverSvc provisioning.ServerService) {
-				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
-				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
-				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
+			doCallback: func(_ func(ctx context.Context, err error)) {
+				// don't perform the callback
 			},
 
-			assertErr: errassert.TerminalErrorContains("Failed to evacuate system in 3 attempts"),
+			assertErr: errassert.TerminalErrorContains(`Failed to evacuate server "one" in 3 attempts`),
 			assertLog: log.Noop,
 		},
 		{
@@ -7030,145 +7005,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to get server \"one\" by name:`)(t, logBuf)
-			},
-		},
-		{
-			name:             "error - cluster update - callback error - Cluster nil",
-			argClusterUpdate: true,
-			repoGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: nil, // cluster nil
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
-			},
-
-			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
-				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Server \"one\" is not part of a cluster`)(t, logBuf)
-			},
-		},
-		{
-			name:             "error - cluster update - callback error - clusterSvc.GetByName",
-			argClusterUpdate: true,
-			repoGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-			},
-			clusterSvcGetByNameErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
-			},
-
-			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
-				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to get cluster \"cluster\":`)(t, logBuf)
-			},
-		},
-		{
-			name:             "error - cluster update - callback error - clusterSvc.Update",
-			argClusterUpdate: true,
-			repoGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
-						VersionData: api.ServerVersionData{
-							Applications: []api.ApplicationVersionData{
-								{
-									Name: "incus",
-								},
-							},
-						},
-					},
-				},
-			},
-			clusterSvcGetByName: &provisioning.Cluster{},
-			clusterSvcUpdateErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
-			},
-
-			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
-				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to update cluster \"cluster\":`)(t, logBuf)
+				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err="Failed to get server \"one\" by name:`)(t, logBuf)
 			},
 		},
 		{
@@ -7218,7 +7055,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to put server \"one\" back in ready state:`)(t, logBuf)
+				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err=boom!`)(t, logBuf)
 			},
 		},
 		{
@@ -7409,10 +7246,6 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
-
-			if tc.initVolatileServerState != nil {
-				tc.initVolatileServerState(serverSvc)
-			}
 
 			// Run test
 			err = serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce)
@@ -7608,7 +7441,6 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 		repoUpdateErrs                                  queue.Errs
 		clientRebootErr                                 error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
-		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -7653,12 +7485,16 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				ConnectionURL: "https://one/",
 				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
-			},
-			initVolatileServerState: func(serverSvc provisioning.ServerService) {
-				_ = serverSvc.RebootSystemByName(context.Background(), "one", true)
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						StartedAt:       time.Now(),
+						Step:            provisioning.ServerUpdateStepReboot,
+						StepTriggeredAt: time.Now(),
+					},
+				},
 			},
 
-			assertErr: errassert.RetryableErrorContains("server operation in flight"),
+			assertErr: errassert.RetryableErrorContains(`Step "reboot" for server "operations-center" is in flight`),
 			assertLog: log.Noop,
 		},
 		{
@@ -7778,10 +7614,6 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
-			if tc.initVolatileServerState != nil {
-				tc.initVolatileServerState(serverSvc)
-			}
-
 			// Run test
 			err = serverSvc.RebootSystemByName(t.Context(), "one", tc.argForce)
 
@@ -7805,7 +7637,6 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		clientRestoreErr                                error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(ctx context.Context, err error))
-		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -7883,6 +7714,13 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				Name:   "one",
 				Status: api.ServerStatusReady,
 				Type:   api.ServerTypeIncus,
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						StartedAt:       time.Now(),
+						Step:            provisioning.ServerUpdateStepRestore,
+						StepTriggeredAt: time.Now(),
+					},
+				},
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -7894,11 +7732,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			doCallback: func(_ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
-			initVolatileServerState: func(serverSvc provisioning.ServerService) {
-				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
-			},
 
-			assertErr: errassert.RetryableErrorContains("server operation in flight"),
+			assertErr: errassert.RetryableErrorContains(`Step "restore" for server "one" is in flight`),
 			assertLog: log.Noop,
 		},
 		{
@@ -7908,6 +7743,14 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				Name:   "one",
 				Status: api.ServerStatusReady,
 				Type:   api.ServerTypeIncus,
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						StartedAt: time.Now(),
+						Step:      provisioning.ServerUpdateStepRestore,
+						Retries:   3,
+						LastError: "boom!",
+					},
+				},
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -7916,17 +7759,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			clientRestoreErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
-			},
-			initVolatileServerState: func(serverSvc provisioning.ServerService) {
-				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
-				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
-				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
+			doCallback: func(_ func(ctx context.Context, err error)) {
+				// don't perform the callback
 			},
 
-			assertErr: errassert.TerminalErrorContains("Failed to restore system in 3 attempts"),
+			assertErr: errassert.TerminalErrorContains(`Failed to restore server "one" in 3 attempts`),
 			assertLog: log.Noop,
 		},
 		{
@@ -8123,10 +7960,6 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
-
-			if tc.initVolatileServerState != nil {
-				tc.initVolatileServerState(serverSvc)
-			}
 
 			// Run test
 			err = serverSvc.RestoreSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
