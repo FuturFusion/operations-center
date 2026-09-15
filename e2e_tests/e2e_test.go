@@ -136,6 +136,15 @@ func TestE2E_WithTokenAndUpdateChannel_CreateAndUpdateCluster(t *testing.T) {
 	)
 }
 
+func TestE2E_WithTokenAndUpdateChannel_UpdateServerApplication(t *testing.T) {
+	runE2ETest(
+		t,
+		"token with update channel - update a single application of a server",
+		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
+		updateServerApplication("IncusOS01"),
+	)
+}
+
 func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
 	runE2ETest(
 		t,
