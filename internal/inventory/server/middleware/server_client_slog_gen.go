@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentServerClient = logger.RegisterComponent("inventory.server_client")
+
 // ServerClientWithSlog implements inventory.ServerClient that is instrumented with slog logger.
 type ServerClientWithSlog struct {
 	_base                 inventory.ServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ServerClientWithSlogOption func(s *ServerClientWithSlog)
@@ -28,11 +33,21 @@ func ServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 	}
 }
 
+// ServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ServerClientWithSlogWithComponent(component logger.Component) ServerClientWithSlogOption {
+	return func(_base *ServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewServerClientWithSlog instruments an implementation of the inventory.ServerClient with simple logging.
 func NewServerClientWithSlog(base inventory.ServerClient, opts ...ServerClientWithSlogOption) ServerClientWithSlog {
 	this := ServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewServerClientWithSlog(base inventory.ServerClient, opts ...ServerClientWi
 
 // GetImageByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint prov
 
 // GetImages implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -116,6 +133,7 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provision
 
 // GetInstanceByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -153,6 +171,7 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint p
 
 // GetInstances implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -188,6 +207,7 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provis
 
 // GetNetworkACLByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -225,6 +245,7 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint
 
 // GetNetworkACLs implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) (networkACLs []api.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -260,6 +281,7 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint prov
 
 // GetNetworkAddressSetByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -297,6 +319,7 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, e
 
 // GetNetworkAddressSets implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) (networkAddressSets []api.NetworkAddressSet, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -332,6 +355,7 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoi
 
 // GetNetworkByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -369,6 +393,7 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint pr
 
 // GetNetworkForwardByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -407,6 +432,7 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endp
 
 // GetNetworkForwards implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -444,6 +470,7 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint 
 
 // GetNetworkIntegrationByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -480,6 +507,7 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 
 // GetNetworkIntegrations implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -515,6 +543,7 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpo
 
 // GetNetworkLoadBalancerByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -553,6 +582,7 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 
 // GetNetworkLoadBalancers implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -590,6 +620,7 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endp
 
 // GetNetworkPeerByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -628,6 +659,7 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoin
 
 // GetNetworkPeers implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -665,6 +697,7 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint pro
 
 // GetNetworkZoneByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -702,6 +735,7 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoin
 
 // GetNetworkZones implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -737,6 +771,7 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint pro
 
 // GetNetworks implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) (networks []api.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -772,6 +807,7 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisi
 
 // GetProfileByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -809,6 +845,7 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint pr
 
 // GetProfiles implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -844,6 +881,7 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisi
 
 // GetProjectByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -880,6 +918,7 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint pr
 
 // GetProjects implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -915,6 +954,7 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisi
 
 // GetStorageBucketByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucketFull api.StorageBucketFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -953,6 +993,7 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 
 // GetStorageBuckets implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBucketFulls []api.StorageBucketFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -989,6 +1030,7 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint p
 
 // GetStoragePoolByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storagePool api.StoragePool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1025,6 +1067,7 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoin
 
 // GetStoragePools implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) (storagePools []api.StoragePool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1060,6 +1103,7 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint pro
 
 // GetStorageVolumeByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1099,6 +1143,7 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 
 // GetStorageVolumes implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1135,6 +1180,7 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint p
 
 // HasExtension implements inventory.ServerClient.
 func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1159,6 +1205,7 @@ func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provis
 
 // Ping implements inventory.ServerClient.
 func (_d ServerClientWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

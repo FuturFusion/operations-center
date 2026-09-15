@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentInventoryAggregateRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentInventoryAggregateRepo = logger.RegisterComponent("inventory.inventory_aggregate_repo")
+
 // InventoryAggregateRepoWithSlog implements inventory.InventoryAggregateRepo that is instrumented with slog logger.
 type InventoryAggregateRepoWithSlog struct {
 	_base                 inventory.InventoryAggregateRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type InventoryAggregateRepoWithSlogOption func(s *InventoryAggregateRepoWithSlog)
@@ -25,11 +30,21 @@ func InventoryAggregateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc f
 	}
 }
 
+// InventoryAggregateRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func InventoryAggregateRepoWithSlogWithComponent(component logger.Component) InventoryAggregateRepoWithSlogOption {
+	return func(_base *InventoryAggregateRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewInventoryAggregateRepoWithSlog instruments an implementation of the inventory.InventoryAggregateRepo with simple logging.
 func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, opts ...InventoryAggregateRepoWithSlogOption) InventoryAggregateRepoWithSlog {
 	this := InventoryAggregateRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentInventoryAggregateRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, op
 
 // GetAllWithFilter implements inventory.InventoryAggregateRepo.
 func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

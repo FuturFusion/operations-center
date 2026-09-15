@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkZoneRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkZoneRepo = logger.RegisterComponent("inventory.network_zone_repo")
+
 // NetworkZoneRepoWithSlog implements inventory.NetworkZoneRepo that is instrumented with slog logger.
 type NetworkZoneRepoWithSlog struct {
 	_base                 inventory.NetworkZoneRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkZoneRepoWithSlogOption func(s *NetworkZoneRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkZoneRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 	}
 }
 
+// NetworkZoneRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkZoneRepoWithSlogWithComponent(component logger.Component) NetworkZoneRepoWithSlogOption {
+	return func(_base *NetworkZoneRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkZoneRepoWithSlog instruments an implementation of the inventory.NetworkZoneRepo with simple logging.
 func NewNetworkZoneRepoWithSlog(base inventory.NetworkZoneRepo, opts ...NetworkZoneRepoWithSlogOption) NetworkZoneRepoWithSlog {
 	this := NetworkZoneRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkZoneRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkZoneRepoWithSlog(base inventory.NetworkZoneRepo, opts ...NetworkZ
 
 // Create implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 
 // DeleteByUUID implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 
 // DeleteWithFilter implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteWithFilter(ctx context.Context, filter i
 
 // GetAllUUIDsWithFilter implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkZoneRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 
 // GetAllWithFilter implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkZoneRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 
 // GetByUUID implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkZone inventory.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkZoneRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 
 // UpdateByUUID implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithSlog) UpdateByUUID(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

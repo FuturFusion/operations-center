@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStoragePoolService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStoragePoolService = logger.RegisterComponent("inventory.storage_pool_service")
+
 // StoragePoolServiceWithSlog implements inventory.StoragePoolService that is instrumented with slog logger.
 type StoragePoolServiceWithSlog struct {
 	_base                 inventory.StoragePoolService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StoragePoolServiceWithSlogOption func(s *StoragePoolServiceWithSlog)
@@ -28,11 +33,21 @@ func StoragePoolServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// StoragePoolServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StoragePoolServiceWithSlogWithComponent(component logger.Component) StoragePoolServiceWithSlogOption {
+	return func(_base *StoragePoolServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStoragePoolServiceWithSlog instruments an implementation of the inventory.StoragePoolService with simple logging.
 func NewStoragePoolServiceWithSlog(base inventory.StoragePoolService, opts ...StoragePoolServiceWithSlogOption) StoragePoolServiceWithSlog {
 	this := StoragePoolServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStoragePoolService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewStoragePoolServiceWithSlog(base inventory.StoragePoolService, opts ...St
 
 // GetAllUUIDsWithFilter implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d StoragePoolServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 
 // GetAllWithFilter implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (storagePools inventory.StoragePools, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d StoragePoolServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 
 // GetByUUID implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storagePool inventory.StoragePool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d StoragePoolServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 
 // ResyncByName implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d StoragePoolServiceWithSlog) ResyncByName(ctx context.Context, clusterNa
 
 // ResyncByUUID implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d StoragePoolServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.U
 
 // SyncCluster implements inventory.StoragePoolService.
 func (_d StoragePoolServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

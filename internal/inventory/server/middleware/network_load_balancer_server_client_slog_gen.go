@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkLoadBalancerServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkLoadBalancerServerClient = logger.RegisterComponent("inventory.network_load_balancer_server_client")
+
 // NetworkLoadBalancerServerClientWithSlog implements inventory.NetworkLoadBalancerServerClient that is instrumented with slog logger.
 type NetworkLoadBalancerServerClientWithSlog struct {
 	_base                 inventory.NetworkLoadBalancerServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkLoadBalancerServerClientWithSlogOption func(s *NetworkLoadBalancerServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkLoadBalancerServerClientWithSlogWithInformativeErrFunc(isInformative
 	}
 }
 
+// NetworkLoadBalancerServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkLoadBalancerServerClientWithSlogWithComponent(component logger.Component) NetworkLoadBalancerServerClientWithSlogOption {
+	return func(_base *NetworkLoadBalancerServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkLoadBalancerServerClientWithSlog instruments an implementation of the inventory.NetworkLoadBalancerServerClient with simple logging.
 func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, opts ...NetworkLoadBalancerServerClientWithSlogOption) NetworkLoadBalancerServerClientWithSlog {
 	this := NetworkLoadBalancerServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkLoadBalancerServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalanc
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -82,6 +98,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 
 // GetNetworkLoadBalancers implements inventory.NetworkLoadBalancerServerClient.
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

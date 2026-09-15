@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProvisioningServerService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProvisioningServerService = logger.RegisterComponent("inventory.provisioning_server_service")
+
 // ProvisioningServerServiceWithSlog implements inventory.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
 	_base                 inventory.ProvisioningServerService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProvisioningServerServiceWithSlogOption func(s *ProvisioningServerServiceWithSlog)
@@ -26,11 +31,21 @@ func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// ProvisioningServerServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProvisioningServerServiceWithSlogWithComponent(component logger.Component) ProvisioningServerServiceWithSlogOption {
+	return func(_base *ProvisioningServerServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProvisioningServerServiceWithSlog instruments an implementation of the inventory.ProvisioningServerService with simple logging.
 func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProvisioningServerService,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerServi
 
 // GetAllByClusterName implements inventory.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Context, name string) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkForwardService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkForwardService = logger.RegisterComponent("inventory.network_forward_service")
+
 // NetworkForwardServiceWithSlog implements inventory.NetworkForwardService that is instrumented with slog logger.
 type NetworkForwardServiceWithSlog struct {
 	_base                 inventory.NetworkForwardService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkForwardServiceWithSlogOption func(s *NetworkForwardServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkForwardServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc fu
 	}
 }
 
+// NetworkForwardServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkForwardServiceWithSlogWithComponent(component logger.Component) NetworkForwardServiceWithSlogOption {
+	return func(_base *NetworkForwardServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkForwardServiceWithSlog instruments an implementation of the inventory.NetworkForwardService with simple logging.
 func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, opts ...NetworkForwardServiceWithSlogOption) NetworkForwardServiceWithSlog {
 	this := NetworkForwardServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkForwardService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, opts
 
 // GetAllUUIDsWithFilter implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 
 // GetAllWithFilter implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 
 // GetByUUID implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 
 // ResyncByName implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, cluste
 
 // ResyncByUUID implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 
 // SyncCluster implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

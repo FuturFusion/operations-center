@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentInstanceServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentInstanceServerClient = logger.RegisterComponent("inventory.instance_server_client")
+
 // InstanceServerClientWithSlog implements inventory.InstanceServerClient that is instrumented with slog logger.
 type InstanceServerClientWithSlog struct {
 	_base                 inventory.InstanceServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type InstanceServerClientWithSlogOption func(s *InstanceServerClientWithSlog)
@@ -28,11 +33,21 @@ func InstanceServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 	}
 }
 
+// InstanceServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func InstanceServerClientWithSlogWithComponent(component logger.Component) InstanceServerClientWithSlogOption {
+	return func(_base *InstanceServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewInstanceServerClientWithSlog instruments an implementation of the inventory.InstanceServerClient with simple logging.
 func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, opts ...InstanceServerClientWithSlogOption) InstanceServerClientWithSlog {
 	this := InstanceServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentInstanceServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, opts .
 
 // GetInstanceByName implements inventory.InstanceServerClient.
 func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 
 // GetInstances implements inventory.InstanceServerClient.
 func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

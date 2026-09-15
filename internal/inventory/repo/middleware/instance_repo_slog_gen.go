@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentInstanceRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentInstanceRepo = logger.RegisterComponent("inventory.instance_repo")
+
 // InstanceRepoWithSlog implements inventory.InstanceRepo that is instrumented with slog logger.
 type InstanceRepoWithSlog struct {
 	_base                 inventory.InstanceRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type InstanceRepoWithSlogOption func(s *InstanceRepoWithSlog)
@@ -27,11 +32,21 @@ func InstanceRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 	}
 }
 
+// InstanceRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func InstanceRepoWithSlogWithComponent(component logger.Component) InstanceRepoWithSlogOption {
+	return func(_base *InstanceRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewInstanceRepoWithSlog instruments an implementation of the inventory.InstanceRepo with simple logging.
 func NewInstanceRepoWithSlog(base inventory.InstanceRepo, opts ...InstanceRepoWithSlogOption) InstanceRepoWithSlog {
 	this := InstanceRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentInstanceRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewInstanceRepoWithSlog(base inventory.InstanceRepo, opts ...InstanceRepoWi
 
 // Create implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 
 // DeleteByUUID implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d InstanceRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 
 // DeleteWithFilter implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.InstanceFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d InstanceRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inve
 
 // GetAllUUIDsWithFilter implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d InstanceRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter
 
 // GetAllWithFilter implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (instances inventory.Instances, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d InstanceRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inve
 
 // GetByUUID implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (instance inventory.Instance, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d InstanceRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (ins
 
 // UpdateByUUID implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) UpdateByUUID(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
