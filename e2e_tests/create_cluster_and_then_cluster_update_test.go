@@ -99,17 +99,17 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 	previousTotalSteps := 0
 
 	for {
-		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error'`, cpuArch, clusterName)
+		resp := mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error'`, cpuArch, clusterName)
 		if resp.OutputTrimmed() != "" {
 			t.Fatalf("Update cluster failed: %s", resp.OutputTrimmed())
 		}
 
-		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
+		resp = mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
 		if resp.OutputTrimmed() == "" {
 			break
 		}
 
-		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.status_description // ""'`, cpuArch, clusterName)
+		resp = mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.status_description // ""'`, cpuArch, clusterName)
 		statusDescription := resp.OutputTrimmed()
 
 		if statusDescription != previousUpdateStatusDescription {

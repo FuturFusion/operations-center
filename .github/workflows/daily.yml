@@ -70,15 +70,32 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
+          rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out
           go test -v ./e2e_tests -timeout 240m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-logs
+          # Only the logs, the tmp dir also holds the cached multi GiB ISO images.
+          path: |
+            ${{ github.workspace }}/tmp-e2e/*.log
+            ${{ github.workspace }}/tmp-e2e/*.out
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()
         env:
           OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
         run: |
-          cat ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out || true
-          echo
-          echo "===[ DEBUG OUTPUT ]==="
-          cat ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log || true
-          exit 1
+          # The test output is already in the job log through the tee above and
+          # the complete logs are available as the e2e-logs artifact, so only
+          # tail them here.
+          for log in ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log; do
+            [ -e "${log}" ] || continue
+            echo "===[ $(basename "${log}") (last 200 lines) ]==="
+            tail -n 200 "${log}"
+            echo
+          done

@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -199,7 +198,8 @@ func runE2ETest(
 
 	tmpDir := setupE2ETest(ctx, t)
 
-	debugOutput = &bytes.Buffer{}
+	resetDebugOutput()
+	resetVMDebugInfo()
 
 	debugOutputCollect := onTestFailDebugOutput(t, tmpDir)
 	defer debugOutputCollect()
