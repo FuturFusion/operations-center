@@ -1,6 +1,8 @@
 package config
 
 import (
+	"maps"
+	"reflect"
 	"slices"
 
 	"github.com/FuturFusion/operations-center/internal/security/acme"
@@ -44,8 +46,12 @@ func isLogLevelChanged(oldCfg, newCfg config) bool {
 	return oldCfg.Settings.LogLevel != newCfg.Settings.LogLevel
 }
 
+func isLogLevelsChanged(oldCfg, newCfg config) bool {
+	return !maps.Equal(oldCfg.Settings.LogLevels, newCfg.Settings.LogLevels)
+}
+
 func isSettingsChanged(oldCfg, newCfg config) bool {
-	return oldCfg.Settings.SettingsPut != newCfg.Settings.SettingsPut
+	return !reflect.DeepEqual(oldCfg.Settings.SettingsPut, newCfg.Settings.SettingsPut)
 }
 
 func isUpdatesChanged(oldCfg, newCfg config) bool {

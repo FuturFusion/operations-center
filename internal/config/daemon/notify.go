@@ -45,6 +45,13 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 		}
 	}
 
+	if isLogLevelsChanged(oldCfg, newCfg) {
+		err := logger.SetComponentLevels(logger.ParseComponentLevels(newCfg.Settings.LogLevels))
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to apply per component log levels from updated config", logger.Err(err))
+		}
+	}
+
 	if updated == sectionSettings || isSettingsChanged(oldCfg, newCfg) {
 		err := lifecycle.SettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
 		if err != nil {
