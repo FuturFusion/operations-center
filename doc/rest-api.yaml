@@ -5779,6 +5779,17 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
             server_registration_scriptlet:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
@@ -5795,6 +5806,17 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
             server_registration_scriptlet:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
