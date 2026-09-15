@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageIncusService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageIncusService = logger.RegisterComponent("image.image_incus_service")
+
 // ImageIncusServiceWithSlog implements image.ImageIncusService that is instrumented with slog logger.
 type ImageIncusServiceWithSlog struct {
 	_base                 image.ImageIncusService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageIncusServiceWithSlogOption func(s *ImageIncusServiceWithSlog)
@@ -27,11 +32,21 @@ func ImageIncusServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// ImageIncusServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageIncusServiceWithSlogWithComponent(component logger.Component) ImageIncusServiceWithSlogOption {
+	return func(_base *ImageIncusServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageIncusServiceWithSlog instruments an implementation of the image.ImageIncusService with simple logging.
 func NewImageIncusServiceWithSlog(base image.ImageIncusService, opts ...ImageIncusServiceWithSlogOption) ImageIncusServiceWithSlog {
 	this := ImageIncusServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageIncusService,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewImageIncusServiceWithSlog(base image.ImageIncusService, opts ...ImageInc
 
 // AddVersion implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, mr *multipart.Reader) (name string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, mr *multipar
 
 // DeleteByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, name strin
 
 // DeleteBySource implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) DeleteBySource(ctx context.Context, sourceName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d ImageIncusServiceWithSlog) DeleteBySource(ctx context.Context, sourceNa
 
 // DeleteVersionByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, name string, version string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, nam
 
 // GetAll implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) GetAll(ctx context.Context) (incusImages image.IncusImages, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -215,6 +235,7 @@ func (_d ImageIncusServiceWithSlog) GetAll(ctx context.Context) (incusImages ima
 
 // GetAllNames implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -249,6 +270,7 @@ func (_d ImageIncusServiceWithSlog) GetAllNames(ctx context.Context) (strings []
 
 // GetByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -284,6 +306,7 @@ func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, name string) 
 
 // GetVersionFileByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -322,6 +345,7 @@ func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, na
 
 // RefreshFromSource implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -356,6 +380,7 @@ func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, sourc
 
 // Update implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -390,6 +415,7 @@ func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image
 
 // ValidateFilterExpression implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

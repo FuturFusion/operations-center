@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentIncusImageSourcePort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentIncusImageSourcePort = logger.RegisterComponent("image.incus_image_source_port")
+
 // IncusImageSourcePortWithSlog implements image.IncusImageSourcePort that is instrumented with slog logger.
 type IncusImageSourcePortWithSlog struct {
 	_base                 image.IncusImageSourcePort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type IncusImageSourcePortWithSlogOption func(s *IncusImageSourcePortWithSlog)
@@ -25,11 +30,21 @@ func IncusImageSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 	}
 }
 
+// IncusImageSourcePortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func IncusImageSourcePortWithSlogWithComponent(component logger.Component) IncusImageSourcePortWithSlogOption {
+	return func(_base *IncusImageSourcePortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewIncusImageSourcePortWithSlog instruments an implementation of the image.IncusImageSourcePort with simple logging.
 func NewIncusImageSourcePortWithSlog(base image.IncusImageSourcePort, opts ...IncusImageSourcePortWithSlogOption) IncusImageSourcePortWithSlog {
 	this := IncusImageSourcePortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentIncusImageSourcePort,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewIncusImageSourcePortWithSlog(base image.IncusImageSourcePort, opts ...In
 
 // DeleteBySource implements image.IncusImageSourcePort.
 func (_d IncusImageSourcePortWithSlog) DeleteBySource(ctx context.Context, sourceName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -75,6 +91,7 @@ func (_d IncusImageSourcePortWithSlog) DeleteBySource(ctx context.Context, sourc
 
 // RefreshFromSource implements image.IncusImageSourcePort.
 func (_d IncusImageSourcePortWithSlog) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -109,6 +126,7 @@ func (_d IncusImageSourcePortWithSlog) RefreshFromSource(ctx context.Context, so
 
 // ValidateFilterExpression implements image.IncusImageSourcePort.
 func (_d IncusImageSourcePortWithSlog) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

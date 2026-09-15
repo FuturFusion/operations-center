@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentIncusImageSourceService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentIncusImageSourceService = logger.RegisterComponent("image.incus_image_source_service")
+
 // IncusImageSourceServiceWithSlog implements image.IncusImageSourceService that is instrumented with slog logger.
 type IncusImageSourceServiceWithSlog struct {
 	_base                 image.IncusImageSourceService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type IncusImageSourceServiceWithSlogOption func(s *IncusImageSourceServiceWithSlog)
@@ -25,11 +30,21 @@ func IncusImageSourceServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// IncusImageSourceServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func IncusImageSourceServiceWithSlogWithComponent(component logger.Component) IncusImageSourceServiceWithSlogOption {
+	return func(_base *IncusImageSourceServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewIncusImageSourceServiceWithSlog instruments an implementation of the image.IncusImageSourceService with simple logging.
 func NewIncusImageSourceServiceWithSlog(base image.IncusImageSourceService, opts ...IncusImageSourceServiceWithSlogOption) IncusImageSourceServiceWithSlog {
 	this := IncusImageSourceServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentIncusImageSourceService,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewIncusImageSourceServiceWithSlog(base image.IncusImageSourceService, opts
 
 // Create implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) Create(ctx context.Context, source image.IncusImageSource) (incusImageSource image.IncusImageSource, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d IncusImageSourceServiceWithSlog) Create(ctx context.Context, source ima
 
 // DeleteByName implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d IncusImageSourceServiceWithSlog) DeleteByName(ctx context.Context, name
 
 // GetAll implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) GetAll(ctx context.Context) (incusImageSources image.IncusImageSources, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -144,6 +162,7 @@ func (_d IncusImageSourceServiceWithSlog) GetAll(ctx context.Context) (incusImag
 
 // GetAllNames implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -178,6 +197,7 @@ func (_d IncusImageSourceServiceWithSlog) GetAllNames(ctx context.Context) (stri
 
 // GetByName implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) GetByName(ctx context.Context, name string) (incusImageSource *image.IncusImageSource, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -213,6 +233,7 @@ func (_d IncusImageSourceServiceWithSlog) GetByName(ctx context.Context, name st
 
 // RefreshAll implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) RefreshAll(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -246,6 +267,7 @@ func (_d IncusImageSourceServiceWithSlog) RefreshAll(ctx context.Context) (err e
 
 // RefreshByName implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) RefreshByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -280,6 +302,7 @@ func (_d IncusImageSourceServiceWithSlog) RefreshByName(ctx context.Context, nam
 
 // Update implements image.IncusImageSourceService.
 func (_d IncusImageSourceServiceWithSlog) Update(ctx context.Context, source image.IncusImageSource) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
