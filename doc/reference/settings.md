@@ -79,10 +79,48 @@ certificates are available.
 
 ## System settings
 
-| Configuration                   | Description                                                                                                   | Value(s) | Default |
-| :---                            | :---                                                                                                          | :---     | :---    |
-| `log_level`                     | Log level for Operations Center logs                                                                          | string   | `WARN`  |
-| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string   |         |
+| Configuration                   | Description                                                                                                   | Value(s)             | Default |
+| :---                            | :---                                                                                                          | :---                 | :---    |
+| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`  |
+| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |         |
+| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |         |
+
+The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
+
+### Per component log levels
+
+`log_level` applies to the whole daemon. `log_levels` raises or lowers the
+verbosity for individual components, so a component under investigation can be
+logged verbosely while the rest of the daemon stays quiet.
+
+Component names are hierarchical, the levels are separated by dots. A level
+configured for a component applies to all of its children as well and the most
+specific configuration wins. Components without a matching entry use `log_level`.
+
+```yaml
+settings:
+  log_level: WARN
+  log_levels:
+    provisioning: DEBUG
+    provisioning.server_repo: TRACE
+```
+
+With this configuration everything below `provisioning` is logged at `DEBUG`,
+`provisioning.server_repo` is logged at `TRACE` and the rest of the daemon is
+logged at `WARN`.
+
+Every log record emitted by a component carries the component name in the
+`component` log attribute, which is the easiest way to find out which name to
+configure.
+
+````{dropdown} Complete list of log components
+```{include} settings_log_components.md
+```
+````
+
+Changes to `log_levels` take effect immediately, a restart is not required. The
+`--verbose` and `--debug` command line flags of `operations-centerd` only govern
+the default log level, the per component log levels always apply.
 
 ### Server registration scriptlet
 
