@@ -17,10 +17,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentUpdateService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentUpdateService = logger.RegisterComponent("provisioning.update_service")
+
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
 type UpdateServiceWithSlog struct {
 	_base                 provisioning.UpdateService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type UpdateServiceWithSlogOption func(s *UpdateServiceWithSlog)
@@ -31,11 +36,21 @@ func UpdateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 	}
 }
 
+// UpdateServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func UpdateServiceWithSlogWithComponent(component logger.Component) UpdateServiceWithSlogOption {
+	return func(_base *UpdateServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewUpdateServiceWithSlog instruments an implementation of the provisioning.UpdateService with simple logging.
 func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
 	this := UpdateServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentUpdateService,
 	}
 
 	for _, opt := range opts {
@@ -47,6 +62,7 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateSer
 
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -80,6 +96,7 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -115,6 +132,7 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 
 // GetAllUUIDs implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -183,6 +202,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 
 // GetAllUUIDsWithFilter implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 
 // GetAllWithFilter implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -253,6 +274,7 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -288,6 +310,7 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 
 // GetChangelog implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -325,6 +348,7 @@ func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid
 
 // GetChangelogByChannel implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -363,6 +387,7 @@ func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID 
 
 // GetUpdateAllFiles implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -398,6 +423,7 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 
 // GetUpdateFileByFilename implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readCloser io.ReadCloser, n int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -435,6 +461,7 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 
 // GetUpdatesByAssignedChannelName implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -470,6 +497,7 @@ func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Cont
 
 // Prune implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -503,6 +531,7 @@ func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
 
 // Refresh implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -536,7 +565,7 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 
 // SetServerService implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
-	ctx := context.Background()
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -553,6 +582,7 @@ func (_d UpdateServiceWithSlog) SetServerService(serverSvc provisioning.ServerSe
 
 // Update implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.Update) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

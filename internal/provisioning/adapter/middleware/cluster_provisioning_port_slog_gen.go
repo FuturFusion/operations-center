@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentClusterProvisioningPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentClusterProvisioningPort = logger.RegisterComponent("provisioning.cluster_provisioning_port")
+
 // ClusterProvisioningPortWithSlog implements provisioning.ClusterProvisioningPort that is instrumented with slog logger.
 type ClusterProvisioningPortWithSlog struct {
 	_base                 provisioning.ClusterProvisioningPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ClusterProvisioningPortWithSlogOption func(s *ClusterProvisioningPortWithSlog)
@@ -25,11 +30,21 @@ func ClusterProvisioningPortWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// ClusterProvisioningPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ClusterProvisioningPortWithSlogWithComponent(component logger.Component) ClusterProvisioningPortWithSlogOption {
+	return func(_base *ClusterProvisioningPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewClusterProvisioningPortWithSlog instruments an implementation of the provisioning.ClusterProvisioningPort with simple logging.
 func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPort, opts ...ClusterProvisioningPortWithSlogOption) ClusterProvisioningPortWithSlog {
 	this := ClusterProvisioningPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentClusterProvisioningPort,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPor
 
 // Apply implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster provisioning.Cluster) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -75,6 +91,7 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 
 // Init implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName 
 
 // SeedCertificate implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) SeedCertificate(ctx context.Context, clusterName string, certificate string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -15,10 +15,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentServerService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentServerService = logger.RegisterComponent("provisioning.server_service")
+
 // ServerServiceWithSlog implements provisioning.ServerService that is instrumented with slog logger.
 type ServerServiceWithSlog struct {
 	_base                 provisioning.ServerService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ServerServiceWithSlogOption func(s *ServerServiceWithSlog)
@@ -29,11 +34,21 @@ func ServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 	}
 }
 
+// ServerServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ServerServiceWithSlogWithComponent(component logger.Component) ServerServiceWithSlogOption {
+	return func(_base *ServerServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewServerServiceWithSlog instruments an implementation of the provisioning.ServerService with simple logging.
 func NewServerServiceWithSlog(base provisioning.ServerService, opts ...ServerServiceWithSlogOption) ServerServiceWithSlog {
 	this := ServerServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentServerService,
 	}
 
 	for _, opt := range opts {
@@ -45,6 +60,7 @@ func NewServerServiceWithSlog(base provisioning.ServerService, opts ...ServerSer
 
 // AddApplication implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string, applicationName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -80,6 +96,7 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 
 // ApplyBIOSAttributesByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -115,6 +132,7 @@ func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, n
 
 // BIOSProfileByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -150,6 +168,7 @@ func (_d ServerServiceWithSlog) BIOSProfileByName(ctx context.Context, name stri
 
 // BMCApplySecureBootCertificatesByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d ServerServiceWithSlog) BMCApplySecureBootCertificatesByName(ctx context
 
 // BMCAttachMediaByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -219,6 +239,7 @@ func (_d ServerServiceWithSlog) BMCAttachMediaByName(ctx context.Context, name s
 
 // BMCBIOSAttributeByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -255,6 +276,7 @@ func (_d ServerServiceWithSlog) BMCBIOSAttributeByName(ctx context.Context, name
 
 // BMCBIOSAttributesByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCBIOSAttributesByName(ctx context.Context, name string) (bIOSAttributes []api.BIOSAttribute, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -290,6 +312,7 @@ func (_d ServerServiceWithSlog) BMCBIOSAttributesByName(ctx context.Context, nam
 
 // BMCDetachMediaByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -325,6 +348,7 @@ func (_d ServerServiceWithSlog) BMCDetachMediaByName(ctx context.Context, name s
 
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -363,6 +387,7 @@ func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, 
 
 // BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -399,6 +424,7 @@ func (_d ServerServiceWithSlog) BMCLogEntriesByNameAndLogSource(ctx context.Cont
 
 // BMCLogSourcesByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCLogSourcesByName(ctx context.Context, name string) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -434,6 +460,7 @@ func (_d ServerServiceWithSlog) BMCLogSourcesByName(ctx context.Context, name st
 
 // BMCRefreshByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -468,6 +495,7 @@ func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name strin
 
 // BMCServerPowerOffByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCServerPowerOffByName(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -503,6 +531,7 @@ func (_d ServerServiceWithSlog) BMCServerPowerOffByName(ctx context.Context, nam
 
 // BMCServerPowerOnByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCServerPowerOnByName(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -538,6 +567,7 @@ func (_d ServerServiceWithSlog) BMCServerPowerOnByName(ctx context.Context, name
 
 // BMCServerRestartByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCServerRestartByName(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -573,6 +603,7 @@ func (_d ServerServiceWithSlog) BMCServerRestartByName(ctx context.Context, name
 
 // BMCServerSetLocationIndicatorByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.Context, name string, active bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -608,6 +639,7 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 
 // CancelDeploymentByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -643,6 +675,7 @@ func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name
 
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -677,6 +710,7 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 
 // DeployByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -712,6 +746,7 @@ func (_d ServerServiceWithSlog) DeployByName(ctx context.Context, name string, r
 
 // DeploymentControlLoop implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeploymentControlLoop(ctx context.Context, serverNameFilter *string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -746,6 +781,7 @@ func (_d ServerServiceWithSlog) DeploymentControlLoop(ctx context.Context, serve
 
 // EvacuateSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -782,6 +818,7 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 
 // FactoryResetByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -819,6 +856,7 @@ func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name str
 
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -853,6 +891,7 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 
 // GetAllNames implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -887,6 +926,7 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 
 // GetAllNamesWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -922,6 +962,7 @@ func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filte
 
 // GetAllWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -957,6 +998,7 @@ func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 
 // GetByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -992,6 +1034,7 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 
 // GetChangelogByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name string) (updateChangelog api.UpdateChangelog, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1027,6 +1070,7 @@ func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name str
 
 // GetSystemKernel implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1062,6 +1106,7 @@ func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string
 
 // GetSystemLogging implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name string) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1097,6 +1142,7 @@ func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name strin
 
 // GetSystemProvider implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1132,6 +1178,7 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 
 // GetSystemUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1167,6 +1214,7 @@ func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string
 
 // PollServer implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1202,6 +1250,7 @@ func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provision
 
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1237,6 +1286,7 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverFilter pr
 
 // PostRestoreSystemDoneByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PostRestoreSystemDoneByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1271,6 +1321,7 @@ func (_d ServerServiceWithSlog) PostRestoreSystemDoneByName(ctx context.Context,
 
 // PoweroffSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1306,6 +1357,7 @@ func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name s
 
 // PreRegister implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PreRegister(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1341,6 +1393,7 @@ func (_d ServerServiceWithSlog) PreRegister(ctx context.Context, server provisio
 
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1376,6 +1429,7 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 
 // Register implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1412,6 +1466,7 @@ func (_d ServerServiceWithSlog) Register(ctx context.Context, token uuid.UUID, s
 
 // Rename implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1447,6 +1502,7 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 
 // RestartApplication implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1482,6 +1538,7 @@ func (_d ServerServiceWithSlog) RestartApplication(ctx context.Context, name str
 
 // RestoreSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1519,6 +1576,7 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 
 // ResyncBMCData implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ResyncBMCData(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1552,6 +1610,7 @@ func (_d ServerServiceWithSlog) ResyncBMCData(ctx context.Context) (err error) {
 
 // ResyncByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1587,6 +1646,7 @@ func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName st
 
 // SelfRegisterOperationsCenter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1620,6 +1680,7 @@ func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context
 
 // SelfUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1654,7 +1715,7 @@ func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate pro
 
 // SetClusterService implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.ClusterService) {
-	ctx := context.Background()
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1671,6 +1732,7 @@ func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.Cluste
 
 // SyncCluster implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1705,6 +1767,7 @@ func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName str
 
 // Update implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1742,6 +1805,7 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 
 // UpdateSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1778,6 +1842,7 @@ func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name str
 
 // UpdateSystemKernel implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1813,6 +1878,7 @@ func (_d ServerServiceWithSlog) UpdateSystemKernel(ctx context.Context, name str
 
 // UpdateSystemLogging implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemLogging(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1848,6 +1914,7 @@ func (_d ServerServiceWithSlog) UpdateSystemLogging(ctx context.Context, name st
 
 // UpdateSystemNetwork implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1883,6 +1950,7 @@ func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name st
 
 // UpdateSystemProvider implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1918,6 +1986,7 @@ func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name s
 
 // UpdateSystemStorage implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1953,6 +2022,7 @@ func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name st
 
 // UpdateSystemUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1988,6 +2058,7 @@ func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name str
 
 // ValidateBIOSProfileByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ValidateBIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

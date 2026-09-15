@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentClusterArtifactRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentClusterArtifactRepo = logger.RegisterComponent("provisioning.cluster_artifact_repo")
+
 // ClusterArtifactRepoWithSlog implements provisioning.ClusterArtifactRepo that is instrumented with slog logger.
 type ClusterArtifactRepoWithSlog struct {
 	_base                 provisioning.ClusterArtifactRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ClusterArtifactRepoWithSlogOption func(s *ClusterArtifactRepoWithSlog)
@@ -26,11 +31,21 @@ func ClusterArtifactRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ClusterArtifactRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ClusterArtifactRepoWithSlogWithComponent(component logger.Component) ClusterArtifactRepoWithSlogOption {
+	return func(_base *ClusterArtifactRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewClusterArtifactRepoWithSlog instruments an implementation of the provisioning.ClusterArtifactRepo with simple logging.
 func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, opts ...ClusterArtifactRepoWithSlogOption) ClusterArtifactRepoWithSlog {
 	this := ClusterArtifactRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentClusterArtifactRepo,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, opts 
 
 // CreateClusterArtifactFromPath implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.
 
 // GetClusterArtifactAll implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context, clusterName string) (clusterArtifacts provisioning.ClusterArtifacts, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context,
 
 // GetClusterArtifactAllNames implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Context, clusterName string) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Con
 
 // GetClusterArtifactArchiveByName implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (readCloser io.ReadCloser, size int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -187,6 +206,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx contex
 
 // GetClusterArtifactByName implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (clusterArtifact *provisioning.ClusterArtifact, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

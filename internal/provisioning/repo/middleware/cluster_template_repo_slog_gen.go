@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentClusterTemplateRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentClusterTemplateRepo = logger.RegisterComponent("provisioning.cluster_template_repo")
+
 // ClusterTemplateRepoWithSlog implements provisioning.ClusterTemplateRepo that is instrumented with slog logger.
 type ClusterTemplateRepoWithSlog struct {
 	_base                 provisioning.ClusterTemplateRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ClusterTemplateRepoWithSlogOption func(s *ClusterTemplateRepoWithSlog)
@@ -25,11 +30,21 @@ func ClusterTemplateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ClusterTemplateRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ClusterTemplateRepoWithSlogWithComponent(component logger.Component) ClusterTemplateRepoWithSlogOption {
+	return func(_base *ClusterTemplateRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewClusterTemplateRepoWithSlog instruments an implementation of the provisioning.ClusterTemplateRepo with simple logging.
 func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, opts ...ClusterTemplateRepoWithSlogOption) ClusterTemplateRepoWithSlog {
 	this := ClusterTemplateRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentClusterTemplateRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, opts 
 
 // Create implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplat
 
 // DeleteByName implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name str
 
 // GetAll implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetAll(ctx context.Context) (clusterTemplates provisioning.ClusterTemplates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -144,6 +162,7 @@ func (_d ClusterTemplateRepoWithSlog) GetAll(ctx context.Context) (clusterTempla
 
 // GetAllNames implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -178,6 +197,7 @@ func (_d ClusterTemplateRepoWithSlog) GetAllNames(ctx context.Context) (strings 
 
 // GetByName implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string) (clusterTemplate *provisioning.ClusterTemplate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -213,6 +233,7 @@ func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string
 
 // Rename implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -248,6 +269,7 @@ func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string
 
 // Update implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Update(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
