@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentWarningRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentWarningRepo = logger.RegisterComponent("warning.warning_repo")
+
 // WarningRepoWithSlog implements warning.WarningRepo that is instrumented with slog logger.
 type WarningRepoWithSlog struct {
 	_base                 warning.WarningRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type WarningRepoWithSlogOption func(s *WarningRepoWithSlog)
@@ -28,11 +33,21 @@ func WarningRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// WarningRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func WarningRepoWithSlogWithComponent(component logger.Component) WarningRepoWithSlogOption {
+	return func(_base *WarningRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewWarningRepoWithSlog instruments an implementation of the warning.WarningRepo with simple logging.
 func NewWarningRepoWithSlog(base warning.WarningRepo, opts ...WarningRepoWithSlogOption) WarningRepoWithSlog {
 	this := WarningRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentWarningRepo,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewWarningRepoWithSlog(base warning.WarningRepo, opts ...WarningRepoWithSlo
 
 // DeleteByUUID implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d WarningRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 
 // GetAll implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) GetAll(ctx context.Context) (warnings warning.Warnings, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d WarningRepoWithSlog) GetAll(ctx context.Context) (warnings warning.Warn
 
 // GetByScopeAndType implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) GetByScopeAndType(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warnings warning.Warnings, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -148,6 +166,7 @@ func (_d WarningRepoWithSlog) GetByScopeAndType(ctx context.Context, scope api.W
 
 // GetByUUID implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (warning1 *warning.Warning, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -183,6 +202,7 @@ func (_d WarningRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (warn
 
 // Update implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) Update(ctx context.Context, id uuid.UUID, w warning.Warning) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d WarningRepoWithSlog) Update(ctx context.Context, id uuid.UUID, w warnin
 
 // Upsert implements warning.WarningRepo.
 func (_d WarningRepoWithSlog) Upsert(ctx context.Context, w warning.Warning) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
