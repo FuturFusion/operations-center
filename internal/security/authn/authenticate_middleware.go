@@ -9,6 +9,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/response"
 )
 
+var componentAuthn = logger.RegisterComponent("security.authn")
+
 type MiddlewareOption func(c *middlewareConfig)
 
 type middlewareConfig struct {
@@ -44,13 +46,18 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 
 			ctx := r.Context()
 
+			// The component is only applied to the records emitted here. The
+			// context handed to the next handler keeps the component of the
+			// caller, so the whole request is not attributed to authn.
+			logCtx := logger.ContextWithComponent(ctx, componentAuthn)
+
 			// Authentication
 			for _, auther := range a.authers {
 				trusted, username, protocol, err = auther.Auth(w, r)
 				if err != nil {
 					err = response.Unauthorized(err).Render(w)
 					if err != nil {
-						slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
+						slog.WarnContext(logCtx, "Render error response failed", logger.Err(err))
 					}
 
 					return
@@ -62,16 +69,16 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			}
 
 			if cfg.isAuthenticationRequired(r) && !trusted {
-				slog.WarnContext(ctx, "Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+				slog.WarnContext(logCtx, "Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 				err = response.Unauthorized(nil).Render(w)
 				if err != nil {
-					slog.WarnContext(ctx, "Render forbidden response failed", logger.Err(err))
+					slog.WarnContext(logCtx, "Render forbidden response failed", logger.Err(err))
 				}
 
 				return
 			}
 
-			slog.DebugContext(ctx, "Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
+			slog.DebugContext(logCtx, "Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 
 			// Add authentication/authorization context data.
 			ctx = context.WithValue(ctx, CtxAuthenticated, trusted)
