@@ -110,8 +110,28 @@ With this configuration everything below `provisioning` is logged at `DEBUG`,
 logged at `WARN`.
 
 Every log record emitted by a component carries the component name in the
-`component` log attribute, which is the easiest way to find out which name to
-configure.
+`component` log attribute.
+
+A level configured for a component which is not known is rejected.
+
+The top level component names are:
+
+| Component      | Covers                                                                                                                |
+|:---------------|:----------------------------------------------------------------------------------------------------------------------|
+| `access_log`   | The access log of the REST API                                                                                        |
+| `api`          | Serving the REST API requests                                                                                         |
+| `config`       | Applying a configuration change                                                                                       |
+| `daemon`       | Startup and shutdown of the daemon, including one component per background task, e.g. `daemon.task.refresh_inventory` |
+| `image`        | The Incus image service                                                                                               |
+| `inventory`    | The inventory of the cluster resources                                                                                |
+| `provisioning` | Servers, clusters, tokens, updates, channels and cluster templates                                                    |
+| `security`     | Authentication (`security.authn`) and authorization (`security.authz`)                                                |
+| `system`       | The system settings                                                                                                   |
+| `warning`      | The warnings                                                                                                          |
+
+Below the top level, the services, repositories and adapters of a component each
+have a name of their own, e.g. `provisioning.server_service`,
+`provisioning.server_repo` or `inventory.image_server_client`.
 
 ````{dropdown} Complete list of log components
 ```{include} settings_log_components.md
