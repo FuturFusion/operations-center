@@ -1092,6 +1092,10 @@ var (
 		api.ServerDeploymentStateWaitCancel,
 		api.ServerDeploymentStateCancelled,
 	}
+
+	deploymentStatesCancelSkipCleanup = []api.ServerDeploymentState{
+		api.ServerDeploymentStateCancelled,
+	}
 )
 
 func deploymentStatesHappyPath() []api.ServerDeploymentState {

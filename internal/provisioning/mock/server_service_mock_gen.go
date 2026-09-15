@@ -73,7 +73,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			BMCServerSetLocationIndicatorByNameFunc: func(ctx context.Context, name string, active bool) error {
 //				panic("mock out the BMCServerSetLocationIndicatorByName method")
 //			},
-//			CancelDeploymentByNameFunc: func(ctx context.Context, name string) error {
+//			CancelDeploymentByNameFunc: func(ctx context.Context, name string, skipCleanup bool) error {
 //				panic("mock out the CancelDeploymentByName method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -252,7 +252,7 @@ type ServerServiceMock struct {
 	BMCServerSetLocationIndicatorByNameFunc func(ctx context.Context, name string, active bool) error
 
 	// CancelDeploymentByNameFunc mocks the CancelDeploymentByName method.
-	CancelDeploymentByNameFunc func(ctx context.Context, name string) error
+	CancelDeploymentByNameFunc func(ctx context.Context, name string, skipCleanup bool) error
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -520,6 +520,8 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// SkipCleanup is the skipCleanup argument value.
+			SkipCleanup bool
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -1536,21 +1538,23 @@ func (mock *ServerServiceMock) BMCServerSetLocationIndicatorByNameCalls() []stru
 }
 
 // CancelDeploymentByName calls CancelDeploymentByNameFunc.
-func (mock *ServerServiceMock) CancelDeploymentByName(ctx context.Context, name string) error {
+func (mock *ServerServiceMock) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error {
 	if mock.CancelDeploymentByNameFunc == nil {
 		panic("ServerServiceMock.CancelDeploymentByNameFunc: method is nil but ServerService.CancelDeploymentByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx         context.Context
+		Name        string
+		SkipCleanup bool
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:         ctx,
+		Name:        name,
+		SkipCleanup: skipCleanup,
 	}
 	mock.lockCancelDeploymentByName.Lock()
 	mock.calls.CancelDeploymentByName = append(mock.calls.CancelDeploymentByName, callInfo)
 	mock.lockCancelDeploymentByName.Unlock()
-	return mock.CancelDeploymentByNameFunc(ctx, name)
+	return mock.CancelDeploymentByNameFunc(ctx, name, skipCleanup)
 }
 
 // CancelDeploymentByNameCalls gets all the calls that were made to CancelDeploymentByName.
@@ -1558,12 +1562,14 @@ func (mock *ServerServiceMock) CancelDeploymentByName(ctx context.Context, name 
 //
 //	len(mockedServerService.CancelDeploymentByNameCalls())
 func (mock *ServerServiceMock) CancelDeploymentByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx         context.Context
+	Name        string
+	SkipCleanup bool
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx         context.Context
+		Name        string
+		SkipCleanup bool
 	}
 	mock.lockCancelDeploymentByName.RLock()
 	calls = mock.calls.CancelDeploymentByName

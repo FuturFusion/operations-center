@@ -266,7 +266,7 @@ func (_d ServerServiceWithPrometheus) BMCServerSetLocationIndicatorByName(ctx co
 }
 
 // CancelDeploymentByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -276,7 +276,7 @@ func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CancelDeploymentByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.CancelDeploymentByName(ctx, name)
+	return _d.base.CancelDeploymentByName(ctx, name, skipCleanup)
 }
 
 // DeleteByName implements provisioning.ServerService.

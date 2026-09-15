@@ -500,6 +500,7 @@ type ExprServerDeployment struct {
 	LastError              string                          `json:"last_error" expr:"last_error"`
 	FailedState            api.ServerDeploymentState       `json:"failed_state" expr:"failed_state"`
 	CancelRequested        bool                            `json:"cancel_requested" expr:"cancel_requested"`
+	CancelSkipCleanup      bool                            `json:"cancel_skip_cleanup" expr:"cancel_skip_cleanup"`
 	StartedAt              time.Time                       `json:"started_at" expr:"started_at"`
 	StateEnteredAt         time.Time                       `json:"state_entered_at" expr:"state_entered_at"`
 	LastAttemptAt          time.Time                       `json:"last_attempt_at" expr:"last_attempt_at"`
@@ -1126,6 +1127,7 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		LastError:              s.LastError,
 		FailedState:            s.FailedState,
 		CancelRequested:        s.CancelRequested,
+		CancelSkipCleanup:      s.CancelSkipCleanup,
 		StartedAt:              s.StartedAt,
 		StateEnteredAt:         s.StateEnteredAt,
 		LastAttemptAt:          s.LastAttemptAt,

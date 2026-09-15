@@ -64,6 +64,18 @@ type ServerDeploymentPost struct {
 	SkipSecureBootCertificates bool `json:"skip_secure_boot_certificates" yaml:"skip_secure_boot_certificates"`
 }
 
+// ServerDeploymentCancelPost defines the request to cancel the automated
+// deployment of a server.
+//
+// swagger:model
+type ServerDeploymentCancelPost struct {
+	// SkipCleanup requests, that the deployment is stopped without any clean up,
+	// so the installation media is left attached and the server is left running,
+	// the way a deployment, that failed on its own, is left untouched.
+	// Example: false
+	SkipCleanup bool `json:"skip_cleanup" yaml:"skip_cleanup"`
+}
+
 // ServerDeploymentState is the state, the automated deployment of a server is in.
 type ServerDeploymentState string
 

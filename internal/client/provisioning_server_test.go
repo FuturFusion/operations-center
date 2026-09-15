@@ -874,7 +874,7 @@ func serverActionRoutes(t *testing.T) []struct {
 			})
 		}},
 		{"CancelServerDeployment", func(ctx context.Context, c client.OperationsCenterClient, n string) error {
-			return c.CancelServerDeployment(ctx, n)
+			return c.CancelServerDeployment(ctx, n, false)
 		}},
 	}
 }

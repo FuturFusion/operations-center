@@ -205,7 +205,7 @@ func TestServerService_CancelDeploymentInterruptsTheStepInFlight(t *testing.T) {
 	<-world.entered
 
 	// Run test
-	err := serverSvc.CancelDeploymentByName(t.Context(), "blocked")
+	err := serverSvc.CancelDeploymentByName(t.Context(), "blocked", false)
 
 	// Assert
 	require.NoError(t, err)

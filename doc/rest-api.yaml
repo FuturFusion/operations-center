@@ -5328,6 +5328,21 @@ definitions:
                 x-go-name: Active
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerDeploymentCancelPost:
+        description: |-
+            ServerDeploymentCancelPost defines the request to cancel the automated
+            deployment of a server.
+        properties:
+            skip_cleanup:
+                description: |-
+                    SkipCleanup requests, that the deployment is stopped without any clean up,
+                    so the installation media is left attached and the server is left running,
+                    the way a deployment, that failed on its own, is left untouched.
+                example: false
+                type: boolean
+                x-go-name: SkipCleanup
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerDeploymentPost:
         description: |-
             ServerDeploymentPost defines the request to deploy IncusOS on a server using
@@ -11485,9 +11500,12 @@ paths:
                 - servers
     /1.0/provisioning/servers/{name}/:cancel-deploy:
         post:
+            consumes:
+                - application/json
             description: |-
-                Asks the deployment in progress for the server to stop. The installation
-                media is ejected and the server is powered off.
+                Asks the deployment in progress for the server to stop. By default the
+                installation media is ejected and the server is powered off, which
+                "skip_cleanup" turns off.
             operationId: server_cancel_deploy_post
             parameters:
                 - description: Name of the server
@@ -11495,6 +11513,11 @@ paths:
                   name: name
                   required: true
                   type: string
+                - description: Cancellation options
+                  in: body
+                  name: cancel
+                  schema:
+                    $ref: '#/definitions/ServerDeploymentCancelPost'
             produces:
                 - application/json
             responses:

@@ -34,7 +34,9 @@ installation media generated from the token seed and boots it, and watches the
 server until it has registered itself. The progress is followed with
 `operations-center provisioning server deploy-status <name>` and a running
 deployment is stopped with
-`operations-center provisioning server deploy-cancel <name>`.
+`operations-center provisioning server deploy-cancel <name>`, which ejects the
+installation media and powers the server off. Add `--skip-cleanup` to stop the
+deployment without that clean up, leaving the server untouched.
 
 A BIOS attribute and a key database, that are correct already, are left alone,
 so a server, that is deployed a second time, is neither power cycled nor has its
@@ -57,13 +59,13 @@ the following status details:
 | `deploying`    | `finalizing`                   | Ejecting the media and waiting for the registration               |
 | `deploying`    | `canceling`                    | Ejecting the media and powering the server off after a cancel     |
 | `unregistered` | `deployment failed`            | The deployment failed, nothing has been cleaned up                |
-| `unregistered` | `deployment canceled`          | The deployment has been canceled and cleaned up                   |
+| `unregistered` | `deployment canceled`          | The deployment has been canceled                                  |
 
 A successful deployment ends with the server registering itself, so it continues
 its life in status `pending` and eventually graduating to `ready`. A failed
 deployment is deliberately not cleaned up: the installation media stays attached
 and the power state is left as it is, so the server can be inspected through the
-BMC console.
+BMC console. A deployment canceled with `--skip-cleanup` is left the same way.
 
 More detailed information about the deployment can be found in
 [/development/server-deployment].

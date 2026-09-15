@@ -907,13 +907,15 @@ func TestServerService_CancelDeploymentByName(t *testing.T) {
 	tests := []struct {
 		name              string
 		nameArg           string
+		skipCleanupArg    bool
 		server            *provisioning.Server
 		repoGetByNameErrs queue.Errs
 		repoUpdateErrs    queue.Errs
 
-		wantCancelRequested bool
-		wantUpdateCount     int
-		assertErr           require.ErrorAssertionFunc
+		wantCancelRequested   bool
+		wantCancelSkipCleanup bool
+		wantUpdateCount       int
+		assertErr             require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
@@ -923,6 +925,17 @@ func TestServerService_CancelDeploymentByName(t *testing.T) {
 			wantCancelRequested: true,
 			wantUpdateCount:     1,
 			assertErr:           require.NoError,
+		},
+		{
+			name:           "success - skip clean up",
+			nameArg:        "one",
+			skipCleanupArg: true,
+			server:         new(activeServer()),
+
+			wantCancelRequested:   true,
+			wantCancelSkipCleanup: true,
+			wantUpdateCount:       1,
+			assertErr:             require.NoError,
 		},
 		{
 			name:    "success - the cancellation is already requested",
@@ -1023,7 +1036,7 @@ func TestServerService_CancelDeploymentByName(t *testing.T) {
 			)
 
 			// Run test
-			err := serverSvc.CancelDeploymentByName(t.Context(), tc.nameArg)
+			err := serverSvc.CancelDeploymentByName(t.Context(), tc.nameArg, tc.skipCleanupArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1042,6 +1055,7 @@ func TestServerService_CancelDeploymentByName(t *testing.T) {
 			}
 
 			require.Equal(t, tc.wantCancelRequested, stored.StatusInternal.Deployment.CancelRequested)
+			require.Equal(t, tc.wantCancelSkipCleanup, stored.StatusInternal.Deployment.CancelSkipCleanup)
 		})
 	}
 }

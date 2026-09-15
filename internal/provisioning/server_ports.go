@@ -70,7 +70,7 @@ type ServerService interface {
 	BMCApplySecureBootCertificatesByName(ctx context.Context, name string) error
 
 	DeployByName(ctx context.Context, name string, request ServerDeploymentRequest) error
-	CancelDeploymentByName(ctx context.Context, name string) error
+	CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error
 	DeploymentControlLoop(ctx context.Context, serverNameFilter *string) error
 }
 
