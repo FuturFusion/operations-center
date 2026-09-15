@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStorageVolumeRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStorageVolumeRepo = logger.RegisterComponent("inventory.storage_volume_repo")
+
 // StorageVolumeRepoWithSlog implements inventory.StorageVolumeRepo that is instrumented with slog logger.
 type StorageVolumeRepoWithSlog struct {
 	_base                 inventory.StorageVolumeRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StorageVolumeRepoWithSlogOption func(s *StorageVolumeRepoWithSlog)
@@ -27,11 +32,21 @@ func StorageVolumeRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// StorageVolumeRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StorageVolumeRepoWithSlogWithComponent(component logger.Component) StorageVolumeRepoWithSlogOption {
+	return func(_base *StorageVolumeRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStorageVolumeRepoWithSlog instruments an implementation of the inventory.StorageVolumeRepo with simple logging.
 func NewStorageVolumeRepoWithSlog(base inventory.StorageVolumeRepo, opts ...StorageVolumeRepoWithSlogOption) StorageVolumeRepoWithSlog {
 	this := StorageVolumeRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStorageVolumeRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewStorageVolumeRepoWithSlog(base inventory.StorageVolumeRepo, opts ...Stor
 
 // Create implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume inventory.StorageVolume) (storageVolume1 inventory.StorageVolume, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume in
 
 // DeleteByUUID implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 
 // DeleteWithFilter implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteWithFilter(ctx context.Context, filter
 
 // GetAllUUIDsWithFilter implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d StorageVolumeRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 
 // GetAllWithFilter implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (storageVolumes inventory.StorageVolumes, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d StorageVolumeRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 
 // GetByUUID implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageVolume inventory.StorageVolume, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d StorageVolumeRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 
 // UpdateByUUID implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) UpdateByUUID(ctx context.Context, storageVolume inventory.StorageVolume) (storageVolume1 inventory.StorageVolume, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

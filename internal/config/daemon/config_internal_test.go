@@ -394,6 +394,71 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "valid log levels per component",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						LogLevels: map[string]string{
+							"provisioning":             "DEBUG",
+							"provisioning.server_repo": "TRACE",
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "invalid log levels per component - invalid level",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						LogLevels: map[string]string{
+							"provisioning": "invalid", // invalid log level.
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "invalid log levels per component - empty level",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						LogLevels: map[string]string{
+							"provisioning": "", // empty log level.
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "invalid log levels per component - invalid component name",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						LogLevels: map[string]string{
+							"Provisioning.": "DEBUG", // invalid component name.
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {

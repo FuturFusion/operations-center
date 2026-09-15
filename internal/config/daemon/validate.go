@@ -77,7 +77,12 @@ func validate(oldCfg, newCfg config, isIncusOS bool) error {
 	// Settings configuration
 	err = logger.ValidateLevel(newCfg.Settings.LogLevel)
 	if err != nil {
-		return err
+		return domain.NewValidationErrf(`Invalid config, "settings.log_level" property is invalid: %v`, err)
+	}
+
+	err = logger.ValidateComponentLevels(newCfg.Settings.LogLevels)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
 	}
 
 	return nil

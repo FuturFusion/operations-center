@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentUpdateSourcePort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentUpdateSourcePort = logger.RegisterComponent("provisioning.update_source_port")
+
 // UpdateSourcePortWithSlog implements provisioning.UpdateSourcePort that is instrumented with slog logger.
 type UpdateSourcePortWithSlog struct {
 	_base                 provisioning.UpdateSourcePort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type UpdateSourcePortWithSlogOption func(s *UpdateSourcePortWithSlog)
@@ -26,11 +31,21 @@ func UpdateSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(er
 	}
 }
 
+// UpdateSourcePortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func UpdateSourcePortWithSlogWithComponent(component logger.Component) UpdateSourcePortWithSlogOption {
+	return func(_base *UpdateSourcePortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewUpdateSourcePortWithSlog instruments an implementation of the provisioning.UpdateSourcePort with simple logging.
 func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, opts ...UpdateSourcePortWithSlogOption) UpdateSourcePortWithSlog {
 	this := UpdateSourcePortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentUpdateSourcePort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, opts ...Upd
 
 // GetLatest implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,6 +93,7 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 
 // GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

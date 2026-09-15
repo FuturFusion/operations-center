@@ -79,10 +79,64 @@ certificates are available.
 
 ## System settings
 
-| Configuration                   | Description                                                                                                   | Value(s) | Default |
-| :---                            | :---                                                                                                          | :---     | :---    |
-| `log_level`                     | Log level for Operations Center logs                                                                          | string   | `WARN`  |
-| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string   |         |
+| Configuration                   | Description                                                                                                   | Value(s)             | Default |
+| :---                            | :---                                                                                                          | :---                 | :---    |
+| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`  |
+| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |         |
+| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |         |
+
+The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
+
+### Per component log levels
+
+`log_level` applies to the whole daemon. `log_levels` raises or lowers the
+verbosity for individual components, so a component under investigation can be
+logged verbosely while the rest of the daemon stays quiet.
+
+Component names are hierarchical, the levels are separated by dots. A level
+configured for a component applies to all of its children as well and the most
+specific configuration wins. Components without a matching entry use `log_level`.
+
+```yaml
+settings:
+  log_level: WARN
+  log_levels:
+    provisioning: DEBUG
+    provisioning.server_repo: TRACE
+```
+
+With this configuration everything below `provisioning` is logged at `DEBUG`,
+`provisioning.server_repo` is logged at `TRACE` and the rest of the daemon is
+logged at `WARN`.
+
+Every log record emitted by a component carries the component name in the
+`component` log attribute. The complete list of component names is available in
+[Log components](settings_log_components.md).
+
+A level configured for a component which is not known is rejected.
+
+The top level component names are:
+
+| Component      | Covers                                                                                                                |
+|:---------------|:----------------------------------------------------------------------------------------------------------------------|
+| `access_log`   | The access log of the REST API                                                                                        |
+| `api`          | Serving the REST API requests                                                                                         |
+| `config`       | Applying a configuration change                                                                                       |
+| `daemon`       | Startup and shutdown of the daemon, including one component per background task, e.g. `daemon.task.refresh_inventory` |
+| `image`        | The Incus image service                                                                                               |
+| `inventory`    | The inventory of the cluster resources                                                                                |
+| `provisioning` | Servers, clusters, tokens, updates, channels and cluster templates                                                    |
+| `security`     | Authentication (`security.authn`) and authorization (`security.authz`)                                                |
+| `system`       | The system settings                                                                                                   |
+| `warning`      | The warnings                                                                                                          |
+
+Below the top level, the services, repositories and adapters of a component each
+have a name of their own, e.g. `provisioning.server_service`,
+`provisioning.server_repo` or `inventory.image_server_client`.
+
+Changes to `log_levels` take effect immediately, a restart is not required. The
+`--verbose` and `--debug` command line flags of `operations-centerd` only govern
+the default log level, the per component log levels always apply.
 
 ### Server registration scriptlet
 

@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProvisioningServerService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProvisioningServerService = logger.RegisterComponent("system.provisioning_server_service")
+
 // ProvisioningServerServiceWithSlog implements system.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
 	_base                 system.ProvisioningServerService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProvisioningServerServiceWithSlogOption func(s *ProvisioningServerServiceWithSlog)
@@ -26,11 +31,21 @@ func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// ProvisioningServerServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProvisioningServerServiceWithSlogWithComponent(component logger.Component) ProvisioningServerServiceWithSlogOption {
+	return func(_base *ProvisioningServerServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProvisioningServerServiceWithSlog instruments an implementation of the system.ProvisioningServerService with simple logging.
 func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProvisioningServerService,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService,
 
 // GetAll implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers
 
 // GetAllWithFilter implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -111,6 +128,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllWithFilter(ctx context.Context
 
 // GetSystemProvider implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 
 // RestartApplication implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ProvisioningServerServiceWithSlog) RestartApplication(ctx context.Conte
 
 // UpdateSystemProvider implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

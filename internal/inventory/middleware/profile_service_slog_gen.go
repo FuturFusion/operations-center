@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProfileService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProfileService = logger.RegisterComponent("inventory.profile_service")
+
 // ProfileServiceWithSlog implements inventory.ProfileService that is instrumented with slog logger.
 type ProfileServiceWithSlog struct {
 	_base                 inventory.ProfileService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProfileServiceWithSlogOption func(s *ProfileServiceWithSlog)
@@ -28,11 +33,21 @@ func ProfileServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 	}
 }
 
+// ProfileServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProfileServiceWithSlogWithComponent(component logger.Component) ProfileServiceWithSlogOption {
+	return func(_base *ProfileServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProfileServiceWithSlog instruments an implementation of the inventory.ProfileService with simple logging.
 func NewProfileServiceWithSlog(base inventory.ProfileService, opts ...ProfileServiceWithSlogOption) ProfileServiceWithSlog {
 	this := ProfileServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProfileService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewProfileServiceWithSlog(base inventory.ProfileService, opts ...ProfileSer
 
 // GetAllUUIDsWithFilter implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d ProfileServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 
 // GetAllWithFilter implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 
 // GetByUUID implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (profile inventory.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d ProfileServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 
 // ResyncByName implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d ProfileServiceWithSlog) ResyncByName(ctx context.Context, clusterName s
 
 // ResyncByUUID implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d ProfileServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 
 // SyncCluster implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentUpdateRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentUpdateRepo = logger.RegisterComponent("provisioning.update_repo")
+
 // UpdateRepoWithSlog implements provisioning.UpdateRepo that is instrumented with slog logger.
 type UpdateRepoWithSlog struct {
 	_base                 provisioning.UpdateRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type UpdateRepoWithSlogOption func(s *UpdateRepoWithSlog)
@@ -27,11 +32,21 @@ func UpdateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) b
 	}
 }
 
+// UpdateRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func UpdateRepoWithSlogWithComponent(component logger.Component) UpdateRepoWithSlogOption {
+	return func(_base *UpdateRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewUpdateRepoWithSlog instruments an implementation of the provisioning.UpdateRepo with simple logging.
 func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, opts ...UpdateRepoWithSlogOption) UpdateRepoWithSlog {
 	this := UpdateRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentUpdateRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, opts ...UpdateRepoWithS
 
 // AssignChannels implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) AssignChannels(ctx context.Context, id uuid.UUID, channelNames []string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d UpdateRepoWithSlog) AssignChannels(ctx context.Context, id uuid.UUID, c
 
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (er
 
 // GetAll implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.U
 
 // GetAllUUIDs implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -180,6 +199,7 @@ func (_d UpdateRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID
 
 // GetAllUUIDsWithFilter implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -215,6 +235,7 @@ func (_d UpdateRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter p
 
 // GetAllWithFilter implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -250,6 +271,7 @@ func (_d UpdateRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 
 // GetByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -285,6 +307,7 @@ func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (updat
 
 // GetUpdatesByAssignedChannelName implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -321,6 +344,7 @@ func (_d UpdateRepoWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context
 
 // Upsert implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) Upsert(ctx context.Context, update provisioning.Update) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

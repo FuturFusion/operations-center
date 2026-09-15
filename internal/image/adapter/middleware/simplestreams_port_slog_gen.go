@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentSimplestreamsPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentSimplestreamsPort = logger.RegisterComponent("image.simplestreams_port")
+
 // SimplestreamsPortWithSlog implements image.SimplestreamsPort that is instrumented with slog logger.
 type SimplestreamsPortWithSlog struct {
 	_base                 image.SimplestreamsPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type SimplestreamsPortWithSlogOption func(s *SimplestreamsPortWithSlog)
@@ -26,11 +31,21 @@ func SimplestreamsPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// SimplestreamsPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func SimplestreamsPortWithSlogWithComponent(component logger.Component) SimplestreamsPortWithSlogOption {
+	return func(_base *SimplestreamsPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewSimplestreamsPortWithSlog instruments an implementation of the image.SimplestreamsPort with simple logging.
 func NewSimplestreamsPortWithSlog(base image.SimplestreamsPort, opts ...SimplestreamsPortWithSlogOption) SimplestreamsPortWithSlog {
 	this := SimplestreamsPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentSimplestreamsPort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewSimplestreamsPortWithSlog(base image.SimplestreamsPort, opts ...Simplest
 
 // GetFile implements image.SimplestreamsPort.
 func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.IncusImageSource, path string) (readCloser io.ReadCloser, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.In
 
 // GetImageList implements image.SimplestreamsPort.
 func (_d SimplestreamsPortWithSlog) GetImageList(ctx context.Context, source image.IncusImageSource) (incusImages image.IncusImages, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

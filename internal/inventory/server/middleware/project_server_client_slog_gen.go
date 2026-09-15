@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProjectServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProjectServerClient = logger.RegisterComponent("inventory.project_server_client")
+
 // ProjectServerClientWithSlog implements inventory.ProjectServerClient that is instrumented with slog logger.
 type ProjectServerClientWithSlog struct {
 	_base                 inventory.ProjectServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProjectServerClientWithSlogOption func(s *ProjectServerClientWithSlog)
@@ -28,11 +33,21 @@ func ProjectServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ProjectServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProjectServerClientWithSlogWithComponent(component logger.Component) ProjectServerClientWithSlogOption {
+	return func(_base *ProjectServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProjectServerClientWithSlog instruments an implementation of the inventory.ProjectServerClient with simple logging.
 func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, opts ...ProjectServerClientWithSlogOption) ProjectServerClientWithSlog {
 	this := ProjectServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProjectServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, opts ...
 
 // GetProjectByName implements inventory.ProjectServerClient.
 func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -80,6 +96,7 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 
 // GetProjects implements inventory.ProjectServerClient.
 func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

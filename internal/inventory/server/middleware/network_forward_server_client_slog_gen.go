@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkForwardServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkForwardServerClient = logger.RegisterComponent("inventory.network_forward_server_client")
+
 // NetworkForwardServerClientWithSlog implements inventory.NetworkForwardServerClient that is instrumented with slog logger.
 type NetworkForwardServerClientWithSlog struct {
 	_base                 inventory.NetworkForwardServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkForwardServerClientWithSlogOption func(s *NetworkForwardServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkForwardServerClientWithSlogWithInformativeErrFunc(isInformativeErrFu
 	}
 }
 
+// NetworkForwardServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkForwardServerClientWithSlogWithComponent(component logger.Component) NetworkForwardServerClientWithSlogOption {
+	return func(_base *NetworkForwardServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkForwardServerClientWithSlog instruments an implementation of the inventory.NetworkForwardServerClient with simple logging.
 func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, opts ...NetworkForwardServerClientWithSlogOption) NetworkForwardServerClientWithSlog {
 	this := NetworkForwardServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkForwardServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerCl
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -82,6 +98,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

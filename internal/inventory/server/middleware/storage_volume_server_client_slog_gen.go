@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStorageVolumeServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStorageVolumeServerClient = logger.RegisterComponent("inventory.storage_volume_server_client")
+
 // StorageVolumeServerClientWithSlog implements inventory.StorageVolumeServerClient that is instrumented with slog logger.
 type StorageVolumeServerClientWithSlog struct {
 	_base                 inventory.StorageVolumeServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StorageVolumeServerClientWithSlogOption func(s *StorageVolumeServerClientWithSlog)
@@ -28,11 +33,21 @@ func StorageVolumeServerClientWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// StorageVolumeServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StorageVolumeServerClientWithSlogWithComponent(component logger.Component) StorageVolumeServerClientWithSlogOption {
+	return func(_base *StorageVolumeServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStorageVolumeServerClientWithSlog instruments an implementation of the inventory.StorageVolumeServerClient with simple logging.
 func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, opts ...StorageVolumeServerClientWithSlogOption) StorageVolumeServerClientWithSlog {
 	this := StorageVolumeServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStorageVolumeServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -83,6 +99,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

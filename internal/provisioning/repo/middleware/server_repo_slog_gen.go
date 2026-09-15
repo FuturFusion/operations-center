@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentServerRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentServerRepo = logger.RegisterComponent("provisioning.server_repo")
+
 // ServerRepoWithSlog implements provisioning.ServerRepo that is instrumented with slog logger.
 type ServerRepoWithSlog struct {
 	_base                 provisioning.ServerRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ServerRepoWithSlogOption func(s *ServerRepoWithSlog)
@@ -25,11 +30,21 @@ func ServerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) b
 	}
 }
 
+// ServerRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ServerRepoWithSlogWithComponent(component logger.Component) ServerRepoWithSlogOption {
+	return func(_base *ServerRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewServerRepoWithSlog instruments an implementation of the provisioning.ServerRepo with simple logging.
 func NewServerRepoWithSlog(base provisioning.ServerRepo, opts ...ServerRepoWithSlogOption) ServerRepoWithSlog {
 	this := ServerRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentServerRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewServerRepoWithSlog(base provisioning.ServerRepo, opts ...ServerRepoWithS
 
 // Create implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Server) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 
 // DeleteByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 
 // GetAll implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -144,6 +162,7 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 
 // GetAllNames implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -178,6 +197,7 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 
 // GetAllNamesWithActiveDeployment implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllNamesWithActiveDeployment(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -212,6 +232,7 @@ func (_d ServerRepoWithSlog) GetAllNamesWithActiveDeployment(ctx context.Context
 
 // GetAllNamesWithFilter implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -247,6 +268,7 @@ func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter p
 
 // GetAllWithFilter implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -282,6 +304,7 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 
 // GetByCertificate implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePEM string) (server *provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -317,6 +340,7 @@ func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePE
 
 // GetByMachineID implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByMachineID(ctx context.Context, machineID string) (server *provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -352,6 +376,7 @@ func (_d ServerRepoWithSlog) GetByMachineID(ctx context.Context, machineID strin
 
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -387,6 +412,7 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 
 // GetBySystemUUID implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetBySystemUUID(ctx context.Context, systemUUID string) (server *provisioning.Server, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -422,6 +448,7 @@ func (_d ServerRepoWithSlog) GetBySystemUUID(ctx context.Context, systemUUID str
 
 // Rename implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -457,6 +484,7 @@ func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 
 // Update implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Update(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

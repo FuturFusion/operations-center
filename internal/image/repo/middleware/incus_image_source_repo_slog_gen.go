@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentIncusImageSourceRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentIncusImageSourceRepo = logger.RegisterComponent("image.incus_image_source_repo")
+
 // IncusImageSourceRepoWithSlog implements image.IncusImageSourceRepo that is instrumented with slog logger.
 type IncusImageSourceRepoWithSlog struct {
 	_base                 image.IncusImageSourceRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type IncusImageSourceRepoWithSlogOption func(s *IncusImageSourceRepoWithSlog)
@@ -25,11 +30,21 @@ func IncusImageSourceRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 	}
 }
 
+// IncusImageSourceRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func IncusImageSourceRepoWithSlogWithComponent(component logger.Component) IncusImageSourceRepoWithSlogOption {
+	return func(_base *IncusImageSourceRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewIncusImageSourceRepoWithSlog instruments an implementation of the image.IncusImageSourceRepo with simple logging.
 func NewIncusImageSourceRepoWithSlog(base image.IncusImageSourceRepo, opts ...IncusImageSourceRepoWithSlogOption) IncusImageSourceRepoWithSlog {
 	this := IncusImageSourceRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentIncusImageSourceRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewIncusImageSourceRepoWithSlog(base image.IncusImageSourceRepo, opts ...In
 
 // Create implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) Create(ctx context.Context, source image.IncusImageSource) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d IncusImageSourceRepoWithSlog) Create(ctx context.Context, source image.
 
 // DeleteByName implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d IncusImageSourceRepoWithSlog) DeleteByName(ctx context.Context, name st
 
 // GetAll implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) GetAll(ctx context.Context) (incusImageSources image.IncusImageSources, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -144,6 +162,7 @@ func (_d IncusImageSourceRepoWithSlog) GetAll(ctx context.Context) (incusImageSo
 
 // GetAllNames implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -178,6 +197,7 @@ func (_d IncusImageSourceRepoWithSlog) GetAllNames(ctx context.Context) (strings
 
 // GetByName implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) GetByName(ctx context.Context, name string) (incusImageSource *image.IncusImageSource, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -213,6 +233,7 @@ func (_d IncusImageSourceRepoWithSlog) GetByName(ctx context.Context, name strin
 
 // Update implements image.IncusImageSourceRepo.
 func (_d IncusImageSourceRepoWithSlog) Update(ctx context.Context, source image.IncusImageSource) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

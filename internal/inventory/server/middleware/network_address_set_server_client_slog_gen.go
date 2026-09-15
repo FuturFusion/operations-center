@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkAddressSetServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkAddressSetServerClient = logger.RegisterComponent("inventory.network_address_set_server_client")
+
 // NetworkAddressSetServerClientWithSlog implements inventory.NetworkAddressSetServerClient that is instrumented with slog logger.
 type NetworkAddressSetServerClientWithSlog struct {
 	_base                 inventory.NetworkAddressSetServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkAddressSetServerClientWithSlogOption func(s *NetworkAddressSetServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkAddressSetServerClientWithSlogWithInformativeErrFunc(isInformativeEr
 	}
 }
 
+// NetworkAddressSetServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkAddressSetServerClientWithSlogWithComponent(component logger.Component) NetworkAddressSetServerClientWithSlogOption {
+	return func(_base *NetworkAddressSetServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkAddressSetServerClientWithSlog instruments an implementation of the inventory.NetworkAddressSetServerClient with simple logging.
 func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, opts ...NetworkAddressSetServerClientWithSlogOption) NetworkAddressSetServerClientWithSlog {
 	this := NetworkAddressSetServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkAddressSetServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetSe
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) (networkAddressSets []api.NetworkAddressSet, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -116,6 +133,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 
 // HasExtension implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -3,8 +3,23 @@
 
 package {{ .PkgName }}
 
+{{- /* context.Background() is only used for methods which have neither a context nor an *http.Request to take one from. Its import is registered only if some method needs it, since a method taking a context already pulls it in through its own signature. */ -}}
+{{- range $wrapper := .Interfaces }}
+	{{- range $method := $wrapper.Methods }}
+		{{- if not $method.AcceptsContext }}
+			{{- $hasHTTPRequest := false }}
+			{{- range $param := $method.Params }}
+				{{- if eq $param.TypeString "*http.Request" }}{{ $hasHTTPRequest = true }}{{ end }}
+			{{- end }}
+			{{- if not $hasHTTPRequest }}{{ $_ := $.Registry.AddImport "context" "context" }}{{ end }}
+		{{- end }}
+	{{- end }}
+{{- end }}
 {{- $_ := .Registry.AddImport "slog" "log/slog" }}
 {{- $_ := .Registry.AddImport "logger" "github.com/FuturFusion/operations-center/internal/util/logger" }}
+
+{{- /* The component prefix is derived from the package the interfaces are declared in, e.g. "provisioning" or "provisioning.adapter.scriptlet". */ -}}
+{{$componentPrefix := $.Registry.SrcPkg.PkgPath | trimPrefix "github.com/FuturFusion/operations-center/internal/" | replaceAll "/" "."}}
 
 {{$srcPkgQualifier := $.SrcPkgQualifier}}
 {{- if not (index .TemplateData "skip-ensure") }}
@@ -24,11 +39,18 @@ import (
 {{ range $i, $wrapper := .Interfaces }}
 
 {{ $decorator := (or .TemplateData.DecoratorName (printf "%sWithSlog" $wrapper.Name)) }}
+{{ $componentVar := printf "component%s" $wrapper.Name }}
+{{ $component := (or .TemplateData.component (printf "%s.%s" $componentPrefix ($wrapper.Name | snakecase))) }}
+
+// {{$componentVar}} identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var {{$componentVar}} = logger.RegisterComponent("{{$component}}")
 
 // {{$decorator}} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }} that is instrumented with slog logger.
 type {{$decorator}} struct {
 	_base {{ $srcPkgQualifier }}{{ $wrapper.Name }}
 	_isInformativeErrFunc func(error) bool
+	_component logger.Component
 }
 
 type {{$decorator}}Option func(s *{{$decorator}})
@@ -39,11 +61,21 @@ func {{$decorator}}WithInformativeErrFunc(isInformativeErrFunc func(error) bool)
 	}
 }
 
+// {{$decorator}}WithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func {{$decorator}}WithComponent(component logger.Component) {{$decorator}}Option {
+	return func(_base *{{$decorator}}) {
+		_base._component = component
+	}
+}
+
 // New{{$decorator}} instruments an implementation of the {{ $srcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
 func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{{$decorator}}Option) {{$decorator}} {
 	this := {{$decorator}}{
 		_base: base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component: {{$componentVar}},
 	}
 
 	for _, opt := range opts {
@@ -57,34 +89,46 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{
 
 	// {{$method.Name}} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }}.
 	func (_d {{$decorator}}) {{.Name}}({{.ArgList}}) ({{.ReturnArgList}}) {
-		{{- if not $method.AcceptsContext }}
-		ctx := context.Background()
+		{{- $httpRequestParam := "" }}
+		{{- range $param := $method.Params }}
+			{{- if eq $param.TypeString "*http.Request" }}{{ $httpRequestParam = $param.Name }}{{ end }}
+		{{- end }}
+		{{- if $method.AcceptsContext }}
+		ctx = logger.ContextWithComponent(ctx, _d._component)
+		{{- else if $httpRequestParam }}
+		ctx := logger.ContextWithComponent({{$httpRequestParam}}.Context(), _d._component)
+		{{$httpRequestParam}} = {{$httpRequestParam}}.WithContext(ctx)
+		{{- else }}
+		ctx := logger.ContextWithComponent(context.Background(), _d._component)
 		{{- end }}
 		log := slog.With()
 		{{- if gt ($method.Params | len) 0 }}
 			if slog.Default().Enabled(ctx, logger.LevelTrace) {
 				log = log.With(
-					{{range $param := $method.Params}}
-						{{- if eq $param.TypeString "string" -}}
-						slog.String("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "int" -}}
-						slog.Int("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "int64" -}}
-						slog.Int64("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "uint64" -}}
-						slog.Uint64("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "float64" -}}
-						slog.Float64("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "bool" -}}
-						slog.Bool("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "time.Duration" -}}
-						slog.Duration("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else if eq $param.TypeString "time.Time" -}}
-						slog.Time("{{ $param.Name }}", {{ $param.Name }}),
-						{{- else -}}
-						slog.Any("{{ $param.Name }}", {{ $param.Name }}),
-						{{- end}}
-					{{end}}
+					{{- range $param := $method.Params}}
+					{{- if eq $param.TypeString "string"}}
+					slog.String("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "int"}}
+					slog.Int("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "int64"}}
+					slog.Int64("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "uint64"}}
+					slog.Uint64("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "float64"}}
+					slog.Float64("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "bool"}}
+					slog.Bool("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "time.Duration"}}
+					slog.Duration("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "time.Time"}}
+					slog.Time("{{ $param.Name }}", {{ $param.Name }}),
+					{{- else if eq $param.TypeString "*http.Request"}}
+					slog.String("{{ $param.Name }}", {{ $param.Name }}.Method+" "+{{ $param.Name }}.URL.RequestURI()),
+					{{- else if eq $param.TypeString "http.ResponseWriter"}}
+					{{- else}}
+					slog.Any("{{ $param.Name }}", {{ $param.Name }}),
+					{{- end}}
+					{{- end}}
 				)
 			}
 		{{end -}}
@@ -95,26 +139,29 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{
 				if slog.Default().Enabled(ctx, logger.LevelTrace) {
 					log = slog.With(
 						{{- range $param := $method.Returns}}
-							{{if eq $param.TypeString "string" -}}
-							slog.String("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "int" -}}
-							slog.Int("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "int64" -}}
-							slog.Int64("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "uint64" -}}
-							slog.Uint64("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "float64" -}}
-							slog.Float64("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "bool" -}}
-							slog.Bool("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "time.Duration" -}}
-							slog.Duration("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else if eq $param.TypeString "time.Time" -}}
-							slog.Time("{{ $param.Name }}", {{ $param.Name }}),
-							{{- else -}}
-							slog.Any("{{ $param.Name }}", {{ $param.Name }}),
-							{{- end -}}
-						{{end}}
+						{{- if eq $param.TypeString "string"}}
+						slog.String("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "int"}}
+						slog.Int("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "int64"}}
+						slog.Int64("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "uint64"}}
+						slog.Uint64("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "float64"}}
+						slog.Float64("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "bool"}}
+						slog.Bool("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "time.Duration"}}
+						slog.Duration("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "time.Time"}}
+						slog.Time("{{ $param.Name }}", {{ $param.Name }}),
+						{{- else if eq $param.TypeString "*http.Request"}}
+						slog.String("{{ $param.Name }}", {{ $param.Name }}.Method+" "+{{ $param.Name }}.URL.RequestURI()),
+						{{- else if eq $param.TypeString "http.ResponseWriter"}}
+						{{- else}}
+						slog.Any("{{ $param.Name }}", {{ $param.Name }}),
+						{{- end}}
+						{{- end}}
 					)
 				} else {
 					{{- if $method.ReturnsError }}

@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentInventoryAggregateService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentInventoryAggregateService = logger.RegisterComponent("inventory.inventory_aggregate_service")
+
 // InventoryAggregateServiceWithSlog implements inventory.InventoryAggregateService that is instrumented with slog logger.
 type InventoryAggregateServiceWithSlog struct {
 	_base                 inventory.InventoryAggregateService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type InventoryAggregateServiceWithSlogOption func(s *InventoryAggregateServiceWithSlog)
@@ -25,11 +30,21 @@ func InventoryAggregateServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// InventoryAggregateServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func InventoryAggregateServiceWithSlogWithComponent(component logger.Component) InventoryAggregateServiceWithSlogOption {
+	return func(_base *InventoryAggregateServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewInventoryAggregateServiceWithSlog instruments an implementation of the inventory.InventoryAggregateService with simple logging.
 func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateService, opts ...InventoryAggregateServiceWithSlogOption) InventoryAggregateServiceWithSlog {
 	this := InventoryAggregateServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentInventoryAggregateService,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateServi
 
 // GetAllWithFilter implements inventory.InventoryAggregateService.
 func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

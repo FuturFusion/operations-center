@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStorageBucketRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStorageBucketRepo = logger.RegisterComponent("inventory.storage_bucket_repo")
+
 // StorageBucketRepoWithSlog implements inventory.StorageBucketRepo that is instrumented with slog logger.
 type StorageBucketRepoWithSlog struct {
 	_base                 inventory.StorageBucketRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StorageBucketRepoWithSlogOption func(s *StorageBucketRepoWithSlog)
@@ -27,11 +32,21 @@ func StorageBucketRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// StorageBucketRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StorageBucketRepoWithSlogWithComponent(component logger.Component) StorageBucketRepoWithSlogOption {
+	return func(_base *StorageBucketRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStorageBucketRepoWithSlog instruments an implementation of the inventory.StorageBucketRepo with simple logging.
 func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, opts ...StorageBucketRepoWithSlogOption) StorageBucketRepoWithSlog {
 	this := StorageBucketRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStorageBucketRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, opts ...Stor
 
 // Create implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket inventory.StorageBucket) (storageBucket1 inventory.StorageBucket, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 
 // DeleteByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 
 // DeleteWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d StorageBucketRepoWithSlog) DeleteWithFilter(ctx context.Context, filter
 
 // GetAllUUIDsWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 
 // GetAllWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (storageBuckets inventory.StorageBuckets, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 
 // GetByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageBucket inventory.StorageBucket, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 
 // UpdateByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) UpdateByUUID(ctx context.Context, storageBucket inventory.StorageBucket) (storageBucket1 inventory.StorageBucket, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

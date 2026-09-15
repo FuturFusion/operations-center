@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkACLServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkACLServerClient = logger.RegisterComponent("inventory.network_acl_server_client")
+
 // NetworkACLServerClientWithSlog implements inventory.NetworkACLServerClient that is instrumented with slog logger.
 type NetworkACLServerClientWithSlog struct {
 	_base                 inventory.NetworkACLServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkACLServerClientWithSlogOption func(s *NetworkACLServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkACLServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc f
 	}
 }
 
+// NetworkACLServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkACLServerClientWithSlogWithComponent(component logger.Component) NetworkACLServerClientWithSlogOption {
+	return func(_base *NetworkACLServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkACLServerClientWithSlog instruments an implementation of the inventory.NetworkACLServerClient with simple logging.
 func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, opts ...NetworkACLServerClientWithSlogOption) NetworkACLServerClientWithSlog {
 	this := NetworkACLServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkACLServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, op
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 
 // GetNetworkACLs implements inventory.NetworkACLServerClient.
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) (networkACLs []api.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

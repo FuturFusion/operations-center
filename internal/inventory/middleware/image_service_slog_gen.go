@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageService = logger.RegisterComponent("inventory.image_service")
+
 // ImageServiceWithSlog implements inventory.ImageService that is instrumented with slog logger.
 type ImageServiceWithSlog struct {
 	_base                 inventory.ImageService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageServiceWithSlogOption func(s *ImageServiceWithSlog)
@@ -28,11 +33,21 @@ func ImageServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 	}
 }
 
+// ImageServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageServiceWithSlogWithComponent(component logger.Component) ImageServiceWithSlogOption {
+	return func(_base *ImageServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageServiceWithSlog instruments an implementation of the inventory.ImageService with simple logging.
 func NewImageServiceWithSlog(base inventory.ImageService, opts ...ImageServiceWithSlogOption) ImageServiceWithSlog {
 	this := ImageServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewImageServiceWithSlog(base inventory.ImageService, opts ...ImageServiceWi
 
 // GetAllUUIDsWithFilter implements inventory.ImageService.
 func (_d ImageServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d ImageServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter
 
 // GetAllWithFilter implements inventory.ImageService.
 func (_d ImageServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (images inventory.Images, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d ImageServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inve
 
 // GetByUUID implements inventory.ImageService.
 func (_d ImageServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (image inventory.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d ImageServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (ima
 
 // ResyncByName implements inventory.ImageService.
 func (_d ImageServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d ImageServiceWithSlog) ResyncByName(ctx context.Context, clusterName str
 
 // ResyncByUUID implements inventory.ImageService.
 func (_d ImageServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d ImageServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (
 
 // SyncCluster implements inventory.ImageService.
 func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

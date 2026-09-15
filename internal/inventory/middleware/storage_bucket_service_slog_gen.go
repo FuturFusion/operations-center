@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStorageBucketService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStorageBucketService = logger.RegisterComponent("inventory.storage_bucket_service")
+
 // StorageBucketServiceWithSlog implements inventory.StorageBucketService that is instrumented with slog logger.
 type StorageBucketServiceWithSlog struct {
 	_base                 inventory.StorageBucketService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StorageBucketServiceWithSlogOption func(s *StorageBucketServiceWithSlog)
@@ -28,11 +33,21 @@ func StorageBucketServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 	}
 }
 
+// StorageBucketServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StorageBucketServiceWithSlogWithComponent(component logger.Component) StorageBucketServiceWithSlogOption {
+	return func(_base *StorageBucketServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStorageBucketServiceWithSlog instruments an implementation of the inventory.StorageBucketService with simple logging.
 func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, opts ...StorageBucketServiceWithSlogOption) StorageBucketServiceWithSlog {
 	this := StorageBucketServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStorageBucketService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, opts .
 
 // GetAllUUIDsWithFilter implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d StorageBucketServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context
 
 // GetAllWithFilter implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (storageBuckets inventory.StorageBuckets, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 
 // GetByUUID implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageBucket inventory.StorageBucket, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d StorageBucketServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UU
 
 // ResyncByName implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByName(ctx context.Context, cluster
 
 // ResyncByUUID implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid
 
 // SyncCluster implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

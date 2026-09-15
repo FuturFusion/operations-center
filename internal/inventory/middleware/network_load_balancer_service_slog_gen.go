@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkLoadBalancerService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkLoadBalancerService = logger.RegisterComponent("inventory.network_load_balancer_service")
+
 // NetworkLoadBalancerServiceWithSlog implements inventory.NetworkLoadBalancerService that is instrumented with slog logger.
 type NetworkLoadBalancerServiceWithSlog struct {
 	_base                 inventory.NetworkLoadBalancerService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkLoadBalancerServiceWithSlogOption func(s *NetworkLoadBalancerServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkLoadBalancerServiceWithSlogWithInformativeErrFunc(isInformativeErrFu
 	}
 }
 
+// NetworkLoadBalancerServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkLoadBalancerServiceWithSlogWithComponent(component logger.Component) NetworkLoadBalancerServiceWithSlogOption {
+	return func(_base *NetworkLoadBalancerServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkLoadBalancerServiceWithSlog instruments an implementation of the inventory.NetworkLoadBalancerService with simple logging.
 func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerService, opts ...NetworkLoadBalancerServiceWithSlogOption) NetworkLoadBalancerServiceWithSlog {
 	this := NetworkLoadBalancerServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkLoadBalancerService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerSer
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.C
 
 // GetAllWithFilter implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Contex
 
 // GetByUUID implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id u
 
 // ResyncByName implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByName(ctx context.Context, c
 
 // ResyncByUUID implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, i
 
 // SyncCluster implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentUpdateFilesRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentUpdateFilesRepo = logger.RegisterComponent("provisioning.update_files_repo")
+
 // UpdateFilesRepoWithSlog implements provisioning.UpdateFilesRepo that is instrumented with slog logger.
 type UpdateFilesRepoWithSlog struct {
 	_base                 provisioning.UpdateFilesRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type UpdateFilesRepoWithSlogOption func(s *UpdateFilesRepoWithSlog)
@@ -28,11 +33,21 @@ func UpdateFilesRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 	}
 }
 
+// UpdateFilesRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func UpdateFilesRepoWithSlogWithComponent(component logger.Component) UpdateFilesRepoWithSlogOption {
+	return func(_base *UpdateFilesRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewUpdateFilesRepoWithSlog instruments an implementation of the provisioning.UpdateFilesRepo with simple logging.
 func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, opts ...UpdateFilesRepoWithSlogOption) UpdateFilesRepoWithSlog {
 	this := UpdateFilesRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentUpdateFilesRepo,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, opts ...Updat
 
 // CleanupAll implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,6 +93,7 @@ func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 
 // CreateFromArchive implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 
 // Delete implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisioning.Update) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 
 // Exists implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Exists(ctx context.Context, update provisioning.Update, filename string) (b bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -182,6 +201,7 @@ func (_d UpdateFilesRepoWithSlog) Exists(ctx context.Context, update provisionin
 
 // Get implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, size int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -219,6 +239,7 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 
 // PruneFiles implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) PruneFiles(ctx context.Context, update provisioning.Update) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -253,6 +274,7 @@ func (_d UpdateFilesRepoWithSlog) PruneFiles(ctx context.Context, update provisi
 
 // Put implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (commitFunc provisioning.CommitFunc, cancelFunc provisioning.CancelFunc, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -291,6 +313,7 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 
 // UsageInformation implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

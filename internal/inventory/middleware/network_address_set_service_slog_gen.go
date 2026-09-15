@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkAddressSetService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkAddressSetService = logger.RegisterComponent("inventory.network_address_set_service")
+
 // NetworkAddressSetServiceWithSlog implements inventory.NetworkAddressSetService that is instrumented with slog logger.
 type NetworkAddressSetServiceWithSlog struct {
 	_base                 inventory.NetworkAddressSetService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkAddressSetServiceWithSlogOption func(s *NetworkAddressSetServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkAddressSetServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc
 	}
 }
 
+// NetworkAddressSetServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkAddressSetServiceWithSlogWithComponent(component logger.Component) NetworkAddressSetServiceWithSlogOption {
+	return func(_base *NetworkAddressSetServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkAddressSetServiceWithSlog instruments an implementation of the inventory.NetworkAddressSetService with simple logging.
 func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService, opts ...NetworkAddressSetServiceWithSlogOption) NetworkAddressSetServiceWithSlog {
 	this := NetworkAddressSetServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkAddressSetService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService
 
 // GetAllUUIDsWithFilter implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Con
 
 // GetAllWithFilter implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (networkAddressSets inventory.NetworkAddressSets, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context,
 
 // GetByUUID implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkAddressSet inventory.NetworkAddressSet, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uui
 
 // ResyncByName implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByName(ctx context.Context, clu
 
 // ResyncByUUID implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id 
 
 // SyncCluster implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -16,10 +16,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentTokenService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentTokenService = logger.RegisterComponent("provisioning.token_service")
+
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.
 type TokenServiceWithSlog struct {
 	_base                 provisioning.TokenService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type TokenServiceWithSlogOption func(s *TokenServiceWithSlog)
@@ -30,11 +35,21 @@ func TokenServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 	}
 }
 
+// TokenServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func TokenServiceWithSlogWithComponent(component logger.Component) TokenServiceWithSlogOption {
+	return func(_base *TokenServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewTokenServiceWithSlog instruments an implementation of the provisioning.TokenService with simple logging.
 func NewTokenServiceWithSlog(base provisioning.TokenService, opts ...TokenServiceWithSlogOption) TokenServiceWithSlog {
 	this := TokenServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentTokenService,
 	}
 
 	for _, opt := range opts {
@@ -46,6 +61,7 @@ func NewTokenServiceWithSlog(base provisioning.TokenService, opts ...TokenServic
 
 // Consume implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (channel string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (chann
 
 // Create implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -116,6 +133,7 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 
 // CreateTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (tokenSeed provisioning.TokenSeed, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -151,6 +169,7 @@ func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedCon
 
 // DeleteByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -185,6 +204,7 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 
 // DeleteTokenSeedByName implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -220,6 +240,7 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 
 // GetAll implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tokens, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -254,6 +275,7 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 
 // GetAllUUIDs implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -288,6 +310,7 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 
 // GetByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -323,6 +346,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 
 // GetCompressedTokenImageFromTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -362,6 +386,7 @@ func (_d TokenServiceWithSlog) GetCompressedTokenImageFromTokenSeed(ctx context.
 
 // GetPreSeededImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (readCloser io.ReadCloser, filename string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -399,6 +424,7 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 
 // GetPreparedTokenSeedImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetPreparedTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (tokenImage *provisioning.TokenImage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -439,6 +465,7 @@ func (_d TokenServiceWithSlog) GetPreparedTokenSeedImage(ctx context.Context, id
 
 // GetSeekableTokenImageFromTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (tokenImage *provisioning.TokenImage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -478,6 +505,7 @@ func (_d TokenServiceWithSlog) GetSeekableTokenImageFromTokenSeed(ctx context.Co
 
 // GetTokenProviderConfig implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -513,6 +541,7 @@ func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uu
 
 // GetTokenSeedAll implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -548,6 +577,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID
 
 // GetTokenSeedAllNames implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -583,6 +613,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid
 
 // GetTokenSeedByName implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -619,6 +650,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 
 // PreparePreSeededImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -657,6 +689,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 
 // PrepareTokenSeedImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -695,6 +728,7 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 
 // ResolveTokenSeedImageID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -734,6 +768,7 @@ func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id u
 
 // Update implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -768,6 +803,7 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 
 // UpdateTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

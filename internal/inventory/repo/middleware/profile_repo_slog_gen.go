@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProfileRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProfileRepo = logger.RegisterComponent("inventory.profile_repo")
+
 // ProfileRepoWithSlog implements inventory.ProfileRepo that is instrumented with slog logger.
 type ProfileRepoWithSlog struct {
 	_base                 inventory.ProfileRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProfileRepoWithSlogOption func(s *ProfileRepoWithSlog)
@@ -27,11 +32,21 @@ func ProfileRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// ProfileRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProfileRepoWithSlogWithComponent(component logger.Component) ProfileRepoWithSlogOption {
+	return func(_base *ProfileRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProfileRepoWithSlog instruments an implementation of the inventory.ProfileRepo with simple logging.
 func NewProfileRepoWithSlog(base inventory.ProfileRepo, opts ...ProfileRepoWithSlogOption) ProfileRepoWithSlog {
 	this := ProfileRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProfileRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewProfileRepoWithSlog(base inventory.ProfileRepo, opts ...ProfileRepoWithS
 
 // Create implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile inventory.Prof
 
 // DeleteByUUID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ProfileRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 
 // DeleteWithFilter implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.ProfileFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d ProfileRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inven
 
 // GetAllUUIDsWithFilter implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ProfileRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 
 // GetAllWithFilter implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d ProfileRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 
 // GetByUUID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (profile inventory.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d ProfileRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (prof
 
 // UpdateByUUID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) UpdateByUUID(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

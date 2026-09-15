@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentTokenClientPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentTokenClientPort = logger.RegisterComponent("provisioning.token_client_port")
+
 // TokenClientPortWithSlog implements provisioning.TokenClientPort that is instrumented with slog logger.
 type TokenClientPortWithSlog struct {
 	_base                 provisioning.TokenClientPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type TokenClientPortWithSlogOption func(s *TokenClientPortWithSlog)
@@ -25,11 +30,21 @@ func TokenClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 	}
 }
 
+// TokenClientPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func TokenClientPortWithSlogWithComponent(component logger.Component) TokenClientPortWithSlogOption {
+	return func(_base *TokenClientPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewTokenClientPortWithSlog instruments an implementation of the provisioning.TokenClientPort with simple logging.
 func NewTokenClientPortWithSlog(base provisioning.TokenClientPort, opts ...TokenClientPortWithSlogOption) TokenClientPortWithSlog {
 	this := TokenClientPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentTokenClientPort,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewTokenClientPortWithSlog(base provisioning.TokenClientPort, opts ...Token
 
 // GetSecurityConfig implements provisioning.TokenClientPort.
 func (_d TokenClientPortWithSlog) GetSecurityConfig(ctx context.Context, server provisioning.Server) (serverSystemSecurity provisioning.ServerSystemSecurity, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

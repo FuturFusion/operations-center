@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+var componentAccessLog = RegisterComponent("access_log")
+
 func AccessLogMiddleware(next http.Handler) http.Handler {
 	handlerFunc := func(w http.ResponseWriter, r *http.Request) {
 		rw := &responseRecorder{
@@ -13,7 +15,8 @@ func AccessLogMiddleware(next http.Handler) http.Handler {
 
 		defer func() {
 			slog.InfoContext(
-				r.Context(), "access log",
+				ContextWithComponent(r.Context(), componentAccessLog),
+				"access log",
 				slog.String("ip", r.RemoteAddr),
 				slog.String("method", r.Method),
 				slog.String("request_uri", r.RequestURI),

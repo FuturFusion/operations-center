@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProfileServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProfileServerClient = logger.RegisterComponent("inventory.profile_server_client")
+
 // ProfileServerClientWithSlog implements inventory.ProfileServerClient that is instrumented with slog logger.
 type ProfileServerClientWithSlog struct {
 	_base                 inventory.ProfileServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProfileServerClientWithSlogOption func(s *ProfileServerClientWithSlog)
@@ -28,11 +33,21 @@ func ProfileServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ProfileServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProfileServerClientWithSlogWithComponent(component logger.Component) ProfileServerClientWithSlogOption {
+	return func(_base *ProfileServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProfileServerClientWithSlog instruments an implementation of the inventory.ProfileServerClient with simple logging.
 func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, opts ...ProfileServerClientWithSlogOption) ProfileServerClientWithSlog {
 	this := ProfileServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProfileServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, opts ...
 
 // GetProfileByName implements inventory.ProfileServerClient.
 func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 
 // GetProfiles implements inventory.ProfileServerClient.
 func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
