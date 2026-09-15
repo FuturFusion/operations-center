@@ -318,6 +318,8 @@ func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 // Cancel the deployment of a server.
 type cmdServerDeployCancel struct {
 	ocClient *client.OperationsCenterClient
+
+	flagSkipCleanup bool
 }
 
 func (c *cmdServerDeployCancel) Command() *cobra.Command {
@@ -335,6 +337,8 @@ func (c *cmdServerDeployCancel) Command() *cobra.Command {
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
 
+	cmd.Flags().BoolVar(&c.flagSkipCleanup, "skip-cleanup", false, "Stop the deployment without ejecting the installation media and without powering the server off")
+
 	return cmd
 }
 
@@ -349,7 +353,7 @@ func (c *cmdServerDeployCancel) validateArgsAndFlags(cmd *cobra.Command, args []
 }
 
 func (c *cmdServerDeployCancel) run(cmd *cobra.Command, args []string) error {
-	return c.ocClient.CancelServerDeployment(cmd.Context(), args[0])
+	return c.ocClient.CancelServerDeployment(cmd.Context(), args[0], c.flagSkipCleanup)
 }
 
 func getServerDeployment(cmd *cobra.Command, ocClient *client.OperationsCenterClient, name string) (api.ServerDeploymentStatus, error) {
