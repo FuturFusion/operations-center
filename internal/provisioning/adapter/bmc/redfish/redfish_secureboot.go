@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -22,9 +24,9 @@ import (
 )
 
 const (
-	secureBootDatabaseKEK = "KEK"
-	secureBootDatabaseDB  = "db"
-	secureBootDatabaseDBX = "dbx"
+	secureBootDatabaseKEK = api.SecureBootDatabaseKEK
+	secureBootDatabaseDB  = api.SecureBootDatabaseDB
+	secureBootDatabaseDBX = api.SecureBootDatabaseDBX
 )
 
 // secureBootDatabaseNames are the UEFI secure boot key databases which are
@@ -118,6 +120,90 @@ func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisi
 	return enrolled, nil
 }
 
+// secureBootResetKeysTypes are the resets, that put a server into the secure
+// boot setup mode, in the order they are attempted. Wiping every key database
+// is more reliable, so it is attempted first. Deleting only the platform key
+// should per specification also be enough.
+var secureBootResetKeysTypes = []schemas.ResetKeysType{
+	schemas.DeleteAllKeysResetKeysType,
+	schemas.DeletePKResetKeysType,
+}
+
+func (r redfish) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return false, nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return false, nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	systemSecureBoot, err := system.SecureBoot()
+	if err != nil {
+		return false, nil, fmt.Errorf("Failed to get secure boot information: %w", wrapRedfishError(err))
+	}
+
+	if systemSecureBoot == nil {
+		return false, nil, fmt.Errorf("Resetting the secure boot keys is not supported, the BMC does not expose secure boot for system %q: %w", system.ODataID, domain.ErrOperationNotPermitted)
+	}
+
+	if systemSecureBoot.SecureBootMode == schemas.SetupModeSecureBootModeType {
+		slog.InfoContext(ctx, "Server is in secure boot setup mode already, leaving its key databases untouched", slog.String("secure_boot", systemSecureBoot.ODataID))
+
+		return false, nil, nil
+	}
+
+	if !secureBootSupportsResetKeys(systemSecureBoot) {
+		return false, nil, fmt.Errorf("Resetting the secure boot keys is not supported, the BMC does not provide the reset keys action for system %q: %w", system.ODataID, domain.ErrOperationNotPermitted)
+	}
+
+	var errs []error
+
+	for _, resetKeysType := range secureBootResetKeysTypes {
+		taskMonitor, err := systemSecureBoot.ResetKeys(resetKeysType)
+		if err == nil {
+			slog.InfoContext(ctx, "Secure boot keys reset", slog.String("secure_boot", systemSecureBoot.ODataID), slog.String("reset_keys_type", string(resetKeysType)))
+
+			if taskMonitor == nil {
+				return true, nil, nil
+			}
+
+			return true, &provisioning.BMCTaskMonitor{
+				URI: taskMonitor.TaskMonitor,
+			}, nil
+		}
+
+		errs = append(errs, fmt.Errorf("Failed to reset the secure boot keys of %q with %q: %w", systemSecureBoot.ODataID, resetKeysType, wrapRedfishError(err)))
+	}
+
+	return false, nil, errors.Join(errs...)
+}
+
+// secureBootSupportsResetKeys reports, whether the BMC published the reset keys
+// action.
+func secureBootSupportsResetKeys(systemSecureBoot *schemas.SecureBoot) bool {
+	var actions struct {
+		Actions struct {
+			ResetKeys struct {
+				Target string `json:"target"`
+			} `json:"#SecureBoot.ResetKeys"`
+		} `json:"Actions"`
+	}
+
+	err := json.Unmarshal(systemSecureBoot.RawData, &actions)
+	if err != nil {
+		// The BMC answered with something, that can not be inspected, so let the
+		// reset itself report what is wrong.
+		return true
+	}
+
+	return actions.Actions.ResetKeys.Target != ""
+}
+
 // secureBootCertificatesByDatabase groups the certificates IncusOS provides by
 // the key database they belong into.
 func secureBootCertificatesByDatabase(incusOSCertificates incusosapi.InternalSecureBootCertificates) (map[string][]string, error) {
@@ -183,18 +269,6 @@ func secureBootDatabaseName(secureBootDB *schemas.SecureBootDatabase) string {
 	return ""
 }
 
-// secureBootDBCertificateFingerprintAllowList contains the lower case hex
-// encoded SHA256 fingerprints of the DER encoding of the certificates, which
-// are kept while wiping a key database. The fingerprint is calculated from the
-// certificate itself.
-var secureBootDBCertificateFingerprintAllowList = map[string][]string{
-	secureBootDatabaseDB: {
-		"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507", // DB Microsoft Corporation UEFI CA 2011
-		"f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901", // DB Microsoft UEFI CA 2023
-		"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1", // DB Microsoft Option ROM UEFI CA 2023
-	},
-}
-
 // secureBootAllowListEntries names the entries of a single key database, which
 // survive its reinitialization.
 type secureBootAllowListEntries struct {
@@ -206,8 +280,8 @@ func secureBootAllowList(dbName string, secureBoot api.BIOSSecureBoot) secureBoo
 	database := secureBootProfileDatabase(dbName, secureBoot)
 
 	return secureBootAllowListEntries{
-		certificates: secureBootAllowSet(secureBootDBCertificateFingerprintAllowList[dbName], database.Certificates, strings.ToLower),
-		signatures:   secureBootAllowSet(nil, database.Signatures, nil),
+		certificates: secureBootAllowSet(database.Certificates, strings.ToLower),
+		signatures:   secureBootAllowSet(database.Signatures, nil),
 	}
 }
 
@@ -226,25 +300,21 @@ func secureBootProfileDatabase(dbName string, secureBoot api.BIOSSecureBoot) api
 	return api.BIOSSecureBootDatabase{}
 }
 
-// secureBootAllowSet folds the overrides of the BIOS profiles into the built in
-// defaults. An override of true adds an entry, one of false drops it, and an
-// entry, no override names at all, keeps whatever the defaults say.
-func secureBootAllowSet(defaults []string, overrides map[string]bool, normalize func(string) string) map[string]struct{} {
+// secureBootAllowSet collects the entries, that survive the wipe of a key
+// database, from what the BIOS profiles of a server resolved to. The profiles
+// are the only source, so an entry with a value of false is not allow listed,
+// just like one, that no profile mentions at all.
+func secureBootAllowSet(overrides map[string]bool, normalize func(string) string) map[string]struct{} {
 	if normalize == nil {
 		normalize = func(entry string) string { return entry }
 	}
 
-	allowed := make(map[string]struct{}, len(defaults)+len(overrides))
-
-	for _, entry := range defaults {
-		allowed[normalize(entry)] = struct{}{}
-	}
+	allowed := make(map[string]struct{}, len(overrides))
 
 	for entry, keep := range overrides {
 		entry = normalize(strings.TrimSpace(entry))
 
 		if !keep {
-			delete(allowed, entry)
 			continue
 		}
 

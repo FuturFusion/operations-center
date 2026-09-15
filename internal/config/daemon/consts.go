@@ -161,6 +161,18 @@ const (
 	// entry of the key databases with a request of its own.
 	ServerDeploymentSecureBootCallTimeout = 15 * time.Minute
 
+	// Time granted to the secure boot enrollment media to enroll the
+	// certificates, which covers the boot of the enrollment media plus the
+	// reboot the firmware performs after having picked the certificates up.
+	ServerDeploymentSecureBootEnrollTimeout = 15 * time.Minute
+
+	// Time after the last access, after which a generated secure boot enrollment
+	// media is removed.
+	SecureBootMediaCacheTTL = 2 * time.Hour
+
+	// Interval in which the generated secure boot enrollment media is pruned.
+	SecureBootMediaPruneInterval = 10 * time.Minute
+
 	// Time the deployment control loop is held back after a virtual media event,
 	// so the BMC has reported the change by the time the loop looks.
 	ServerDeploymentVirtualMediaTriggerDelay = 3 * time.Second

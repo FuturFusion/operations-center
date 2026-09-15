@@ -350,6 +350,17 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 	}
 
 	if system != nil {
+		systemSecureBoot, err := system.SecureBoot()
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get secure boot information of BMC system", logger.Err(err))
+		}
+
+		if systemSecureBoot != nil {
+			bmcData.ServerSecureBootMode = string(systemSecureBoot.SecureBootMode)
+		}
+	}
+
+	if system != nil {
 		bios, err := system.Bios()
 		if err != nil {
 			log.WarnContext(ctx, "Failed to get BIOS of BMC system", logger.Err(err))

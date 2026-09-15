@@ -30,6 +30,7 @@ type cmdServerDeploy struct {
 	flagChannel                    string
 	flagForce                      bool
 	flagSkipSecureBootCertificates bool
+	flagSecureBootEnrollmentMedia  bool
 	flagWait                       bool
 }
 
@@ -46,9 +47,12 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
   watches the server until it has registered itself.
 
   Not every BMC allows the UEFI key databases to be modified through its Redfish
-  API. Use --skip-secure-boot-certificates for such a server, in which case the
-  certificates of IncusOS have to be enrolled manually before the deployment is
-  triggered.
+  API. Use --secure-boot-enrollment-media for such a server: Operations Center
+  then clears its key databases through the BMC, which puts it into the secure
+  boot setup mode, and boots a generated enrollment media, that enrolls the
+  certificates of IncusOS. Use --skip-secure-boot-certificates instead, if the
+  BMC does not expose secure boot at all, in which case the certificates have to
+  be enrolled manually before the deployment is triggered.
 
   The referenced token seed must be public, since the BMC fetches the image
   without authentication, and it should set "force_reboot", so the server
@@ -65,10 +69,11 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagVirtualMediaID, "virtual-media-id", "", `Virtual media device to attach the installation media to, e.g. "system:1". Defaults to the first device of the server taking the requested image type, preferring the ones offered by the system`)
 	cmd.Flags().StringVar(&c.flagType, "type", "iso", "type of image (iso|raw)")
-	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
+	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "", "CPU architecture for the images (x86_64|aarch64), taken from the BMC of the server, when not given")
 	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "Channel, the most recent update should be taken from to generate the image")
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, `Accept a token seed, that does not set "force_reboot"`)
 	cmd.Flags().BoolVar(&c.flagSkipSecureBootCertificates, "skip-secure-boot-certificates", false, "Skip the enrollment of the secure boot certificates of IncusOS, they are expected to have been enrolled manually")
+	cmd.Flags().BoolVar(&c.flagSecureBootEnrollmentMedia, "secure-boot-enrollment-media", false, "Enroll the secure boot certificates of IncusOS by booting a generated enrollment media instead of through the Redfish API")
 	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "Wait for the deployment to complete")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -101,6 +106,7 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 		VirtualMediaID:             c.flagVirtualMediaID,
 		Force:                      c.flagForce,
 		SkipSecureBootCertificates: c.flagSkipSecureBootCertificates,
+		SecureBootEnrollmentMedia:  c.flagSecureBootEnrollmentMedia,
 	})
 	if err != nil {
 		return err
@@ -275,9 +281,14 @@ func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Virtual media: %s\n", deployment.Request.VirtualMediaID)
 	fmt.Printf("Force reboot: %t\n", deployment.ForceReboot)
 	fmt.Printf("Skip secure boot certificates: %t\n", deployment.Request.SkipSecureBootCertificates)
+	fmt.Printf("Secure boot enrollment media: %t\n", deployment.Request.SecureBootEnrollmentMedia)
 
 	if deployment.MediaURL != "" {
 		fmt.Printf("Media URL: %s\n", deployment.MediaURL)
+	}
+
+	if deployment.SecureBootMediaURL != "" {
+		fmt.Printf("Secure boot media URL: %s\n", deployment.SecureBootMediaURL)
 	}
 
 	if deployment.MediaBytesRead >= 0 {

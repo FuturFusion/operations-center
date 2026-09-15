@@ -75,6 +75,7 @@ type ExprApiBMCData struct {
 	ServerHealthStatus            string                            `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
 	ServerLastResetTime           time.Time                         `json:"server_last_reset_time" yaml:"server_last_reset_time" expr:"server_last_reset_time"`
 	ServerBootProgress            ExprApiBMCBootProgress            `json:"server_boot_progress" yaml:"server_boot_progress" expr:"server_boot_progress"`
+	ServerSecureBootMode          string                            `json:"server_secure_boot_mode" yaml:"server_secure_boot_mode" expr:"server_secure_boot_mode"`
 	VirtualMedia                  map[string]ExprApiBMCVirtualMedia `json:"virtual_media" yaml:"virtual_media" expr:"virtual_media"`
 	LastUpdated                   time.Time                         `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
 }
@@ -476,35 +477,40 @@ type ExprServer struct {
 }
 
 type ExprServerDeployment struct {
-	State                  api.ServerDeploymentState       `json:"state" expr:"state"`
-	Request                ExprServerDeploymentRequest     `json:"request" expr:"request"`
-	ForceReboot            bool                            `json:"force_reboot" expr:"force_reboot"`
-	BIOSProfiles           []string                        `json:"bios_profiles" expr:"bios_profiles"`
-	BIOSAttributes         map[string]any                  `json:"bios_attributes" expr:"bios_attributes"`
-	BIOSDeferredAttributes map[string]any                  `json:"bios_deferred_attributes" expr:"bios_deferred_attributes"`
-	SecureBoot             ExprApiBIOSSecureBoot           `json:"secure_boot" expr:"secure_boot"`
-	BIOSPending            bool                            `json:"bios_pending" expr:"bios_pending"`
-	BIOSDeferredPending    bool                            `json:"bios_deferred_pending" expr:"bios_deferred_pending"`
-	SecureBootPending      bool                            `json:"secure_boot_pending" expr:"secure_boot_pending"`
-	SecureBootAttempted    bool                            `json:"secure_boot_attempted" expr:"secure_boot_attempted"`
-	MediaURL               string                          `json:"media_url" expr:"media_url"`
-	ImageDeploymentID      string                          `json:"image_deployment_id" expr:"image_deployment_id"`
-	BIOSTaskMonitor        string                          `json:"bios_task_monitor" expr:"bios_task_monitor"`
-	FallbackAttempts       int                             `json:"fallback_attempts" expr:"fallback_attempts"`
-	MediaBytesRead         int64                           `json:"media_bytes_read" expr:"media_bytes_read"`
-	MediaSize              int64                           `json:"media_size" expr:"media_size"`
-	InstallOSObserved      bool                            `json:"install_os_observed" expr:"install_os_observed"`
-	SecureBootSnapshot     ExprServerDeploymentBMCSnapshot `json:"secure_boot_snapshot" expr:"secure_boot_snapshot"`
-	InstallSnapshot        ExprServerDeploymentBMCSnapshot `json:"install_snapshot" expr:"install_snapshot"`
-	Retries                int                             `json:"retries" expr:"retries"`
-	LastError              string                          `json:"last_error" expr:"last_error"`
-	FailedState            api.ServerDeploymentState       `json:"failed_state" expr:"failed_state"`
-	CancelRequested        bool                            `json:"cancel_requested" expr:"cancel_requested"`
-	StartedAt              time.Time                       `json:"started_at" expr:"started_at"`
-	StateEnteredAt         time.Time                       `json:"state_entered_at" expr:"state_entered_at"`
-	LastAttemptAt          time.Time                       `json:"last_attempt_at" expr:"last_attempt_at"`
-	FinishedAt             time.Time                       `json:"finished_at" expr:"finished_at"`
-	History                []ExprApiServerDeploymentStep   `json:"history" expr:"history"`
+	State                      api.ServerDeploymentState       `json:"state" expr:"state"`
+	Request                    ExprServerDeploymentRequest     `json:"request" expr:"request"`
+	ForceReboot                bool                            `json:"force_reboot" expr:"force_reboot"`
+	BIOSProfiles               []string                        `json:"bios_profiles" expr:"bios_profiles"`
+	BIOSAttributes             map[string]any                  `json:"bios_attributes" expr:"bios_attributes"`
+	BIOSDeferredAttributes     map[string]any                  `json:"bios_deferred_attributes" expr:"bios_deferred_attributes"`
+	SecureBoot                 ExprApiBIOSSecureBoot           `json:"secure_boot" expr:"secure_boot"`
+	BIOSPending                bool                            `json:"bios_pending" expr:"bios_pending"`
+	BIOSDeferredPending        bool                            `json:"bios_deferred_pending" expr:"bios_deferred_pending"`
+	SecureBootPending          bool                            `json:"secure_boot_pending" expr:"secure_boot_pending"`
+	SecureBootAttempted        bool                            `json:"secure_boot_attempted" expr:"secure_boot_attempted"`
+	SecureBootResetPending     bool                            `json:"secure_boot_reset_pending" expr:"secure_boot_reset_pending"`
+	SecureBootMediaURL         string                          `json:"secure_boot_media_url" expr:"secure_boot_media_url"`
+	SecureBootMediaID          string                          `json:"secure_boot_media_id" expr:"secure_boot_media_id"`
+	SecureBootResetTaskMonitor string                          `json:"secure_boot_reset_task_monitor" expr:"secure_boot_reset_task_monitor"`
+	MediaURL                   string                          `json:"media_url" expr:"media_url"`
+	ImageDeploymentID          string                          `json:"image_deployment_id" expr:"image_deployment_id"`
+	BIOSTaskMonitor            string                          `json:"bios_task_monitor" expr:"bios_task_monitor"`
+	FallbackAttempts           int                             `json:"fallback_attempts" expr:"fallback_attempts"`
+	MediaBytesRead             int64                           `json:"media_bytes_read" expr:"media_bytes_read"`
+	MediaSize                  int64                           `json:"media_size" expr:"media_size"`
+	InstallOSObserved          bool                            `json:"install_os_observed" expr:"install_os_observed"`
+	SecureBootSnapshot         ExprServerDeploymentBMCSnapshot `json:"secure_boot_snapshot" expr:"secure_boot_snapshot"`
+	InstallSnapshot            ExprServerDeploymentBMCSnapshot `json:"install_snapshot" expr:"install_snapshot"`
+	SecureBootEnrollSnapshot   ExprServerDeploymentBMCSnapshot `json:"secure_boot_enroll_snapshot" expr:"secure_boot_enroll_snapshot"`
+	Retries                    int                             `json:"retries" expr:"retries"`
+	LastError                  string                          `json:"last_error" expr:"last_error"`
+	FailedState                api.ServerDeploymentState       `json:"failed_state" expr:"failed_state"`
+	CancelRequested            bool                            `json:"cancel_requested" expr:"cancel_requested"`
+	StartedAt                  time.Time                       `json:"started_at" expr:"started_at"`
+	StateEnteredAt             time.Time                       `json:"state_entered_at" expr:"state_entered_at"`
+	LastAttemptAt              time.Time                       `json:"last_attempt_at" expr:"last_attempt_at"`
+	FinishedAt                 time.Time                       `json:"finished_at" expr:"finished_at"`
+	History                    []ExprApiServerDeploymentStep   `json:"history" expr:"history"`
 }
 
 type ExprServerDeploymentBMCSnapshot struct {
@@ -522,6 +528,7 @@ type ExprServerDeploymentRequest struct {
 	VirtualMediaID             string                        `json:"virtual_media_id" expr:"virtual_media_id"`
 	Force                      bool                          `json:"force" expr:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates" expr:"skip_secure_boot_certificates"`
+	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media" expr:"secure_boot_enrollment_media"`
 }
 
 type ExprServerStatusInternal struct {
@@ -613,6 +620,7 @@ func ToExprApiBMCData(b api.BMCData) ExprApiBMCData {
 		ServerHealthStatus:            b.ServerHealthStatus,
 		ServerLastResetTime:           b.ServerLastResetTime,
 		ServerBootProgress:            ToExprApiBMCBootProgress(b.ServerBootProgress),
+		ServerSecureBootMode:          b.ServerSecureBootMode,
 		VirtualMedia:                  mapConvert(b.VirtualMedia, ToExprApiBMCVirtualMedia),
 		LastUpdated:                   b.LastUpdated,
 	}
@@ -1102,35 +1110,40 @@ func ToExprServer(s Server) ExprServer {
 
 func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 	return ExprServerDeployment{
-		State:                  s.State,
-		Request:                ToExprServerDeploymentRequest(s.Request),
-		ForceReboot:            s.ForceReboot,
-		BIOSProfiles:           s.BIOSProfiles,
-		BIOSAttributes:         s.BIOSAttributes,
-		BIOSDeferredAttributes: s.BIOSDeferredAttributes,
-		SecureBoot:             ToExprApiBIOSSecureBoot(s.SecureBoot),
-		BIOSPending:            s.BIOSPending,
-		BIOSDeferredPending:    s.BIOSDeferredPending,
-		SecureBootPending:      s.SecureBootPending,
-		SecureBootAttempted:    s.SecureBootAttempted,
-		MediaURL:               s.MediaURL,
-		ImageDeploymentID:      s.ImageDeploymentID,
-		BIOSTaskMonitor:        s.BIOSTaskMonitor,
-		FallbackAttempts:       s.FallbackAttempts,
-		MediaBytesRead:         s.MediaBytesRead,
-		MediaSize:              s.MediaSize,
-		InstallOSObserved:      s.InstallOSObserved,
-		SecureBootSnapshot:     ToExprServerDeploymentBMCSnapshot(s.SecureBootSnapshot),
-		InstallSnapshot:        ToExprServerDeploymentBMCSnapshot(s.InstallSnapshot),
-		Retries:                s.Retries,
-		LastError:              s.LastError,
-		FailedState:            s.FailedState,
-		CancelRequested:        s.CancelRequested,
-		StartedAt:              s.StartedAt,
-		StateEnteredAt:         s.StateEnteredAt,
-		LastAttemptAt:          s.LastAttemptAt,
-		FinishedAt:             s.FinishedAt,
-		History:                sliceConvert(s.History, ToExprApiServerDeploymentStep),
+		State:                      s.State,
+		Request:                    ToExprServerDeploymentRequest(s.Request),
+		ForceReboot:                s.ForceReboot,
+		BIOSProfiles:               s.BIOSProfiles,
+		BIOSAttributes:             s.BIOSAttributes,
+		BIOSDeferredAttributes:     s.BIOSDeferredAttributes,
+		SecureBoot:                 ToExprApiBIOSSecureBoot(s.SecureBoot),
+		BIOSPending:                s.BIOSPending,
+		BIOSDeferredPending:        s.BIOSDeferredPending,
+		SecureBootPending:          s.SecureBootPending,
+		SecureBootAttempted:        s.SecureBootAttempted,
+		SecureBootResetPending:     s.SecureBootResetPending,
+		SecureBootMediaURL:         s.SecureBootMediaURL,
+		SecureBootMediaID:          s.SecureBootMediaID,
+		SecureBootResetTaskMonitor: s.SecureBootResetTaskMonitor,
+		MediaURL:                   s.MediaURL,
+		ImageDeploymentID:          s.ImageDeploymentID,
+		BIOSTaskMonitor:            s.BIOSTaskMonitor,
+		FallbackAttempts:           s.FallbackAttempts,
+		MediaBytesRead:             s.MediaBytesRead,
+		MediaSize:                  s.MediaSize,
+		InstallOSObserved:          s.InstallOSObserved,
+		SecureBootSnapshot:         ToExprServerDeploymentBMCSnapshot(s.SecureBootSnapshot),
+		InstallSnapshot:            ToExprServerDeploymentBMCSnapshot(s.InstallSnapshot),
+		SecureBootEnrollSnapshot:   ToExprServerDeploymentBMCSnapshot(s.SecureBootEnrollSnapshot),
+		Retries:                    s.Retries,
+		LastError:                  s.LastError,
+		FailedState:                s.FailedState,
+		CancelRequested:            s.CancelRequested,
+		StartedAt:                  s.StartedAt,
+		StateEnteredAt:             s.StateEnteredAt,
+		LastAttemptAt:              s.LastAttemptAt,
+		FinishedAt:                 s.FinishedAt,
+		History:                    sliceConvert(s.History, ToExprApiServerDeploymentStep),
 	}
 }
 
@@ -1152,6 +1165,7 @@ func ToExprServerDeploymentRequest(s ServerDeploymentRequest) ExprServerDeployme
 		VirtualMediaID:             s.VirtualMediaID,
 		Force:                      s.Force,
 		SkipSecureBootCertificates: s.SkipSecureBootCertificates,
+		SecureBootEnrollmentMedia:  s.SecureBootEnrollmentMedia,
 	}
 }
 

@@ -193,6 +193,20 @@ func (_d BMCServerClientPortWithPrometheus) LogSources(ctx context.Context, serv
 	return _d.base.LogSources(ctx, server)
 }
 
+// ResetSecureBootKeys implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (b bool, bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ResetSecureBootKeys", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResetSecureBootKeys(ctx, server)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()

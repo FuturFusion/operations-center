@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -731,6 +733,12 @@ type BMCData struct {
 	// ServerBootProgress holds the last boot progress state reported by the BMC.
 	ServerBootProgress BMCBootProgress `json:"server_boot_progress" yaml:"server_boot_progress"`
 
+	// ServerSecureBootMode holds the UEFI secure boot mode reported by the BMC.
+	// It is empty, if the BMC does not report it. Possible values: SetupMode,
+	// UserMode, AuditMode, DeployedMode.
+	// Example: UserMode
+	ServerSecureBootMode string `json:"server_secure_boot_mode" yaml:"server_secure_boot_mode"`
+
 	// VirtualMedia holds all virtual media slots (e.g. CD, DVD, floppy, USB)
 	// reported by the BMC system or manager, keyed by "<service>:<id>" (e.g. "system:1").
 	VirtualMedia map[string]BMCVirtualMedia `json:"virtual_media" yaml:"virtual_media"`
@@ -738,6 +746,60 @@ type BMCData struct {
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
+// serverInstructionSetArchitectures maps the instruction set, that a BMC reports
+// for a processor, to the architecture of the images IncusOS provides for it.
+// The instruction set is the only property of a processor, that carries the
+// bitness: Redfish has no 64 bit x86 architecture, a 64 bit x86 processor
+// reports the architecture "x86".
+var serverInstructionSetArchitectures = map[string]images.UpdateFileArchitecture{
+	"x86-64":  images.UpdateFileArchitecture64BitX86,
+	"arm-a64": images.UpdateFileArchitecture64BitARM,
+}
+
+// serverProcessorArchitectures maps the architecture, that a BMC reports for a
+// processor, to the architecture of the images IncusOS provides for it. It is
+// only consulted for a BMC, that does not report an instruction set at all,
+// since IncusOS provides 64 bit images only anyway.
+var serverProcessorArchitectures = map[string]images.UpdateFileArchitecture{
+	"x86": images.UpdateFileArchitecture64BitX86,
+	"arm": images.UpdateFileArchitecture64BitARM,
+}
+
+// ServerArchitecture reports the CPU architecture of the server, derived from
+// what the BMC reports about its first processor.
+//
+// It returns an error for a server, whose architecture is not one IncusOS
+// provides images for, and for a BMC, that reports nothing to go by.
+func (d BMCData) ServerArchitecture() (images.UpdateFileArchitecture, error) {
+	instructionSet := normalizeBMCValue(d.ServerProcessorInstructionSet)
+	if instructionSet != "" {
+		architecture, ok := serverInstructionSetArchitectures[instructionSet]
+		if !ok {
+			return images.UpdateFileArchitectureUndefined, fmt.Errorf("The BMC reports the processor instruction set %q, which IncusOS does not provide images for: %w", d.ServerProcessorInstructionSet, domain.ErrOperationNotPermitted)
+		}
+
+		return architecture, nil
+	}
+
+	processorArchitecture := normalizeBMCValue(d.ServerProcessorArchitecture)
+	if processorArchitecture != "" {
+		architecture, ok := serverProcessorArchitectures[processorArchitecture]
+		if !ok {
+			return images.UpdateFileArchitectureUndefined, fmt.Errorf("The BMC reports the processor architecture %q, which IncusOS does not provide images for: %w", d.ServerProcessorArchitecture, domain.ErrOperationNotPermitted)
+		}
+
+		return architecture, nil
+	}
+
+	return images.UpdateFileArchitectureUndefined, fmt.Errorf("The BMC reports neither a processor architecture nor an instruction set: %w", domain.ErrOperationNotPermitted)
+}
+
+// normalizeBMCValue folds what a BMC reports into the form the lookups above are
+// keyed by, the way the BIOS profiles match these very fields.
+func normalizeBMCValue(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 // ServerPost defines a new server running Hypervisor OS.

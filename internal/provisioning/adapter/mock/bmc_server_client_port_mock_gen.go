@@ -55,6 +55,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			LogSourcesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
 //				panic("mock out the LogSources method")
 //			},
+//			ResetSecureBootKeysFunc: func(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ResetSecureBootKeys method")
+//			},
 //			ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ServerPowerOff method")
 //			},
@@ -112,6 +115,9 @@ type BMCServerClientPortMock struct {
 
 	// LogSourcesFunc mocks the LogSources method.
 	LogSourcesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
+
+	// ResetSecureBootKeysFunc mocks the ResetSecureBootKeys method.
+	ResetSecureBootKeysFunc func(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error)
 
 	// ServerPowerOffFunc mocks the ServerPowerOff method.
 	ServerPowerOffFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
@@ -232,6 +238,13 @@ type BMCServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// ResetSecureBootKeys holds details about calls to the ResetSecureBootKeys method.
+		ResetSecureBootKeys []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// ServerPowerOff holds details about calls to the ServerPowerOff method.
 		ServerPowerOff []struct {
 			// Ctx is the ctx argument value.
@@ -298,6 +311,7 @@ type BMCServerClientPortMock struct {
 	lockGetData                     sync.RWMutex
 	lockLogEntriesBySource          sync.RWMutex
 	lockLogSources                  sync.RWMutex
+	lockResetSecureBootKeys         sync.RWMutex
 	lockServerPowerOff              sync.RWMutex
 	lockServerPowerOn               sync.RWMutex
 	lockServerRestart               sync.RWMutex
@@ -743,6 +757,42 @@ func (mock *BMCServerClientPortMock) LogSourcesCalls() []struct {
 	mock.lockLogSources.RLock()
 	calls = mock.calls.LogSources
 	mock.lockLogSources.RUnlock()
+	return calls
+}
+
+// ResetSecureBootKeys calls ResetSecureBootKeysFunc.
+func (mock *BMCServerClientPortMock) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+	if mock.ResetSecureBootKeysFunc == nil {
+		panic("BMCServerClientPortMock.ResetSecureBootKeysFunc: method is nil but BMCServerClientPort.ResetSecureBootKeys was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockResetSecureBootKeys.Lock()
+	mock.calls.ResetSecureBootKeys = append(mock.calls.ResetSecureBootKeys, callInfo)
+	mock.lockResetSecureBootKeys.Unlock()
+	return mock.ResetSecureBootKeysFunc(ctx, server)
+}
+
+// ResetSecureBootKeysCalls gets all the calls that were made to ResetSecureBootKeys.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ResetSecureBootKeysCalls())
+func (mock *BMCServerClientPortMock) ResetSecureBootKeysCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockResetSecureBootKeys.RLock()
+	calls = mock.calls.ResetSecureBootKeys
+	mock.lockResetSecureBootKeys.RUnlock()
 	return calls
 }
 

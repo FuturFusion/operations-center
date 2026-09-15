@@ -50,6 +50,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -317,16 +319,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 		seedprogress.New(),
 	)
 
-	biosProfileCatalogue, err := bios.New()
+	biosProfileCatalog, err := bios.New()
 	if err != nil {
 		return fmt.Errorf("Failed to load the BIOS profile catalog: %w", err)
 	}
 
 	biosProfile := provisioningAdapterMiddleware.NewBIOSProfilePortWithSlog(
-		biosProfileCatalogue,
+		biosProfileCatalog,
 	)
 
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress)
+	secureBootCatalog, err := securebootcerts.New()
+	if err != nil {
+		return fmt.Errorf("Failed to load the secure boot certificate catalog: %w", err)
+	}
+
+	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
+		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media")),
+	)
+
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -352,6 +363,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		imageSourceSvc,
 		incusImageSvc,
 		seedImageProgress,
+		secureBootMedia,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -418,7 +430,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, warningLogEmitter)
+	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -802,6 +814,8 @@ func (d *Daemon) setupServerService(
 	warningSvc provisioning.WarningServicePort,
 	biosProfile provisioning.BIOSProfilePort,
 	seedImageProgress provisioning.SeedImageProgressPort,
+	secureBootMedia provisioning.SecureBootMediaPort,
+	secureBootCatalog provisioning.SecureBootCertificateCatalogPort,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -845,6 +859,7 @@ func (d *Daemon) setupServerService(
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
+		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
@@ -1029,6 +1044,7 @@ func (d *Daemon) setupAPIRoutes(
 	imageSourceSvc image.IncusImageSourceService,
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
+	secureBootMedia provisioning.SecureBootMediaPort,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1101,6 +1117,10 @@ func (d *Daemon) setupAPIRoutes(
 			return false
 		}
 
+		if r.Pattern == "GET /1.0/provisioning/secure-boot-media/{filename}" {
+			return false
+		}
+
 		return true
 	}
 
@@ -1132,6 +1152,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
 	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
+
+	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
+	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
@@ -1175,6 +1198,7 @@ func (d *Daemon) setupBackgroundTasks(
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	imageFlasher *flasher.Flasher,
+	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
 ) {
 	if config.IsBackgroundTasksDisabled() {
@@ -1547,6 +1571,25 @@ func (d *Daemon) setupBackgroundTasks(
 	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
+	// Start background task to prune the generated secure boot enrollment media.
+	pruneSecureBootMediaTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
+
+		err := secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
+	}
+
+	pruneSecureBootMediaTaskStop, _ := task.Start(ctx, pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pruneSecureBootMediaTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to renew ACME server certificate.

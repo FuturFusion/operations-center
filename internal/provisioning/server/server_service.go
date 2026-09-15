@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -53,6 +54,10 @@ type serverService struct {
 	warning          provisioning.WarningServicePort
 
 	seedImageProgress provisioning.SeedImageProgressPort
+
+	secureBootMedia       provisioning.SecureBootMediaPort
+	secureBootCertificate provisioning.SecureBootCertificateSourcePort
+	secureBootCatalog     provisioning.SecureBootCertificateCatalogPort
 
 	deploymentControlLoopMu   sync.Mutex
 	deploymentControlLoopRuns map[string]*deploymentRun
@@ -111,6 +116,16 @@ func WithBIOSProfilePort(biosProfile provisioning.BIOSProfilePort) Option {
 func WithSeedImageProgressPort(seedImageProgress provisioning.SeedImageProgressPort) Option {
 	return func(s *serverService) {
 		s.seedImageProgress = seedImageProgress
+	}
+}
+
+// WithSecureBootMediaPort enables the enrollment of the secure boot
+// certificates from a generated enrollment media.
+func WithSecureBootMediaPort(media provisioning.SecureBootMediaPort, source provisioning.SecureBootCertificateSourcePort, catalog provisioning.SecureBootCertificateCatalogPort) Option {
+	return func(s *serverService) {
+		s.secureBootMedia = media
+		s.secureBootCertificate = source
+		s.secureBootCatalog = catalog
 	}
 }
 
@@ -2919,6 +2934,175 @@ func applySecureBootCertificates(ctx context.Context, client provisioning.BMCSer
 	}
 
 	return enrolled, nil
+}
+
+// BMCResetSecureBootKeysByName clears the UEFI key databases of a server, which
+// puts it into the secure boot setup mode.
+func (s *serverService) BMCResetSecureBootKeysByName(ctx context.Context, name string) error {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	reset, taskMonitor, err := resetSecureBootKeys(ctx, client, *server)
+	if err != nil {
+		return err
+	}
+
+	if !reset {
+		return nil
+	}
+
+	err = waitForBMCTask(ctx, client, *server, taskMonitor)
+	if err != nil {
+		return fmt.Errorf("Failed to wait for the reset of the secure boot keys of server %q: %w", server.Name, err)
+	}
+
+	return s.resyncBMCData(ctx, *server)
+}
+
+func (s *serverService) resetSecureBootKeysByName(ctx context.Context, name string) (bool, *provisioning.BMCTaskMonitor, error) {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return false, nil, err
+	}
+
+	return resetSecureBootKeys(ctx, client, *server)
+}
+
+func resetSecureBootKeys(ctx context.Context, client provisioning.BMCServerClientPort, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+	reset, taskMonitor, err := client.ResetSecureBootKeys(ctx, server)
+	if err != nil {
+		return false, nil, fmt.Errorf("Failed to reset the secure boot keys of server %q via BMC: %w", server.Name, err)
+	}
+
+	return reset, taskMonitor, nil
+}
+
+// secureBootEnrollmentCertificates assembles what the secure boot enrollment
+// media of a server enrolls: the certificates of IncusOS, plus the certificates
+// the resolved BIOS profiles keep in the key databases.
+func (s *serverService) secureBootEnrollmentCertificates(ctx context.Context, log *slog.Logger, secureBoot api.BIOSSecureBoot) (provisioning.SecureBootCertificates, error) {
+	if s.secureBootMedia == nil || s.secureBootCertificate == nil || s.secureBootCatalog == nil {
+		return provisioning.SecureBootCertificates{}, fmt.Errorf("Enrolling the secure boot certificates from an enrollment media is not supported, no source for the certificates is configured: %w", domain.ErrOperationNotPermitted)
+	}
+
+	incusOSCertificates, err := s.secureBootCertificate.GetSecureBootCertificates(ctx)
+	if err != nil {
+		return provisioning.SecureBootCertificates{}, fmt.Errorf("Failed to get secure boot certificates from IncusOS: %w", err)
+	}
+
+	certificates := provisioning.SecureBootCertificates{
+		PK:  incusOSCertificates.PK,
+		KEK: nonEmptyStrings(incusOSCertificates.KEK),
+		DB:  nonEmptyStrings(incusOSCertificates.DB),
+		DBX: nonEmptyStrings(incusOSCertificates.DBX),
+	}
+
+	certificates.KEK = append(certificates.KEK, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseKEK, secureBoot.KEK)...)
+	certificates.DB = append(certificates.DB, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDB, secureBoot.DB)...)
+	certificates.DBX = append(certificates.DBX, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDBX, secureBoot.DBX)...)
+
+	if certificates.PK == "" {
+		return provisioning.SecureBootCertificates{}, fmt.Errorf("Enrolling the secure boot certificates from an enrollment media is not possible, IncusOS did not provide a platform key: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return certificates, nil
+}
+
+// keptSecureBootCertificates resolves the entries, that the resolved BIOS
+// profiles keep in a key database, to the certificates of the catalog.
+//
+// An entry, that the catalog does not know, can not be enrolled again, which
+// is reported as a warning rather than failing the deployment: the certificate
+// is not needed to boot IncusOS, it merely keeps whatever the hardware itself
+// is signed with working.
+func (s *serverService) keptSecureBootCertificates(ctx context.Context, log *slog.Logger, database string, allowList api.BIOSSecureBootDatabase) []string {
+	fingerprints := make([]string, 0, len(allowList.Certificates))
+
+	for fingerprint, keep := range allowList.Certificates {
+		if !keep {
+			continue
+		}
+
+		fingerprints = append(fingerprints, strings.ToLower(strings.TrimSpace(fingerprint)))
+	}
+
+	slices.Sort(fingerprints)
+
+	certificates, unknown := s.secureBootCatalog.CertificatesByFingerprint(fingerprints)
+
+	for _, fingerprint := range unknown {
+		log.WarnContext(ctx, "Secure boot certificate is kept by a BIOS profile, but is not part of the certificate catalog, so the enrollment media can not enroll it", slog.String("database", database), slog.String("fingerprint", fingerprint))
+	}
+
+	for _, signature := range slices.Sorted(maps.Keys(allowList.Signatures)) {
+		if !allowList.Signatures[signature] {
+			continue
+		}
+
+		log.WarnContext(ctx, "Secure boot signature is kept by a BIOS profile, but the enrollment media can only enroll certificates, so it is lost", slog.String("database", database), slog.String("signature", signature))
+	}
+
+	return certificates
+}
+
+func nonEmptyStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+
+		result = append(result, value)
+	}
+
+	return result
+}
+
+// bmcAttachSecureBootMediaByName generates the secure boot enrollment media for
+// the certificates, attaches it and registers it as the boot device for the next
+// boot.
+func (s *serverService) bmcAttachSecureBootMediaByName(ctx context.Context, log *slog.Logger, server provisioning.Server, architecture images.UpdateFileArchitecture, secureBoot api.BIOSSecureBoot, virtualMediaID string) (bmcAttachedMedia, error) {
+	certificates, err := s.secureBootEnrollmentCertificates(ctx, log, secureBoot)
+	if err != nil {
+		return bmcAttachedMedia{}, err
+	}
+
+	mediaID, err := s.secureBootMedia.Generate(ctx, architecture, certificates)
+	if err != nil {
+		return bmcAttachedMedia{}, err
+	}
+
+	base := config.GetNetwork().OperationsCenterAddress
+	if base == "" {
+		return bmcAttachedMedia{}, fmt.Errorf("Operations Center address is not configured, cannot build the secure boot enrollment media URL: %w", domain.ErrOperationNotPermitted)
+	}
+
+	// OperationsCenterAddress is validated on config save.
+	baseURL, _ := url.Parse(base)
+
+	mediaURL := baseURL.JoinPath(api.SecureBootMediaPathSegments(mediaID)...)
+
+	for _, reason := range mediaURLWarnings(mediaURL) {
+		slog.WarnContext(ctx, "Secure boot enrollment media URL might not be accepted by the BMC", slog.String("reason", reason), slog.String("url", mediaURL.String()), slog.String("name", server.Name))
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return bmcAttachedMedia{}, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	_, err = client.AttachMedia(ctx, server, virtualMediaID, mediaURL.String(), true)
+	if err != nil {
+		return bmcAttachedMedia{}, fmt.Errorf("Failed to attach the secure boot enrollment media to server %q via BMC: %w", server.Name, err)
+	}
+
+	return bmcAttachedMedia{
+		imageURL:      mediaURL.String(),
+		fingerprintID: mediaID,
+	}, nil
 }
 
 func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {

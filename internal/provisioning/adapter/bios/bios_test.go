@@ -147,7 +147,7 @@ func TestNewFromFS(t *testing.T) {
 	}
 }
 
-func TestCatalogue_Resolve(t *testing.T) {
+func TestCatalog_Resolve(t *testing.T) {
 	const profilesYAML = `
 - name: any-acme
   match:

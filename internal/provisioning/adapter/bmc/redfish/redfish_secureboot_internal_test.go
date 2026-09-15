@@ -1,7 +1,6 @@
 package redfish
 
 import (
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -16,12 +15,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
-
-var testdataCertificates = map[string]string{
-	"microsoft-corporation-uefi-ca-2011.pem": "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507",
-	"microsoft-uefi-ca-2023.pem":             "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
-	"microsoft-option-rom-uefi-ca-2023.pem":  "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1",
-}
 
 func TestSecureBootCertificateFingerprint(t *testing.T) {
 	tests := []struct {
@@ -86,30 +79,6 @@ func TestSecureBootCertificateFingerprint(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
-}
-
-func TestSecureBootDBCertificateFingerprintAllowList(t *testing.T) {
-	require.Equal(t, []string{secureBootDatabaseDB}, keys(secureBootDBCertificateFingerprintAllowList))
-
-	wantFingerprints := make([]string, 0, len(testdataCertificates))
-
-	for file, wantFingerprint := range testdataCertificates {
-		block, _ := pem.Decode([]byte(readTestdataCertificate(t, file)))
-		require.NotNil(t, block, file)
-
-		certificate, err := x509.ParseCertificate(block.Bytes)
-		require.NoError(t, err, file)
-
-		fingerprint, err := secureBootCertificateFingerprint(&schemas.Certificate{
-			CertificateString: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})),
-		})
-		require.NoError(t, err, file)
-		require.Equal(t, wantFingerprint, fingerprint, file)
-
-		wantFingerprints = append(wantFingerprints, wantFingerprint)
-	}
-
-	require.ElementsMatch(t, wantFingerprints, secureBootDBCertificateFingerprintAllowList[secureBootDatabaseDB])
 }
 
 func TestSecureBootCertificatesByDatabase(t *testing.T) {
@@ -317,17 +286,11 @@ func TestSecureBootAllowList(t *testing.T) {
 		wantSignatures   []string
 	}{
 		{
-			name:   "the built in defaults apply without a BIOS profile",
-			dbName: secureBootDatabaseDB,
-
-			wantCertificates: secureBootDBCertificateFingerprintAllowList[secureBootDatabaseDB],
-		},
-		{
-			name:   "a database without built in defaults allows nothing",
+			name:   "a database, that no BIOS profile names, allows nothing",
 			dbName: secureBootDatabaseDBX,
 		},
 		{
-			name:   "a BIOS profile adds a certificate to the defaults",
+			name:   "a BIOS profile keeps a certificate",
 			dbName: secureBootDatabaseKEK,
 			secureBoot: api.BIOSSecureBoot{
 				KEK: api.BIOSSecureBootDatabase{
@@ -338,32 +301,26 @@ func TestSecureBootAllowList(t *testing.T) {
 			wantCertificates: []string{"aa"},
 		},
 		{
-			name:   "a BIOS profile drops one of the defaults again",
+			name:   "a certificate, that a BIOS profile does not keep, is not allow listed",
 			dbName: secureBootDatabaseDB,
 			secureBoot: api.BIOSSecureBoot{
 				DB: api.BIOSSecureBootDatabase{
-					Certificates: map[string]bool{microsoft2011: false},
+					Certificates: map[string]bool{microsoft2011: false, "aa": true},
 				},
 			},
 
-			wantCertificates: []string{
-				"f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
-				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1",
-			},
+			wantCertificates: []string{"aa"},
 		},
 		{
 			name:   "a fingerprint is matched case insensitively",
 			dbName: secureBootDatabaseDB,
 			secureBoot: api.BIOSSecureBoot{
 				DB: api.BIOSSecureBootDatabase{
-					Certificates: map[string]bool{strings.ToUpper(microsoft2011): false},
+					Certificates: map[string]bool{strings.ToUpper(microsoft2011): true},
 				},
 			},
 
-			wantCertificates: []string{
-				"f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
-				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1",
-			},
+			wantCertificates: []string{microsoft2011},
 		},
 		{
 			name:   "a BIOS profile keeps a signature, which is otherwise wiped",

@@ -86,6 +86,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("GET /{name}/bmc/bios-attributes", response.With(handler.serverBMCBIOSAttributesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes/{attributeName...}", response.With(handler.serverBMCBIOSAttributeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{name}/bmc/:apply-secure-boot-certificates", response.With(handler.serverBMCApplySecureBootCertificatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:reset-secure-boot-keys", response.With(handler.serverBMCResetSecureBootKeysPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{name}/:deploy", response.With(handler.serverDeployPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -1317,6 +1318,52 @@ func (s *serverHandler) serverBMCApplySecureBootCertificatesPost(r *http.Request
 	err := s.service.BMCApplySecureBootCertificatesByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to apply secure boot certificates for server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:reset-secure-boot-keys servers_bmc server_bmc_reset_secure_boot_keys_post
+//
+//	Reset the secure boot keys via BMC
+//
+//	Clears the UEFI secure boot key databases of the server, which puts it into
+//	the secure boot setup mode, where the key databases can be written without
+//	the firmware checking the updates. It is what the secure boot enrollment
+//	media of the automated deployment needs.
+//
+//	The server has to be powered off. The cleared key databases only take effect
+//	once the server is powered on again. A server, that is in setup mode already,
+//	is left untouched.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCResetSecureBootKeysPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.BMCResetSecureBootKeysByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to reset the secure boot keys of server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse

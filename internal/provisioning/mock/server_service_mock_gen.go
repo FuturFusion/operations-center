@@ -61,6 +61,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			BMCRefreshByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the BMCRefreshByName method")
 //			},
+//			BMCResetSecureBootKeysByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the BMCResetSecureBootKeysByName method")
+//			},
 //			BMCServerPowerOffByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the BMCServerPowerOffByName method")
 //			},
@@ -238,6 +241,9 @@ type ServerServiceMock struct {
 
 	// BMCRefreshByNameFunc mocks the BMCRefreshByName method.
 	BMCRefreshByNameFunc func(ctx context.Context, name string) error
+
+	// BMCResetSecureBootKeysByNameFunc mocks the BMCResetSecureBootKeysByName method.
+	BMCResetSecureBootKeysByNameFunc func(ctx context.Context, name string) error
 
 	// BMCServerPowerOffByNameFunc mocks the BMCServerPowerOffByName method.
 	BMCServerPowerOffByNameFunc func(ctx context.Context, name string, force bool) error
@@ -473,6 +479,13 @@ type ServerServiceMock struct {
 		}
 		// BMCRefreshByName holds details about calls to the BMCRefreshByName method.
 		BMCRefreshByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// BMCResetSecureBootKeysByName holds details about calls to the BMCResetSecureBootKeysByName method.
+		BMCResetSecureBootKeysByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -860,6 +873,7 @@ type ServerServiceMock struct {
 	lockBMCLogEntriesByNameAndLogSource      sync.RWMutex
 	lockBMCLogSourcesByName                  sync.RWMutex
 	lockBMCRefreshByName                     sync.RWMutex
+	lockBMCResetSecureBootKeysByName         sync.RWMutex
 	lockBMCServerPowerOffByName              sync.RWMutex
 	lockBMCServerPowerOnByName               sync.RWMutex
 	lockBMCServerRestartByName               sync.RWMutex
@@ -1372,6 +1386,42 @@ func (mock *ServerServiceMock) BMCRefreshByNameCalls() []struct {
 	mock.lockBMCRefreshByName.RLock()
 	calls = mock.calls.BMCRefreshByName
 	mock.lockBMCRefreshByName.RUnlock()
+	return calls
+}
+
+// BMCResetSecureBootKeysByName calls BMCResetSecureBootKeysByNameFunc.
+func (mock *ServerServiceMock) BMCResetSecureBootKeysByName(ctx context.Context, name string) error {
+	if mock.BMCResetSecureBootKeysByNameFunc == nil {
+		panic("ServerServiceMock.BMCResetSecureBootKeysByNameFunc: method is nil but ServerService.BMCResetSecureBootKeysByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBMCResetSecureBootKeysByName.Lock()
+	mock.calls.BMCResetSecureBootKeysByName = append(mock.calls.BMCResetSecureBootKeysByName, callInfo)
+	mock.lockBMCResetSecureBootKeysByName.Unlock()
+	return mock.BMCResetSecureBootKeysByNameFunc(ctx, name)
+}
+
+// BMCResetSecureBootKeysByNameCalls gets all the calls that were made to BMCResetSecureBootKeysByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCResetSecureBootKeysByNameCalls())
+func (mock *ServerServiceMock) BMCResetSecureBootKeysByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBMCResetSecureBootKeysByName.RLock()
+	calls = mock.calls.BMCResetSecureBootKeysByName
+	mock.lockBMCResetSecureBootKeysByName.RUnlock()
 	return calls
 }
 

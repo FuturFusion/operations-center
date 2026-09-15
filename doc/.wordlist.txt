@@ -5,6 +5,7 @@ Backend
 backoff
 balancer
 Balancer
+bitness
 BMC
 BMCs
 CAs

@@ -463,6 +463,14 @@ definitions:
                 example: Intel
                 type: string
                 x-go-name: ServerProcessorManufacturer
+            server_secure_boot_mode:
+                description: |-
+                    ServerSecureBootMode holds the UEFI secure boot mode reported by the BMC.
+                    It is empty, if the BMC does not report it. Possible values: SetupMode,
+                    UserMode, AuditMode, DeployedMode.
+                example: UserMode
+                type: string
+                x-go-name: ServerSecureBootMode
             server_serial_number:
                 description: ServerSerialNumber holds the serial number of the server.
                 type: string
@@ -5335,8 +5343,11 @@ definitions:
         properties:
             architecture:
                 description: |-
-                    Architecture holds the CPU architecture of the image to generate. Possible
-                    values: x86_64, aarch64. Optional, defaults to x86_64.
+                    Architecture holds the CPU architecture of the images to generate, both
+                    the installation media and, where it is used, the secure boot enrollment
+                    media. Possible values: x86_64, aarch64. Optional, it is taken from what
+                    the BMC reports about the server, when it is not provided, and is only
+                    accepted where the BMC does not contradict it.
                 example: x86_64
                 type: string
                 x-go-name: Architecture
@@ -5358,6 +5369,17 @@ definitions:
                 example: false
                 type: boolean
                 x-go-name: Force
+            secure_boot_enrollment_media:
+                description: |-
+                    SecureBootEnrollmentMedia requests, that the secure boot certificates of
+                    IncusOS are enrolled by booting a generated enrollment media instead of
+                    through the Redfish API, which is what a BMC, that can not modify the UEFI
+                    key databases itself, needs. Operations Center resets the key databases of
+                    the server first, which puts it into the secure boot setup mode the
+                    enrollment media needs.
+                example: false
+                type: boolean
+                x-go-name: SecureBootEnrollmentMedia
             seed:
                 description: |-
                     Seed holds the name of the token seed used to generate the installation
@@ -5496,6 +5518,13 @@ definitions:
                 x-go-name: Retries
             secure_boot:
                 $ref: '#/definitions/BIOSSecureBoot'
+            secure_boot_media_url:
+                description: |-
+                    SecureBootMediaURL holds the URL of the secure boot enrollment media
+                    attached to the server. It is empty for a deployment, that does not enroll
+                    the secure boot certificates from an enrollment media.
+                type: string
+                x-go-name: SecureBootMediaURL
             started_at:
                 description: StartedAt is the time the deployment was requested in RFC3339 format.
                 example: "2024-11-12T16:15:00Z"
@@ -11233,6 +11262,54 @@ paths:
             summary: Get the clusters
             tags:
                 - clusters
+    /1.0/provisioning/secure-boot-media/{filename}:
+        get:
+            description: |-
+                Get the generated secure boot enrollment media, which enrolls the UEFI key
+                databases of a server, whose BMC can not modify them itself.
+
+                The media is addressed by its content alone, so the endpoint requires no
+                authentication: it hands out nothing but the public certificates, which are
+                enrolled on the server anyway. A media, that has not been generated, is
+                reported as "404 Not Found" rather than being generated on demand.
+
+                The filename is the ID of the media with a ".iso" extension, which some
+                BMC/Redfish implementations require of a virtual media URL.
+
+                The media is served with a Content-Length header and support for byte
+                ranges, so a BMC whose transfer got interrupted can resume it. HEAD is
+                answered with the headers alone.
+            operationId: secure_boot_media_get
+            parameters:
+                - description: |-
+                    ID of the generated media with a ".iso" extension, e.g.
+                    "a1B2c3D4e5F6.iso".
+                  in: path
+                  name: filename
+                  required: true
+                  type: string
+                - description: Byte range of the media to return, e.g. "bytes=1048576-".
+                  in: header
+                  name: Range
+                  type: string
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    $ref: '#/responses/SecureBootMediaResponse'
+                "206":
+                    $ref: '#/responses/SecureBootMediaResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "416":
+                    $ref: '#/responses/BadRequest'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a secure boot enrollment media
+            tags:
+                - secure_boot_media
     /1.0/provisioning/servers:
         get:
             description: Returns a list of servers (URLs).
@@ -11853,6 +11930,42 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Refresh the BMC data
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:reset-secure-boot-keys:
+        post:
+            description: |-
+                Clears the UEFI secure boot key databases of the server, which puts it into
+                the secure boot setup mode, where the key databases can be written without
+                the firmware checking the updates. It is what the secure boot enrollment
+                media of the automated deployment needs.
+
+                The server has to be powered off. The cleared key databases only take effect
+                once the server is powered on again. A server, that is in setup mode already,
+                is left untouched.
+            operationId: server_bmc_reset_secure_boot_keys_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Reset the secure boot keys via BMC
             tags:
                 - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:server-locate:
@@ -14733,6 +14846,13 @@ responses:
                     type: string
                     x-go-name: Type
             type: object
+    SecureBootMediaResponse:
+        description: The secure boot enrollment media
+        schema:
+            items:
+                format: uint8
+                type: integer
+            type: array
     ServerBMCBIOSAttributeResponse:
         description: The acceptable values of a BIOS attribute
         schema:

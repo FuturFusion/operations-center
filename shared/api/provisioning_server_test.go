@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -678,6 +680,110 @@ func TestServerVersionData_Compute(t *testing.T) {
 			got.Compute("IncusOS", tc.latestAvailableVersions)
 
 			require.Equal(t, tc.wantServerVersionData, got)
+		})
+	}
+}
+
+func TestBMCData_ServerArchitecture(t *testing.T) {
+	tests := []struct {
+		name string
+
+		instructionSet string
+		architecture   string
+
+		want      images.UpdateFileArchitecture
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "instruction set - x86-64",
+			instructionSet: "x86-64",
+			architecture:   "x86",
+
+			want:      images.UpdateFileArchitecture64BitX86,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "instruction set - ARM-A64",
+			instructionSet: "ARM-A64",
+			architecture:   "ARM",
+
+			want:      images.UpdateFileArchitecture64BitARM,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "instruction set - reported with padding and in another case",
+			instructionSet: "  Arm-A64 ",
+
+			want:      images.UpdateFileArchitecture64BitARM,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "instruction set - 32 bit ARM is not provided by IncusOS",
+			instructionSet: "ARM-A32",
+			architecture:   "ARM",
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`processor instruction set "ARM-A32"`),
+		},
+		{
+			name:           "instruction set - 32 bit x86 is not provided by IncusOS",
+			instructionSet: "x86",
+			architecture:   "x86",
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`processor instruction set "x86"`),
+		},
+		{
+			name:           "instruction set - an architecture IncusOS does not provide images for",
+			instructionSet: "PowerISA",
+			architecture:   "Power",
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`processor instruction set "PowerISA"`),
+		},
+		{
+			name:           "instruction set - OEM does not name an architecture",
+			instructionSet: "OEM",
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`processor instruction set "OEM"`),
+		},
+		{
+			// Redfish has no 64 bit x86 architecture, so the architecture alone
+			// can only be read as the 64 bit one IncusOS provides images for.
+			name:         "architecture - x86 without an instruction set",
+			architecture: "x86",
+
+			want:      images.UpdateFileArchitecture64BitX86,
+			assertErr: require.NoError,
+		},
+		{
+			name:         "architecture - ARM without an instruction set",
+			architecture: "ARM",
+
+			want:      images.UpdateFileArchitecture64BitARM,
+			assertErr: require.NoError,
+		},
+		{
+			name:         "architecture - an architecture IncusOS does not provide images for",
+			architecture: "MIPS",
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`processor architecture "MIPS"`),
+		},
+		{
+			name: "error - the BMC reports nothing to go by",
+
+			assertErr: errassert.OperationNotPermittedErrorContains("neither a processor architecture nor an instruction set"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			data := api.BMCData{
+				ServerProcessorInstructionSet: tc.instructionSet,
+				ServerProcessorArchitecture:   tc.architecture,
+			}
+
+			architecture, err := data.ServerArchitecture()
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.want, architecture)
 		})
 	}
 }

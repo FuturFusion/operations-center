@@ -136,6 +136,16 @@ func (_d BMCServerClientPortWithErrorWrapper) LogSources(ctx context.Context, se
 	return _d._base.LogSources(ctx, server)
 }
 
+// ResetSecureBootKeys implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (b bool, bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ResetSecureBootKeys(ctx, server)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	defer func() {

@@ -5,6 +5,13 @@ package {{ .PkgName }}
 
 {{- $_ := .Registry.AddImport "slog" "log/slog" }}
 {{- $_ := .Registry.AddImport "logger" "github.com/FuturFusion/operations-center/internal/util/logger" }}
+{{- range $wrapper := .Interfaces }}
+	{{- range $method := $wrapper.Methods }}
+		{{- if not $method.AcceptsContext }}
+			{{- $_ := $.Registry.AddImport "context" "context" }}
+		{{- end }}
+	{{- end }}
+{{- end }}
 
 {{$srcPkgQualifier := $.SrcPkgQualifier}}
 {{- if not (index .TemplateData "skip-ensure") }}
