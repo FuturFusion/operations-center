@@ -1,13 +1,16 @@
 package config
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -65,4 +68,34 @@ func Test_notify_smoke(t *testing.T) {
 		LogLevel: "DEBUG",
 	}))
 	require.Len(t, networkEmits, 2, "an unrelated update disturbed the network config")
+}
+
+func Test_notify_componentLogLevels(t *testing.T) {
+	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+
+	logBuf := &bytes.Buffer{}
+
+	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
+
+	t.Cleanup(func() {
+		require.NoError(t, logger.InitLogger(logBuf, "", false, false, true), "the log levels must not leak into other tests")
+	})
+
+	ctx := logger.ContextWithComponent(t.Context(), "provisioning.server_repo")
+
+	slog.DebugContext(ctx, "before update")
+	require.Empty(t, logBuf.String(), "the default log level WARN suppresses debug records")
+
+	require.NoError(t, UpdateSettings(t.Context(), system.SettingsPut{
+		LogLevels: map[string]string{"provisioning": "DEBUG"},
+	}))
+
+	slog.DebugContext(ctx, "after update")
+	require.Contains(t, logBuf.String(), "after update", "the log level configured for a parent component was not applied")
+
+	require.NoError(t, UpdateSettings(t.Context(), system.SettingsPut{}))
+
+	logBuf.Reset()
+	slog.DebugContext(ctx, "after reset")
+	require.Empty(t, logBuf.String(), "removing the per component log level did not take effect")
 }
