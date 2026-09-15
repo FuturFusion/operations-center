@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkZoneServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkZoneServerClient = logger.RegisterComponent("inventory.network_zone_server_client")
+
 // NetworkZoneServerClientWithSlog implements inventory.NetworkZoneServerClient that is instrumented with slog logger.
 type NetworkZoneServerClientWithSlog struct {
 	_base                 inventory.NetworkZoneServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkZoneServerClientWithSlogOption func(s *NetworkZoneServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkZoneServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// NetworkZoneServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkZoneServerClientWithSlogWithComponent(component logger.Component) NetworkZoneServerClientWithSlogOption {
+	return func(_base *NetworkZoneServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkZoneServerClientWithSlog instruments an implementation of the inventory.NetworkZoneServerClient with simple logging.
 func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, opts ...NetworkZoneServerClientWithSlogOption) NetworkZoneServerClientWithSlog {
 	this := NetworkZoneServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkZoneServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, 
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

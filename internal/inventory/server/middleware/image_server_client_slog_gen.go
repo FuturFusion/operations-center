@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageServerClient = logger.RegisterComponent("inventory.image_server_client")
+
 // ImageServerClientWithSlog implements inventory.ImageServerClient that is instrumented with slog logger.
 type ImageServerClientWithSlog struct {
 	_base                 inventory.ImageServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageServerClientWithSlogOption func(s *ImageServerClientWithSlog)
@@ -28,11 +33,21 @@ func ImageServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// ImageServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageServerClientWithSlogWithComponent(component logger.Component) ImageServerClientWithSlogOption {
+	return func(_base *ImageServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageServerClientWithSlog instruments an implementation of the inventory.ImageServerClient with simple logging.
 func NewImageServerClientWithSlog(base inventory.ImageServerClient, opts ...ImageServerClientWithSlogOption) ImageServerClientWithSlog {
 	this := ImageServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, opts ...Imag
 
 // GetImageByName implements inventory.ImageServerClient.
 func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 
 // GetImages implements inventory.ImageServerClient.
 func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

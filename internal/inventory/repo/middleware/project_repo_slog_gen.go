@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProjectRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProjectRepo = logger.RegisterComponent("inventory.project_repo")
+
 // ProjectRepoWithSlog implements inventory.ProjectRepo that is instrumented with slog logger.
 type ProjectRepoWithSlog struct {
 	_base                 inventory.ProjectRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProjectRepoWithSlogOption func(s *ProjectRepoWithSlog)
@@ -27,11 +32,21 @@ func ProjectRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// ProjectRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProjectRepoWithSlogWithComponent(component logger.Component) ProjectRepoWithSlogOption {
+	return func(_base *ProjectRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProjectRepoWithSlog instruments an implementation of the inventory.ProjectRepo with simple logging.
 func NewProjectRepoWithSlog(base inventory.ProjectRepo, opts ...ProjectRepoWithSlogOption) ProjectRepoWithSlog {
 	this := ProjectRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProjectRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewProjectRepoWithSlog(base inventory.ProjectRepo, opts ...ProjectRepoWithS
 
 // Create implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) Create(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d ProjectRepoWithSlog) Create(ctx context.Context, project inventory.Proj
 
 // DeleteByUUID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ProjectRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 
 // DeleteWithFilter implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.ProjectFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d ProjectRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inven
 
 // GetAllUUIDsWithFilter implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ProjectRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 
 // GetAllWithFilter implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 
 // GetByUUID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (project inventory.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d ProjectRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (proj
 
 // UpdateByUUID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) UpdateByUUID(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

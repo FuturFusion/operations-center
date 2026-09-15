@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkPeerRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkPeerRepo = logger.RegisterComponent("inventory.network_peer_repo")
+
 // NetworkPeerRepoWithSlog implements inventory.NetworkPeerRepo that is instrumented with slog logger.
 type NetworkPeerRepoWithSlog struct {
 	_base                 inventory.NetworkPeerRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkPeerRepoWithSlogOption func(s *NetworkPeerRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkPeerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 	}
 }
 
+// NetworkPeerRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkPeerRepoWithSlogWithComponent(component logger.Component) NetworkPeerRepoWithSlogOption {
+	return func(_base *NetworkPeerRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkPeerRepoWithSlog instruments an implementation of the inventory.NetworkPeerRepo with simple logging.
 func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, opts ...NetworkPeerRepoWithSlogOption) NetworkPeerRepoWithSlog {
 	this := NetworkPeerRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkPeerRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, opts ...NetworkP
 
 // Create implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer invent
 
 // DeleteByUUID implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 
 // DeleteWithFilter implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteWithFilter(ctx context.Context, filter i
 
 // GetAllUUIDsWithFilter implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 
 // GetAllWithFilter implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 
 // GetByUUID implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkPeer inventory.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkPeerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 
 // UpdateByUUID implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) UpdateByUUID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

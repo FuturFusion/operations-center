@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageRepo = logger.RegisterComponent("inventory.image_repo")
+
 // ImageRepoWithSlog implements inventory.ImageRepo that is instrumented with slog logger.
 type ImageRepoWithSlog struct {
 	_base                 inventory.ImageRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageRepoWithSlogOption func(s *ImageRepoWithSlog)
@@ -27,11 +32,21 @@ func ImageRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bo
 	}
 }
 
+// ImageRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageRepoWithSlogWithComponent(component logger.Component) ImageRepoWithSlogOption {
+	return func(_base *ImageRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageRepoWithSlog instruments an implementation of the inventory.ImageRepo with simple logging.
 func NewImageRepoWithSlog(base inventory.ImageRepo, opts ...ImageRepoWithSlogOption) ImageRepoWithSlog {
 	this := ImageRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewImageRepoWithSlog(base inventory.ImageRepo, opts ...ImageRepoWithSlogOpt
 
 // Create implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 
 // DeleteByUUID implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ImageRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err
 
 // DeleteWithFilter implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.ImageFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d ImageRepoWithSlog) DeleteWithFilter(ctx context.Context, filter invento
 
 // GetAllUUIDsWithFilter implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ImageRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter in
 
 // GetAllWithFilter implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (images inventory.Images, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d ImageRepoWithSlog) GetAllWithFilter(ctx context.Context, filter invento
 
 // GetByUUID implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (image inventory.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d ImageRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (image 
 
 // UpdateByUUID implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) UpdateByUUID(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

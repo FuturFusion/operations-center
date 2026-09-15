@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStorageBucketServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStorageBucketServerClient = logger.RegisterComponent("inventory.storage_bucket_server_client")
+
 // StorageBucketServerClientWithSlog implements inventory.StorageBucketServerClient that is instrumented with slog logger.
 type StorageBucketServerClientWithSlog struct {
 	_base                 inventory.StorageBucketServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StorageBucketServerClientWithSlogOption func(s *StorageBucketServerClientWithSlog)
@@ -28,11 +33,21 @@ func StorageBucketServerClientWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// StorageBucketServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StorageBucketServerClientWithSlogWithComponent(component logger.Component) StorageBucketServerClientWithSlogOption {
+	return func(_base *StorageBucketServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStorageBucketServerClientWithSlog instruments an implementation of the inventory.StorageBucketServerClient with simple logging.
 func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClient, opts ...StorageBucketServerClientWithSlogOption) StorageBucketServerClientWithSlog {
 	this := StorageBucketServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStorageBucketServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClie
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
 func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucketFull api.StorageBucketFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -82,6 +98,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 
 // GetStorageBuckets implements inventory.StorageBucketServerClient.
 func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBucketFulls []api.StorageBucketFull, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

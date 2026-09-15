@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentStoragePoolServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentStoragePoolServerClient = logger.RegisterComponent("inventory.storage_pool_server_client")
+
 // StoragePoolServerClientWithSlog implements inventory.StoragePoolServerClient that is instrumented with slog logger.
 type StoragePoolServerClientWithSlog struct {
 	_base                 inventory.StoragePoolServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type StoragePoolServerClientWithSlogOption func(s *StoragePoolServerClientWithSlog)
@@ -28,11 +33,21 @@ func StoragePoolServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// StoragePoolServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func StoragePoolServerClientWithSlogWithComponent(component logger.Component) StoragePoolServerClientWithSlogOption {
+	return func(_base *StoragePoolServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewStoragePoolServerClientWithSlog instruments an implementation of the inventory.StoragePoolServerClient with simple logging.
 func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, opts ...StoragePoolServerClientWithSlogOption) StoragePoolServerClientWithSlog {
 	this := StoragePoolServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentStoragePoolServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, 
 
 // GetStoragePoolByName implements inventory.StoragePoolServerClient.
 func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storagePool api.StoragePool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -80,6 +96,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 
 // GetStoragePools implements inventory.StoragePoolServerClient.
 func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) (storagePools []api.StoragePool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

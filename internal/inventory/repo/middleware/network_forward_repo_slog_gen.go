@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkForwardRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkForwardRepo = logger.RegisterComponent("inventory.network_forward_repo")
+
 // NetworkForwardRepoWithSlog implements inventory.NetworkForwardRepo that is instrumented with slog logger.
 type NetworkForwardRepoWithSlog struct {
 	_base                 inventory.NetworkForwardRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkForwardRepoWithSlogOption func(s *NetworkForwardRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkForwardRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// NetworkForwardRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkForwardRepoWithSlogWithComponent(component logger.Component) NetworkForwardRepoWithSlogOption {
+	return func(_base *NetworkForwardRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkForwardRepoWithSlog instruments an implementation of the inventory.NetworkForwardRepo with simple logging.
 func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, opts ...NetworkForwardRepoWithSlogOption) NetworkForwardRepoWithSlog {
 	this := NetworkForwardRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkForwardRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, opts ...Ne
 
 // Create implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward 
 
 // DeleteByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.U
 
 // DeleteWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkForwardRepoWithSlog) DeleteWithFilter(ctx context.Context, filte
 
 // GetAllUUIDsWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 
 // GetAllWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filte
 
 // GetByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 
 // UpdateByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) UpdateByUUID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

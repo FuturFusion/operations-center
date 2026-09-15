@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkLoadBalancerRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkLoadBalancerRepo = logger.RegisterComponent("inventory.network_load_balancer_repo")
+
 // NetworkLoadBalancerRepoWithSlog implements inventory.NetworkLoadBalancerRepo that is instrumented with slog logger.
 type NetworkLoadBalancerRepoWithSlog struct {
 	_base                 inventory.NetworkLoadBalancerRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkLoadBalancerRepoWithSlogOption func(s *NetworkLoadBalancerRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// NetworkLoadBalancerRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkLoadBalancerRepoWithSlogWithComponent(component logger.Component) NetworkLoadBalancerRepoWithSlogOption {
+	return func(_base *NetworkLoadBalancerRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkLoadBalancerRepoWithSlog instruments an implementation of the inventory.NetworkLoadBalancerRepo with simple logging.
 func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, opts ...NetworkLoadBalancerRepoWithSlogOption) NetworkLoadBalancerRepoWithSlog {
 	this := NetworkLoadBalancerRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkLoadBalancerRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, 
 
 // Create implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 
 // DeleteByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id u
 
 // DeleteWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, 
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Cont
 
 // GetAllWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 
 // GetByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid
 
 // UpdateByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) UpdateByUUID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

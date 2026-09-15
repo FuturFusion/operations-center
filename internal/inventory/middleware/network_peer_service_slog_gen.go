@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkPeerService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkPeerService = logger.RegisterComponent("inventory.network_peer_service")
+
 // NetworkPeerServiceWithSlog implements inventory.NetworkPeerService that is instrumented with slog logger.
 type NetworkPeerServiceWithSlog struct {
 	_base                 inventory.NetworkPeerService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkPeerServiceWithSlogOption func(s *NetworkPeerServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkPeerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// NetworkPeerServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkPeerServiceWithSlogWithComponent(component logger.Component) NetworkPeerServiceWithSlogOption {
+	return func(_base *NetworkPeerServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkPeerServiceWithSlog instruments an implementation of the inventory.NetworkPeerService with simple logging.
 func NewNetworkPeerServiceWithSlog(base inventory.NetworkPeerService, opts ...NetworkPeerServiceWithSlogOption) NetworkPeerServiceWithSlog {
 	this := NetworkPeerServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkPeerService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkPeerServiceWithSlog(base inventory.NetworkPeerService, opts ...Ne
 
 // GetAllUUIDsWithFilter implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkPeerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 
 // GetAllWithFilter implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkPeerServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 
 // GetByUUID implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkPeer inventory.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkPeerServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 
 // ResyncByName implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkPeerServiceWithSlog) ResyncByName(ctx context.Context, clusterNa
 
 // ResyncByUUID implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkPeerServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.U
 
 // SyncCluster implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

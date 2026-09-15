@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkACLRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkACLRepo = logger.RegisterComponent("inventory.network_acl_repo")
+
 // NetworkACLRepoWithSlog implements inventory.NetworkACLRepo that is instrumented with slog logger.
 type NetworkACLRepoWithSlog struct {
 	_base                 inventory.NetworkACLRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkACLRepoWithSlogOption func(s *NetworkACLRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkACLRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 	}
 }
 
+// NetworkACLRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkACLRepoWithSlogWithComponent(component logger.Component) NetworkACLRepoWithSlogOption {
+	return func(_base *NetworkACLRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkACLRepoWithSlog instruments an implementation of the inventory.NetworkACLRepo with simple logging.
 func NewNetworkACLRepoWithSlog(base inventory.NetworkACLRepo, opts ...NetworkACLRepoWithSlogOption) NetworkACLRepoWithSlog {
 	this := NetworkACLRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkACLRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkACLRepoWithSlog(base inventory.NetworkACLRepo, opts ...NetworkACL
 
 // Create implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 
 // DeleteByUUID implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkACLRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID)
 
 // DeleteWithFilter implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkACLRepoWithSlog) DeleteWithFilter(ctx context.Context, filter in
 
 // GetAllUUIDsWithFilter implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkACLRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 
 // GetAllWithFilter implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkACLRepoWithSlog) GetAllWithFilter(ctx context.Context, filter in
 
 // GetByUUID implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkACL inventory.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkACLRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (n
 
 // UpdateByUUID implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithSlog) UpdateByUUID(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

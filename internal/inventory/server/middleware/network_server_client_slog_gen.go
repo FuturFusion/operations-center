@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkServerClient = logger.RegisterComponent("inventory.network_server_client")
+
 // NetworkServerClientWithSlog implements inventory.NetworkServerClient that is instrumented with slog logger.
 type NetworkServerClientWithSlog struct {
 	_base                 inventory.NetworkServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkServerClientWithSlogOption func(s *NetworkServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// NetworkServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkServerClientWithSlogWithComponent(component logger.Component) NetworkServerClientWithSlogOption {
+	return func(_base *NetworkServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkServerClientWithSlog instruments an implementation of the inventory.NetworkServerClient with simple logging.
 func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, opts ...NetworkServerClientWithSlogOption) NetworkServerClientWithSlog {
 	this := NetworkServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, opts ...
 
 // GetNetworkByName implements inventory.NetworkServerClient.
 func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endp
 
 // GetNetworks implements inventory.NetworkServerClient.
 func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) (networks []api.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
