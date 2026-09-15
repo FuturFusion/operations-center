@@ -68,10 +68,14 @@ export const deployServer = (name: string, body: string): Promise<void> => {
   });
 };
 
-export const cancelServerDeployment = (name: string): Promise<void> => {
+export const cancelServerDeployment = (
+  name: string,
+  skipCleanup: boolean,
+): Promise<void> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/:cancel-deploy`, {
       method: "POST",
+      body: JSON.stringify({ skip_cleanup: skipCleanup }),
     })
       .then(processResponse)
       .then(() => resolve())
