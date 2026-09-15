@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageIncusFileRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageIncusFileRepo = logger.RegisterComponent("image.image_incus_file_repo")
+
 // ImageIncusFileRepoWithSlog implements image.ImageIncusFileRepo that is instrumented with slog logger.
 type ImageIncusFileRepoWithSlog struct {
 	_base                 image.ImageIncusFileRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageIncusFileRepoWithSlogOption func(s *ImageIncusFileRepoWithSlog)
@@ -27,11 +32,21 @@ func ImageIncusFileRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// ImageIncusFileRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageIncusFileRepoWithSlogWithComponent(component logger.Component) ImageIncusFileRepoWithSlogOption {
+	return func(_base *ImageIncusFileRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageIncusFileRepoWithSlog instruments an implementation of the image.ImageIncusFileRepo with simple logging.
 func NewImageIncusFileRepoWithSlog(base image.ImageIncusFileRepo, opts ...ImageIncusFileRepoWithSlogOption) ImageIncusFileRepoWithSlog {
 	this := ImageIncusFileRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageIncusFileRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewImageIncusFileRepoWithSlog(base image.ImageIncusFileRepo, opts ...ImageI
 
 // Delete implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) Delete(ctx context.Context, img *image.IncusImage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,6 +93,7 @@ func (_d ImageIncusFileRepoWithSlog) Delete(ctx context.Context, img *image.Incu
 
 // DeleteVersion implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) DeleteVersion(ctx context.Context, img *image.IncusImage, versionIdentifier string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ImageIncusFileRepoWithSlog) DeleteVersion(ctx context.Context, img *ima
 
 // DeleteVersionFile implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -148,6 +166,7 @@ func (_d ImageIncusFileRepoWithSlog) DeleteVersionFile(ctx context.Context, img 
 
 // Exists implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) Exists(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (b bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -185,6 +204,7 @@ func (_d ImageIncusFileRepoWithSlog) Exists(ctx context.Context, img *image.Incu
 
 // Get implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) Get(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -223,6 +243,7 @@ func (_d ImageIncusFileRepoWithSlog) Get(ctx context.Context, img *image.IncusIm
 
 // Put implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) Put(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (commitFunc image.CommitFunc, cancelFunc image.CancelFunc, size int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -263,6 +284,7 @@ func (_d ImageIncusFileRepoWithSlog) Put(ctx context.Context, img *image.IncusIm
 
 // UsageInformation implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

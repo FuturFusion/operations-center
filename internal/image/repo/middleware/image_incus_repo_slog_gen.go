@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentImageIncusRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentImageIncusRepo = logger.RegisterComponent("image.image_incus_repo")
+
 // ImageIncusRepoWithSlog implements image.ImageIncusRepo that is instrumented with slog logger.
 type ImageIncusRepoWithSlog struct {
 	_base                 image.ImageIncusRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ImageIncusRepoWithSlogOption func(s *ImageIncusRepoWithSlog)
@@ -25,11 +30,21 @@ func ImageIncusRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 	}
 }
 
+// ImageIncusRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ImageIncusRepoWithSlogWithComponent(component logger.Component) ImageIncusRepoWithSlogOption {
+	return func(_base *ImageIncusRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewImageIncusRepoWithSlog instruments an implementation of the image.ImageIncusRepo with simple logging.
 func NewImageIncusRepoWithSlog(base image.ImageIncusRepo, opts ...ImageIncusRepoWithSlogOption) ImageIncusRepoWithSlog {
 	this := ImageIncusRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentImageIncusRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewImageIncusRepoWithSlog(base image.ImageIncusRepo, opts ...ImageIncusRepo
 
 // Create implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) Create(ctx context.Context, newIncusImage image.IncusImage) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ImageIncusRepoWithSlog) Create(ctx context.Context, newIncusImage image
 
 // DeleteByName implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, name string) 
 
 // ExistsByName implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -145,6 +163,7 @@ func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, name string) 
 
 // GetAll implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetAll(ctx context.Context) (incusImages image.IncusImages, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -179,6 +198,7 @@ func (_d ImageIncusRepoWithSlog) GetAll(ctx context.Context) (incusImages image.
 
 // GetAllNames implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -213,6 +233,7 @@ func (_d ImageIncusRepoWithSlog) GetAllNames(ctx context.Context) (strings []str
 
 // GetAllWithFilter implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetAllWithFilter(ctx context.Context, filter image.IncusImageFilter) (incusImages image.IncusImages, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -248,6 +269,7 @@ func (_d ImageIncusRepoWithSlog) GetAllWithFilter(ctx context.Context, filter im
 
 // GetByName implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -283,6 +305,7 @@ func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (in
 
 // Update implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -317,6 +340,7 @@ func (_d ImageIncusRepoWithSlog) Update(ctx context.Context, incusImage image.In
 
 // Upsert implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) Upsert(ctx context.Context, incusImage image.IncusImage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
