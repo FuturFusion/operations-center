@@ -79,6 +79,11 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetSettings().LogLevels))
+	if err != nil {
+		return fmt.Errorf("Failed to set per component log levels from config: %w", err)
+	}
+
 	rootCtx, stop := signal.NotifyContext(
 		context.Background(),
 		unix.SIGPWR,
