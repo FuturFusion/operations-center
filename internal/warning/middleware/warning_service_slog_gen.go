@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentWarningService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentWarningService = logger.RegisterComponent("warning.warning_service")
+
 // WarningServiceWithSlog implements warning.WarningService that is instrumented with slog logger.
 type WarningServiceWithSlog struct {
 	_base                 warning.WarningService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type WarningServiceWithSlogOption func(s *WarningServiceWithSlog)
@@ -28,11 +33,21 @@ func WarningServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 	}
 }
 
+// WarningServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func WarningServiceWithSlogWithComponent(component logger.Component) WarningServiceWithSlogOption {
+	return func(_base *WarningServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewWarningServiceWithSlog instruments an implementation of the warning.WarningService with simple logging.
 func NewWarningServiceWithSlog(base warning.WarningService, opts ...WarningServiceWithSlogOption) WarningServiceWithSlog {
 	this := WarningServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentWarningService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewWarningServiceWithSlog(base warning.WarningService, opts ...WarningServi
 
 // DeleteByUUID implements warning.WarningService.
 func (_d WarningServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d WarningServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID)
 
 // Emit implements warning.WarningService.
 func (_d WarningServiceWithSlog) Emit(ctx context.Context, w warning.Warning) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -95,6 +112,7 @@ func (_d WarningServiceWithSlog) Emit(ctx context.Context, w warning.Warning) {
 
 // GetAll implements warning.WarningService.
 func (_d WarningServiceWithSlog) GetAll(ctx context.Context) (warnings warning.Warnings, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -129,6 +147,7 @@ func (_d WarningServiceWithSlog) GetAll(ctx context.Context) (warnings warning.W
 
 // GetByScopeAndType implements warning.WarningService.
 func (_d WarningServiceWithSlog) GetByScopeAndType(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warnings warning.Warnings, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -165,6 +184,7 @@ func (_d WarningServiceWithSlog) GetByScopeAndType(ctx context.Context, scope ap
 
 // GetByUUID implements warning.WarningService.
 func (_d WarningServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (warning1 *warning.Warning, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -200,6 +220,7 @@ func (_d WarningServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (w
 
 // RemoveStale implements warning.WarningService.
 func (_d WarningServiceWithSlog) RemoveStale(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +239,7 @@ func (_d WarningServiceWithSlog) RemoveStale(ctx context.Context, scope api.Warn
 
 // UpdateStatusByUUID implements warning.WarningService.
 func (_d WarningServiceWithSlog) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.WarningStatus) (warning1 *warning.Warning, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
