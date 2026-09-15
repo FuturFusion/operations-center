@@ -473,8 +473,10 @@ func (c OperationsCenterClient) DeployServer(ctx context.Context, name string, d
 	return nil
 }
 
-func (c OperationsCenterClient) CancelServerDeployment(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":cancel-deploy"), nil, nil)
+func (c OperationsCenterClient) CancelServerDeployment(ctx context.Context, name string, skipCleanup bool) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":cancel-deploy"), nil, api.ServerDeploymentCancelPost{
+		SkipCleanup: skipCleanup,
+	})
 	if err != nil {
 		return err
 	}
