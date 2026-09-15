@@ -12,6 +12,7 @@ interface Props {
 const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
   const formikInitialValues: SystemSettings = {
     log_level: settings?.log_level ?? "",
+    log_levels: settings?.log_levels ?? {},
     server_registration_scriptlet:
       settings?.server_registration_scriptlet ?? "",
   };
