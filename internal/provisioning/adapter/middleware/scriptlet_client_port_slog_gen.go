@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentScriptletClientPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentScriptletClientPort = logger.RegisterComponent("provisioning.adapter.scriptlet.scriptlet_client_port")
+
 // ScriptletClientPortWithSlog implements scriptlet.ScriptletClientPort that is instrumented with slog logger.
 type ScriptletClientPortWithSlog struct {
 	_base                 scriptlet.ScriptletClientPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ScriptletClientPortWithSlogOption func(s *ScriptletClientPortWithSlog)
@@ -26,11 +31,21 @@ func ScriptletClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ScriptletClientPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ScriptletClientPortWithSlogWithComponent(component logger.Component) ScriptletClientPortWithSlogOption {
+	return func(_base *ScriptletClientPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewScriptletClientPortWithSlog instruments an implementation of the scriptlet.ScriptletClientPort with simple logging.
 func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...ScriptletClientPortWithSlogOption) ScriptletClientPortWithSlog {
 	this := ScriptletClientPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentScriptletClientPort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...
 
 // AddApplication implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,6 +93,7 @@ func (_d ScriptletClientPortWithSlog) AddApplication(ctx context.Context, server
 
 // GetOSService implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToAnyMoqParam map[string]any, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -113,6 +130,7 @@ func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server p
 
 // GetSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToAnyMoqParam map[string]any, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server prov
 
 // TriggerSystemAction implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -186,6 +205,7 @@ func (_d ScriptletClientPortWithSlog) TriggerSystemAction(ctx context.Context, s
 
 // UpdateOSService implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -222,6 +242,7 @@ func (_d ScriptletClientPortWithSlog) UpdateOSService(ctx context.Context, serve
 
 // UpdateSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) UpdateSystem(ctx context.Context, server provisioning.Server, resource string, config any) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

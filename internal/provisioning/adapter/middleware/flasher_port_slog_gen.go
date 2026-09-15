@@ -15,10 +15,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentFlasherPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentFlasherPort = logger.RegisterComponent("provisioning.flasher_port")
+
 // FlasherPortWithSlog implements provisioning.FlasherPort that is instrumented with slog logger.
 type FlasherPortWithSlog struct {
 	_base                 provisioning.FlasherPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type FlasherPortWithSlogOption func(s *FlasherPortWithSlog)
@@ -29,11 +34,21 @@ func FlasherPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// FlasherPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func FlasherPortWithSlogWithComponent(component logger.Component) FlasherPortWithSlogOption {
+	return func(_base *FlasherPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewFlasherPortWithSlog instruments an implementation of the provisioning.FlasherPort with simple logging.
 func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWithSlogOption) FlasherPortWithSlog {
 	this := FlasherPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentFlasherPort,
 	}
 
 	for _, opt := range opts {
@@ -45,6 +60,7 @@ func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWi
 
 // GenerateCompressedSeededImage implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -82,6 +98,7 @@ func (_d FlasherPortWithSlog) GenerateCompressedSeededImage(ctx context.Context,
 
 // GenerateSeededImage implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -123,6 +140,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID s
 
 // GetProviderConfig implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -158,6 +176,7 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uui
 
 // OpenSeededImage implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -195,6 +214,7 @@ func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID strin
 
 // SeedImageFingerprintID implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (s string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

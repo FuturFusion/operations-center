@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentTokenRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentTokenRepo = logger.RegisterComponent("provisioning.token_repo")
+
 // TokenRepoWithSlog implements provisioning.TokenRepo that is instrumented with slog logger.
 type TokenRepoWithSlog struct {
 	_base                 provisioning.TokenRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type TokenRepoWithSlogOption func(s *TokenRepoWithSlog)
@@ -27,11 +32,21 @@ func TokenRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bo
 	}
 }
 
+// TokenRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func TokenRepoWithSlogWithComponent(component logger.Component) TokenRepoWithSlogOption {
+	return func(_base *TokenRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewTokenRepoWithSlog instruments an implementation of the provisioning.TokenRepo with simple logging.
 func NewTokenRepoWithSlog(base provisioning.TokenRepo, opts ...TokenRepoWithSlogOption) TokenRepoWithSlog {
 	this := TokenRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentTokenRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewTokenRepoWithSlog(base provisioning.TokenRepo, opts ...TokenRepoWithSlog
 
 // Create implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token
 
 // CreateTokenSeed implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) CreateTokenSeed(ctx context.Context, seedConfig provisioning.TokenSeed) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -113,6 +130,7 @@ func (_d TokenRepoWithSlog) CreateTokenSeed(ctx context.Context, seedConfig prov
 
 // DeleteByUUID implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -147,6 +165,7 @@ func (_d TokenRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err
 
 // DeleteTokenSeedByName implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -182,6 +201,7 @@ func (_d TokenRepoWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.U
 
 // GetAll implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tokens, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tok
 
 // GetAllUUIDs implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -250,6 +271,7 @@ func (_d TokenRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID,
 
 // GetByUUID implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -285,6 +307,7 @@ func (_d TokenRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token 
 
 // GetTokenSeedAll implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -320,6 +343,7 @@ func (_d TokenRepoWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (
 
 // GetTokenSeedAllNames implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -355,6 +379,7 @@ func (_d TokenRepoWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid.UU
 
 // GetTokenSeedByName implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -391,6 +416,7 @@ func (_d TokenRepoWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID
 
 // Update implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -425,6 +451,7 @@ func (_d TokenRepoWithSlog) Update(ctx context.Context, token provisioning.Token
 
 // UpdateTokenSeed implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

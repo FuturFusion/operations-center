@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentServerClientPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentServerClientPort = logger.RegisterComponent("provisioning.server_client_port")
+
 // ServerClientPortWithSlog implements provisioning.ServerClientPort that is instrumented with slog logger.
 type ServerClientPortWithSlog struct {
 	_base                 provisioning.ServerClientPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ServerClientPortWithSlogOption func(s *ServerClientPortWithSlog)
@@ -26,11 +31,21 @@ func ServerClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(er
 	}
 }
 
+// ServerClientPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ServerClientPortWithSlogWithComponent(component logger.Component) ServerClientPortWithSlogOption {
+	return func(_base *ServerClientPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewServerClientPortWithSlog instruments an implementation of the provisioning.ServerClientPort with simple logging.
 func NewServerClientPortWithSlog(base provisioning.ServerClientPort, opts ...ServerClientPortWithSlogOption) ServerClientPortWithSlog {
 	this := ServerClientPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentServerClientPort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, opts ...Ser
 
 // AddApplication implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,6 +93,7 @@ func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server pr
 
 // Evacuate implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -147,6 +165,7 @@ func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server 
 
 // GetOSData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -182,6 +201,7 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 
 // GetProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server provisioning.Server) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -217,6 +237,7 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -252,6 +273,7 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 
 // GetServerType implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (serverType api.ServerType, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -287,6 +309,7 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 
 // GetStorageConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -322,6 +345,7 @@ func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server 
 
 // GetSystemKernel implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server provisioning.Server) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -357,6 +381,7 @@ func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server p
 
 // GetSystemLogging implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server provisioning.Server) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -392,6 +417,7 @@ func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server 
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server provisioning.Server) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -427,6 +453,7 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 
 // GetVersionData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server provisioning.Server) (serverVersionData api.ServerVersionData, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -462,6 +489,7 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 
 // IsReady implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) IsReady(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -496,6 +524,7 @@ func (_d ServerClientPortWithSlog) IsReady(ctx context.Context, server provision
 
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -530,6 +559,7 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 
 // Poweroff implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -564,6 +594,7 @@ func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisio
 
 // Reboot implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -598,6 +629,7 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 
 // RestartApplication implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) RestartApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -633,6 +665,7 @@ func (_d ServerClientPortWithSlog) RestartApplication(ctx context.Context, serve
 
 // Restore implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -669,6 +702,7 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 
 // SystemFactoryReset implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -706,6 +740,7 @@ func (_d ServerClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpo
 
 // UpdateApplication implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -741,6 +776,7 @@ func (_d ServerClientPortWithSlog) UpdateApplication(ctx context.Context, server
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -775,6 +811,7 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 
 // UpdateOS implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -809,6 +846,7 @@ func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisio
 
 // UpdateProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -844,6 +882,7 @@ func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, ser
 
 // UpdateStorageConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -878,6 +917,7 @@ func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, serv
 
 // UpdateSystemKernel implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateSystemKernel(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -913,6 +953,7 @@ func (_d ServerClientPortWithSlog) UpdateSystemKernel(ctx context.Context, serve
 
 // UpdateSystemLogging implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateSystemLogging(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -948,6 +989,7 @@ func (_d ServerClientPortWithSlog) UpdateSystemLogging(ctx context.Context, serv
 
 // UpdateUpdateConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

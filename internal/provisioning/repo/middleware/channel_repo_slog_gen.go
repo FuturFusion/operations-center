@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentChannelRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentChannelRepo = logger.RegisterComponent("provisioning.channel_repo")
+
 // ChannelRepoWithSlog implements provisioning.ChannelRepo that is instrumented with slog logger.
 type ChannelRepoWithSlog struct {
 	_base                 provisioning.ChannelRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ChannelRepoWithSlogOption func(s *ChannelRepoWithSlog)
@@ -25,11 +30,21 @@ func ChannelRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// ChannelRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ChannelRepoWithSlogWithComponent(component logger.Component) ChannelRepoWithSlogOption {
+	return func(_base *ChannelRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewChannelRepoWithSlog instruments an implementation of the provisioning.ChannelRepo with simple logging.
 func NewChannelRepoWithSlog(base provisioning.ChannelRepo, opts ...ChannelRepoWithSlogOption) ChannelRepoWithSlog {
 	this := ChannelRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentChannelRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewChannelRepoWithSlog(base provisioning.ChannelRepo, opts ...ChannelRepoWi
 
 // Create implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisioning.Channel) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisionin
 
 // DeleteByName implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -110,6 +127,7 @@ func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 
 // GetAll implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetAll(ctx context.Context) (channels provisioning.Channels, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -144,6 +162,7 @@ func (_d ChannelRepoWithSlog) GetAll(ctx context.Context) (channels provisioning
 
 // GetAllNames implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -178,6 +197,7 @@ func (_d ChannelRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 
 // GetByName implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (channel *provisioning.Channel, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -213,6 +233,7 @@ func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (chann
 
 // Update implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) Update(ctx context.Context, newChannel provisioning.Channel) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

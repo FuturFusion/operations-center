@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentBMCServerClientPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentBMCServerClientPort = logger.RegisterComponent("provisioning.bmc_server_client_port")
+
 // BMCServerClientPortWithSlog implements provisioning.BMCServerClientPort that is instrumented with slog logger.
 type BMCServerClientPortWithSlog struct {
 	_base                 provisioning.BMCServerClientPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type BMCServerClientPortWithSlogOption func(s *BMCServerClientPortWithSlog)
@@ -26,11 +31,21 @@ func BMCServerClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// BMCServerClientPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func BMCServerClientPortWithSlogWithComponent(component logger.Component) BMCServerClientPortWithSlogOption {
+	return func(_base *BMCServerClientPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewBMCServerClientPortWithSlog instruments an implementation of the provisioning.BMCServerClientPort with simple logging.
 func NewBMCServerClientPortWithSlog(base provisioning.BMCServerClientPort, opts ...BMCServerClientPortWithSlogOption) BMCServerClientPortWithSlog {
 	this := BMCServerClientPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentBMCServerClientPort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewBMCServerClientPortWithSlog(base provisioning.BMCServerClientPort, opts 
 
 // ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, s
 
 // ApplySecureBootCertificates implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (b bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Co
 
 // AttachMedia implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -152,6 +170,7 @@ func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server pr
 
 // BIOSAttribute implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -188,6 +207,7 @@ func (_d BMCServerClientPortWithSlog) BIOSAttribute(ctx context.Context, server 
 
 // BIOSAttributes implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) BIOSAttributes(ctx context.Context, server provisioning.Server) (bIOSAttributes []api.BIOSAttribute, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -223,6 +243,7 @@ func (_d BMCServerClientPortWithSlog) BIOSAttributes(ctx context.Context, server
 
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -258,6 +279,7 @@ func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server
 
 // DetachMedia implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -294,6 +316,7 @@ func (_d BMCServerClientPortWithSlog) DetachMedia(ctx context.Context, server pr
 
 // Dump implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -332,6 +355,7 @@ func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provision
 
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -367,6 +391,7 @@ func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provis
 
 // LogEntriesBySource implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) LogEntriesBySource(ctx context.Context, server provisioning.Server, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -403,6 +428,7 @@ func (_d BMCServerClientPortWithSlog) LogEntriesBySource(ctx context.Context, se
 
 // LogSources implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) LogSources(ctx context.Context, server provisioning.Server) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -438,6 +464,7 @@ func (_d BMCServerClientPortWithSlog) LogSources(ctx context.Context, server pro
 
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -474,6 +501,7 @@ func (_d BMCServerClientPortWithSlog) ServerPowerOff(ctx context.Context, server
 
 // ServerPowerOn implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ServerPowerOn(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -510,6 +538,7 @@ func (_d BMCServerClientPortWithSlog) ServerPowerOn(ctx context.Context, server 
 
 // ServerRestart implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ServerRestart(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -546,6 +575,7 @@ func (_d BMCServerClientPortWithSlog) ServerRestart(ctx context.Context, server 
 
 // ServerSetLocationIndicator implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Context, server provisioning.Server, active bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -581,6 +611,7 @@ func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Con
 
 // TaskState implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (bMCTaskState api.BMCTaskState, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -617,6 +648,7 @@ func (_d BMCServerClientPortWithSlog) TaskState(ctx context.Context, server prov
 
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

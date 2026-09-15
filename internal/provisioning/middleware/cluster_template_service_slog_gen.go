@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentClusterTemplateService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentClusterTemplateService = logger.RegisterComponent("provisioning.cluster_template_service")
+
 // ClusterTemplateServiceWithSlog implements provisioning.ClusterTemplateService that is instrumented with slog logger.
 type ClusterTemplateServiceWithSlog struct {
 	_base                 provisioning.ClusterTemplateService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ClusterTemplateServiceWithSlogOption func(s *ClusterTemplateServiceWithSlog)
@@ -26,11 +31,21 @@ func ClusterTemplateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc f
 	}
 }
 
+// ClusterTemplateServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ClusterTemplateServiceWithSlogWithComponent(component logger.Component) ClusterTemplateServiceWithSlogOption {
+	return func(_base *ClusterTemplateServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewClusterTemplateServiceWithSlog instruments an implementation of the provisioning.ClusterTemplateService with simple logging.
 func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService, opts ...ClusterTemplateServiceWithSlogOption) ClusterTemplateServiceWithSlog {
 	this := ClusterTemplateServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentClusterTemplateService,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService,
 
 // Apply implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string,
 
 // Create implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (clusterTemplate1 provisioning.ClusterTemplate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemp
 
 // DeleteByName implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -148,6 +166,7 @@ func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name 
 
 // GetAll implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetAll(ctx context.Context) (clusterTemplates provisioning.ClusterTemplates, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -182,6 +201,7 @@ func (_d ClusterTemplateServiceWithSlog) GetAll(ctx context.Context) (clusterTem
 
 // GetAllNames implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d ClusterTemplateServiceWithSlog) GetAllNames(ctx context.Context) (strin
 
 // GetByName implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name string) (clusterTemplate *provisioning.ClusterTemplate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name str
 
 // Rename implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -286,6 +308,7 @@ func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName str
 
 // Update implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Update(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

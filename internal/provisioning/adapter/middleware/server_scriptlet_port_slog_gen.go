@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentServerScriptletPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentServerScriptletPort = logger.RegisterComponent("provisioning.server_scriptlet_port")
+
 // ServerScriptletPortWithSlog implements provisioning.ServerScriptletPort that is instrumented with slog logger.
 type ServerScriptletPortWithSlog struct {
 	_base                 provisioning.ServerScriptletPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ServerScriptletPortWithSlogOption func(s *ServerScriptletPortWithSlog)
@@ -25,11 +30,21 @@ func ServerScriptletPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 	}
 }
 
+// ServerScriptletPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ServerScriptletPortWithSlogWithComponent(component logger.Component) ServerScriptletPortWithSlogOption {
+	return func(_base *ServerScriptletPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewServerScriptletPortWithSlog instruments an implementation of the provisioning.ServerScriptletPort with simple logging.
 func NewServerScriptletPortWithSlog(base provisioning.ServerScriptletPort, opts ...ServerScriptletPortWithSlogOption) ServerScriptletPortWithSlog {
 	this := ServerScriptletPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentServerScriptletPort,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewServerScriptletPortWithSlog(base provisioning.ServerScriptletPort, opts 
 
 // ServerRegistrationRun implements provisioning.ServerScriptletPort.
 func (_d ServerScriptletPortWithSlog) ServerRegistrationRun(ctx context.Context, server *provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
