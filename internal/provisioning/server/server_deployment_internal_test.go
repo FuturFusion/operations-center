@@ -430,7 +430,7 @@ func Test_deploymentMediaBytesRequired(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaBytesRequired(tc.size)
+			got := deploymentMediaBytesRequired(tc.size, config.ServerDeploymentMediaMinBytesRead)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -482,7 +482,7 @@ func Test_deploymentMediaReadOut(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaReadOut(tc.progress)
+			got := deploymentMediaReadOut(tc.progress, config.ServerDeploymentMediaMinBytesRead)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -524,7 +524,7 @@ func Test_deploymentMediaIdle(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaIdle(deploymentTestNow, tc.progress)
+			got := deploymentMediaIdle(deploymentTestNow, tc.progress, config.ServerDeploymentMediaIdlePeriod)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -560,7 +560,7 @@ func Test_deploymentInstallCouldBeDone(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentInstallCouldBeDone(deploymentTestNow, &provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt})
+			got := deploymentInstallCouldBeDone(deploymentTestNow, &provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt}, config.ServerDeploymentMinInstallDuration)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -640,7 +640,7 @@ func Test_deploymentRebootObserved(t *testing.T) {
 				StateEnteredAt:  tc.stateEnteredAt,
 			}
 
-			rebooted, observed := deploymentRebootObserved(deploymentTestNow, &deployment, tc.current)
+			rebooted, observed := deploymentRebootObserved(deploymentTestNow, &deployment, tc.current, config.ServerDeploymentRebootObservationWindow)
 
 			require.Equal(t, tc.wantRebooted, rebooted)
 			require.Equal(t, tc.wantObserved, observed)
@@ -714,7 +714,7 @@ func Test_deploymentSettleSnapshot(t *testing.T) {
 
 			deployment := provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt}
 
-			mutate := deploymentSettleSnapshot(deploymentTestNow, &deployment, data, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
+			mutate := deploymentSettleSnapshot(deploymentTestNow, &deployment, data, config.ServerDeploymentSettleDelay, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
 				deployment.InstallSnapshot = snapshot
 			})
 
@@ -1163,6 +1163,9 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
 				require.Positive(t, definition.retries, "action state %q has no retry budget", state)
+				require.Zero(t, definition.settleDelay, "action state %q has a settle delay", state)
+				require.Zero(t, definition.rebootWindow, "action state %q has a reboot window", state)
+				require.Zero(t, definition.install, "action state %q has install thresholds", state)
 
 				return
 			}
@@ -1209,6 +1212,52 @@ func Test_deploymentStatesCancelPhase(t *testing.T) {
 
 	for state, definition := range deploymentStates {
 		require.Equal(t, slices.Contains(want, state), definition.cancelPhase, "state %q is marked as a cancel phase wrongly", state)
+	}
+}
+
+// Test_deploymentStatesTuningIsDeclaredWhereItIsRead asserts, that a threshold is
+// declared exactly at the states, whose wait reads it. A threshold left at zero
+// would silently turn the signal it guards into an immediate accept.
+func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
+	wantSettleDelay := []api.ServerDeploymentState{
+		api.ServerDeploymentStateWaitBIOSApplied,
+		api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		api.ServerDeploymentStateWaitSecureBootSettled,
+		api.ServerDeploymentStateWaitInstall,
+	}
+
+	wantRebootWindow := []api.ServerDeploymentState{
+		api.ServerDeploymentStateWaitSecureBootSettled,
+		api.ServerDeploymentStateWaitReboot,
+	}
+
+	wantInstall := []api.ServerDeploymentState{
+		api.ServerDeploymentStateWaitInstall,
+	}
+
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			if slices.Contains(wantSettleDelay, state) {
+				require.Positive(t, definition.settleDelay, "state %q reads a settle delay, but declares none", state)
+			} else {
+				require.Zero(t, definition.settleDelay, "state %q declares a settle delay, which nothing reads", state)
+			}
+
+			if slices.Contains(wantRebootWindow, state) {
+				require.Positive(t, definition.rebootWindow, "state %q reads a reboot window, but declares none", state)
+			} else {
+				require.Zero(t, definition.rebootWindow, "state %q declares a reboot window, which nothing reads", state)
+			}
+
+			if slices.Contains(wantInstall, state) {
+				require.Positive(t, definition.install.minDuration, "state %q declares no minimum install duration", state)
+				require.Positive(t, definition.install.rebootFallbackDelay, "state %q declares no reboot fallback delay", state)
+				require.Positive(t, definition.install.mediaIdlePeriod, "state %q declares no media idle period", state)
+				require.Positive(t, definition.install.mediaMinBytesRead, "state %q declares no minimum of media read", state)
+			} else {
+				require.Zero(t, definition.install, "state %q declares install thresholds, which nothing reads", state)
+			}
+		})
 	}
 }
 
