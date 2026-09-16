@@ -32,6 +32,16 @@ const (
 	deploymentStateKindTerminal
 )
 
+// deploymentBIOSPass tells, which of the two BIOS passes a state belongs to,
+// which the attributes to apply and to verify are picked by.
+type deploymentBIOSPass int
+
+const (
+	deploymentBIOSPassNone deploymentBIOSPass = iota
+	deploymentBIOSPassFirst
+	deploymentBIOSPassDeferred
+)
+
 // deploymentStateDefinition describes a single state of the deployment state
 // machine. Every step is split into a trigger and a wait state, so a retry
 // re-issues the trigger, a wait timeout falls back to it and a daemon restart
@@ -50,9 +60,16 @@ type deploymentStateDefinition struct {
 	// An empty fallback fails the deployment instead.
 	fallback api.ServerDeploymentState
 
+	// retryFrom is the earlier state, a failed step routes the deployment back
+	// to, instead of being retried in place.
+	retryFrom api.ServerDeploymentState
+
 	// retries is the number of attempts granted to the state, before the
 	// deployment fails.
 	retries int
+
+	// biosPass names the BIOS pass the state belongs to.
+	biosPass deploymentBIOSPass
 
 	// status is the server status a terminal state reports. An empty status
 	// leaves the server deploying.
@@ -104,10 +121,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffBIOS: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingPreparing,
-		next:    api.ServerDeploymentStateWaitPowerOffBIOS,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingPreparing,
+		next:     api.ServerDeploymentStateWaitPowerOffBIOS,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 
 		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
 			if deployment.BIOSPending {
@@ -124,18 +142,21 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffBIOS,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStateApplyBIOS: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStatePowerOnBIOS,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStatePowerOnBIOS,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStatePowerOnBIOS: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStateWaitBIOSApplied,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStateWaitBIOSApplied,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStateWaitBIOSApplied: {
 		kind:     deploymentStateKindWait,
@@ -144,18 +165,22 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffBIOS,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStateVerifyBIOS: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStatePowerOffBIOSDeferred,
-		retries: config.ServerDeploymentStepRetries,
+		kind:      deploymentStateKindAction,
+		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:      api.ServerDeploymentStatePowerOffBIOSDeferred,
+		retries:   config.ServerDeploymentStepRetries,
+		retryFrom: api.ServerDeploymentStatePowerOffBIOS,
+		biosPass:  deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStatePowerOffBIOSDeferred: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 
 		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
 			if deployment.BIOSDeferredPending {
@@ -172,18 +197,21 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStateApplyBIOSDeferred: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStatePowerOnBIOSDeferred,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStatePowerOnBIOSDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStatePowerOnBIOSDeferred: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStateWaitBIOSAppliedDeferred,
-		retries: config.ServerDeploymentStepRetries,
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStateWaitBIOSAppliedDeferred: {
 		kind:     deploymentStateKindWait,
@@ -192,12 +220,15 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStateVerifyBIOSDeferred: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:    api.ServerDeploymentStatePowerOffSecureBoot,
-		retries: config.ServerDeploymentStepRetries,
+		kind:      deploymentStateKindAction,
+		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:      api.ServerDeploymentStatePowerOffSecureBoot,
+		retries:   config.ServerDeploymentStepRetries,
+		retryFrom: api.ServerDeploymentStatePowerOffBIOSDeferred,
+		biosPass:  deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStatePowerOffSecureBoot: {
 		kind:    deploymentStateKindAction,
@@ -427,17 +458,6 @@ func deploymentNextState(deployment *provisioning.ServerDeployment, next api.Ser
 	}
 
 	return next
-}
-
-func deploymentIsBIOSDeferredPass(state api.ServerDeploymentState) bool {
-	switch state {
-	case api.ServerDeploymentStatePowerOffBIOSDeferred, api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
-		api.ServerDeploymentStateApplyBIOSDeferred, api.ServerDeploymentStatePowerOnBIOSDeferred,
-		api.ServerDeploymentStateWaitBIOSAppliedDeferred, api.ServerDeploymentStateVerifyBIOSDeferred:
-		return true
-	}
-
-	return false
 }
 
 // deploymentBackoff returns how long to wait before the n-th attempt of a step.
@@ -1091,7 +1111,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, err
 
 	case api.ServerDeploymentStateApplyBIOS, api.ServerDeploymentStateApplyBIOSDeferred:
-		taskMonitor, err := s.applyBIOSAttributesByName(ctx, server.Name, deploymentBIOSAttributes(deployment), false)
+		taskMonitor, err := s.applyBIOSAttributesByName(ctx, server.Name, deploymentBIOSAttributes(definition, deployment), false)
 		if err != nil {
 			return nil, err
 		}
@@ -1240,8 +1260,8 @@ func (s *serverService) detachDeploymentMedia(ctx context.Context, server provis
 	return errors.Join(errs...)
 }
 
-func deploymentBIOSAttributes(deployment *provisioning.ServerDeployment) map[string]any {
-	if deploymentIsBIOSDeferredPass(deployment.State) {
+func deploymentBIOSAttributes(definition deploymentStateDefinition, deployment *provisioning.ServerDeployment) map[string]any {
+	if definition.biosPass == deploymentBIOSPassDeferred {
 		return deployment.BIOSDeferredAttributes
 	}
 
@@ -1298,7 +1318,7 @@ func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *
 // them to the set, the BIOS pass, that just ran, has applied. Attributes, that
 // the BMC does not report at all, are skipped: not every attribute the firmware
 // accepts is published back through the attribute registry.
-func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBIOSAttributesByName(ctx, server)
@@ -1306,17 +1326,9 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 		return nil, err
 	}
 
-	deferredPass := deploymentIsBIOSDeferredPass(deployment.State)
+	deferredPass := definition.biosPass == deploymentBIOSPassDeferred
 
-	// A mismatch has to repeat the pass, that applied the attributes, power
-	// cycle included: the firmware only picks the staged attributes up on the
-	// next reset, so re-applying them without one changes nothing.
-	retryFrom := api.ServerDeploymentStatePowerOffBIOS
-	if deferredPass {
-		retryFrom = api.ServerDeploymentStatePowerOffBIOSDeferred
-	}
-
-	applied := deploymentBIOSAttributes(deployment)
+	applied := deploymentBIOSAttributes(definition, deployment)
 
 	var mismatches []string
 
@@ -1335,8 +1347,11 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 	}
 
 	if len(mismatches) > 0 {
+		// A mismatch has to repeat the pass, that applied the attributes, power
+		// cycle included: the firmware only picks the staged attributes up on the
+		// next reset, so re-applying them without one changes nothing.
 		return nil, deploymentRetryFromError{
-			state: retryFrom,
+			state: definition.retryFrom,
 			err:   domain.NewRetryableErr(fmt.Errorf("BIOS attributes of server %q have not been applied: %s", server.Name, strings.Join(mismatches, ", "))),
 		}
 	}

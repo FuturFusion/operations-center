@@ -112,28 +112,31 @@ func Test_deploymentNextState(t *testing.T) {
 	}
 }
 
-func Test_deploymentIsBIOSDeferredPass(t *testing.T) {
+func Test_deploymentStatesBIOSPass(t *testing.T) {
 	tests := []struct {
 		name  string
 		state api.ServerDeploymentState
 
-		want bool
+		want deploymentBIOSPass
 	}{
-		{name: "power off", state: api.ServerDeploymentStatePowerOffBIOSDeferred, want: true},
-		{name: "wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOSDeferred, want: true},
-		{name: "apply", state: api.ServerDeploymentStateApplyBIOSDeferred, want: true},
-		{name: "power on", state: api.ServerDeploymentStatePowerOnBIOSDeferred, want: true},
-		{name: "wait applied", state: api.ServerDeploymentStateWaitBIOSAppliedDeferred, want: true},
-		{name: "verify", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: true},
-		{name: "first pass", state: api.ServerDeploymentStateApplyBIOS, want: false},
-		{name: "unrelated state", state: api.ServerDeploymentStateAttachMedia, want: false},
+		{name: "first pass power off", state: api.ServerDeploymentStatePowerOffBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass apply", state: api.ServerDeploymentStateApplyBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass power on", state: api.ServerDeploymentStatePowerOnBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass wait applied", state: api.ServerDeploymentStateWaitBIOSApplied, want: deploymentBIOSPassFirst},
+		{name: "first pass verify", state: api.ServerDeploymentStateVerifyBIOS, want: deploymentBIOSPassFirst},
+		{name: "deferred pass power off", state: api.ServerDeploymentStatePowerOffBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass apply", state: api.ServerDeploymentStateApplyBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass power on", state: api.ServerDeploymentStatePowerOnBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass wait applied", state: api.ServerDeploymentStateWaitBIOSAppliedDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass verify", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "unrelated state", state: api.ServerDeploymentStateAttachMedia, want: deploymentBIOSPassNone},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentIsBIOSDeferredPass(tc.state)
-
-			require.Equal(t, tc.want, got)
+			require.Equal(t, tc.want, deploymentStates[tc.state].biosPass)
 		})
 	}
 }
@@ -398,15 +401,14 @@ func Test_deploymentBIOSAttributes(t *testing.T) {
 		want map[string]any
 	}{
 		{name: "first pass", state: api.ServerDeploymentStateApplyBIOS, want: deployment.BIOSAttributes},
+		{name: "verification of the first pass", state: api.ServerDeploymentStateVerifyBIOS, want: deployment.BIOSAttributes},
 		{name: "deferred pass", state: api.ServerDeploymentStateApplyBIOSDeferred, want: deployment.BIOSDeferredAttributes},
 		{name: "verification of the deferred pass", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: deployment.BIOSDeferredAttributes},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			deployment.State = tc.state
-
-			got := deploymentBIOSAttributes(&deployment)
+			got := deploymentBIOSAttributes(deploymentStates[tc.state], &deployment)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -1152,6 +1154,11 @@ func Test_deploymentStates(t *testing.T) {
 			require.NotEqual(t, state, definition.next, "state %q leads to itself", state)
 			require.Contains(t, deploymentStates, definition.next, "state %q leads to the unknown state %q", state, definition.next)
 
+			if definition.retryFrom != "" {
+				require.Contains(t, deploymentStates, definition.retryFrom, "state %q routes back to the unknown state %q", state, definition.retryFrom)
+				require.Equal(t, deploymentStateKindAction, deploymentStates[definition.retryFrom].kind, "state %q routes back to %q, which is not an action", state, definition.retryFrom)
+			}
+
 			if definition.kind == deploymentStateKindAction {
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
@@ -1234,6 +1241,10 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 
 	for state, definition := range deploymentStates {
 		require.Contains(t, reached, state, "state %q can not be reached from the entry states", state)
+
+		if definition.retryFrom != "" {
+			require.Contains(t, reached, definition.retryFrom, "state %q routes back to the unreachable state %q", state, definition.retryFrom)
+		}
 
 		if definition.enterState == nil {
 			continue
