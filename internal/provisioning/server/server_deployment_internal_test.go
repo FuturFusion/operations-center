@@ -1335,10 +1335,10 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			switch definition.kind {
 			case deploymentStateKindAction:
-				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server)
+				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindWait:
-				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server)
+				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindTerminal:
 				return
