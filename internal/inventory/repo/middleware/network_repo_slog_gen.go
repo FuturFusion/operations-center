@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkRepo = logger.RegisterComponent("inventory.network_repo")
+
 // NetworkRepoWithSlog implements inventory.NetworkRepo that is instrumented with slog logger.
 type NetworkRepoWithSlog struct {
 	_base                 inventory.NetworkRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkRepoWithSlogOption func(s *NetworkRepoWithSlog)
@@ -27,11 +32,21 @@ func NetworkRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 	}
 }
 
+// NetworkRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkRepoWithSlogWithComponent(component logger.Component) NetworkRepoWithSlogOption {
+	return func(_base *NetworkRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkRepoWithSlog instruments an implementation of the inventory.NetworkRepo with simple logging.
 func NewNetworkRepoWithSlog(base inventory.NetworkRepo, opts ...NetworkRepoWithSlogOption) NetworkRepoWithSlog {
 	this := NetworkRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkRepo,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewNetworkRepoWithSlog(base inventory.NetworkRepo, opts ...NetworkRepoWithS
 
 // Create implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,6 +94,7 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Netw
 
 // DeleteByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,6 +129,7 @@ func (_d NetworkRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 
 // DeleteWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkFilter) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -146,6 +164,7 @@ func (_d NetworkRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inven
 
 // GetAllUUIDsWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d NetworkRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 
 // GetAllWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (networks inventory.Networks, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 
 // GetByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (network inventory.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -251,6 +272,7 @@ func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (netw
 
 // UpdateByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) UpdateByUUID(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

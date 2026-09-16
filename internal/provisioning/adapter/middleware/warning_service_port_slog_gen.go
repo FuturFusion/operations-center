@@ -13,10 +13,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentWarningServicePort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentWarningServicePort = logger.RegisterComponent("provisioning.warning_service_port")
+
 // WarningServicePortWithSlog implements provisioning.WarningServicePort that is instrumented with slog logger.
 type WarningServicePortWithSlog struct {
 	_base                 provisioning.WarningServicePort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type WarningServicePortWithSlogOption func(s *WarningServicePortWithSlog)
@@ -27,11 +32,21 @@ func WarningServicePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// WarningServicePortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func WarningServicePortWithSlogWithComponent(component logger.Component) WarningServicePortWithSlogOption {
+	return func(_base *WarningServicePortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewWarningServicePortWithSlog instruments an implementation of the provisioning.WarningServicePort with simple logging.
 func NewWarningServicePortWithSlog(base provisioning.WarningServicePort, opts ...WarningServicePortWithSlogOption) WarningServicePortWithSlog {
 	this := WarningServicePortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentWarningServicePort,
 	}
 
 	for _, opt := range opts {
@@ -43,6 +58,7 @@ func NewWarningServicePortWithSlog(base provisioning.WarningServicePort, opts ..
 
 // Emit implements provisioning.WarningServicePort.
 func (_d WarningServicePortWithSlog) Emit(ctx context.Context, w warning.Warning) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -60,6 +76,7 @@ func (_d WarningServicePortWithSlog) Emit(ctx context.Context, w warning.Warning
 
 // RemoveStale implements provisioning.WarningServicePort.
 func (_d WarningServicePortWithSlog) RemoveStale(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

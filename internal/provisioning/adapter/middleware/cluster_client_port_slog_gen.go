@@ -16,10 +16,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentClusterClientPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentClusterClientPort = logger.RegisterComponent("provisioning.cluster_client_port")
+
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
 type ClusterClientPortWithSlog struct {
 	_base                 provisioning.ClusterClientPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ClusterClientPortWithSlogOption func(s *ClusterClientPortWithSlog)
@@ -30,11 +35,21 @@ func ClusterClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 	}
 }
 
+// ClusterClientPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ClusterClientPortWithSlogWithComponent(component logger.Component) ClusterClientPortWithSlogOption {
+	return func(_base *ClusterClientPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewClusterClientPortWithSlog instruments an implementation of the provisioning.ClusterClientPort with simple logging.
 func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, opts ...ClusterClientPortWithSlogOption) ClusterClientPortWithSlog {
 	this := ClusterClientPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentClusterClientPort,
 	}
 
 	for _, opt := range opts {
@@ -46,6 +61,7 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, opts ...C
 
 // EnableCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server provisioning.Server) (clusterCertificate string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -81,6 +97,7 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -117,6 +134,7 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -152,6 +170,7 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 
 // GetNetworkConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -187,6 +206,7 @@ func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server
 
 // GetNodeSpecificConfigKeys implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (stringToStringToBool map[string]map[string]bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -222,6 +242,7 @@ func (_d ClusterClientPortWithSlog) GetNodeSpecificConfigKeys(ctx context.Contex
 
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -257,6 +278,7 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 
 // GetOSServiceCeph implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceCeph(ctx context.Context, server provisioning.Server) (serviceCeph api0.ServiceCeph, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -292,6 +314,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceCeph(ctx context.Context, server
 
 // GetOSServiceISCSI implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -327,6 +350,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, serve
 
 // GetOSServiceLVM implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceLVM(ctx context.Context, server provisioning.Server) (serviceLVM api0.ServiceLVM, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -362,6 +386,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceLVM(ctx context.Context, server 
 
 // GetOSServiceLinstor implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceLinstor(ctx context.Context, server provisioning.Server) (serviceLinstor api0.ServiceLinstor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -397,6 +422,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceLinstor(ctx context.Context, ser
 
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -432,6 +458,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, s
 
 // GetOSServiceNVME implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server provisioning.Server) (serviceNVME api0.ServiceNVME, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -467,6 +494,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server
 
 // GetOSServiceOVN implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceOVN(ctx context.Context, server provisioning.Server) (serviceOVN api0.ServiceOVN, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -502,6 +530,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceOVN(ctx context.Context, server 
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, endpoint provisioning.Endpoint) (certificate *x509.Certificate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -537,6 +566,7 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 
 // GetStorageConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -572,6 +602,7 @@ func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server
 
 // IncusClient implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -607,6 +638,7 @@ func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint pr
 
 // JoinCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -645,6 +677,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 
 // Ping implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -679,6 +712,7 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 
 // SetServerConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -714,6 +748,7 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 
 // SubscribeLifecycleEvents implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (lifecycleEventCh chan domain.LifecycleEvent, errCh chan error, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -750,6 +785,7 @@ func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context
 
 // SystemFactoryReset implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -787,6 +823,7 @@ func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endp
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -823,6 +860,7 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 
 // UpdateNetworkConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -857,6 +895,7 @@ func (_d ClusterClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, ser
 
 // UpdateOSService implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -893,6 +932,7 @@ func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server 
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

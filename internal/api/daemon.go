@@ -67,11 +67,13 @@ import (
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
+	authnmiddleware "github.com/FuturFusion/operations-center/internal/security/authn/middleware"
 	authnoidc "github.com/FuturFusion/operations-center/internal/security/authn/oidc"
 	authntls "github.com/FuturFusion/operations-center/internal/security/authn/tls"
 	authnunixsocket "github.com/FuturFusion/operations-center/internal/security/authn/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	authzchain "github.com/FuturFusion/operations-center/internal/security/authz/chain"
+	authzmiddleware "github.com/FuturFusion/operations-center/internal/security/authz/middleware"
 	oidcAuthorizer "github.com/FuturFusion/operations-center/internal/security/authz/oidc"
 	authzopenfga "github.com/FuturFusion/operations-center/internal/security/authz/openfga"
 	authztls "github.com/FuturFusion/operations-center/internal/security/authz/tls"
@@ -144,6 +146,8 @@ type Daemon struct {
 }
 
 func NewDaemon(ctx context.Context, env environment) *Daemon {
+	registerComponentLevelsValidation()
+
 	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
 	clientCert, err := os.ReadFile(clientCertFilename)
 	if err != nil {
@@ -165,7 +169,11 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		authenticator: &authn.Authenticator{},
 		oidcVerifier:  &authnoidc.Verifier{},
 		authorizer: func() *authz.Authorizer {
-			var authorizer authz.Authorizer = authzchain.New()
+			var authorizer authz.Authorizer = authzmiddleware.NewAuthorizerWithSlog(
+				authzchain.New(),
+				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
+				authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+			)
 			return &authorizer
 		}(),
 	}
@@ -174,6 +182,8 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 }
 
 func (d *Daemon) Start(ctx context.Context) error {
+	ctx = logger.ContextWithComponent(ctx, componentDaemon)
+
 	slog.InfoContext(ctx, "Starting up", slog.String("version", version.Version))
 
 	dbWithTransaction, err := d.initDB(ctx)
@@ -363,9 +373,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	errorLogger.SetOutput(httpErrorLogger{})
 
 	d.server = &http.Server{
-		Handler: logger.RequestIDMiddleware(
-			logger.AccessLogMiddleware(
-				serveMux,
+		Handler: componentMiddleware(
+			logger.RequestIDMiddleware(
+				logger.AccessLogMiddleware(
+					serveMux,
+				),
 			),
 		),
 		IdleTimeout: 30 * time.Second,
@@ -515,6 +527,20 @@ func (d *Daemon) initAndLoadServerCert() error {
 	return nil
 }
 
+// isAuthzDeniedErr reports whether err is the negative answer of an authorizer
+// instead of a failure.
+func isAuthzDeniedErr(err error) bool {
+	return api.StatusErrorCheck(err, http.StatusForbidden, http.StatusUnauthorized)
+}
+
+// isAuthnFailedErr reports whether err is a rejected credential instead of a
+// failure of the authenticator itself.
+func isAuthnFailedErr(err error) bool {
+	var authErr *authnoidc.AuthError
+
+	return errors.As(err, &authErr)
+}
+
 func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Security) error {
 	d.configReloadMu.Lock()
 	defer d.configReloadMu.Unlock()
@@ -533,7 +559,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	// UnixSocket authenticator is always available.
 	authers := []authn.Auther{
-		authnunixsocket.UnixSocket{},
+		authnmiddleware.NewAutherWithSlog(
+			authnunixsocket.UnixSocket{},
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnUnixSocket),
+		),
 	}
 
 	// Setup OIDC authentication.
@@ -545,7 +574,13 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		} else {
 			*d.oidcVerifier = *newOIDCVerifier
 
-			authers = append(authers, authnoidc.New(newOIDCVerifier))
+			authers = append(authers,
+				authnmiddleware.NewAutherWithSlog(
+					authnoidc.New(newOIDCVerifier),
+					authnmiddleware.AutherWithSlogWithComponent(authnoidc.Component),
+					authnmiddleware.AutherWithSlogWithInformativeErrFunc(isAuthnFailedErr),
+				),
+			)
 		}
 	}
 
@@ -570,14 +605,27 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	}
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
-	authers = append(authers, authntls.New(trustedFingerprints))
+	authers = append(authers,
+		authnmiddleware.NewAutherWithSlog(
+			authntls.New(trustedFingerprints),
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
+		),
+	)
 
 	// Create authenticator
 	*d.authenticator = authn.New(authers)
 
 	authorizers := []authz.Authorizer{
-		unixsocket.New(),
-		authztls.New(ctx, trustedFingerprints),
+		authzmiddleware.NewAuthorizerWithSlog(
+			unixsocket.New(),
+			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
+			authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+		),
+		authzmiddleware.NewAuthorizerWithSlog(
+			authztls.New(ctx, trustedFingerprints),
+			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzTLS),
+			authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+		),
 	}
 
 	if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
@@ -585,17 +633,33 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			authorizers = append(authorizers, openfgaAuthorizer)
+			authorizers = append(authorizers,
+				authzmiddleware.NewAuthorizerWithSlog(
+					openfgaAuthorizer,
+					authzmiddleware.AuthorizerWithSlogWithComponent(authzopenfga.Component),
+					authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+				),
+			)
 		}
 	}
 
 	// If OIDC is configured and OpenFGA is explicitly not configured, grant
 	// unrestricted access to all authenticated OIDC users.
 	if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" && cfg.OpenFGA.APIURL == "" && cfg.OpenFGA.APIToken == "" && cfg.OpenFGA.StoreID == "" {
-		authorizers = append(authorizers, oidcAuthorizer.New())
+		authorizers = append(authorizers,
+			authzmiddleware.NewAuthorizerWithSlog(
+				oidcAuthorizer.New(),
+				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzOIDC),
+				authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+			),
+		)
 	}
 
-	*d.authorizer = authzchain.New(authorizers...)
+	*d.authorizer = authzmiddleware.NewAuthorizerWithSlog(
+		authzchain.New(authorizers...),
+		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
+		authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
+	)
 
 	return errors.Join(errs...)
 }
@@ -1224,7 +1288,7 @@ func (d *Daemon) setupBackgroundTasks(
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 
-	updateSourceTaskStop, _ := task.Start(ctx, refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
+	updateSourceTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshUpdates, refreshUpdatesFromSourcesTask), task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
@@ -1267,7 +1331,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Refresh image sources completed")
 	}
 
-	imageSourceRefreshTaskStop, _ := task.Start(ctx, refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval))
+	imageSourceRefreshTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshImageSources, refreshImageSourcesTask), task.Every(config.ImageSourcePollInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return imageSourceRefreshTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
@@ -1290,7 +1354,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Cluster update control loop completed")
 	}
 
-	clusterUpdateControlLoopStop, _ := task.Start(ctx, clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval))
+	clusterUpdateControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskClusterUpdate, clusterUpdateControlLoop), task.Every(config.PendingServerPollInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return clusterUpdateControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
@@ -1317,9 +1381,9 @@ func (d *Daemon) setupBackgroundTasks(
 	}
 
 	// Start background task for the automated server deployment control loop.
-	serverDeploymentControlLoopStop, _ := task.Start(ctx, func(ctx context.Context) {
+	serverDeploymentControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskServerDeployment, func(ctx context.Context) {
 		runServerDeploymentControlLoop(ctx, "tick", nil)
-	}, task.Every(config.ServerDeploymentControlLoopInterval))
+	}), task.Every(config.ServerDeploymentControlLoopInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return serverDeploymentControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
@@ -1370,6 +1434,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollPendingServers,
 		"pending",
 		provisioning.ServerFilter{
 			Status: new(api.ServerStatusPending),
@@ -1382,6 +1447,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollUpdatingServers,
 		"updating",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusReady),
@@ -1395,6 +1461,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollUpdatingAppServers,
 		"updating application",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusReady),
@@ -1408,6 +1475,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollEvacuatingServers,
 		"evacuating",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusReady),
@@ -1421,6 +1489,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollRestoringServers,
 		"restoring",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusReady),
@@ -1434,6 +1503,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollRebootingServers,
 		"rebooting",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusOffline),
@@ -1447,6 +1517,7 @@ func (d *Daemon) setupBackgroundTasks(
 	d.startBackgroundPollingTask(
 		ctx,
 		serverSvc,
+		componentTaskPollUnresponsiveServers,
 		"unresponsive",
 		provisioning.ServerFilter{
 			Status:       new(api.ServerStatusOffline),
@@ -1479,7 +1550,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Connectivity test for ready servers completed")
 	}
 
-	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(config.ConnectivityCheckInterval))
+	pollReadyServersTaskStop, _ := task.Start(ctx, componentTask(componentTaskPollReadyServers, pollReadyServersTask), task.Every(config.ConnectivityCheckInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
@@ -1502,7 +1573,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Inventory update completed")
 	}
 
-	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(config.InventoryUpdateInterval))
+	refreshInventoryTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshInventory, refreshInventoryTask), task.Every(config.InventoryUpdateInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -1525,7 +1596,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "BMC data resync completed")
 	}
 
-	refreshBMCDataTaskStop, _ := task.Start(ctx, refreshBMCDataTask, task.Every(config.BMCDataResyncInterval))
+	refreshBMCDataTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshBMCData, refreshBMCDataTask), task.Every(config.BMCDataResyncInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshBMCDataTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -1544,7 +1615,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Seed image cache prune completed")
 	}
 
-	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval))
+	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, componentTask(componentTaskPruneSeedImageCache, pruneSeedImageCacheTask), task.Every(config.SeedImageCachePruneInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -1581,7 +1652,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "ACME server certificate renewal completed")
 	}
 
-	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval))
+	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, componentTask(componentTaskRenewACMECertificate, renewACMEServerCertificateTask), task.Every(config.ACMEServerCertificateRenewInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -1669,7 +1740,7 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Certificates validity check completed")
 	}
 
-	certificatesValidityCheckTaskStop, _ := task.Start(ctx, certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval))
+	certificatesValidityCheckTaskStop, _ := task.Start(ctx, componentTask(componentTaskCertificatesValidityCheck, certificatesValidityCheckTask), task.Every(config.CertificatesValidityCheckInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -1678,12 +1749,13 @@ func (d *Daemon) setupBackgroundTasks(
 func (d *Daemon) startBackgroundPollingTask(
 	ctx context.Context,
 	serverSvc provisioning.ServerService,
+	component logger.Component,
 	stateDescription string,
 	serverFilter provisioning.ServerFilter,
 	updateServerConfiguration bool,
 	interval time.Duration,
 ) {
-	pollRestoringServersTask := func(ctx context.Context) {
+	pollServersTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
 		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
 		if err != nil {
@@ -1700,9 +1772,9 @@ func (d *Daemon) startBackgroundPollingTask(
 		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
 	}
 
-	pollRestoringServersTaskStop, _ := task.Start(ctx, pollRestoringServersTask, task.Every(interval))
+	pollServersTaskStop, _ := task.Start(ctx, componentTask(component, pollServersTask), task.Every(interval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollRestoringServersTaskStop(deadlineFrom(ctx, 1*time.Second))
+		return pollServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 }
 
@@ -1935,6 +2007,8 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
+	ctx = logger.ContextWithComponent(ctx, componentDaemon)
+
 	d.configReloadMu.Lock()
 	if d.securityRetryCancel != nil {
 		d.securityRetryCancel()

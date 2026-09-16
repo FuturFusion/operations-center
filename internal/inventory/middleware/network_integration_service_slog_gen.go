@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkIntegrationService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkIntegrationService = logger.RegisterComponent("inventory.network_integration_service")
+
 // NetworkIntegrationServiceWithSlog implements inventory.NetworkIntegrationService that is instrumented with slog logger.
 type NetworkIntegrationServiceWithSlog struct {
 	_base                 inventory.NetworkIntegrationService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkIntegrationServiceWithSlogOption func(s *NetworkIntegrationServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkIntegrationServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 	}
 }
 
+// NetworkIntegrationServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkIntegrationServiceWithSlogWithComponent(component logger.Component) NetworkIntegrationServiceWithSlogOption {
+	return func(_base *NetworkIntegrationServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkIntegrationServiceWithSlog instruments an implementation of the inventory.NetworkIntegrationService with simple logging.
 func NewNetworkIntegrationServiceWithSlog(base inventory.NetworkIntegrationService, opts ...NetworkIntegrationServiceWithSlogOption) NetworkIntegrationServiceWithSlog {
 	this := NetworkIntegrationServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkIntegrationService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkIntegrationServiceWithSlog(base inventory.NetworkIntegrationServi
 
 // GetAllUUIDsWithFilter implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Co
 
 // GetAllWithFilter implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (networkIntegrations inventory.NetworkIntegrations, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetAllWithFilter(ctx context.Context
 
 // GetByUUID implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkIntegration inventory.NetworkIntegration, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetByUUID(ctx context.Context, id uu
 
 // ResyncByName implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkIntegrationServiceWithSlog) ResyncByName(ctx context.Context, cl
 
 // ResyncByUUID implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkIntegrationServiceWithSlog) ResyncByUUID(ctx context.Context, id
 
 // SyncCluster implements inventory.NetworkIntegrationService.
 func (_d NetworkIntegrationServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentProvisioningClusterService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentProvisioningClusterService = logger.RegisterComponent("inventory.provisioning_cluster_service")
+
 // ProvisioningClusterServiceWithSlog implements inventory.ProvisioningClusterService that is instrumented with slog logger.
 type ProvisioningClusterServiceWithSlog struct {
 	_base                 inventory.ProvisioningClusterService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ProvisioningClusterServiceWithSlogOption func(s *ProvisioningClusterServiceWithSlog)
@@ -26,11 +31,21 @@ func ProvisioningClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFu
 	}
 }
 
+// ProvisioningClusterServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ProvisioningClusterServiceWithSlogWithComponent(component logger.Component) ProvisioningClusterServiceWithSlogOption {
+	return func(_base *ProvisioningClusterServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewProvisioningClusterServiceWithSlog instruments an implementation of the inventory.ProvisioningClusterService with simple logging.
 func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterService, opts ...ProvisioningClusterServiceWithSlogOption) ProvisioningClusterServiceWithSlog {
 	this := ProvisioningClusterServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentProvisioningClusterService,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterSer
 
 // GetAll implements inventory.ProvisioningClusterService.
 func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -76,6 +92,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 
 // GetEndpoint implements inventory.ProvisioningClusterService.
 func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

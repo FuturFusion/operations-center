@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// componentChannelService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentChannelService = logger.RegisterComponent("provisioning.channel_service")
+
 // ChannelServiceWithSlog implements provisioning.ChannelService that is instrumented with slog logger.
 type ChannelServiceWithSlog struct {
 	_base                 provisioning.ChannelService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type ChannelServiceWithSlogOption func(s *ChannelServiceWithSlog)
@@ -28,11 +33,21 @@ func ChannelServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 	}
 }
 
+// ChannelServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func ChannelServiceWithSlogWithComponent(component logger.Component) ChannelServiceWithSlogOption {
+	return func(_base *ChannelServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewChannelServiceWithSlog instruments an implementation of the provisioning.ChannelService with simple logging.
 func NewChannelServiceWithSlog(base provisioning.ChannelService, opts ...ChannelServiceWithSlogOption) ChannelServiceWithSlog {
 	this := ChannelServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentChannelService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewChannelServiceWithSlog(base provisioning.ChannelService, opts ...Channel
 
 // Create implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisioning.Channel) (channel provisioning.Channel, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisio
 
 // DeleteByName implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -113,6 +130,7 @@ func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 
 // GetAll implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetAll(ctx context.Context) (channels provisioning.Channels, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -147,6 +165,7 @@ func (_d ChannelServiceWithSlog) GetAll(ctx context.Context) (channels provision
 
 // GetAllNames implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -181,6 +200,7 @@ func (_d ChannelServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 
 // GetByName implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (channel *provisioning.Channel, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -216,6 +236,7 @@ func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (ch
 
 // GetChangelogByName implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (updateChangelogs api.UpdateChangelogs, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -252,7 +273,7 @@ func (_d ChannelServiceWithSlog) GetChangelogByName(ctx context.Context, name st
 
 // SetServerService implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
-	ctx := context.Background()
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -269,6 +290,7 @@ func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerS
 
 // Update implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) Update(ctx context.Context, newChannel provisioning.Channel) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

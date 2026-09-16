@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkZoneService identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkZoneService = logger.RegisterComponent("inventory.network_zone_service")
+
 // NetworkZoneServiceWithSlog implements inventory.NetworkZoneService that is instrumented with slog logger.
 type NetworkZoneServiceWithSlog struct {
 	_base                 inventory.NetworkZoneService
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkZoneServiceWithSlogOption func(s *NetworkZoneServiceWithSlog)
@@ -28,11 +33,21 @@ func NetworkZoneServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 	}
 }
 
+// NetworkZoneServiceWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkZoneServiceWithSlogWithComponent(component logger.Component) NetworkZoneServiceWithSlogOption {
+	return func(_base *NetworkZoneServiceWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkZoneServiceWithSlog instruments an implementation of the inventory.NetworkZoneService with simple logging.
 func NewNetworkZoneServiceWithSlog(base inventory.NetworkZoneService, opts ...NetworkZoneServiceWithSlogOption) NetworkZoneServiceWithSlog {
 	this := NetworkZoneServiceWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkZoneService,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkZoneServiceWithSlog(base inventory.NetworkZoneService, opts ...Ne
 
 // GetAllUUIDsWithFilter implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -79,6 +95,7 @@ func (_d NetworkZoneServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 
 // GetAllWithFilter implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -114,6 +131,7 @@ func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 
 // GetByUUID implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkZone inventory.NetworkZone, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -149,6 +167,7 @@ func (_d NetworkZoneServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 
 // ResyncByName implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -184,6 +203,7 @@ func (_d NetworkZoneServiceWithSlog) ResyncByName(ctx context.Context, clusterNa
 
 // ResyncByUUID implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,6 +238,7 @@ func (_d NetworkZoneServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.U
 
 // SyncCluster implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

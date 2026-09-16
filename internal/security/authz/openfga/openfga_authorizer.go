@@ -18,6 +18,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+var Component = logger.RegisterComponent("security.authz.openfga")
+
 // FGA represents an OpenFGA authorizer.
 type FGA struct {
 	client *client.OpenFgaClient
@@ -26,6 +28,8 @@ type FGA struct {
 var _ authz.Authorizer = FGA{}
 
 func New(ctx context.Context, apiURL string, apiToken string, storeID string) (*FGA, error) {
+	ctx = logger.ContextWithComponent(ctx, Component)
+
 	var err error
 	f := &FGA{}
 
@@ -66,6 +70,8 @@ func newClient(apiURL string, apiToken string, storeID string) (*client.OpenFgaC
 // CheckConnectivity verifies OpenFGA is reachable with the given credentials
 // and store.
 func CheckConnectivity(ctx context.Context, apiURL string, apiToken string, storeID string) error {
+	ctx = logger.ContextWithComponent(ctx, Component)
+
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

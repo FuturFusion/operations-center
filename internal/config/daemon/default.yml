@@ -50,6 +50,20 @@ security:
     provider_environment: []
     provider_resolvers: []
 
+settings:
+  # Default log level for Operations Center. One of TRACE, DEBUG, INFO, WARN or
+  # ERROR. Empty means WARN.
+  log_level: ""
+
+  # Log levels per component, overriding log_level. The keys are component
+  # names, e.g. "provisioning" or "provisioning.server_repo". A level configured
+  # for a component applies to all of its children as well, the most specific
+  # configuration wins.
+  #
+  # log_levels:
+  #   provisioning: DEBUG
+  #   provisioning.server_repo: TRACE
+
 updates:
   # URL of the server providing updates for incus-os.
   source: https://images.linuxcontainers.org/os/

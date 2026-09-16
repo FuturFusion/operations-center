@@ -216,6 +216,12 @@ type SettingsPut struct {
 	// Daemon log level.
 	LogLevel string `json:"log_level" yaml:"log_level"`
 
+	// Log levels per component, overriding LogLevel. The keys are component
+	// names, a level configured for a component applies to all of its children
+	// as well.
+	// Example: {"provisioning": "DEBUG"}
+	LogLevels map[string]string `json:"log_levels" yaml:"log_levels"`
+
 	// ServerRegistrationScriptlet hold the server registration scriptlet.
 	ServerRegistrationScriptlet string `json:"server_registration_scriptlet" yaml:"server_registration_scriptlet"`
 }

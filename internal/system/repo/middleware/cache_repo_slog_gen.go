@@ -11,10 +11,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentCacheRepo identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentCacheRepo = logger.RegisterComponent("system.cache_repo")
+
 // CacheRepoWithSlog implements system.CacheRepo that is instrumented with slog logger.
 type CacheRepoWithSlog struct {
 	_base                 system.CacheRepo
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type CacheRepoWithSlogOption func(s *CacheRepoWithSlog)
@@ -25,11 +30,21 @@ func CacheRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bo
 	}
 }
 
+// CacheRepoWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func CacheRepoWithSlogWithComponent(component logger.Component) CacheRepoWithSlogOption {
+	return func(_base *CacheRepoWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewCacheRepoWithSlog instruments an implementation of the system.CacheRepo with simple logging.
 func NewCacheRepoWithSlog(base system.CacheRepo, opts ...CacheRepoWithSlogOption) CacheRepoWithSlog {
 	this := CacheRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentCacheRepo,
 	}
 
 	for _, opt := range opts {
@@ -41,6 +56,7 @@ func NewCacheRepoWithSlog(base system.CacheRepo, opts ...CacheRepoWithSlogOption
 
 // CleanupAll implements system.CacheRepo.
 func (_d CacheRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

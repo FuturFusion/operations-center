@@ -12,10 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentSeedImageProgressPort identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentSeedImageProgressPort = logger.RegisterComponent("provisioning.seed_image_progress_port")
+
 // SeedImageProgressPortWithSlog implements provisioning.SeedImageProgressPort that is instrumented with slog logger.
 type SeedImageProgressPortWithSlog struct {
 	_base                 provisioning.SeedImageProgressPort
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type SeedImageProgressPortWithSlogOption func(s *SeedImageProgressPortWithSlog)
@@ -26,11 +31,21 @@ func SeedImageProgressPortWithSlogWithInformativeErrFunc(isInformativeErrFunc fu
 	}
 }
 
+// SeedImageProgressPortWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func SeedImageProgressPortWithSlogWithComponent(component logger.Component) SeedImageProgressPortWithSlogOption {
+	return func(_base *SeedImageProgressPortWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewSeedImageProgressPortWithSlog instruments an implementation of the provisioning.SeedImageProgressPort with simple logging.
 func NewSeedImageProgressPortWithSlog(base provisioning.SeedImageProgressPort, opts ...SeedImageProgressPortWithSlogOption) SeedImageProgressPortWithSlog {
 	this := SeedImageProgressPortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentSeedImageProgressPort,
 	}
 
 	for _, opt := range opts {
@@ -42,6 +57,7 @@ func NewSeedImageProgressPortWithSlog(base provisioning.SeedImageProgressPort, o
 
 // Get implements provisioning.SeedImageProgressPort.
 func (_d SeedImageProgressPortWithSlog) Get(ctx context.Context, deploymentID string) (seedImageProgress provisioning.SeedImageProgress, b bool) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -66,6 +82,7 @@ func (_d SeedImageProgressPortWithSlog) Get(ctx context.Context, deploymentID st
 
 // Reset implements provisioning.SeedImageProgressPort.
 func (_d SeedImageProgressPortWithSlog) Reset(ctx context.Context, deploymentID string) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -83,6 +100,7 @@ func (_d SeedImageProgressPortWithSlog) Reset(ctx context.Context, deploymentID 
 
 // Track implements provisioning.SeedImageProgressPort.
 func (_d SeedImageProgressPortWithSlog) Track(ctx context.Context, deploymentID string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) (readSeekCloser io.ReadSeekCloser) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

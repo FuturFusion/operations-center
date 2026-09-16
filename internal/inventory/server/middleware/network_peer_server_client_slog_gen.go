@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkPeerServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkPeerServerClient = logger.RegisterComponent("inventory.network_peer_server_client")
+
 // NetworkPeerServerClientWithSlog implements inventory.NetworkPeerServerClient that is instrumented with slog logger.
 type NetworkPeerServerClientWithSlog struct {
 	_base                 inventory.NetworkPeerServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkPeerServerClientWithSlogOption func(s *NetworkPeerServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkPeerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 	}
 }
 
+// NetworkPeerServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkPeerServerClientWithSlogWithComponent(component logger.Component) NetworkPeerServerClientWithSlogOption {
+	return func(_base *NetworkPeerServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkPeerServerClientWithSlog instruments an implementation of the inventory.NetworkPeerServerClient with simple logging.
 func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, opts ...NetworkPeerServerClientWithSlogOption) NetworkPeerServerClientWithSlog {
 	this := NetworkPeerServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkPeerServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, 
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -82,6 +98,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

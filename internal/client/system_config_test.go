@@ -181,6 +181,27 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			assertFunc: noop,
 		},
 		{
+			name:   "success - log levels per component",
+			client: d.socketClient,
+
+			settingsConfig: system.SettingsPut{
+				// A level less verbose than the default keeps the rest of the
+				// test suite quiet.
+				LogLevels: map[string]string{"provisioning": "ERROR"},
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				settingsConfig, err := d.socketClient.GetSystemSettingsConfig(t.Context())
+				require.NoError(t, err)
+				require.Equal(t, map[string]string{"provisioning": "ERROR"}, settingsConfig.LogLevels)
+
+				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{}))
+			},
+		},
+		{
 			name:   "error - validation, invalid log level",
 			client: d.socketClient,
 
@@ -190,6 +211,32 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Log level "not-a-log-level" is invalid`)
+			},
+			assertFunc: noop,
+		},
+		{
+			name:   "error - validation, invalid component name",
+			client: d.socketClient,
+
+			settingsConfig: system.SettingsPut{
+				LogLevels: map[string]string{"Provisioning": "DEBUG"},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Component "Provisioning" is invalid`)
+			},
+			assertFunc: noop,
+		},
+		{
+			name:   "error - validation, unknown component",
+			client: d.socketClient,
+
+			settingsConfig: system.SettingsPut{
+				LogLevels: map[string]string{"provisionning": "DEBUG"},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `unknown components "provisionning"`)
 			},
 			assertFunc: noop,
 		},

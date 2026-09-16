@@ -38,3 +38,16 @@ packages:
   github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:
   github.com/FuturFusion/operations-center/internal/system:
   github.com/FuturFusion/operations-center/internal/warning:
+
+  github.com/FuturFusion/operations-center/internal/security/authn:
+    interfaces:
+      Auther:
+        config:
+          template-data:
+            component: security.authn
+  github.com/FuturFusion/operations-center/internal/security/authz:
+    interfaces:
+      Authorizer:
+        config:
+          template-data:
+            component: security.authz

@@ -20,6 +20,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+var componentDaemon = logger.RegisterComponent("daemon")
+
 type env interface {
 	LogDir() string
 	RunDir() string
@@ -79,6 +81,11 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetSettings().LogLevels))
+	if err != nil {
+		return fmt.Errorf("Failed to set per component log levels from config: %w", err)
+	}
+
 	rootCtx, stop := signal.NotifyContext(
 		context.Background(),
 		unix.SIGPWR,
@@ -88,11 +95,13 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	)
 	defer stop()
 
+	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
+
 	// Generate client certificate if none are found.
 	clientCertFilename := filepath.Join(c.env.VarDir(), config.ClientCertificateFilename)
 	clientKeyFilename := filepath.Join(c.env.VarDir(), config.ClientKeyFilename)
 	if !util.PathExists(clientCertFilename) || !util.PathExists(clientKeyFilename) {
-		slog.InfoContext(cmd.Context(), "No client certificate found, generate client.crt and client.key")
+		slog.InfoContext(logCtx, "No client certificate found, generate client.crt and client.key")
 		err := incustls.FindOrGenCert(clientCertFilename, clientKeyFilename, true, false)
 		if err != nil {
 			return fmt.Errorf("Failed to generate client certificate: %w", err)
@@ -103,25 +112,25 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	err = d.Start(cmd.Context())
 	if err != nil {
-		slog.ErrorContext(cmd.Context(), "Failed to start daemon", logger.Err(err))
+		slog.ErrorContext(logCtx, "Failed to start daemon", logger.Err(err))
 		return fmt.Errorf("Failed to start daemon: %v", err)
 	}
 
-	slog.InfoContext(cmd.Context(), "Daemon started")
+	slog.InfoContext(logCtx, "Daemon started")
 
 	<-rootCtx.Done()
-	slog.InfoContext(cmd.Context(), "Shutting down")
+	slog.InfoContext(logCtx, "Shutting down")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
 	err = d.Stop(shutdownCtx)
 	if err != nil {
-		slog.ErrorContext(cmd.Context(), "Error occurred during shutdown of daemon", logger.Err(err))
+		slog.ErrorContext(logCtx, "Error occurred during shutdown of daemon", logger.Err(err))
 		return fmt.Errorf("Error occurred during shutdown of daemon: %v", err)
 	}
 
-	slog.InfoContext(cmd.Context(), "Daemon shutdown completed successfully")
+	slog.InfoContext(logCtx, "Daemon shutdown completed successfully")
 
 	return nil
 }

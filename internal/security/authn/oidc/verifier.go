@@ -21,6 +21,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+var Component = logger.RegisterComponent("security.authn.oidc")
+
 // Verifier holds all information needed to verify an access token offline.
 type Verifier struct {
 	state *verifierState
@@ -403,6 +405,8 @@ func (o *Verifier) retryGetAccessTokenVerifier(ctx context.Context) {
 // CheckConnectivity verifies the OIDC issuer is reachable by calling its
 // discovery endpoint.
 func CheckConnectivity(ctx context.Context, issuer string) error {
+	ctx = logger.ContextWithComponent(ctx, Component)
+
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -425,6 +429,8 @@ func getAccessTokenVerifier(ctx context.Context, issuer string) (*op.AccessToken
 
 // NewVerifier returns a Verifier.
 func NewVerifier(ctx context.Context, issuer string, clientid string, scope string, audience string, claim string) (*Verifier, error) {
+	ctx = logger.ContextWithComponent(ctx, Component)
+
 	cookieKey, err := uuid.New().MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create UUID: %w", err)

@@ -14,10 +14,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// componentNetworkIntegrationServerClient identifies the log records of this decorator and allows the
+// log level to be configured for it individually.
+var componentNetworkIntegrationServerClient = logger.RegisterComponent("inventory.network_integration_server_client")
+
 // NetworkIntegrationServerClientWithSlog implements inventory.NetworkIntegrationServerClient that is instrumented with slog logger.
 type NetworkIntegrationServerClientWithSlog struct {
 	_base                 inventory.NetworkIntegrationServerClient
 	_isInformativeErrFunc func(error) bool
+	_component            logger.Component
 }
 
 type NetworkIntegrationServerClientWithSlogOption func(s *NetworkIntegrationServerClientWithSlog)
@@ -28,11 +33,21 @@ func NetworkIntegrationServerClientWithSlogWithInformativeErrFunc(isInformativeE
 	}
 }
 
+// NetworkIntegrationServerClientWithSlogWithComponent overrides the component this instance is
+// attributed to. Use it to tell several instances of the same interface apart,
+// e.g. the individual members of a chain.
+func NetworkIntegrationServerClientWithSlogWithComponent(component logger.Component) NetworkIntegrationServerClientWithSlogOption {
+	return func(_base *NetworkIntegrationServerClientWithSlog) {
+		_base._component = component
+	}
+}
+
 // NewNetworkIntegrationServerClientWithSlog instruments an implementation of the inventory.NetworkIntegrationServerClient with simple logging.
 func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, opts ...NetworkIntegrationServerClientWithSlogOption) NetworkIntegrationServerClientWithSlog {
 	this := NetworkIntegrationServerClientWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
+		_component:            componentNetworkIntegrationServerClient,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +59,7 @@ func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegration
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -80,6 +96,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
