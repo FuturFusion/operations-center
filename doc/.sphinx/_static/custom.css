@@ -178,3 +178,7 @@ details summary {
 #expand-options {
     display: none;
 }
+
+pre.mermaid[data-zoom-id] > svg {
+    height: 1400px;
+}

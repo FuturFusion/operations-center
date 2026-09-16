@@ -32,18 +32,101 @@ const (
 	deploymentStateKindTerminal
 )
 
+// deploymentActionFunc performs the operation of a trigger state and returns a
+// mutation, that records what the operation produced.
+type deploymentActionFunc func(*serverService, context.Context, *slog.Logger, provisioning.Server, deploymentStateDefinition) (func(*provisioning.ServerDeployment), error)
+
+// deploymentWaitFunc evaluates the condition of a wait state.
+type deploymentWaitFunc func(*serverService, context.Context, *slog.Logger, provisioning.Server, deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error)
+
+// deploymentBIOSPass tells, which of the two BIOS passes a state belongs to,
+// which the attributes to apply and to verify are picked by.
+type deploymentBIOSPass int
+
+const (
+	deploymentBIOSPassNone deploymentBIOSPass = iota
+	deploymentBIOSPassFirst
+	deploymentBIOSPassDeferred
+)
+
+// deploymentInstallThresholds holds, what the install wait tells the first stage
+// of the installation by.
+type deploymentInstallThresholds struct {
+	// minDuration is the time, that has to have passed, before the installation
+	// could be done at all.
+	minDuration time.Duration
+
+	// rebootFallbackDelay is the time, after which a reboot counts as the end of
+	// the first stage, where nothing better is available.
+	rebootFallbackDelay time.Duration
+
+	// mediaIdlePeriod is the time without a read, after which the installation
+	// media counts as idle.
+	mediaIdlePeriod time.Duration
+
+	// mediaMinBytesRead is, how much of the installation media has to have been
+	// read, before the idle period is taken as a signal.
+	mediaMinBytesRead int64
+}
+
 // deploymentStateDefinition describes a single state of the deployment state
 // machine. Every step is split into a trigger and a wait state, so a retry
 // re-issues the trigger, a wait timeout falls back to it and a daemon restart
 // re-enters the persisted state.
+//
+// Nothing reachable from a function stored here may read deploymentStates: the
+// table refers to these functions, so a read back is an initialization cycle.
+// Whatever a function needs, it is handed with the definition it is called with.
 type deploymentStateDefinition struct {
+	// label is the human readable name of the state in the generated state
+	// diagram.
+	label string
+
 	kind   deploymentStateKind
 	detail api.ServerStatusDetail
 	next   api.ServerDeploymentState
 
+	// action performs the operation of a trigger state.
+	action deploymentActionFunc
+
+	// wait evaluates the condition of a wait state.
+	wait deploymentWaitFunc
+
+	// enterState returns the state the deployment enters in place of this one:
+	// the state itself, or the state to skip to, where it has nothing left to do
+	// here. Every skip moves forward, so the chain of them settles.
+	enterState func(*provisioning.ServerDeployment) api.ServerDeploymentState
+
 	// fallback is the trigger state a wait state returns to, when it times out.
 	// An empty fallback fails the deployment instead.
 	fallback api.ServerDeploymentState
+
+	// retryFrom is the earlier state, a failed step routes the deployment back
+	// to, instead of being retried in place.
+	retryFrom api.ServerDeploymentState
+
+	// retries is the number of attempts granted to the state, before the
+	// deployment fails.
+	retries int
+
+	// settleDelay is the time, the server is granted to come up and run through
+	// its power on self test, before a wait reads anything into what the BMC
+	// reports. In contrast to a timeout, it is a minimum rather than a maximum.
+	settleDelay time.Duration
+
+	// rebootWindow is the time, a wait looks for an actual reboot of the server,
+	// before it settles for the weaker signal it has.
+	rebootWindow time.Duration
+
+	// install holds, what the install wait tells the installation by.
+	install deploymentInstallThresholds
+
+	// biosPass names the BIOS pass the state belongs to.
+	biosPass deploymentBIOSPass
+
+	// status is the server status a terminal state reports. An empty status
+	// leaves the server deploying.
+	status api.ServerStatus
 
 	// timeout bounds a wait state.
 	timeout time.Duration
@@ -54,11 +137,31 @@ type deploymentStateDefinition struct {
 	// unresponsive BMC from parking the control loop.
 	callTimeout time.Duration
 
+	// cancelPhase marks the states, that clean a cancelled deployment up, and
+	// which a cancellation therefore does not preempt.
+	cancelPhase bool
+
 	// prepare records, that the action of the state is about to run, and is
 	// persisted before it does. It belongs to a step, whose side effect can not
 	// be told apart from a no-op once it has been performed, so a re-issued
 	// attempt has to learn from the record instead of from the BMC.
 	prepare func(*provisioning.ServerDeployment)
+
+	// condition describes, what satisfies the wait, and labels the edge a wait
+	// state leaves by. It is rendered as a template against the definition, so a
+	// duration it mentions is the one the state declares, rather than a second
+	// copy of it.
+	condition string
+
+	// retryReason labels the edge back to retryFrom.
+	retryReason string
+
+	// enterReason and skipReason describe, why a state, that can be passed by, is
+	// entered or passed by. The reasons of a chain of skips are joined, which is
+	// where a label like "attributes match, no deferred attributes pending" comes
+	// from.
+	enterReason string
+	skipReason  string
 }
 
 func (d deploymentStateDefinition) callTimeoutOrDefault() time.Duration {
@@ -69,214 +172,444 @@ func (d deploymentStateDefinition) callTimeoutOrDefault() time.Duration {
 	return config.ServerDeploymentStepCallTimeout
 }
 
-// deploymentStates holds the deployment state machine. Every wait condition
-// listed here is re-derivable from the BMC data or the server record alone, a
-// persisted task monitor is only ever an optimization, since a BMC forgets
-// about one once it has been consumed or has been reset.
+// deploymentWaitPowerIsOff is shared by every state, that waits for the server
+// to be powered off.
+var deploymentWaitPowerIsOff = deploymentBMCWait(deploymentPowerIsOff)
+
+// deploymentStates holds the deployment state machine. It is the single point
+// defining the states and the transitions: the action or the wait condition of a
+// state, the retry budget, the timeouts and every threshold, that decides when a
+// wait is satisfied, are declared here and nowhere else.
+//
+// Every wait condition listed here is re-derivable from the BMC data or the
+// server record alone, a persisted task monitor is only ever an optimization,
+// since a BMC forgets about one once it has been consumed or has been reset.
 var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateRefreshBMCData: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStateCheckBIOS,
+		label:   "refresh BMC data",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingPreparing,
+		action:  (*serverService).refreshDeploymentBMCData,
+		next:    api.ServerDeploymentStateCheckBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCheckBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStatePowerOffBIOS,
+		label:   "check BIOS",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingPreparing,
+		action:  (*serverService).checkDeploymentBIOSAttributes,
+		next:    api.ServerDeploymentStatePowerOffBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStateWaitPowerOffBIOS,
+		label:    "power off",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingPreparing,
+		action:   (*serverService).powerOffDeploymentServer,
+		next:     api.ServerDeploymentStateWaitPowerOffBIOS,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.BIOSPending {
+				return api.ServerDeploymentStatePowerOffBIOS
+			}
+
+			return api.ServerDeploymentStatePowerOffBIOSDeferred
+		},
+
+		enterReason: "attributes not applied",
+		skipReason:  "attributes match",
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOS: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingPreparing,
+		wait:     deploymentWaitPowerIsOff,
 		next:     api.ServerDeploymentStateApplyBIOS,
 		fallback: api.ServerDeploymentStatePowerOffBIOS,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateApplyBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOnBIOS,
+		label:    "apply BIOS",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:   (*serverService).applyDeploymentBIOSAttributes,
+		next:     api.ServerDeploymentStatePowerOnBIOS,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStatePowerOnBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitBIOSApplied,
+		label:    "power on",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:   (*serverService).powerOnDeploymentServer,
+		next:     api.ServerDeploymentStateWaitBIOSApplied,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStateWaitBIOSApplied: {
-		kind:     deploymentStateKindWait,
-		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:     api.ServerDeploymentStateVerifyBIOS,
-		fallback: api.ServerDeploymentStatePowerOffBIOS,
-		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		label:       "wait for BIOS applied",
+		kind:        deploymentStateKindWait,
+		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentBIOSApplied,
+		next:        api.ServerDeploymentStateVerifyBIOS,
+		fallback:    api.ServerDeploymentStatePowerOffBIOS,
+		timeout:     config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:     config.ServerDeploymentStepRetries,
+		settleDelay: config.ServerDeploymentSettleDelay,
+		biosPass:    deploymentBIOSPassFirst,
+
+		condition: "task completed, or task unavailable after settle delay ({{ .SettleDelay }}) and power state on",
 	},
 	api.ServerDeploymentStateVerifyBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOffBIOSDeferred,
+		label:     "verify BIOS",
+		kind:      deploymentStateKindAction,
+		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:    (*serverService).verifyDeploymentBIOSAttributes,
+		next:      api.ServerDeploymentStatePowerOffBIOSDeferred,
+		retries:   config.ServerDeploymentStepRetries,
+		retryFrom: api.ServerDeploymentStatePowerOffBIOS,
+		biosPass:  deploymentBIOSPassFirst,
+
+		condition:   "attributes match",
+		retryReason: "attributes not applied",
 	},
 	api.ServerDeploymentStatePowerOffBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+		label:    "power off",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:   (*serverService).powerOffDeploymentServer,
+		next:     api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.BIOSDeferredPending {
+				return api.ServerDeploymentStatePowerOffBIOSDeferred
+			}
+
+			return api.ServerDeploymentStatePowerOffSecureBoot
+		},
+
+		skipReason: "no deferred attributes pending",
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:     deploymentWaitPowerIsOff,
 		next:     api.ServerDeploymentStateApplyBIOSDeferred,
 		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateApplyBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOnBIOSDeferred,
+		label:    "apply deferred BIOS",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:   (*serverService).applyDeploymentBIOSAttributes,
+		next:     api.ServerDeploymentStatePowerOnBIOSDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStatePowerOnBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		label:    "power on",
+		kind:     deploymentStateKindAction,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:   (*serverService).powerOnDeploymentServer,
+		next:     api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		retries:  config.ServerDeploymentStepRetries,
+		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStateWaitBIOSAppliedDeferred: {
-		kind:     deploymentStateKindWait,
-		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:     api.ServerDeploymentStateVerifyBIOSDeferred,
-		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
-		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		label:       "wait for BIOS applied",
+		kind:        deploymentStateKindWait,
+		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentBIOSApplied,
+		next:        api.ServerDeploymentStateVerifyBIOSDeferred,
+		fallback:    api.ServerDeploymentStatePowerOffBIOSDeferred,
+		timeout:     config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:     config.ServerDeploymentStepRetries,
+		settleDelay: config.ServerDeploymentSettleDelay,
+		biosPass:    deploymentBIOSPassDeferred,
+
+		condition: "task completed, or task unavailable after settle delay ({{ .SettleDelay }}) and power state on",
 	},
 	api.ServerDeploymentStateVerifyBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOffSecureBoot,
+		label:     "verify deferred BIOS",
+		kind:      deploymentStateKindAction,
+		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:    (*serverService).verifyDeploymentBIOSAttributes,
+		next:      api.ServerDeploymentStatePowerOffSecureBoot,
+		retries:   config.ServerDeploymentStepRetries,
+		retryFrom: api.ServerDeploymentStatePowerOffBIOSDeferred,
+		biosPass:  deploymentBIOSPassDeferred,
+
+		condition:   "attributes match",
+		retryReason: "attributes not applied",
 	},
 	api.ServerDeploymentStatePowerOffSecureBoot: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBoot,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:  (*serverService).powerOffDeploymentServer,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBoot,
+		retries: config.ServerDeploymentStepRetries,
+		label:   "power off",
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBoot: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:     deploymentWaitPowerIsOff,
 		next:     api.ServerDeploymentStateSecureBoot,
 		fallback: api.ServerDeploymentStatePowerOffSecureBoot,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateSecureBoot: {
+		label:       "secure boot certificates",
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:      (*serverService).enrollDeploymentSecureBootCertificates,
 		next:        api.ServerDeploymentStateClearMedia,
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if !deployment.Request.SkipSecureBootCertificates {
+				return api.ServerDeploymentStateSecureBoot
+			}
+
+			return api.ServerDeploymentStateClearMedia
+		},
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
 		},
+
+		skipReason: "secure boot certificates skipped",
 	},
 	api.ServerDeploymentStateClearMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingAttachingMedia,
-		next:   api.ServerDeploymentStateWaitMediaCleared,
+		label:   "clear stale media",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingAttachingMedia,
+		action:  (*serverService).clearDeploymentMedia,
+		next:    api.ServerDeploymentStateWaitMediaCleared,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaCleared: {
+		label:    "wait for media cleared",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		wait:     deploymentBMCWait(deploymentNoMediaInserted),
 		next:     api.ServerDeploymentStatePowerOnSecureBoot,
 		fallback: api.ServerDeploymentStateClearMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "no media inserted",
 	},
 	api.ServerDeploymentStatePowerOnSecureBoot: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitSecureBootSettled,
+		label:   "power on",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:  (*serverService).powerOnDeploymentServer,
+		next:    api.ServerDeploymentStateWaitSecureBootSettled,
+		retries: config.ServerDeploymentStepRetries,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.SecureBootPending {
+				return api.ServerDeploymentStatePowerOnSecureBoot
+			}
+
+			return api.ServerDeploymentStateAttachMedia
+		},
+
+		skipReason: "no certificates enrolled",
 	},
 	api.ServerDeploymentStateWaitSecureBootSettled: {
-		kind:     deploymentStateKindWait,
-		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:     api.ServerDeploymentStatePowerOffSecureBootSettled,
-		fallback: api.ServerDeploymentStatePowerOnSecureBoot,
-		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		label:        "wait for secure boot settled",
+		kind:         deploymentStateKindWait,
+		detail:       api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:         (*serverService).checkDeploymentSecureBootSettled,
+		next:         api.ServerDeploymentStatePowerOffSecureBootSettled,
+		fallback:     api.ServerDeploymentStatePowerOnSecureBoot,
+		timeout:      config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:      config.ServerDeploymentStepRetries,
+		settleDelay:  config.ServerDeploymentSettleDelay,
+		rebootWindow: config.ServerDeploymentSecureBootSettleDuration,
+
+		condition: "reboot detected or settle duration ({{ .RebootWindow }}) passed",
 	},
 	api.ServerDeploymentStatePowerOffSecureBootSettled: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+		label:   "power off",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		action:  (*serverService).powerOffDeploymentServer,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:     deploymentWaitPowerIsOff,
 		next:     api.ServerDeploymentStateAttachMedia,
 		fallback: api.ServerDeploymentStatePowerOffSecureBootSettled,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateAttachMedia: {
+		label:       "attach media",
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingAttachingMedia,
+		action:      (*serverService).attachDeploymentMedia,
 		next:        api.ServerDeploymentStateWaitMediaAttached,
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentAttachMediaCallTimeout,
 	},
 	api.ServerDeploymentStateWaitMediaAttached: {
+		label:    "wait for media attached",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		wait:     (*serverService).checkDeploymentMediaAttached,
 		next:     api.ServerDeploymentStatePowerOnInstall,
 		fallback: api.ServerDeploymentStateAttachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "expected media inserted in selected device",
 	},
 	api.ServerDeploymentStatePowerOnInstall: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingInstalling,
-		next:   api.ServerDeploymentStateWaitInstall,
+		label:   "power on",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingInstalling,
+		action:  (*serverService).powerOnDeploymentServer,
+		next:    api.ServerDeploymentStateWaitInstall,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitInstall: {
-		kind:    deploymentStateKindWait,
-		detail:  api.ServerStatusDetailDeployingInstalling,
-		next:    api.ServerDeploymentStateDetachMedia,
-		timeout: config.ServerDeploymentInstallTimeout,
+		// The installation can not be triggered a second time, so the wait has no
+		// trigger to fall back to and fails the deployment instead.
+		label:       "installing",
+		kind:        deploymentStateKindWait,
+		detail:      api.ServerStatusDetailDeployingInstalling,
+		wait:        (*serverService).checkDeploymentInstalled,
+		next:        api.ServerDeploymentStateDetachMedia,
+		timeout:     config.ServerDeploymentInstallTimeout,
+		settleDelay: config.ServerDeploymentSettleDelay,
+		install: deploymentInstallThresholds{
+			minDuration:         config.ServerDeploymentMinInstallDuration,
+			rebootFallbackDelay: config.ServerDeploymentInstallRebootFallbackDelay,
+			mediaIdlePeriod:     config.ServerDeploymentMediaIdlePeriod,
+			mediaMinBytesRead:   config.ServerDeploymentMediaMinBytesRead,
+		},
+
+		condition: "install stage 1 done",
 	},
 	api.ServerDeploymentStateDetachMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingFinalizing,
-		next:   api.ServerDeploymentStateWaitMediaDetached,
+		label:   "detach media",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingFinalizing,
+		action:  (*serverService).ejectDeploymentMedia,
+		next:    api.ServerDeploymentStateWaitMediaDetached,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaDetached: {
+		label:    "wait for media detached",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingFinalizing,
+		wait:     deploymentBMCWait(deploymentMediaEjected),
 		next:     api.ServerDeploymentStateWaitReboot,
 		fallback: api.ServerDeploymentStateDetachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "media ejected",
 	},
 	api.ServerDeploymentStateWaitReboot: {
-		kind:    deploymentStateKindWait,
-		detail:  api.ServerStatusDetailDeployingFinalizing,
-		next:    api.ServerDeploymentStateWaitRegistration,
-		timeout: config.ServerDeploymentRebootTimeout,
+		// A server, that does not come back, can not be rebooted again, so the
+		// wait has no trigger to fall back to.
+		label:        "wait for reboot",
+		kind:         deploymentStateKindWait,
+		detail:       api.ServerStatusDetailDeployingFinalizing,
+		wait:         (*serverService).checkDeploymentRebooted,
+		next:         api.ServerDeploymentStateWaitRegistration,
+		timeout:      config.ServerDeploymentRebootTimeout,
+		rebootWindow: config.ServerDeploymentRebootObservationWindow,
+
+		condition: "server registered, reboot detected, or observation window ({{ .RebootWindow }}) passed while powered on",
 	},
 	api.ServerDeploymentStateWaitRegistration: {
+		label:   "wait for registration",
 		kind:    deploymentStateKindWait,
 		detail:  api.ServerStatusDetailDeployingFinalizing,
+		wait:    (*serverService).checkDeploymentRegistered,
 		next:    api.ServerDeploymentStateCleanup,
 		timeout: config.ServerDeploymentRegistrationTimeout,
+
+		condition: "server registered",
 	},
 	api.ServerDeploymentStateCleanup: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingFinalizing,
-		next:   api.ServerDeploymentStateCompleted,
+		label:   "cleanup",
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingFinalizing,
+		action:  (*serverService).runDeploymentCleanup,
+		next:    api.ServerDeploymentStateCompleted,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCancel: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingCancelling,
-		next:   api.ServerDeploymentStateWaitCancel,
+		label:       "cancel",
+		kind:        deploymentStateKindAction,
+		detail:      api.ServerStatusDetailDeployingCancelling,
+		action:      (*serverService).runDeploymentCancel,
+		next:        api.ServerDeploymentStateWaitCancel,
+		retries:     config.ServerDeploymentStepRetries,
+		cancelPhase: true,
 	},
 	api.ServerDeploymentStateWaitCancel: {
-		kind:     deploymentStateKindWait,
-		detail:   api.ServerStatusDetailDeployingCancelling,
-		next:     api.ServerDeploymentStateCancelled,
-		fallback: api.ServerDeploymentStateCancel,
-		timeout:  config.ServerDeploymentStepTimeout,
+		label:       "wait for power off",
+		kind:        deploymentStateKindWait,
+		detail:      api.ServerStatusDetailDeployingCancelling,
+		wait:        deploymentBMCWait(deploymentCancelSettled),
+		next:        api.ServerDeploymentStateCancelled,
+		fallback:    api.ServerDeploymentStateCancel,
+		timeout:     config.ServerDeploymentStepTimeout,
+		retries:     config.ServerDeploymentStepRetries,
+		cancelPhase: true,
+
+		condition: "power state off",
 	},
-	api.ServerDeploymentStateCompleted: {kind: deploymentStateKindTerminal},
-	api.ServerDeploymentStateFailed:    {kind: deploymentStateKindTerminal},
-	api.ServerDeploymentStateCancelled: {kind: deploymentStateKindTerminal},
+	// A registration would have moved the server out of status deploying already,
+	// so reaching the completed state means the deployment completed without one.
+	api.ServerDeploymentStateCompleted: {
+		label:  "completed",
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+	},
+	api.ServerDeploymentStateFailed: {
+		label:  "failed",
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+		detail: api.ServerStatusDetailUnregisteredDeploymentFailed,
+	},
+	api.ServerDeploymentStateCancelled: {
+		label:  "canceled",
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+		detail: api.ServerStatusDetailUnregisteredDeploymentCancelled,
+	},
 }
 
 // deploymentRetryFromError routes a failed step back to an earlier state of the
@@ -310,55 +643,28 @@ func (e deploymentFatalError) Unwrap() error {
 }
 
 // deploymentNextState returns the state, the deployment enters after the step it
-// just completed, passing by a BIOS pass with nothing left to apply and the
-// secure boot enrollment, if it was requested to be skipped. The skips chain,
-// but every one of them moves forward, so the loop settles.
+// just completed. A state, that has nothing to do for this deployment, names the
+// state to skip to instead of itself. The skips chain, but every one of them
+// moves forward, so the loop settles.
 func deploymentNextState(deployment *provisioning.ServerDeployment, next api.ServerDeploymentState) api.ServerDeploymentState {
-	for {
-		switch next {
-		case api.ServerDeploymentStatePowerOffBIOS:
-			if deployment.BIOSPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateVerifyBIOS].next
-
-		case api.ServerDeploymentStatePowerOffBIOSDeferred:
-			if deployment.BIOSDeferredPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateVerifyBIOSDeferred].next
-
-		case api.ServerDeploymentStateSecureBoot:
-			if !deployment.Request.SkipSecureBootCertificates {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateSecureBoot].next
-
-		case api.ServerDeploymentStatePowerOnSecureBoot:
-			if deployment.SecureBootPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootSettled].next
-
-		default:
+	// The table is finite and every skip moves forward, so this many rounds can
+	// not be reached. The bound keeps a table, that does not, from parking the
+	// control loop.
+	for range len(deploymentStates) {
+		enterState := deploymentStates[next].enterState
+		if enterState == nil {
 			return next
 		}
-	}
-}
 
-func deploymentIsBIOSDeferredPass(state api.ServerDeploymentState) bool {
-	switch state {
-	case api.ServerDeploymentStatePowerOffBIOSDeferred, api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
-		api.ServerDeploymentStateApplyBIOSDeferred, api.ServerDeploymentStatePowerOnBIOSDeferred,
-		api.ServerDeploymentStateWaitBIOSAppliedDeferred, api.ServerDeploymentStateVerifyBIOSDeferred:
-		return true
+		entered := enterState(deployment)
+		if entered == next {
+			return next
+		}
+
+		next = entered
 	}
 
-	return false
+	return next
 }
 
 // deploymentBackoff returns how long to wait before the n-th attempt of a step.
@@ -837,12 +1143,14 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 		slog.String("deployment_state", deployment.State.String()),
 	)
 
+	// An unknown state yields the zero definition, which is not a cancel phase and
+	// not a kind the dispatcher drives, so it reaches the check below.
+	definition, ok := deploymentStates[deployment.State]
+
 	// Cancellation preempts everything but the clean up it triggers itself. A
 	// cancellation, that skips the clean up, has nothing to trigger and ends the
 	// deployment right here.
-	if deployment.CancelRequested &&
-		deployment.State != api.ServerDeploymentStateCancel &&
-		deployment.State != api.ServerDeploymentStateWaitCancel {
+	if deployment.CancelRequested && !definition.cancelPhase {
 		log.InfoContext(ctx, "Deployment cancelled", slog.Bool("skip_cleanup", deployment.CancelSkipCleanup))
 
 		next := api.ServerDeploymentStateCancel
@@ -857,7 +1165,6 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment did not complete within %s", config.ServerDeploymentTimeout))
 	}
 
-	definition, ok := deploymentStates[deployment.State]
 	if !ok {
 		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment is in the unknown state %q", deployment.State))
 	}
@@ -912,7 +1219,7 @@ func (s *serverService) deploymentAction(ctx context.Context, log *slog.Logger, 
 
 	mutate, err := s.runBoundedDeploymentAction(ctx, log, server, definition)
 	if err != nil {
-		return false, s.recordDeploymentFailure(ctx, log, server.Name, err)
+		return false, s.recordDeploymentFailure(ctx, log, server.Name, definition, err)
 	}
 
 	return true, s.advanceDeployment(ctx, server.Name, definition.next, mutate)
@@ -954,7 +1261,7 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
-	if deployment.Retries+1 > config.ServerDeploymentStepRetries {
+	if deployment.Retries+1 > definition.retries {
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
@@ -977,104 +1284,103 @@ const deploymentForcePowerOff = true
 // answering, ends the attempt instead of parking the control loop. Only the
 // operation is bounded, never what the caller records about it.
 func (s *serverService) runBoundedDeploymentAction(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	if definition.action == nil {
+		return nil, fmt.Errorf("Deployment state %q is not an action", server.StatusInternal.Deployment.State)
+	}
+
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
 	defer cancel()
 
-	return s.runDeploymentAction(callCtx, log, server)
+	return definition.action(s, callCtx, log, server, definition)
 }
 
 // checkBoundedDeploymentWait evaluates the condition of a wait state with the
 // same deadline the trigger states get.
 func (s *serverService) checkBoundedDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+	if definition.wait == nil {
+		return false, nil, fmt.Errorf("Deployment state %q is not a wait", server.StatusInternal.Deployment.State)
+	}
+
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
 	defer cancel()
 
-	return s.checkDeploymentWait(callCtx, log, server)
+	return definition.wait(s, callCtx, log, server, definition)
 }
 
-// runDeploymentAction performs the operation of a trigger state and returns a
-// mutation, that records what the operation produced.
-func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
-	deployment := server.StatusInternal.Deployment
+func (s *serverService) refreshDeploymentBMCData(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	return nil, s.resyncBMCData(ctx, server)
+}
 
-	switch deployment.State {
-	case api.ServerDeploymentStateRefreshBMCData:
-		return nil, s.resyncBMCData(ctx, server)
+func (s *serverService) powerOffDeploymentServer(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	_, err := s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
 
-	case api.ServerDeploymentStateCheckBIOS:
-		return s.checkDeploymentBIOSAttributes(ctx, log, server)
+	return nil, err
+}
 
-	case api.ServerDeploymentStatePowerOffBIOS, api.ServerDeploymentStatePowerOffBIOSDeferred,
-		api.ServerDeploymentStatePowerOffSecureBoot, api.ServerDeploymentStatePowerOffSecureBootSettled:
-		_, err := s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
+func (s *serverService) powerOnDeploymentServer(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	_, err := s.bmcServerPowerOnByName(ctx, server.Name, false, false)
 
-		return nil, err
+	return nil, err
+}
 
-	case api.ServerDeploymentStateApplyBIOS, api.ServerDeploymentStateApplyBIOSDeferred:
-		taskMonitor, err := s.applyBIOSAttributesByName(ctx, server.Name, deploymentBIOSAttributes(deployment), false)
-		if err != nil {
-			return nil, err
-		}
-
-		return func(deployment *provisioning.ServerDeployment) {
-			deployment.BIOSTaskMonitor = ""
-			if taskMonitor != nil {
-				deployment.BIOSTaskMonitor = taskMonitor.URI
-			}
-		}, nil
-
-	case api.ServerDeploymentStatePowerOnBIOS, api.ServerDeploymentStatePowerOnBIOSDeferred,
-		api.ServerDeploymentStatePowerOnSecureBoot, api.ServerDeploymentStatePowerOnInstall:
-		_, err := s.bmcServerPowerOnByName(ctx, server.Name, false, false)
-
-		return nil, err
-
-	case api.ServerDeploymentStateVerifyBIOS, api.ServerDeploymentStateVerifyBIOSDeferred:
-		return s.verifyDeploymentBIOSAttributes(ctx, log, server)
-
-	case api.ServerDeploymentStateSecureBoot:
-		attempted := deployment.SecureBootAttempted
-
-		enrolled, err := s.applySecureBootCertificatesByName(ctx, server.Name, deployment.SecureBoot)
-		if err != nil {
-			return nil, err
-		}
-
-		return func(deployment *provisioning.ServerDeployment) {
-			deployment.SecureBootPending = enrolled || attempted
-		}, nil
-
-	case api.ServerDeploymentStateClearMedia:
-		return nil, s.detachAllDeploymentMedia(ctx, server)
-
-	case api.ServerDeploymentStateCleanup:
-		return nil, s.cleanupDeploymentMedia(ctx, server)
-
-	case api.ServerDeploymentStateAttachMedia:
-		return s.attachDeploymentMedia(ctx, server)
-
-	case api.ServerDeploymentStateDetachMedia:
-		_, err := s.bmcDetachMediaByName(ctx, server.Name, deployment.Request.VirtualMediaID, false)
-
-		return nil, err
-
-	case api.ServerDeploymentStateCancel:
-		err := s.cleanupDeploymentMedia(ctx, server)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
-
+func (s *serverService) applyDeploymentBIOSAttributes(ctx context.Context, _ *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	taskMonitor, err := s.applyBIOSAttributesByName(ctx, server.Name, deploymentBIOSAttributes(definition, server.StatusInternal.Deployment), false)
+	if err != nil {
 		return nil, err
 	}
 
-	return nil, fmt.Errorf("Deployment state %q is not an action", deployment.State)
+	return func(deployment *provisioning.ServerDeployment) {
+		deployment.BIOSTaskMonitor = ""
+		if taskMonitor != nil {
+			deployment.BIOSTaskMonitor = taskMonitor.URI
+		}
+	}, nil
+}
+
+func (s *serverService) enrollDeploymentSecureBootCertificates(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	deployment := server.StatusInternal.Deployment
+	attempted := deployment.SecureBootAttempted
+
+	enrolled, err := s.applySecureBootCertificatesByName(ctx, server.Name, deployment.SecureBoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(deployment *provisioning.ServerDeployment) {
+		deployment.SecureBootPending = enrolled || attempted
+	}, nil
+}
+
+// clearDeploymentMedia detaches every media, that is inserted, so the
+// installation media is attached to a server with nothing else in the way.
+func (s *serverService) clearDeploymentMedia(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	return nil, s.detachDeploymentMedia(ctx, server, "")
+}
+
+func (s *serverService) ejectDeploymentMedia(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	_, err := s.bmcDetachMediaByName(ctx, server.Name, server.StatusInternal.Deployment.Request.VirtualMediaID, false)
+
+	return nil, err
+}
+
+func (s *serverService) runDeploymentCleanup(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	return nil, s.cleanupDeploymentMedia(ctx, server)
+}
+
+func (s *serverService) runDeploymentCancel(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
+	err := s.cleanupDeploymentMedia(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
+
+	return nil, err
 }
 
 // attachDeploymentMedia generates the installation media, attaches it and
 // registers it as the boot device for the next boot.
-func (s *serverService) attachDeploymentMedia(ctx context.Context, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) attachDeploymentMedia(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 	request := deployment.Request
 
@@ -1120,12 +1426,6 @@ func (s *serverService) cleanupDeploymentMedia(ctx context.Context, server provi
 	return s.detachDeploymentMedia(ctx, server, deployment.Request.VirtualMediaID)
 }
 
-// detachAllDeploymentMedia ejects the media of every virtual media device, that
-// reports something inserted.
-func (s *serverService) detachAllDeploymentMedia(ctx context.Context, server provisioning.Server) error {
-	return s.detachDeploymentMedia(ctx, server, "")
-}
-
 // detachDeploymentMedia ejects the media of every virtual media device, that
 // reports something inserted, and of alsoDetach, if it is set.
 func (s *serverService) detachDeploymentMedia(ctx context.Context, server provisioning.Server, alsoDetach string) error {
@@ -1160,8 +1460,8 @@ func (s *serverService) detachDeploymentMedia(ctx context.Context, server provis
 	return errors.Join(errs...)
 }
 
-func deploymentBIOSAttributes(deployment *provisioning.ServerDeployment) map[string]any {
-	if deploymentIsBIOSDeferredPass(deployment.State) {
+func deploymentBIOSAttributes(definition deploymentStateDefinition, deployment *provisioning.ServerDeployment) map[string]any {
+	if definition.biosPass == deploymentBIOSPassDeferred {
 		return deployment.BIOSDeferredAttributes
 	}
 
@@ -1190,7 +1490,7 @@ func (s *serverService) deploymentBIOSAttributesByName(ctx context.Context, serv
 // have anything to apply, so an already correctly configured server is not power
 // cycled for nothing. The outcome recorded for the second pass is only a first
 // estimate, which the verification of the first pass overwrites, if it runs.
-func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBIOSAttributesByName(ctx, server)
@@ -1218,7 +1518,7 @@ func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *
 // them to the set, the BIOS pass, that just ran, has applied. Attributes, that
 // the BMC does not report at all, are skipped: not every attribute the firmware
 // accepts is published back through the attribute registry.
-func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBIOSAttributesByName(ctx, server)
@@ -1226,17 +1526,9 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 		return nil, err
 	}
 
-	deferredPass := deploymentIsBIOSDeferredPass(deployment.State)
+	deferredPass := definition.biosPass == deploymentBIOSPassDeferred
 
-	// A mismatch has to repeat the pass, that applied the attributes, power
-	// cycle included: the firmware only picks the staged attributes up on the
-	// next reset, so re-applying them without one changes nothing.
-	retryFrom := api.ServerDeploymentStatePowerOffBIOS
-	if deferredPass {
-		retryFrom = api.ServerDeploymentStatePowerOffBIOSDeferred
-	}
-
-	applied := deploymentBIOSAttributes(deployment)
+	applied := deploymentBIOSAttributes(definition, deployment)
 
 	var mismatches []string
 
@@ -1255,8 +1547,11 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 	}
 
 	if len(mismatches) > 0 {
+		// A mismatch has to repeat the pass, that applied the attributes, power
+		// cycle included: the firmware only picks the staged attributes up on the
+		// next reset, so re-applying them without one changes nothing.
 		return nil, deploymentRetryFromError{
-			state: retryFrom,
+			state: definition.retryFrom,
 			err:   domain.NewRetryableErr(fmt.Errorf("BIOS attributes of server %q have not been applied: %s", server.Name, strings.Join(mismatches, ", "))),
 		}
 	}
@@ -1289,16 +1584,18 @@ func deploymentBIOSPassPending(current map[string]api.BIOSAttribute, attributes 
 	return false
 }
 
-// bmcWaitConditions holds the wait conditions, that are a plain predicate over
-// the BMC data of the server.
-var bmcWaitConditions = map[api.ServerDeploymentState]func(*provisioning.ServerDeployment, api.BMCData) bool{
-	api.ServerDeploymentStateWaitPowerOffBIOS:              deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffBIOSDeferred:      deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffSecureBoot:        deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitCancel:                    deploymentCancelSettled,
-	api.ServerDeploymentStateWaitMediaCleared:              deploymentNoMediaInserted,
-	api.ServerDeploymentStateWaitMediaDetached:             deploymentMediaEjected,
+// deploymentBMCWait turns a plain predicate over the BMC data of the server into
+// a wait, so a state, whose condition is nothing but a look at the BMC, only has
+// to name the predicate.
+func deploymentBMCWait(condition func(*provisioning.ServerDeployment, api.BMCData) bool) deploymentWaitFunc {
+	return func(s *serverService, ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+		current, err := s.deploymentBMCData(ctx, server)
+		if err != nil {
+			return false, nil, err
+		}
+
+		return condition(server.StatusInternal.Deployment, current.BMCData), nil, nil
+	}
 }
 
 func deploymentPowerIsOff(_ *provisioning.ServerDeployment, data api.BMCData) bool {
@@ -1333,46 +1630,7 @@ func deploymentMediaEjected(deployment *provisioning.ServerDeployment, data api.
 	return !ok || !media.Inserted
 }
 
-// checkDeploymentWait evaluates the condition of a wait state. Every condition
-// is derived from the BMC data or the server record, never from a task monitor
-// alone, since a BMC forgets about a task monitor once it has been consumed.
-func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
-	deployment := server.StatusInternal.Deployment
-
-	condition, ok := bmcWaitConditions[deployment.State]
-	if ok {
-		current, err := s.deploymentBMCData(ctx, server)
-		if err != nil {
-			return false, nil, err
-		}
-
-		return condition(deployment, current.BMCData), nil, nil
-	}
-
-	switch deployment.State {
-	case api.ServerDeploymentStateWaitMediaAttached:
-		return s.checkDeploymentMediaAttached(ctx, server)
-
-	case api.ServerDeploymentStateWaitSecureBootSettled:
-		return s.checkDeploymentSecureBootSettled(ctx, log, server)
-
-	case api.ServerDeploymentStateWaitBIOSApplied, api.ServerDeploymentStateWaitBIOSAppliedDeferred:
-		return s.checkDeploymentBIOSApplied(ctx, log, server)
-
-	case api.ServerDeploymentStateWaitInstall:
-		return s.checkDeploymentInstalled(ctx, log, server)
-
-	case api.ServerDeploymentStateWaitReboot:
-		return s.checkDeploymentRebooted(ctx, log, server)
-
-	case api.ServerDeploymentStateWaitRegistration:
-		return serverHasRegistered(server), nil, nil
-	}
-
-	return false, nil, fmt.Errorf("Deployment state %q is not a wait", deployment.State)
-}
-
-func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server)
@@ -1390,7 +1648,7 @@ func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server
 
 // checkDeploymentRebooted tells, whether the server has come back up after the
 // first stage of the installation, powering it on again, if it stayed off.
-func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	if serverHasRegistered(server) {
 		return true, nil, nil
 	}
@@ -1406,7 +1664,7 @@ func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.L
 		return false, nil, err
 	}
 
-	rebooted, observed := deploymentRebootObserved(s.now(), server.StatusInternal.Deployment, current.BMCData)
+	rebooted, observed := deploymentRebootObserved(s.now(), server.StatusInternal.Deployment, current.BMCData, definition.rebootWindow)
 	if rebooted && !observed {
 		log.InfoContext(ctx, "Reboot of the server could not be observed, falling back to the power state")
 	}
@@ -1416,7 +1674,7 @@ func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.L
 
 // checkDeploymentBIOSApplied tells, whether the firmware has picked the staged
 // BIOS attributes up.
-func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
@@ -1445,7 +1703,7 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 	// The BMC does not know the task monitor anymore, which happens once it has
 	// been consumed or after a BMC reset. Fall through to the observable
 	// condition: the server is up again and had time to run through its POST.
-	if s.now().Sub(deployment.StateEnteredAt) < config.ServerDeploymentSettleDelay {
+	if s.now().Sub(deployment.StateEnteredAt) < definition.settleDelay {
 		return false, nil, nil
 	}
 
@@ -1467,8 +1725,8 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 // server is up and has reached a stable boot progress, so the power on, that
 // starts a step, is not mistaken for the reboot, that ends it. It returns nil,
 // as long as the server has not settled yet.
-func deploymentSettleSnapshot(now time.Time, deployment *provisioning.ServerDeployment, current api.BMCData, set func(*provisioning.ServerDeployment, provisioning.ServerDeploymentBMCSnapshot)) func(*provisioning.ServerDeployment) {
-	if current.ServerPowerState != bmcPowerStateOn || now.Sub(deployment.StateEnteredAt) < config.ServerDeploymentSettleDelay {
+func deploymentSettleSnapshot(now time.Time, deployment *provisioning.ServerDeployment, current api.BMCData, settleDelay time.Duration, set func(*provisioning.ServerDeployment, provisioning.ServerDeploymentBMCSnapshot)) func(*provisioning.ServerDeployment) {
+	if current.ServerPowerState != bmcPowerStateOn || now.Sub(deployment.StateEnteredAt) < settleDelay {
 		return nil
 	}
 
@@ -1481,7 +1739,7 @@ func deploymentSettleSnapshot(now time.Time, deployment *provisioning.ServerDepl
 
 // checkDeploymentSecureBootSettled tells, whether the firmware has picked the
 // enrolled secure boot certificates up.
-func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server)
@@ -1492,7 +1750,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 	now := s.now()
 
 	if deployment.SecureBootSnapshot.Taken.IsZero() {
-		return false, deploymentSettleSnapshot(now, deployment, current.BMCData, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
+		return false, deploymentSettleSnapshot(now, deployment, current.BMCData, definition.settleDelay, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
 			deployment.SecureBootSnapshot = snapshot
 		}), nil
 	}
@@ -1503,7 +1761,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 		return true, nil, nil
 	}
 
-	if now.Sub(deployment.StateEnteredAt) < config.ServerDeploymentSecureBootSettleDuration {
+	if now.Sub(deployment.StateEnteredAt) < definition.rebootWindow {
 		return false, nil, nil
 	}
 
@@ -1514,7 +1772,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 
 // checkDeploymentInstalled tells, whether the first stage of the IncusOS
 // installation is done, from the strongest signal available.
-func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	// 1. The server registered itself, so it rebooted and finished on its own.
@@ -1532,7 +1790,7 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 	now := s.now()
 
 	if deployment.InstallSnapshot.Taken.IsZero() {
-		return false, deploymentSettleSnapshot(now, deployment, current.BMCData, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
+		return false, deploymentSettleSnapshot(now, deployment, current.BMCData, definition.settleDelay, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
 			deployment.InstallSnapshot = snapshot
 		}), nil
 	}
@@ -1569,13 +1827,13 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 		// up, both of which happen on the very boot, that is supposed to start
 		// the installer, before it ever gets to run. Such a reboot re-anchors the
 		// detection instead of ending the wait.
-		if !deploymentInstallRebootTellsTheInstallation(now, deployment, osObserved) {
+		if !deploymentInstallRebootTellsTheInstallation(now, deployment, osObserved, definition.install) {
 			log.InfoContext(
 				ctx, "Server rebooted before the installation could have completed, waiting for the installation",
 				slog.Bool("media_progress_known", progressKnown),
 				slog.Int64("bytes_covered", progress.BytesCovered),
 				slog.Int64("bytes_served", progress.BytesServed),
-				slog.Int64("bytes_required", deploymentMediaBytesRequired(progress.Size)),
+				slog.Int64("bytes_required", deploymentMediaBytesRequired(progress.Size, definition.install.mediaMinBytesRead)),
 				slog.Duration("installing_for", now.Sub(deployment.StateEnteredAt)),
 			)
 
@@ -1593,7 +1851,7 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 		log.InfoContext(
 			ctx, "Installation completed, the BMC reports a reboot of the server",
 			slog.Bool("os_observed", osObserved),
-			slog.Bool("media_read_out", progressKnown && deploymentMediaReadOut(progress)),
+			slog.Bool("media_read_out", progressKnown && deploymentMediaReadOut(progress, definition.install.mediaMinBytesRead)),
 			slog.Int64("bytes_covered", progress.BytesCovered),
 			slog.Duration("installing_for", now.Sub(deployment.StateEnteredAt)),
 		)
@@ -1607,7 +1865,7 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 	//    read through to the installer, reads it out while the server boots and
 	//    then goes quiet, which is indistinguishable from an installation, that
 	//    has been read out and is done.
-	if !deployment.ForceReboot && deploymentInstallCouldBeDone(now, deployment) && progressKnown && deploymentMediaReadOut(progress) && deploymentMediaIdle(now, progress) {
+	if !deployment.ForceReboot && deploymentInstallCouldBeDone(now, deployment, definition.install.minDuration) && progressKnown && deploymentMediaReadOut(progress, definition.install.mediaMinBytesRead) && deploymentMediaIdle(now, progress, definition.install.mediaIdlePeriod) {
 		log.InfoContext(ctx, "Installation completed, the installation media has been read and is idle", slog.Int64("bytes_covered", progress.BytesCovered))
 
 		return true, mutate, nil
@@ -1652,18 +1910,18 @@ func (s *serverService) deploymentMediaProgress(ctx context.Context, server prov
 // installation can be done at all. A firmware, that still has something to pick
 // up, reboots within the first POST cycles and keeps the media quiet meanwhile,
 // while the installation itself takes considerably longer.
-func deploymentInstallCouldBeDone(now time.Time, deployment *provisioning.ServerDeployment) bool {
-	return now.Sub(deployment.StateEnteredAt) >= config.ServerDeploymentMinInstallDuration
+func deploymentInstallCouldBeDone(now time.Time, deployment *provisioning.ServerDeployment, minDuration time.Duration) bool {
+	return now.Sub(deployment.StateEnteredAt) >= minDuration
 }
 
 // deploymentInstallRebootTellsTheInstallation reports, whether a reboot the BMC
 // observed can be taken as the end of the first stage of the installation.
-func deploymentInstallRebootTellsTheInstallation(now time.Time, deployment *provisioning.ServerDeployment, osObserved bool) bool {
+func deploymentInstallRebootTellsTheInstallation(now time.Time, deployment *provisioning.ServerDeployment, osObserved bool, thresholds deploymentInstallThresholds) bool {
 	if osObserved {
 		return true
 	}
 
-	return now.Sub(deployment.StateEnteredAt) >= config.ServerDeploymentInstallRebootFallbackDelay
+	return now.Sub(deployment.StateEnteredAt) >= thresholds.rebootFallbackDelay
 }
 
 // deploymentInstallOSObserved reports, whether the BMC has the server past the
@@ -1685,23 +1943,23 @@ func deploymentInstallOSObserved(deployment *provisioning.ServerDeployment, curr
 // been read to tell the installer apart from the server merely booting. It
 // counts the distinct bytes served, since a BMC re-requesting ranges it has
 // fetched before must not be mistaken for the installer streaming the image.
-func deploymentMediaReadOut(progress provisioning.SeedImageProgress) bool {
-	return progress.BytesCovered >= deploymentMediaBytesRequired(progress.Size)
+func deploymentMediaReadOut(progress provisioning.SeedImageProgress, minBytesRead int64) bool {
+	return progress.BytesCovered >= deploymentMediaBytesRequired(progress.Size, minBytesRead)
 }
 
-func deploymentMediaIdle(now time.Time, progress provisioning.SeedImageProgress) bool {
-	return progress.IdleFor(now) >= config.ServerDeploymentMediaIdlePeriod
+func deploymentMediaIdle(now time.Time, progress provisioning.SeedImageProgress, idlePeriod time.Duration) bool {
+	return progress.IdleFor(now) >= idlePeriod
 }
 
 // deploymentMediaBytesRequired returns how much of the installation media has to
 // have been read, before the installation counts as under way. It is capped at
 // the size of the image, so a smaller media is not excluded from the signal.
-func deploymentMediaBytesRequired(size int64) int64 {
-	if size > 0 && size < config.ServerDeploymentMediaMinBytesRead {
+func deploymentMediaBytesRequired(size int64, minBytesRead int64) int64 {
+	if size > 0 && size < minBytesRead {
 		return size
 	}
 
-	return config.ServerDeploymentMediaMinBytesRead
+	return minBytesRead
 }
 
 // deploymentBMCData returns the server with its BMC data refreshed, unless it is
@@ -1726,7 +1984,7 @@ func (s *serverService) deploymentBMCData(ctx context.Context, server provisioni
 // ended that wait, is recognized right away. A BMC, that reports none of the
 // properties the detection needs, can never answer the question, so the
 // observation window bounds the wait instead of failing the deployment.
-func deploymentRebootObserved(now time.Time, deployment *provisioning.ServerDeployment, current api.BMCData) (rebooted bool, observed bool) {
+func deploymentRebootObserved(now time.Time, deployment *provisioning.ServerDeployment, current api.BMCData, rebootWindow time.Duration) (rebooted bool, observed bool) {
 	if deployment.InstallSnapshot.Taken.IsZero() {
 		return true, false
 	}
@@ -1735,11 +1993,17 @@ func deploymentRebootObserved(now time.Time, deployment *provisioning.ServerDepl
 		return true, true
 	}
 
-	if now.Sub(deployment.StateEnteredAt) < config.ServerDeploymentRebootObservationWindow {
+	if now.Sub(deployment.StateEnteredAt) < rebootWindow {
 		return false, false
 	}
 
 	return true, false
+}
+
+// checkDeploymentRegistered tells, whether the server has registered itself with
+// Operations Center after the installation.
+func (*serverService) checkDeploymentRegistered(_ context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+	return serverHasRegistered(server), nil, nil
 }
 
 func serverHasRegistered(server provisioning.Server) bool {
@@ -1765,7 +2029,7 @@ func (s *serverService) advanceDeployment(ctx context.Context, name string, next
 
 // recordDeploymentFailure accounts for a failed step, either by scheduling
 // another attempt or by failing the deployment.
-func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.Logger, name string, stepErr error) error {
+func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.Logger, name string, definition deploymentStateDefinition, stepErr error) error {
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return err
@@ -1781,7 +2045,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 	// counter would be reset on every round and the two states would loop.
 	retryFrom, ok := errors.AsType[deploymentRetryFromError](stepErr)
 	if ok {
-		if deployment.FallbackAttempts+1 > config.ServerDeploymentStepRetries {
+		if deployment.FallbackAttempts+1 > definition.retries {
 			return s.failDeployment(ctx, name, stepErr)
 		}
 
@@ -1795,7 +2059,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 		})
 	}
 
-	if !domain.IsRetryableError(stepErr) || deployment.Retries+1 > config.ServerDeploymentStepRetries {
+	if !domain.IsRetryableError(stepErr) || deployment.Retries+1 > definition.retries {
 		return s.failDeployment(ctx, name, stepErr)
 	}
 
@@ -1854,25 +2118,14 @@ func (s *serverService) applyDeploymentServerStatus(server *provisioning.Server)
 		return
 	}
 
-	status := api.ServerStatusDeploying
-	statusDetail := deploymentStates[deployment.State].detail
+	definition := deploymentStates[deployment.State]
 
-	switch deployment.State {
-	case api.ServerDeploymentStateFailed:
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailUnregisteredDeploymentFailed
-
-	case api.ServerDeploymentStateCancelled:
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailUnregisteredDeploymentCancelled
-
-	case api.ServerDeploymentStateCompleted:
-		// A registration would have moved the server out of status deploying
-		// already, so reaching this point means the deployment completed without
-		// one.
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailNone
+	status := definition.status
+	if status == "" {
+		status = api.ServerStatusDeploying
 	}
+
+	statusDetail := definition.detail
 
 	if server.Status == status && server.StatusDetail == statusDetail {
 		return

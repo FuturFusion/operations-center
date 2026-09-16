@@ -73,119 +73,16 @@ Both rules rest on **every action being idempotent**: a crash between entering a
 trigger state and the BMC having accepted the operation leaves the deployment in
 the trigger state, so the action is simply issued again.
 
-```{mermaid}
-stateDiagram-v2
-    state "refresh BMC data" as RefreshBMCData
-    state "check BIOS" as CheckBIOS
-    state "power off" as PowerOffBIOS
-    state "wait for power off" as WaitPowerOffBIOS
-    state "apply BIOS" as ApplyBIOS
-    state "power on" as PowerOnBIOS
-    state "wait for BIOS applied" as WaitBIOSApplied
-    state "verify BIOS" as VerifyBIOS
-    state "power off" as PowerOffBIOSDeferred
-    state "wait for power off" as WaitPowerOffBIOSDeferred
-    state "apply deferred BIOS" as ApplyBIOSDeferred
-    state "power on" as PowerOnBIOSDeferred
-    state "wait for BIOS applied" as WaitBIOSAppliedDeferred
-    state "verify deferred BIOS" as VerifyBIOSDeferred
-    state "power off" as PowerOffSecureBoot
-    state "wait for power off" as WaitPowerOffSecureBoot
-    state "secure boot certificates" as SecureBoot
-    state "clear stale media" as ClearMedia
-    state "wait for media cleared" as WaitMediaCleared
-    state "power on" as PowerOnSecureBoot
-    state "wait for secure boot settled" as WaitSecureBootSettled
-    state "power off" as PowerOffSecureBootSettled
-    state "wait for power off" as WaitPowerOffSecureBootSettled
-    state "attach media" as AttachMedia
-    state "wait for media attached" as WaitMediaAttached
-    state "power on" as PowerOnInstall
-    state "installing" as WaitInstall
-    state "detach media" as DetachMedia
-    state "wait for media detached" as WaitMediaDetached
-    state "wait for reboot" as WaitReboot
-    state "wait for registration" as WaitRegistration
-    state "cleanup" as Cleanup
-    state "cancel" as Cancel
-    state "wait for power off" as WaitCancel
-    state "completed" as Completed
-    state "failed" as Failed
-    state "canceled" as Canceled
-
-    [*] --> RefreshBMCData: deploy triggered
-    RefreshBMCData --> CheckBIOS
-    CheckBIOS --> PowerOffBIOS: attributes not applied
-    CheckBIOS --> PowerOffBIOSDeferred: attributes match
-    CheckBIOS --> PowerOffSecureBoot: attributes match, no deferred attributes pending
-    PowerOffBIOS --> WaitPowerOffBIOS
-    WaitPowerOffBIOS --> PowerOffBIOS: timeout
-    WaitPowerOffBIOS --> ApplyBIOS: power state off
-    ApplyBIOS --> PowerOnBIOS
-    PowerOnBIOS --> WaitBIOSApplied
-    WaitBIOSApplied --> PowerOffBIOS: timeout
-    WaitBIOSApplied --> VerifyBIOS: task completed, or task unavailable after settle delay and power state on
-    VerifyBIOS --> PowerOffBIOS: attributes not applied
-    VerifyBIOS --> PowerOffBIOSDeferred: attributes match
-    VerifyBIOS --> PowerOffSecureBoot: attributes match, no deferred attributes pending
-    PowerOffBIOSDeferred --> WaitPowerOffBIOSDeferred
-    WaitPowerOffBIOSDeferred --> PowerOffBIOSDeferred: timeout
-    WaitPowerOffBIOSDeferred --> ApplyBIOSDeferred: power state off
-    ApplyBIOSDeferred --> PowerOnBIOSDeferred
-    PowerOnBIOSDeferred --> WaitBIOSAppliedDeferred
-    WaitBIOSAppliedDeferred --> PowerOffBIOSDeferred: timeout
-    WaitBIOSAppliedDeferred --> VerifyBIOSDeferred: task completed, or task unavailable after settle delay and power state on
-    VerifyBIOSDeferred --> PowerOffBIOSDeferred: attributes not applied
-    VerifyBIOSDeferred --> PowerOffSecureBoot: attributes match
-    PowerOffSecureBoot --> WaitPowerOffSecureBoot
-    WaitPowerOffSecureBoot --> PowerOffSecureBoot: timeout
-    WaitPowerOffSecureBoot --> SecureBoot: power state off
-    WaitPowerOffSecureBoot --> ClearMedia: power state off, secure boot certificates skipped
-    SecureBoot --> ClearMedia
-    ClearMedia --> WaitMediaCleared
-    WaitMediaCleared --> ClearMedia: timeout
-    WaitMediaCleared --> PowerOnSecureBoot: no media inserted
-    WaitMediaCleared --> AttachMedia: no media inserted, no certificates enrolled
-    PowerOnSecureBoot --> WaitSecureBootSettled
-    WaitSecureBootSettled --> PowerOnSecureBoot: timeout
-    WaitSecureBootSettled --> PowerOffSecureBootSettled: reboot detected or settle duration passed
-    PowerOffSecureBootSettled --> WaitPowerOffSecureBootSettled
-    WaitPowerOffSecureBootSettled --> PowerOffSecureBootSettled: timeout
-    WaitPowerOffSecureBootSettled --> AttachMedia: power state off
-    AttachMedia --> WaitMediaAttached
-    WaitMediaAttached --> AttachMedia: timeout
-    WaitMediaAttached --> PowerOnInstall: expected media inserted in selected device
-    PowerOnInstall --> WaitInstall
-    WaitInstall --> DetachMedia: install stage 1 done
-    DetachMedia --> WaitMediaDetached
-    WaitMediaDetached --> DetachMedia: timeout
-    WaitMediaDetached --> WaitReboot: media ejected
-    WaitReboot --> WaitRegistration: server registered, reboot detected, or observation window passed while powered on
-    WaitRegistration --> Cleanup: server registered
-    Cleanup --> Completed
-    Completed --> [*]
-
-    RefreshBMCData --> Failed: retries exhausted
-    WaitInstall --> Failed: timeout
-    WaitReboot --> Failed: timeout
-    WaitRegistration --> Failed: timeout
-    Failed --> [*]
-
-    RefreshBMCData --> Cancel: cancel requested
-    WaitInstall --> Cancel: cancel requested
-    WaitInstall --> Canceled: cancel requested, clean up skipped
-    Cancel --> WaitCancel
-    WaitCancel --> Cancel: timeout
-    WaitCancel --> Canceled: power state off
-    Canceled --> [*]
+```{include} server-deployment-states.md
 ```
 
-To keep the diagram readable, only some of the edges into `failed` and `cancel`
-are drawn. Every state can reach both: a trigger, that exhausts its retry
-budget, and a wait, that has no fallback and times out, end in `failed`, and a
-cancellation preempts every state but the clean up it triggers itself. A
-cancellation, that skips the clean up, has nothing to trigger and goes straight
-to `canceled`.
+To keep the diagram readable, the edges into `failed` and `cancel`, that every
+state has, are left out. The only ones drawn are the timeouts of the three waits,
+that have no trigger to fall back to, since those end the deployment where they
+are drawn. Beyond them, a trigger, that exhausts its retry budget, also ends in
+`failed`, and a cancellation preempts every state but the clean up it triggers
+itself. A cancellation, that skips the clean up, has nothing to trigger and goes
+straight to `canceled`.
 
 ### BIOS attributes are applied in two passes
 
