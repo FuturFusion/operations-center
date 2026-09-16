@@ -606,6 +606,41 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 	return _d._base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// BeginUpdateRunByCluster implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Bool("rebootPending", rebootPending),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BeginUpdateRunByCluster")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BeginUpdateRunByCluster returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BeginUpdateRunByCluster returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BeginUpdateRunByCluster finished")
+		}
+	}()
+	return _d._base.BeginUpdateRunByCluster(ctx, clusterName, rebootPending)
+}
+
 // CancelDeploymentByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) (err error) {
 	log := slog.With()
@@ -742,6 +777,40 @@ func (_d ServerServiceWithSlog) DeploymentControlLoop(ctx context.Context, serve
 		}
 	}()
 	return _d._base.DeploymentControlLoop(ctx, serverNameFilter)
+}
+
+// EndUpdateRunByCluster implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) EndUpdateRunByCluster(ctx context.Context, clusterName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling EndUpdateRunByCluster")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method EndUpdateRunByCluster returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method EndUpdateRunByCluster returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method EndUpdateRunByCluster finished")
+		}
+	}()
+	return _d._base.EndUpdateRunByCluster(ctx, clusterName)
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.

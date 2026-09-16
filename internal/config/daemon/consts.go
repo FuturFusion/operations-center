@@ -165,6 +165,27 @@ const (
 	// so the BMC has reported the change by the time the loop looks.
 	ServerDeploymentVirtualMediaTriggerDelay = 3 * time.Second
 
+	// Time granted to a step of a cluster wide rolling update or rolling reboot,
+	// after which nothing is going to report its outcome anymore and it is
+	// triggered again. The evacuation of a busy server is the slowest of them,
+	// since it migrates every instance away.
+	ClusterRollingUpdateApplyTimeout    = 1 * time.Hour
+	ClusterRollingUpdateEvacuateTimeout = 1 * time.Hour
+	ClusterRollingUpdateRestoreTimeout  = 1 * time.Hour
+
+	// Time granted to a server to come back from the reboot. A server, that does
+	// not, fails the run instead of being rebooted again, since an unreachable
+	// server can not accept one.
+	ClusterRollingUpdateRebootTimeout = 15 * time.Minute
+
+	// Number of attempts granted to a step of a cluster wide rolling update or
+	// rolling reboot, before the run is failed.
+	ClusterRollingUpdateStepRetries = 3
+
+	// Time waited between the restore of a server and the evacuation of the next
+	// one, if the cluster does not configure a delay of its own.
+	ClusterRollingUpdatePostRestoreDelay = 1 * time.Minute
+
 	// Time granted to await a BMC task monitor in the background.
 	BMCTaskWaitTimeout = 15 * time.Minute
 

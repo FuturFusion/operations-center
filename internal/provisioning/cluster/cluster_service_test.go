@@ -16818,8 +16818,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 				{
 					Value: api.ClusterUpdateInProgressStatus{
-						InProgress:      api.ClusterUpdateInProgressApplyUpdate,
-						EvacuatedBefore: []string{"A"},
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -17456,7 +17455,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
 					require.Equal(t, inProgressStatus.InProgress, cluster.UpdateStatus.InProgressStatus.InProgress)
-					require.ElementsMatch(t, cluster.UpdateStatus.InProgressStatus.EvacuatedBefore, inProgressStatus.EvacuatedBefore)
 					return err
 				},
 			}
@@ -17467,6 +17465,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				BeginUpdateRunByClusterFunc: func(ctx context.Context, clusterName string, rebootPending bool) error {
+					return nil
+				},
+				EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
+					return nil
 				},
 			}
 
@@ -17870,11 +17874,11 @@ func TestClusterService_LaunchClusterReboot(t *testing.T) {
 
 					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
 					require.Equal(t, inProgressStatus.InProgress, cluster.UpdateStatus.InProgressStatus.InProgress)
-					require.ElementsMatch(t, inProgressStatus.EvacuatedBefore, cluster.UpdateStatus.InProgressStatus.EvacuatedBefore)
-					require.Equal(t, inProgressStatus.PendingReboot, cluster.UpdateStatus.InProgressStatus.PendingReboot)
 					return err
 				},
 			}
+
+			var beginUpdateRun []bool
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
@@ -17882,6 +17886,13 @@ func TestClusterService_LaunchClusterReboot(t *testing.T) {
 				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				BeginUpdateRunByClusterFunc: func(ctx context.Context, clusterName string, rebootPending bool) error {
+					beginUpdateRun = append(beginUpdateRun, rebootPending)
+					return nil
+				},
+				EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
+					return nil
 				},
 			}
 
@@ -17950,8 +17961,14 @@ func TestClusterService_AbortClusterOperation(t *testing.T) {
 				},
 			}
 
+			serverSvc := &serviceMock.ServerServiceMock{
+				EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
+					return nil
+				},
+			}
+
 			clusterSvc := provisioningCluster.New(
-				repo, nil, nil, nil, nil, nil, nil, nil,
+				repo, nil, nil, serverSvc, nil, nil, nil, nil,
 				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),

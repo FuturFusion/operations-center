@@ -122,6 +122,12 @@ func TestRetryableWrapper(t *testing.T) {
 
 			want: true,
 		},
+		{
+			name:  "instance migration rejected by a starting Incus daemon",
+			inErr: fmt.Errorf(`any error: %w`, errors.New(`Failed to migrate instance "amazonlinux-2" in project "default": websocket: bad handshake Daemon is starting up Daemon is starting up`)),
+
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {

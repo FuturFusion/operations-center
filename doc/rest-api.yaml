@@ -1266,15 +1266,6 @@ definitions:
                 description: Error contains the error description, if the cluster update failed permanently.
                 type: string
                 x-go-name: Error
-            evacuated_before:
-                description: |-
-                    EvacuatedBefore contains the list of server names of the servers, that have
-                    been manually evacuated already before the rolling update has been
-                    triggered.
-                items:
-                    type: string
-                type: array
-                x-go-name: EvacuatedBefore
             in_progress:
                 $ref: '#/definitions/ClusterUpdateInProgress'
             last_updated:
@@ -1288,9 +1279,9 @@ definitions:
             pending_reboot:
                 description: |-
                     PendingReboot contains the list of server names of the servers, which still
-                    have to be rebooted as part of an on demand rolling reboot. A server is
-                    removed from the list as soon as its reboot has been triggered. The list is
-                    only populated during the rolling reboot, it is empty for all other phases.
+                    have to be rebooted as part of the ongoing operation. A server is removed
+                    from the list as soon as its reboot has been triggered. It is read only and
+                    calculated.
                 items:
                     type: string
                 type: array

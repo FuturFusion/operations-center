@@ -62,8 +62,6 @@ type serverService struct {
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
 
-	volatileServerStates *volatileServerStates
-
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
 
@@ -154,12 +152,6 @@ func New(
 		deploymentControlLoopRuns: map[string]*deploymentRun{},
 
 		serverCertificate: serverCertificate,
-
-		volatileServerStates: &volatileServerStates{
-			mu:      sync.Mutex{},
-			servers: map[string]volatileServerState{},
-			now:     time.Now,
-		},
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
@@ -888,9 +880,9 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			}
 
 			server.Status = api.ServerStatusReady
-			s.volatileServerStates.resetAll(ctx, server.Name)
+			server.StatusInternal.Update.ReleaseAll()
+			server.StatusInternal.Update.ClearTriggered()
 			server.StatusDetail = api.ServerStatusDetailNone
-			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			server.VersionData.OS.NeedsReboot = false
 
@@ -1185,69 +1177,24 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
 		}
-
-		s.volatileServerStates.reset(ctx, name, operationEvacuation)
 	}
 
 	if clusterUpdate {
-		reverter.Add(func() {
-			s.volatileServerStates.done(ctx, name, operationEvacuation, fmt.Errorf("Evacuation reverted"))
-		})
-
-		attempts := s.volatileServerStates.retryCount(name)
-		if attempts >= 3 {
-			return fmt.Errorf("Failed to evacuate system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
-		}
-
-		ok := s.volatileServerStates.start(ctx, name, operationEvacuation)
-		if !ok {
-			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
-		}
-
+		// The outcome reported here is an optimization: it turns a fast failure
+		// into an immediate retry instead of one, that waits the step timeout out.
+		// The run never depends on it, since the control loop re-derives the state
+		// of the server from the data it polls.
 		callback = func(ctx context.Context, callbackErr error) {
-			if callbackErr != nil {
-				slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(callbackErr))
-				s.volatileServerStates.done(ctx, name, operationEvacuation, callbackErr)
-
-				err := transaction.Do(ctx, func(ctx context.Context) error {
-					server, err := s.GetByName(ctx, name)
-					if err != nil {
-						return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-					}
-
-					if server.Cluster == nil {
-						return fmt.Errorf("Server %q is not part of a cluster", name)
-					}
-
-					cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
-					if err != nil {
-						return fmt.Errorf("Failed to get cluster %q: %w", *server.Cluster, err)
-					}
-
-					cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressError
-					cluster.UpdateStatus.InProgressStatus.Error = fmt.Sprintf("evacuation of server %q failed: %v", name, callbackErr)
-
-					err = s.clusterSvc.Update(ctx, *cluster, false)
-					if err != nil {
-						return fmt.Errorf("Failed to update cluster %q: %w", *server.Cluster, err)
-					}
-
-					server.StatusDetail = api.ServerStatusDetailNone
-					server.LastStatusUpdated = s.now()
-
-					err = s.repo.Update(ctx, *server)
-					if err != nil {
-						return fmt.Errorf("Failed to put server %q back in ready state: %w", name, err)
-					}
-
-					return nil
-				})
-				if err != nil {
-					slog.ErrorContext(ctx, "Failed to restore DB state during rolling update on evacuation error", logger.Err(err))
-				}
-
+			// The error of the operation is delivered here directly, so it has not
+			// passed the error wrapper middleware of the client.
+			callbackErr = domain.RetryableWrapper()(callbackErr)
+			if callbackErr == nil {
 				return
 			}
+
+			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(callbackErr))
+
+			s.recordRollingUpdateStepFailure(ctx, name, provisioning.ServerUpdateStepEvacuate, callbackErr)
 		}
 	}
 
@@ -1261,8 +1208,6 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		previousServer = server.Clone()
-
 		if !server.Type.IsIncus() {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
@@ -1270,6 +1215,17 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
+
+		if clusterUpdate {
+			err = s.claimRollingUpdateStep(server, provisioning.ServerUpdateStepEvacuate)
+			if err != nil {
+				return err
+			}
+		}
+
+		// The claim is taken before the snapshot, so a failure to trigger the
+		// evacuation rewinds the status detail but keeps the attempt spent on it.
+		previousServer = server.Clone()
 
 		server.StatusDetail = api.ServerStatusDetailReadyEvacuating
 		server.LastStatusUpdated = s.now()
@@ -1301,6 +1257,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 	err = s.client.Evacuate(ctx, *server, callback)
 	if err != nil {
+		previousServer.StatusInternal.Update.Fail(provisioning.ServerUpdateStepEvacuate, err)
+
 		return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
 	}
 
@@ -1373,15 +1331,6 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	reverter.Add(func() {
-		s.volatileServerStates.reset(ctx, name, operationReboot)
-	})
-
-	ok := s.volatileServerStates.start(ctx, name, operationReboot)
-	if !ok {
-		return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
-	}
-
 	var server *provisioning.Server
 	var previousServer provisioning.Server
 
@@ -1393,11 +1342,24 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		previousServer = server.Clone()
-
 		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
+
+		err = s.claimRollingUpdateStep(server, provisioning.ServerUpdateStepReboot)
+		if err != nil {
+			return err
+		}
+
+		// Triggering the reboot is what settles the reboot, the run owed the
+		// server. Whether the server comes back is the wait, not the trigger.
+		if server.StatusInternal.Update.IsActive() {
+			server.StatusInternal.Update.RebootPending = false
+		}
+
+		// The claim is taken before the snapshot, so a failure to trigger the
+		// reboot rewinds the status but keeps the attempt spent on it.
+		previousServer = server.Clone()
 
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
@@ -1423,6 +1385,8 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	err = s.client.Reboot(ctx, *server)
 	if err != nil {
+		previousServer.StatusInternal.Update.Fail(provisioning.ServerUpdateStepReboot, err)
+
 		return fmt.Errorf("Failed to reboot server %q by name: %w", name, err)
 	}
 
@@ -1443,53 +1407,21 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
 		}
-
-		s.volatileServerStates.reset(ctx, name, operationRestore)
 	}
 
 	if clusterUpdate {
-		reverter.Add(func() {
-			s.volatileServerStates.done(ctx, name, operationRestore, fmt.Errorf("Restore reverted"))
-		})
-
-		attempts := s.volatileServerStates.retryCount(name)
-		if attempts >= 3 {
-			return fmt.Errorf("Failed to restore system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
-		}
-
-		ok := s.volatileServerStates.start(ctx, name, operationRestore)
-		if !ok {
-			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
-		}
-
+		// The outcome reported here is an optimization, see EvacuateSystemByName.
 		callback = func(ctx context.Context, callbackErr error) {
-			if callbackErr != nil {
-				slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(callbackErr))
-				s.volatileServerStates.done(ctx, name, operationRestore, callbackErr)
-
-				// Put the server back into the restore pending state, so the rolling
-				// update control loop picks it up again and retries the restore.
-				err := transaction.Do(ctx, func(ctx context.Context) error {
-					server, err := s.GetByName(ctx, name)
-					if err != nil {
-						return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-					}
-
-					if server.StatusDetail != api.ServerStatusDetailReadyRestoring {
-						return nil
-					}
-
-					server.StatusDetail = api.ServerStatusDetailNone
-					server.LastStatusUpdated = s.now()
-
-					return s.repo.Update(ctx, *server)
-				})
-				if err != nil {
-					slog.ErrorContext(ctx, "Failed to put server back in restore pending state after failed restore", slog.String("server", name), logger.Err(err))
-				}
-
+			// The error of the operation is delivered here directly, so it has not
+			// passed the error wrapper middleware of the client.
+			callbackErr = domain.RetryableWrapper()(callbackErr)
+			if callbackErr == nil {
 				return
 			}
+
+			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(callbackErr))
+
+			s.recordRollingUpdateStepFailure(ctx, name, provisioning.ServerUpdateStepRestore, callbackErr)
 		}
 	}
 
@@ -1504,8 +1436,6 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		previousServer = server.Clone()
-
 		if !server.Type.IsIncus() {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
@@ -1513,6 +1443,17 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
+
+		if clusterUpdate {
+			err = s.claimRollingUpdateStep(server, provisioning.ServerUpdateStepRestore)
+			if err != nil {
+				return err
+			}
+		}
+
+		// The claim is taken before the snapshot, so a failure to trigger the
+		// restore rewinds the status detail but keeps the attempt spent on it.
+		previousServer = server.Clone()
 
 		server.StatusDetail = api.ServerStatusDetailReadyRestoring
 		server.LastStatusUpdated = s.now()
@@ -1544,6 +1485,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	err = s.client.Restore(ctx, *server, restoreModeSkip, callback)
 	if err != nil {
+		previousServer.StatusInternal.Update.Fail(provisioning.ServerUpdateStepRestore, err)
+
 		return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
 	}
 
@@ -1579,12 +1522,12 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 			}
 		}
 
+		server.StatusInternal.Update.Release(provisioning.ServerUpdateStepRestore)
+
 		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
-
-		s.volatileServerStates.reset(ctx, name, operationRestore)
 
 		return nil
 	})
@@ -1644,6 +1587,24 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			}
 		}
 
+		if updateRequest.OS.TriggerUpdate || len(applications) > 0 {
+			err = s.claimRollingUpdateStep(server, provisioning.ServerUpdateStepUpdate)
+			if err != nil {
+				return err
+			}
+		}
+
+		// The reboot, that activates the staged IncusOS update, is owed from the
+		// moment the update is triggered. Deriving it from VersionData.NeedsReboot
+		// instead would miss the window in which IncusOS already reports the staged
+		// version but does not ask for a reboot yet, and the run would finish
+		// without having rebooted anything.
+		if updateRequest.OS.TriggerUpdate && server.StatusInternal.Update.IsActive() {
+			server.StatusInternal.Update.RebootPending = true
+		}
+
+		// The claim is taken before the snapshot, so a failure to trigger the
+		// update rewinds the status detail but keeps the attempt spent on it.
 		previousServer = server.Clone()
 
 		// An application update is applied right away, while an OS update is only
@@ -1685,9 +1646,11 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 				triggeredUpdate.Applications[application.Name] = *application.AvailableVersion
 			}
 
-			server.StatusInternal.Update = &provisioning.ServerUpdate{
-				Triggered: &triggeredUpdate,
+			if server.StatusInternal.Update == nil {
+				server.StatusInternal.Update = &provisioning.ServerUpdate{}
 			}
+
+			server.StatusInternal.Update.Triggered = &triggeredUpdate
 		}
 
 		server.LastStatusUpdated = s.now()
@@ -1725,6 +1688,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	if updateRequest.OS.TriggerUpdate {
 		err = s.client.UpdateOS(ctx, *server)
 		if err != nil {
+			previousServer.StatusInternal.Update.Fail(provisioning.ServerUpdateStepUpdate, err)
+
 			return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
 		}
 	}
@@ -1732,6 +1697,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	for _, application := range applications {
 		err = s.client.UpdateApplication(ctx, *server, application)
 		if err != nil {
+			previousServer.StatusInternal.Update.Fail(provisioning.ServerUpdateStepUpdate, err)
+
 			return fmt.Errorf("Failed to update application %q of server %q by name: %w", application, name, err)
 		}
 	}
@@ -1943,11 +1910,9 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 
 	switch event.Operation {
 	case domain.LifecycleOperationEvacuate:
-		s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
 		err = s.handleMaintenanceUpdate(ctx, server, api.InMaintenanceEvacuated)
 
 	case domain.LifecycleOperationRestore:
-		s.volatileServerStates.reset(ctx, server.Name, operationRestore)
 		err = s.handleMaintenanceUpdate(ctx, server, api.NotInMaintenance)
 
 	case domain.LifecycleOperationUpdate:
@@ -1984,6 +1949,16 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 	if inMaintenance == api.InMaintenanceEvacuated {
 		server.StatusDetail = api.ServerStatusDetailNone
 		server.LastStatusUpdated = s.now()
+	}
+
+	// Releasing the claim here keeps it atomic with the maintenance state, that
+	// settles it.
+	switch inMaintenance {
+	case api.InMaintenanceEvacuated:
+		server.StatusInternal.Update.Release(provisioning.ServerUpdateStepEvacuate)
+
+	case api.NotInMaintenance:
+		server.StatusInternal.Update.Release(provisioning.ServerUpdateStepRestore)
 	}
 
 	for i := range server.VersionData.Applications {
@@ -2101,8 +2076,6 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 						scope,
 						"Server connection test failed (status ready)",
 					))
-
-					s.volatileServerStates.reset(ctx, server.Name, operationReboot)
 
 					updateServer.Status = api.ServerStatusOffline
 					updateServer.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
@@ -2245,10 +2218,11 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
-			s.volatileServerStates.resetAll(ctx, server.Name)
+			// The server is back, so whatever was in flight on it is settled.
+			server.StatusInternal.Update.ReleaseAll()
+			server.StatusInternal.Update.ClearTriggered()
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
-			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
 		}
@@ -2262,7 +2236,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 					if server.VersionData.Applications[i].InMaintenance == api.InMaintenanceEvacuated {
 						server.StatusDetail = api.ServerStatusDetailNone
 						server.LastStatusUpdated = s.now()
-						s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
+						server.StatusInternal.Update.Release(provisioning.ServerUpdateStepEvacuate)
 					}
 
 					break
@@ -2275,7 +2249,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			for i := range server.VersionData.Applications {
 				if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
 					if server.VersionData.Applications[i].InMaintenance == api.NotInMaintenance {
-						s.volatileServerStates.reset(ctx, server.Name, operationRestore)
+						server.StatusInternal.Update.Release(provisioning.ServerUpdateStepRestore)
 					}
 
 					break
@@ -2329,8 +2303,9 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 			if !updatePending {
 				server.StatusDetail = api.ServerStatusDetailNone
-				server.StatusInternal.Update = nil
 				server.LastStatusUpdated = s.now()
+				update.ClearTriggered()
+				update.Release(provisioning.ServerUpdateStepUpdate)
 			}
 		}
 
