@@ -148,13 +148,13 @@ func (c *cmdClusterTemplateAdd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	variableDefinitions := api.ClusterTemplateVariables{}
-	if c.applicationConfigFile != "" {
+	if c.variablesFile != "" {
 		body, err := os.ReadFile(c.variablesFile)
 		if err != nil {
 			return err
 		}
 
-		err = yaml.Unmarshal(body, &variableDefinitions)
+		err = decodestrict.YAML(body, &variableDefinitions)
 		if err != nil {
 			return err
 		}
