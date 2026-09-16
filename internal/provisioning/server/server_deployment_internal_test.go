@@ -1058,6 +1058,7 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.next, "terminal state %q leads somewhere", state)
 				require.Empty(t, definition.fallback, "terminal state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
+				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
 
 				return
 			}
@@ -1070,6 +1071,7 @@ func Test_deploymentStates(t *testing.T) {
 			if definition.kind == deploymentStateKindAction {
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
+				require.Positive(t, definition.retries, "action state %q has no retry budget", state)
 
 				return
 			}
@@ -1077,8 +1079,12 @@ func Test_deploymentStates(t *testing.T) {
 			require.NotZero(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
 
 			if definition.fallback == "" {
+				require.Zero(t, definition.retries, "wait state %q has no trigger to fall back to, so its retry budget can not be spent", state)
+
 				return
 			}
+
+			require.Positive(t, definition.retries, "wait state %q falls back to a trigger, but has no retry budget", state)
 
 			require.Contains(t, deploymentStates, definition.fallback, "wait state %q falls back to the unknown state %q", state, definition.fallback)
 			require.Equal(t, deploymentStateKindAction, deploymentStates[definition.fallback].kind, "wait state %q falls back to %q, which is not an action", state, definition.fallback)
