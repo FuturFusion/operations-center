@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,7 +52,16 @@ func TestOIDCClient_Do(t *testing.T) {
 			tmpDir := t.TempDir()
 			oidcContextFile := filepath.Join(tmpDir, "test-oidc-context.json")
 
-			oidcClient := oidc.NewClient(&http.Client{}, oidcContextFile, oidc.WithoutOpenBrowser(), oidc.WithAuthenticateCallback(func(tokenURL string) {
+			// The client for Operations Center might pin the certificate of the
+			// Operations Center server, so it must never be used to reach the identity
+			// provider. Restrict it to the host of Operations Center to catch such a
+			// leak instead of silently depending on the identity provider being
+			// reachable with the pinned configuration.
+			operationsCenterHTTPClient := &http.Client{
+				Transport: onlyHostTransport(t, serverAddr),
+			}
+
+			oidcClient := oidc.NewClient(operationsCenterHTTPClient, oidcContextFile, oidc.WithoutOpenBrowser(), oidc.WithAuthenticateCallback(func(tokenURL string) {
 				resp, err := http.Get(tokenURL)
 				if err != nil {
 					t.Errorf("authenticate callback: %v", err)
@@ -129,6 +139,29 @@ func TestOIDCClient_Do(t *testing.T) {
 			equalFunc(t, oidcContext.Tokens.Expiry.Truncate(0), oidcContext2.Tokens.Expiry.Truncate(0)) // We don't care about the internal monotonic time.
 		})
 	}
+}
+
+// onlyHostTransport returns a transport, which only performs the requests
+// directed at the host of the provided address and fails all the others.
+func onlyHostTransport(t *testing.T, addr string) http.RoundTripper {
+	t.Helper()
+
+	u, err := url.Parse(addr)
+	require.NoError(t, err)
+
+	return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != u.Host {
+			return nil, fmt.Errorf("unexpected request to %q, this client is only allowed to talk to %q", r.URL.Host, u.Host)
+		}
+
+		return http.DefaultTransport.RoundTrip(r)
+	})
+}
+
+type roundTripperFunc func(r *http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }
 
 func setupMiniOIDC(t *testing.T, accessTokenExpiration time.Duration) string {
