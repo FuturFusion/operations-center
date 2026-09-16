@@ -51,6 +51,13 @@ func (c *CmdProfile) Command() *cobra.Command {
 
 	cmd.AddCommand(profileShowCmd.Command())
 
+	// Resync
+	profileResyncCmd := cmdProfileResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(profileResyncCmd.Command())
+
 	return cmd
 }
 
@@ -304,6 +311,48 @@ func (c *cmdProfileShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync profile.
+type cmdProfileResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdProfileResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a profile"
+	cmd.Long = `Description:
+  Resync a profile
+
+  Resyncs the state of a profile from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdProfileResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdProfileResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncProfile(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

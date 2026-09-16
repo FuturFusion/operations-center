@@ -51,6 +51,13 @@ func (c *CmdInstance) Command() *cobra.Command {
 
 	cmd.AddCommand(instanceShowCmd.Command())
 
+	// Resync
+	instanceResyncCmd := cmdInstanceResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(instanceResyncCmd.Command())
+
 	return cmd
 }
 
@@ -313,6 +320,48 @@ func (c *cmdInstanceShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync instance.
+type cmdInstanceResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdInstanceResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a instance"
+	cmd.Long = `Description:
+  Resync a instance
+
+  Resyncs the state of a instance from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdInstanceResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdInstanceResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncInstance(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

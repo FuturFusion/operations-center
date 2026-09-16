@@ -51,6 +51,13 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 
 	cmd.AddCommand(networkZoneShowCmd.Command())
 
+	// Resync
+	networkZoneResyncCmd := cmdNetworkZoneResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(networkZoneResyncCmd.Command())
+
 	return cmd
 }
 
@@ -304,6 +311,48 @@ func (c *cmdNetworkZoneShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync network zone.
+type cmdNetworkZoneResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdNetworkZoneResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a network zone"
+	cmd.Long = `Description:
+  Resync a network zone
+
+  Resyncs the state of a network zone from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdNetworkZoneResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdNetworkZoneResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncNetworkZone(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

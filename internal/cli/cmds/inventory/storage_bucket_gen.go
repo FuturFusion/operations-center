@@ -51,6 +51,13 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 
 	cmd.AddCommand(storageBucketShowCmd.Command())
 
+	// Resync
+	storageBucketResyncCmd := cmdStorageBucketResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(storageBucketResyncCmd.Command())
+
 	return cmd
 }
 
@@ -317,6 +324,48 @@ func (c *cmdStorageBucketShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync storage bucket.
+type cmdStorageBucketResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdStorageBucketResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a storage bucket"
+	cmd.Long = `Description:
+  Resync a storage bucket
+
+  Resyncs the state of a storage bucket from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdStorageBucketResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdStorageBucketResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncStorageBucket(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil
