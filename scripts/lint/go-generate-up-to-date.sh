@@ -2,8 +2,8 @@
 
 go generate ./...
 
-if [ -n "$(git status --porcelain -- '**/*_gen.go' '**/*_gen_test.go' '**/*_gen.tsx' '**/*_gen.d.ts' '**/*.mapper.go')" ]; then
-  git status -- '**/*_gen.go' '**/*_gen_test.go' '**/*_gen.tsx' '**/*_gen.d.ts' '**/*.mapper.go'
+if [ -n "$(git status --porcelain -- '**/*_gen.go' '**/*_gen_test.go' '**/*_gen.tsx' '**/*_gen.d.ts' '**/*.mapper.go' 'doc/development/server-deployment-states.md')" ]; then
+  git status -- '**/*_gen.go' '**/*_gen_test.go' '**/*_gen.tsx' '**/*_gen.d.ts' '**/*.mapper.go' 'doc/development/server-deployment-states.md'
   exit 1
 fi
 
