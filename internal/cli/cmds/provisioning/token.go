@@ -1,22 +1,27 @@
 package provisioning
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/lxc/incus/v7/shared/units"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
+	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -47,6 +52,13 @@ func (c *CmdToken) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(tokenAddCmd.Command())
+
+	// Edit
+	tokenEditCmd := cmdTokenEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(tokenEditCmd.Command())
 
 	// List
 	tokenListCmd := cmdTokenList{
@@ -144,6 +156,122 @@ func (c *cmdTokenAdd) run(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// Edit token.
+type cmdTokenEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdTokenEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit <uuid>"
+	cmd.Short = "Edit a token"
+	cmd.Long = `Description:
+  Edit a token
+
+  Edits the remaining uses, the expiry, the description and the channel of a
+  token. In contrast to "token add", the expiry is given as an absolute point
+  in time, not as a lifetime.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+// helpTemplate returns a sample YAML configuration and guidelines for editing token configurations.
+func (c *cmdTokenEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### uses_remaining: 1
+### expire_at: "2025-02-04T07:25:47Z"
+### description: ""
+### channel: ""
+`
+}
+
+func (c *cmdTokenEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdTokenEdit) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.TokenPut{}
+		err = decodestrict.YAML(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		return c.ocClient.UpdateToken(cmd.Context(), id, newdata)
+	}
+
+	token, err := c.ocClient.GetToken(cmd.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(token.TokenPut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.TokenPut{}
+		err = decodestrict.YAML(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateToken(cmd.Context(), id, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
 	}
 
 	return nil
