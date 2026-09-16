@@ -732,36 +732,36 @@ func Test_deploymentSettleSnapshot(t *testing.T) {
 	}
 }
 
-func Test_bmcWaitConditions(t *testing.T) {
+func Test_deploymentBMCConditions(t *testing.T) {
 	deployment := provisioning.ServerDeployment{
 		Request:  provisioning.ServerDeploymentRequest{VirtualMediaID: "system:1"},
 		MediaURL: "https://oc.example.com:8443/one.iso",
 	}
 
 	tests := []struct {
-		name  string
-		state api.ServerDeploymentState
-		data  api.BMCData
+		name      string
+		condition func(*provisioning.ServerDeployment, api.BMCData) bool
+		data      api.BMCData
 
 		want bool
 	}{
 		{
-			name:  "power is off",
-			state: api.ServerDeploymentStateWaitPowerOffBIOS,
-			data:  api.BMCData{ServerPowerState: bmcPowerStateOff},
+			name:      "power is off",
+			condition: deploymentPowerIsOff,
+			data:      api.BMCData{ServerPowerState: bmcPowerStateOff},
 
 			want: true,
 		},
 		{
-			name:  "power is still on",
-			state: api.ServerDeploymentStateWaitCancel,
-			data:  api.BMCData{ServerPowerState: bmcPowerStateOn},
+			name:      "power is still on",
+			condition: deploymentCancelSettled,
+			data:      api.BMCData{ServerPowerState: bmcPowerStateOn},
 
 			want: false,
 		},
 		{
-			name:  "the cancellation has powered the server off and ejected the media",
-			state: api.ServerDeploymentStateWaitCancel,
+			name:      "the cancellation has powered the server off and ejected the media",
+			condition: deploymentCancelSettled,
 			data: api.BMCData{
 				ServerPowerState: bmcPowerStateOff,
 				VirtualMedia: map[string]api.BMCVirtualMedia{
@@ -772,8 +772,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "the cancellation has powered the server off, but the media is still inserted",
-			state: api.ServerDeploymentStateWaitCancel,
+			name:      "the cancellation has powered the server off, but the media is still inserted",
+			condition: deploymentCancelSettled,
 			data: api.BMCData{
 				ServerPowerState: bmcPowerStateOff,
 				VirtualMedia: map[string]api.BMCVirtualMedia{
@@ -784,8 +784,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: false,
 		},
 		{
-			name:  "no media is inserted",
-			state: api.ServerDeploymentStateWaitMediaCleared,
+			name:      "no media is inserted",
+			condition: deploymentNoMediaInserted,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1"},
 			}},
@@ -793,8 +793,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "another media is still inserted",
-			state: api.ServerDeploymentStateWaitMediaCleared,
+			name:      "another media is still inserted",
+			condition: deploymentNoMediaInserted,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"manager:1": {ID: "manager:1", Inserted: true},
 			}},
@@ -802,8 +802,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: false,
 		},
 		{
-			name:  "the media is ejected",
-			state: api.ServerDeploymentStateWaitMediaDetached,
+			name:      "the media is ejected",
+			condition: deploymentMediaEjected,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1"},
 			}},
@@ -811,15 +811,15 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "the media device is gone",
-			state: api.ServerDeploymentStateWaitMediaDetached,
-			data:  api.BMCData{},
+			name:      "the media device is gone",
+			condition: deploymentMediaEjected,
+			data:      api.BMCData{},
 
 			want: true,
 		},
 		{
-			name:  "the media is still inserted",
-			state: api.ServerDeploymentStateWaitMediaDetached,
+			name:      "the media is still inserted",
+			condition: deploymentMediaEjected,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1", Inserted: true, Image: "https://oc.example.com:8443/one.iso"},
 			}},
@@ -830,10 +830,7 @@ func Test_bmcWaitConditions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			condition, ok := bmcWaitConditions[tc.state]
-			require.True(t, ok, "state %q has no BMC wait condition", tc.state)
-
-			require.Equal(t, tc.want, condition(&deployment, tc.data))
+			require.Equal(t, tc.want, tc.condition(&deployment, tc.data))
 		})
 	}
 }
@@ -1142,6 +1139,7 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.next, "terminal state %q leads somewhere", state)
 				require.Empty(t, definition.fallback, "terminal state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
+				require.Nil(t, definition.wait, "terminal state %q has a wait", state)
 				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
 				require.NotEmpty(t, definition.status, "terminal state %q reports no server status", state)
 
@@ -1166,10 +1164,12 @@ func Test_deploymentStates(t *testing.T) {
 				require.Zero(t, definition.settleDelay, "action state %q has a settle delay", state)
 				require.Zero(t, definition.rebootWindow, "action state %q has a reboot window", state)
 				require.Zero(t, definition.install, "action state %q has install thresholds", state)
+				require.Nil(t, definition.wait, "action state %q has a wait", state)
 
 				return
 			}
 
+			require.NotNil(t, definition.wait, "wait state %q waits for nothing", state)
 			require.NotZero(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
 
 			if definition.fallback == "" {
@@ -1398,7 +1398,9 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindWait:
-				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server, definition)
+				require.NotNil(t, definition.wait, "wait state %q declares no wait", state)
+
+				_, _, err = definition.wait(serverSvc, t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindTerminal:
 				return
@@ -1411,7 +1413,6 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			require.Error(t, err, "state %q reached none of the failing collaborators", state)
 			require.NotContains(t, err.Error(), "is not an action", "action state %q is not dispatched", state)
-			require.NotContains(t, err.Error(), "is not a wait", "wait state %q is not dispatched", state)
 		})
 	}
 }
