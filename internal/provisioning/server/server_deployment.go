@@ -41,6 +41,11 @@ type deploymentStateDefinition struct {
 	detail api.ServerStatusDetail
 	next   api.ServerDeploymentState
 
+	// enterState returns the state the deployment enters in place of this one:
+	// the state itself, or the state to skip to, where it has nothing left to do
+	// here. Every skip moves forward, so the chain of them settles.
+	enterState func(*provisioning.ServerDeployment) api.ServerDeploymentState
+
 	// fallback is the trigger state a wait state returns to, when it times out.
 	// An empty fallback fails the deployment instead.
 	fallback api.ServerDeploymentState
@@ -103,6 +108,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		detail:  api.ServerStatusDetailDeployingPreparing,
 		next:    api.ServerDeploymentStateWaitPowerOffBIOS,
 		retries: config.ServerDeploymentStepRetries,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.BIOSPending {
+				return api.ServerDeploymentStatePowerOffBIOS
+			}
+
+			return api.ServerDeploymentStatePowerOffBIOSDeferred
+		},
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOS: {
 		kind:     deploymentStateKindWait,
@@ -143,6 +156,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
 		next:    api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
 		retries: config.ServerDeploymentStepRetries,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.BIOSDeferredPending {
+				return api.ServerDeploymentStatePowerOffBIOSDeferred
+			}
+
+			return api.ServerDeploymentStatePowerOffSecureBoot
+		},
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred: {
 		kind:     deploymentStateKindWait,
@@ -198,6 +219,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:        api.ServerDeploymentStateClearMedia,
 		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if !deployment.Request.SkipSecureBootCertificates {
+				return api.ServerDeploymentStateSecureBoot
+			}
+
+			return api.ServerDeploymentStateClearMedia
+		},
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
 		},
@@ -221,6 +250,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
 		next:    api.ServerDeploymentStateWaitSecureBootSettled,
 		retries: config.ServerDeploymentStepRetries,
+
+		enterState: func(deployment *provisioning.ServerDeployment) api.ServerDeploymentState {
+			if deployment.SecureBootPending {
+				return api.ServerDeploymentStatePowerOnSecureBoot
+			}
+
+			return api.ServerDeploymentStateAttachMedia
+		},
 	},
 	api.ServerDeploymentStateWaitSecureBootSettled: {
 		kind:     deploymentStateKindWait,
@@ -368,44 +405,28 @@ func (e deploymentFatalError) Unwrap() error {
 }
 
 // deploymentNextState returns the state, the deployment enters after the step it
-// just completed, passing by a BIOS pass with nothing left to apply and the
-// secure boot enrollment, if it was requested to be skipped. The skips chain,
-// but every one of them moves forward, so the loop settles.
+// just completed. A state, that has nothing to do for this deployment, names the
+// state to skip to instead of itself. The skips chain, but every one of them
+// moves forward, so the loop settles.
 func deploymentNextState(deployment *provisioning.ServerDeployment, next api.ServerDeploymentState) api.ServerDeploymentState {
-	for {
-		switch next {
-		case api.ServerDeploymentStatePowerOffBIOS:
-			if deployment.BIOSPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateVerifyBIOS].next
-
-		case api.ServerDeploymentStatePowerOffBIOSDeferred:
-			if deployment.BIOSDeferredPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateVerifyBIOSDeferred].next
-
-		case api.ServerDeploymentStateSecureBoot:
-			if !deployment.Request.SkipSecureBootCertificates {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateSecureBoot].next
-
-		case api.ServerDeploymentStatePowerOnSecureBoot:
-			if deployment.SecureBootPending {
-				return next
-			}
-
-			next = deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootSettled].next
-
-		default:
+	// The table is finite and every skip moves forward, so this many rounds can
+	// not be reached. The bound keeps a table, that does not, from parking the
+	// control loop.
+	for range len(deploymentStates) {
+		enterState := deploymentStates[next].enterState
+		if enterState == nil {
 			return next
 		}
+
+		entered := enterState(deployment)
+		if entered == next {
+			return next
+		}
+
+		next = entered
 	}
+
+	return next
 }
 
 func deploymentIsBIOSDeferredPass(state api.ServerDeploymentState) bool {
