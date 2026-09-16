@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -1418,5 +1419,102 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			require.Error(t, err, "state %q reached none of the failing collaborators", state)
 		})
+	}
+}
+
+// Test_deploymentStatesDiagramMetadata asserts, that every state carries what
+// the generated state diagram needs, so a state can not be added to the table
+// without showing up in the documentation.
+func Test_deploymentStatesDiagramMetadata(t *testing.T) {
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			require.NotEmpty(t, definition.label, "state %q has no label to draw it by", state)
+
+			condition, err := deploymentDiagramCondition(definition)
+			require.NoError(t, err, "the condition of state %q does not render", state)
+			require.NotContains(t, condition, "<no value>", "the condition of state %q references something the view does not hold", state)
+
+			if definition.enterState != nil {
+				require.NotEmpty(t, definition.skipReason, "state %q can be passed by, but does not say why", state)
+			}
+
+			if definition.retryFrom != "" {
+				require.NotEmpty(t, definition.retryReason, "state %q routes back to %q, but does not say why", state, definition.retryFrom)
+			}
+
+			if definition.kind == deploymentStateKindWait {
+				require.NotEmpty(t, definition.condition, "wait state %q does not say, what satisfies it", state)
+			}
+		})
+	}
+}
+
+func Test_deploymentDiagramDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration time.Duration
+
+		want string
+	}{
+		{name: "zero", duration: 0, want: "0s"},
+		{name: "negative", duration: -time.Minute, want: "0s"},
+		{name: "seconds", duration: 10 * time.Second, want: "10s"},
+		{name: "whole minutes", duration: 10 * time.Minute, want: "10m"},
+		{name: "whole hours", duration: 2 * time.Hour, want: "2h"},
+		{name: "hours and minutes", duration: 90 * time.Minute, want: "1h30m"},
+		{name: "every unit", duration: time.Hour + 2*time.Minute + 3*time.Second, want: "1h2m3s"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, deploymentDiagramDuration(tc.duration))
+		})
+	}
+}
+
+// Test_DeploymentStateDiagram asserts, that the rendered diagram covers the
+// table and nothing but the table, and that it does not depend on the iteration
+// order of the map.
+func Test_DeploymentStateDiagram(t *testing.T) {
+	diagram, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+
+	again, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+	require.Equal(t, diagram, again, "the diagram is not rendered deterministically")
+
+	declared := map[string]struct{}{}
+
+	for line := range strings.SplitSeq(diagram, "\n") {
+		line = strings.TrimSpace(line)
+
+		id, ok := strings.CutPrefix(line, "state ")
+		if ok {
+			_, id, _ = strings.Cut(id, " as ")
+			declared[id] = struct{}{}
+
+			continue
+		}
+
+		from, rest, ok := strings.Cut(line, " --> ")
+		if !ok {
+			continue
+		}
+
+		to, _, _ := strings.Cut(rest, ": ")
+
+		for _, id := range []string{from, to} {
+			if id == "[*]" {
+				continue
+			}
+
+			require.Contains(t, declared, id, "the diagram draws an edge to %q, which it does not declare", id)
+		}
+	}
+
+	require.Len(t, declared, len(deploymentStates), "the diagram does not declare every state of the table")
+
+	for state := range deploymentStates {
+		require.Contains(t, declared, deploymentDiagramID(state), "the diagram leaves state %q out", state)
 	}
 }

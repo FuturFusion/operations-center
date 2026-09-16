@@ -78,6 +78,10 @@ type deploymentInstallThresholds struct {
 // table refers to these functions, so a read back is an initialization cycle.
 // Whatever a function needs, it is handed with the definition it is called with.
 type deploymentStateDefinition struct {
+	// label is the human readable name of the state in the generated state
+	// diagram.
+	label string
+
 	kind   deploymentStateKind
 	detail api.ServerStatusDetail
 	next   api.ServerDeploymentState
@@ -142,6 +146,22 @@ type deploymentStateDefinition struct {
 	// be told apart from a no-op once it has been performed, so a re-issued
 	// attempt has to learn from the record instead of from the BMC.
 	prepare func(*provisioning.ServerDeployment)
+
+	// condition describes, what satisfies the wait, and labels the edge a wait
+	// state leaves by. It is rendered as a template against the definition, so a
+	// duration it mentions is the one the state declares, rather than a second
+	// copy of it.
+	condition string
+
+	// retryReason labels the edge back to retryFrom.
+	retryReason string
+
+	// enterReason and skipReason describe, why a state, that can be passed by, is
+	// entered or passed by. The reasons of a chain of skips are joined, which is
+	// where a label like "attributes match, no deferred attributes pending" comes
+	// from.
+	enterReason string
+	skipReason  string
 }
 
 func (d deploymentStateDefinition) callTimeoutOrDefault() time.Duration {
@@ -166,6 +186,7 @@ var deploymentWaitPowerIsOff = deploymentBMCWait(deploymentPowerIsOff)
 // since a BMC forgets about one once it has been consumed or has been reset.
 var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateRefreshBMCData: {
+		label:   "refresh BMC data",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingPreparing,
 		action:  (*serverService).refreshDeploymentBMCData,
@@ -173,6 +194,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCheckBIOS: {
+		label:   "check BIOS",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingPreparing,
 		action:  (*serverService).checkDeploymentBIOSAttributes,
@@ -180,6 +202,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffBIOS: {
+		label:    "power off",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingPreparing,
 		action:   (*serverService).powerOffDeploymentServer,
@@ -194,8 +217,12 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 
 			return api.ServerDeploymentStatePowerOffBIOSDeferred
 		},
+
+		enterReason: "attributes not applied",
+		skipReason:  "attributes match",
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOS: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingPreparing,
 		wait:     deploymentWaitPowerIsOff,
@@ -204,8 +231,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
 		biosPass: deploymentBIOSPassFirst,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateApplyBIOS: {
+		label:    "apply BIOS",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:   (*serverService).applyDeploymentBIOSAttributes,
@@ -214,6 +244,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStatePowerOnBIOS: {
+		label:    "power on",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:   (*serverService).powerOnDeploymentServer,
@@ -222,6 +253,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		biosPass: deploymentBIOSPassFirst,
 	},
 	api.ServerDeploymentStateWaitBIOSApplied: {
+		label:       "wait for BIOS applied",
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:        (*serverService).checkDeploymentBIOSApplied,
@@ -231,8 +263,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:     config.ServerDeploymentStepRetries,
 		settleDelay: config.ServerDeploymentSettleDelay,
 		biosPass:    deploymentBIOSPassFirst,
+
+		condition: "task completed, or task unavailable after settle delay ({{ .SettleDelay }}) and power state on",
 	},
 	api.ServerDeploymentStateVerifyBIOS: {
+		label:     "verify BIOS",
 		kind:      deploymentStateKindAction,
 		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:    (*serverService).verifyDeploymentBIOSAttributes,
@@ -240,8 +275,12 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:   config.ServerDeploymentStepRetries,
 		retryFrom: api.ServerDeploymentStatePowerOffBIOS,
 		biosPass:  deploymentBIOSPassFirst,
+
+		condition:   "attributes match",
+		retryReason: "attributes not applied",
 	},
 	api.ServerDeploymentStatePowerOffBIOSDeferred: {
+		label:    "power off",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:   (*serverService).powerOffDeploymentServer,
@@ -256,8 +295,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 
 			return api.ServerDeploymentStatePowerOffSecureBoot
 		},
+
+		skipReason: "no deferred attributes pending",
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:     deploymentWaitPowerIsOff,
@@ -266,8 +308,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
 		biosPass: deploymentBIOSPassDeferred,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateApplyBIOSDeferred: {
+		label:    "apply deferred BIOS",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:   (*serverService).applyDeploymentBIOSAttributes,
@@ -276,6 +321,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStatePowerOnBIOSDeferred: {
+		label:    "power on",
 		kind:     deploymentStateKindAction,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:   (*serverService).powerOnDeploymentServer,
@@ -284,6 +330,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		biosPass: deploymentBIOSPassDeferred,
 	},
 	api.ServerDeploymentStateWaitBIOSAppliedDeferred: {
+		label:       "wait for BIOS applied",
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:        (*serverService).checkDeploymentBIOSApplied,
@@ -293,8 +340,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:     config.ServerDeploymentStepRetries,
 		settleDelay: config.ServerDeploymentSettleDelay,
 		biosPass:    deploymentBIOSPassDeferred,
+
+		condition: "task completed, or task unavailable after settle delay ({{ .SettleDelay }}) and power state on",
 	},
 	api.ServerDeploymentStateVerifyBIOSDeferred: {
+		label:     "verify deferred BIOS",
 		kind:      deploymentStateKindAction,
 		detail:    api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:    (*serverService).verifyDeploymentBIOSAttributes,
@@ -302,6 +352,9 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:   config.ServerDeploymentStepRetries,
 		retryFrom: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		biosPass:  deploymentBIOSPassDeferred,
+
+		condition:   "attributes match",
+		retryReason: "attributes not applied",
 	},
 	api.ServerDeploymentStatePowerOffSecureBoot: {
 		kind:    deploymentStateKindAction,
@@ -309,8 +362,10 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		action:  (*serverService).powerOffDeploymentServer,
 		next:    api.ServerDeploymentStateWaitPowerOffSecureBoot,
 		retries: config.ServerDeploymentStepRetries,
+		label:   "power off",
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBoot: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:     deploymentWaitPowerIsOff,
@@ -318,8 +373,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffSecureBoot,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateSecureBoot: {
+		label:       "secure boot certificates",
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:      (*serverService).enrollDeploymentSecureBootCertificates,
@@ -337,8 +395,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
 		},
+
+		skipReason: "secure boot certificates skipped",
 	},
 	api.ServerDeploymentStateClearMedia: {
+		label:   "clear stale media",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingAttachingMedia,
 		action:  (*serverService).clearDeploymentMedia,
@@ -346,6 +407,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaCleared: {
+		label:    "wait for media cleared",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
 		wait:     deploymentBMCWait(deploymentNoMediaInserted),
@@ -353,8 +415,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStateClearMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "no media inserted",
 	},
 	api.ServerDeploymentStatePowerOnSecureBoot: {
+		label:   "power on",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:  (*serverService).powerOnDeploymentServer,
@@ -368,8 +433,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 
 			return api.ServerDeploymentStateAttachMedia
 		},
+
+		skipReason: "no certificates enrolled",
 	},
 	api.ServerDeploymentStateWaitSecureBootSettled: {
+		label:        "wait for secure boot settled",
 		kind:         deploymentStateKindWait,
 		detail:       api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:         (*serverService).checkDeploymentSecureBootSettled,
@@ -379,8 +447,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:      config.ServerDeploymentStepRetries,
 		settleDelay:  config.ServerDeploymentSettleDelay,
 		rebootWindow: config.ServerDeploymentSecureBootSettleDuration,
+
+		condition: "reboot detected or settle duration ({{ .RebootWindow }}) passed",
 	},
 	api.ServerDeploymentStatePowerOffSecureBootSettled: {
+		label:   "power off",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
 		action:  (*serverService).powerOffDeploymentServer,
@@ -388,6 +459,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: {
+		label:    "wait for power off",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
 		wait:     deploymentWaitPowerIsOff,
@@ -395,8 +467,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStatePowerOffSecureBootSettled,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "power state off",
 	},
 	api.ServerDeploymentStateAttachMedia: {
+		label:       "attach media",
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingAttachingMedia,
 		action:      (*serverService).attachDeploymentMedia,
@@ -405,6 +480,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		callTimeout: config.ServerDeploymentAttachMediaCallTimeout,
 	},
 	api.ServerDeploymentStateWaitMediaAttached: {
+		label:    "wait for media attached",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
 		wait:     (*serverService).checkDeploymentMediaAttached,
@@ -412,8 +488,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStateAttachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "expected media inserted in selected device",
 	},
 	api.ServerDeploymentStatePowerOnInstall: {
+		label:   "power on",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingInstalling,
 		action:  (*serverService).powerOnDeploymentServer,
@@ -423,6 +502,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitInstall: {
 		// The installation can not be triggered a second time, so the wait has no
 		// trigger to fall back to and fails the deployment instead.
+		label:       "installing",
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingInstalling,
 		wait:        (*serverService).checkDeploymentInstalled,
@@ -435,8 +515,11 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 			mediaIdlePeriod:     config.ServerDeploymentMediaIdlePeriod,
 			mediaMinBytesRead:   config.ServerDeploymentMediaMinBytesRead,
 		},
+
+		condition: "install stage 1 done",
 	},
 	api.ServerDeploymentStateDetachMedia: {
+		label:   "detach media",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingFinalizing,
 		action:  (*serverService).ejectDeploymentMedia,
@@ -444,6 +527,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaDetached: {
+		label:    "wait for media detached",
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingFinalizing,
 		wait:     deploymentBMCWait(deploymentMediaEjected),
@@ -451,25 +535,34 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		fallback: api.ServerDeploymentStateDetachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
+
+		condition: "media ejected",
 	},
 	api.ServerDeploymentStateWaitReboot: {
 		// A server, that does not come back, can not be rebooted again, so the
 		// wait has no trigger to fall back to.
+		label:        "wait for reboot",
 		kind:         deploymentStateKindWait,
 		detail:       api.ServerStatusDetailDeployingFinalizing,
 		wait:         (*serverService).checkDeploymentRebooted,
 		next:         api.ServerDeploymentStateWaitRegistration,
 		timeout:      config.ServerDeploymentRebootTimeout,
 		rebootWindow: config.ServerDeploymentRebootObservationWindow,
+
+		condition: "server registered, reboot detected, or observation window ({{ .RebootWindow }}) passed while powered on",
 	},
 	api.ServerDeploymentStateWaitRegistration: {
+		label:   "wait for registration",
 		kind:    deploymentStateKindWait,
 		detail:  api.ServerStatusDetailDeployingFinalizing,
 		wait:    (*serverService).checkDeploymentRegistered,
 		next:    api.ServerDeploymentStateCleanup,
 		timeout: config.ServerDeploymentRegistrationTimeout,
+
+		condition: "server registered",
 	},
 	api.ServerDeploymentStateCleanup: {
+		label:   "cleanup",
 		kind:    deploymentStateKindAction,
 		detail:  api.ServerStatusDetailDeployingFinalizing,
 		action:  (*serverService).runDeploymentCleanup,
@@ -477,6 +570,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCancel: {
+		label:       "cancel",
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingCancelling,
 		action:      (*serverService).runDeploymentCancel,
@@ -485,6 +579,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		cancelPhase: true,
 	},
 	api.ServerDeploymentStateWaitCancel: {
+		label:       "wait for power off",
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingCancelling,
 		wait:        deploymentBMCWait(deploymentCancelSettled),
@@ -493,19 +588,24 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout:     config.ServerDeploymentStepTimeout,
 		retries:     config.ServerDeploymentStepRetries,
 		cancelPhase: true,
+
+		condition: "power state off",
 	},
 	// A registration would have moved the server out of status deploying already,
 	// so reaching the completed state means the deployment completed without one.
 	api.ServerDeploymentStateCompleted: {
+		label:  "completed",
 		kind:   deploymentStateKindTerminal,
 		status: api.ServerStatusUnregistered,
 	},
 	api.ServerDeploymentStateFailed: {
+		label:  "failed",
 		kind:   deploymentStateKindTerminal,
 		status: api.ServerStatusUnregistered,
 		detail: api.ServerStatusDetailUnregisteredDeploymentFailed,
 	},
 	api.ServerDeploymentStateCancelled: {
+		label:  "canceled",
 		kind:   deploymentStateKindTerminal,
 		status: api.ServerStatusUnregistered,
 		detail: api.ServerStatusDetailUnregisteredDeploymentCancelled,
