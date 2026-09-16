@@ -46,6 +46,13 @@ func (c *CmdCertificate) Command() *cobra.Command {
 
 	cmd.AddCommand(certificateSetCmd.Command())
 
+	// Renew
+	certificateRenewCmd := cmdCertificateRenew{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(certificateRenewCmd.Command())
+
 	return cmd
 }
 
@@ -159,6 +166,47 @@ func (c *cmdCertificateSet) run(cmd *cobra.Command, args []string) error {
 	}
 
 	err = c.ocClient.SetSystemCertificate(cmd.Context(), certificateRequest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Renew system server certificate.
+type cmdCertificateRenew struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdCertificateRenew) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "renew"
+	cmd.Short = "Renew server certificate"
+	cmd.Long = `Description:
+  Renew server certificate
+
+  Triggers renewal of the server certificate through ACME. This requires ACME
+  to be configured in the security settings.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdCertificateRenew) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdCertificateRenew) run(cmd *cobra.Command, args []string) error {
+	err := c.ocClient.RenewSystemCertificate(cmd.Context())
 	if err != nil {
 		return err
 	}

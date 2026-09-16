@@ -51,6 +51,13 @@ func (c *CmdNetworkAddressSet) Command() *cobra.Command {
 
 	cmd.AddCommand(networkAddressSetShowCmd.Command())
 
+	// Resync
+	networkAddressSetResyncCmd := cmdNetworkAddressSetResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(networkAddressSetResyncCmd.Command())
+
 	return cmd
 }
 
@@ -304,6 +311,48 @@ func (c *cmdNetworkAddressSetShow) run(cmd *cobra.Command, args []string) error 
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync network address set.
+type cmdNetworkAddressSetResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdNetworkAddressSetResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a network address set"
+	cmd.Long = `Description:
+  Resync a network address set
+
+  Resyncs the state of a network address set from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdNetworkAddressSetResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdNetworkAddressSetResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncNetworkAddressSet(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

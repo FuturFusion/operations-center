@@ -1,17 +1,24 @@
 package provisioning
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"slices"
 	"time"
 
+	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
+	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -55,6 +62,20 @@ func (c *CmdChannel) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(updateAddCmd.Command())
+
+	// Edit
+	updateEditCmd := cmdChannelEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateEditCmd.Command())
+
+	// Remove
+	updateRemoveCmd := cmdChannelRemove{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateRemoveCmd.Command())
 
 	// Changelog
 	updateChangelogCmd := cmdChannelChangelog{
@@ -275,6 +296,160 @@ func (c *cmdChannelAdd) run(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to create channel %q: %w", name, err)
+	}
+
+	return nil
+}
+
+// Edit channel.
+type cmdChannelEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdChannelEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit a channel"
+	cmd.Long = `Description:
+  Edit a channel.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+// helpTemplate returns a sample YAML configuration and guidelines for editing channel configurations.
+func (c *cmdChannelEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### description: ""
+`
+}
+
+func (c *cmdChannelEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdChannelEdit) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.ChannelPut{}
+		err = decodestrict.YAML(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		err = c.ocClient.UpdateChannel(cmd.Context(), name, newdata)
+		if err != nil {
+			return fmt.Errorf("Failed to update channel %q: %w", name, err)
+		}
+
+		return nil
+	}
+
+	channel, err := c.ocClient.GetChannel(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(channel.ChannelPut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.ChannelPut{}
+		err = decodestrict.YAML(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateChannel(cmd.Context(), name, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
+	}
+
+	return nil
+}
+
+// Remove channel.
+type cmdChannelRemove struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdChannelRemove) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "remove <name>"
+	cmd.Short = "Remove a channel"
+	cmd.Long = `Description:
+  Remove a channel.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdChannelRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdChannelRemove) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.DeleteChannel(cmd.Context(), name)
+	if err != nil {
+		return fmt.Errorf("Failed to delete channel %q: %w", name, err)
 	}
 
 	return nil

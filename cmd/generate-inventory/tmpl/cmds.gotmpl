@@ -49,6 +49,13 @@ func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 
 	cmd.AddCommand({{ .Name | camelcase }}ShowCmd.Command())
 
+	// Resync
+	{{ .Name | camelcase }}ResyncCmd := cmd{{ .Name | pascalcase }}Resync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand({{ .Name | camelcase }}ResyncCmd.Command())
+
 	return cmd
 }
 
@@ -388,6 +395,48 @@ func (c *cmd{{ .Name | pascalcase }}Show) run(cmd *cobra.Command, args []string)
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync {{ .Name | words }}.
+type cmd{{ .Name | pascalcase }}Resync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmd{{ .Name | pascalcase }}Resync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a {{ .Name | words }}"
+	cmd.Long = `Description:
+  Resync a {{ .Name | words }}
+
+  Resyncs the state of a {{ .Name | words }} from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmd{{ .Name | pascalcase }}Resync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmd{{ .Name | pascalcase }}Resync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.Resync{{ .Name | pascalcase }}(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

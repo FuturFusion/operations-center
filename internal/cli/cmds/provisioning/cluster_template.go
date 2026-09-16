@@ -1,17 +1,23 @@
 package provisioning
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"time"
 
+	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
+	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -42,6 +48,13 @@ func (c *CmdClusterTemplate) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterTemplateAddCmd.Command())
 
+	// Edit
+	clusterTemplateEditCmd := cmdClusterTemplateEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterTemplateEditCmd.Command())
+
 	// List
 	clusterTemplateListCmd := cmdClusterTemplateList{
 		ocClient: c.OCClient,
@@ -55,6 +68,13 @@ func (c *CmdClusterTemplate) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterTemplateRemoveCmd.Command())
+
+	// Rename
+	clusterTemplateRenameCmd := cmdClusterTemplateRename{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterTemplateRenameCmd.Command())
 
 	// Show
 	clusterTemplateShowCmd := cmdClusterTemplateShow{
@@ -128,13 +148,13 @@ func (c *cmdClusterTemplateAdd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	variableDefinitions := api.ClusterTemplateVariables{}
-	if c.applicationConfigFile != "" {
+	if c.variablesFile != "" {
 		body, err := os.ReadFile(c.variablesFile)
 		if err != nil {
 			return err
 		}
 
-		err = yaml.Unmarshal(body, &variableDefinitions)
+		err = decodestrict.YAML(body, &variableDefinitions)
 		if err != nil {
 			return err
 		}
@@ -151,6 +171,124 @@ func (c *cmdClusterTemplateAdd) run(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// Edit clusterTemplate.
+type cmdClusterTemplateEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterTemplateEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit a cluster-template"
+	cmd.Long = `Description:
+  Edit a cluster-template
+
+  Edits the description, the templates and the variable definitions of a
+  cluster-template.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+// helpTemplate returns a sample YAML configuration and guidelines for editing cluster template configurations.
+func (c *cmdClusterTemplateEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### description: ""
+### service_config_template: ""
+### application_config_template: ""
+### variables:
+###   SOME_VARIABLE:
+###     description: ""
+###     default: ""
+`
+}
+
+func (c *cmdClusterTemplateEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterTemplateEdit) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.ClusterTemplatePut{}
+		err = decodestrict.YAML(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		return c.ocClient.UpdateClusterTemplate(cmd.Context(), name, newdata)
+	}
+
+	clusterTemplate, err := c.ocClient.GetClusterTemplate(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(clusterTemplate.ClusterTemplatePut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.ClusterTemplatePut{}
+		err = decodestrict.YAML(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateClusterTemplate(cmd.Context(), name, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
 	}
 
 	return nil
@@ -242,6 +380,53 @@ func (c *cmdClusterTemplateRemove) run(cmd *cobra.Command, args []string) error 
 	name := args[0]
 
 	err := c.ocClient.DeleteClusterTemplate(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Rename clusterTemplate.
+type cmdClusterTemplateRename struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterTemplateRename) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "rename <name> <new-name>"
+	cmd.Short = "Rename a cluster-template"
+	cmd.Long = `Description:
+  Rename a cluster-template
+
+  Renames a cluster-template to a new name.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterTemplateRename) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterTemplateRename) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	newName := args[1]
+
+	if name == newName {
+		return fmt.Errorf("Rename failed, name and new name are equal")
+	}
+
+	err := c.ocClient.RenameClusterTemplate(cmd.Context(), name, newName)
 	if err != nil {
 		return err
 	}

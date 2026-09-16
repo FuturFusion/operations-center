@@ -51,6 +51,13 @@ func (c *CmdProject) Command() *cobra.Command {
 
 	cmd.AddCommand(projectShowCmd.Command())
 
+	// Resync
+	projectResyncCmd := cmdProjectResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(projectResyncCmd.Command())
+
 	return cmd
 }
 
@@ -294,6 +301,48 @@ func (c *cmdProjectShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync project.
+type cmdProjectResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdProjectResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a project"
+	cmd.Long = `Description:
+  Resync a project
+
+  Resyncs the state of a project from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdProjectResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdProjectResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncProject(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

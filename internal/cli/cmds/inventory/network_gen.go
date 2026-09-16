@@ -51,6 +51,13 @@ func (c *CmdNetwork) Command() *cobra.Command {
 
 	cmd.AddCommand(networkShowCmd.Command())
 
+	// Resync
+	networkResyncCmd := cmdNetworkResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(networkResyncCmd.Command())
+
 	return cmd
 }
 
@@ -305,6 +312,48 @@ func (c *cmdNetworkShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync network.
+type cmdNetworkResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdNetworkResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a network"
+	cmd.Long = `Description:
+  Resync a network
+
+  Resyncs the state of a network from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdNetworkResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdNetworkResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncNetwork(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

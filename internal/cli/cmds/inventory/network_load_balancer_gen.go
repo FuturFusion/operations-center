@@ -51,6 +51,13 @@ func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 
 	cmd.AddCommand(networkLoadBalancerShowCmd.Command())
 
+	// Resync
+	networkLoadBalancerResyncCmd := cmdNetworkLoadBalancerResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(networkLoadBalancerResyncCmd.Command())
+
 	return cmd
 }
 
@@ -309,6 +316,48 @@ func (c *cmdNetworkLoadBalancerShow) run(cmd *cobra.Command, args []string) erro
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync network load balancer.
+type cmdNetworkLoadBalancerResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdNetworkLoadBalancerResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a network load balancer"
+	cmd.Long = `Description:
+  Resync a network load balancer
+
+  Resyncs the state of a network load balancer from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdNetworkLoadBalancerResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdNetworkLoadBalancerResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncNetworkLoadBalancer(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -51,6 +51,13 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 
 	cmd.AddCommand(storageVolumeShowCmd.Command())
 
+	// Resync
+	storageVolumeResyncCmd := cmdStorageVolumeResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(storageVolumeResyncCmd.Command())
+
 	return cmd
 }
 
@@ -321,6 +328,48 @@ func (c *cmdStorageVolumeShow) run(cmd *cobra.Command, args []string) error {
 
 			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 		}
+	}
+
+	return nil
+}
+
+// Resync storage volume.
+type cmdStorageVolumeResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdStorageVolumeResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <uuid>"
+	cmd.Short = "Resync a storage volume"
+	cmd.Long = `Description:
+  Resync a storage volume
+
+  Resyncs the state of a storage volume from the respective cluster into the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdStorageVolumeResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdStorageVolumeResync) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.ResyncStorageVolume(cmd.Context(), id)
+	if err != nil {
+		return err
 	}
 
 	return nil
