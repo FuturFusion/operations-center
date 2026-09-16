@@ -27,8 +27,18 @@ var ErrOIDCExpired = fmt.Errorf("OIDC token expired, please re-try the request")
 
 // Custom transport that modifies requests to inject the audience field.
 type oidcTransport struct {
+	base                        http.RoundTripper
 	deviceAuthorizationEndpoint string
 	audience                    string
+}
+
+// roundTripper returns the transport the requests are finally sent with, defaulting the same way http.Client does.
+func (o *oidcTransport) roundTripper() http.RoundTripper {
+	if o.base == nil {
+		return http.DefaultTransport
+	}
+
+	return o.base
 }
 
 // oidcTransport is a custom HTTP transport that injects the audience field into requests directed at the device authorization endpoint.
@@ -37,7 +47,7 @@ func (o *oidcTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	// Don't modify the request if it's not to the device authorization endpoint, or there are no
 	// URL parameters which need to be set.
 	if r.URL.String() != o.deviceAuthorizationEndpoint || len(o.audience) == 0 {
-		return http.DefaultTransport.RoundTrip(r)
+		return o.roundTripper().RoundTrip(r)
 	}
 
 	err := r.ParseForm()
@@ -54,7 +64,7 @@ func (o *oidcTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Body = io.NopCloser(strings.NewReader(body))
 	r.ContentLength = int64(len(body))
 
-	return http.DefaultTransport.RoundTrip(r)
+	return o.roundTripper().RoundTrip(r)
 }
 
 var errRefreshAccessToken = fmt.Errorf("Failed refreshing access token")
@@ -63,8 +73,14 @@ var oidcScopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, oidc.ScopeE
 
 // OIDCClient is a structure encapsulating an HTTP client, OIDC transport, and OIDC context (token, trust tupple) for OpenID Connect (OIDC) operations.
 type OIDCClient struct {
-	httpClient    *http.Client
-	oidcTransport *oidcTransport
+	// httpClient is used for the requests to Operations Center. It might pin the
+	// certificate of the Operations Center server and present the TLS client
+	// certificate identifying the user.
+	httpClient *http.Client
+	// idpHTTPClient is used for all the requests to the OIDC identity provider.
+	// The identity provider is a separate trust domain, so this client must never
+	// carry the TLS configuration meant for Operations Center.
+	idpHTTPClient *http.Client
 
 	oidcContextMu   sync.Mutex
 	oidcContext     OIDCContext
@@ -92,12 +108,16 @@ type OIDCTrustTuple struct {
 type ClientOption func(c *OIDCClient)
 
 // NewClient constructs a new OIDCClient, ensuring the token field is non-nil to prevent panics during authentication.
+// The provided httpClient is only used for the requests to Operations Center, the identity provider is always reached with system trust.
 func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) *OIDCClient {
 	client := &OIDCClient{
 		oidcContext:     loadOIDCContextFromFile(oidcContextFile),
 		oidcContextFile: oidcContextFile,
 		httpClient:      httpClient,
-		oidcTransport:   &oidcTransport{},
+
+		// The identity provider is reached with plain system trust. The timeout
+		// matches the default HTTP client of the OIDC relying party.
+		idpHTTPClient: &http.Client{Timeout: 30 * time.Second},
 
 		authenticateOpenBrowser: true,
 	}
@@ -285,7 +305,8 @@ func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 
 // getProvider initializes a new OpenID Connect Relying Party for a given issuer and clientID.
 // The function also creates a secure CookieHandler with random encryption and hash keys, and applies a series of configurations on the Relying Party.
-func (o *OIDCClient) getProvider(issuer string, clientID string) (rp.RelyingParty, error) {
+// The returned Relying Party performs all of its requests, including the lazy fetch of the JSON web key set, with the provided httpClient.
+func getProvider(httpClient *http.Client, issuer string, clientID string) (rp.RelyingParty, error) {
 	hashKey := make([]byte, 16)
 	encryptKey := make([]byte, 16)
 
@@ -304,7 +325,7 @@ func (o *OIDCClient) getProvider(issuer string, clientID string) (rp.RelyingPart
 		rp.WithCookieHandler(cookieHandler),
 		rp.WithVerifierOpts(rp.WithIssuedAtOffset(5 * time.Second)),
 		rp.WithPKCE(cookieHandler),
-		rp.WithHTTPClient(o.httpClient),
+		rp.WithHTTPClient(httpClient),
 	}
 
 	provider, err := rp.NewRelyingPartyOIDC(context.TODO(), issuer, clientID, "", "", oidcScopes, options...)
@@ -331,7 +352,7 @@ func (o *OIDCClient) refresh(issuer string, clientID string) error {
 		return errRefreshAccessToken
 	}
 
-	provider, err := o.getProvider(issuer, clientID)
+	provider, err := getProvider(o.idpHTTPClient, issuer, clientID)
 	if err != nil {
 		return errRefreshAccessToken
 	}
@@ -404,21 +425,22 @@ func (o *OIDCClient) FetchNewIncusTokenURL(req *http.Request) (string, *oidc.Dev
 }
 
 func (o *OIDCClient) getTokenURL(issuer string, clientID string, audience string) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
-	// Store the old transport and restore it in the end.
-	oldTransport := o.httpClient.Transport
-	o.oidcTransport.audience = audience
-	o.httpClient.Transport = o.oidcTransport
+	transport := &oidcTransport{
+		base:     o.idpHTTPClient.Transport,
+		audience: audience,
+	}
 
-	defer func() {
-		o.httpClient.Transport = oldTransport
-	}()
+	// Shallow copy, so the audience injection does not affect the shared client.
+	// The connection pool of the underlying transport is still shared.
+	idpHTTPClient := *o.idpHTTPClient
+	idpHTTPClient.Transport = transport
 
-	provider, err := o.getProvider(issuer, clientID)
+	provider, err := getProvider(&idpHTTPClient, issuer, clientID)
 	if err != nil {
 		return "", nil, nil, err
 	}
 
-	o.oidcTransport.deviceAuthorizationEndpoint = provider.GetDeviceAuthorizationEndpoint()
+	transport.deviceAuthorizationEndpoint = provider.GetDeviceAuthorizationEndpoint()
 
 	resp, err := rp.DeviceAuthorization(context.TODO(), oidcScopes, provider, nil)
 	if err != nil {
