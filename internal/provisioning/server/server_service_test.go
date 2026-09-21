@@ -8209,6 +8209,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		wantUpdatedApplications []string
 		wantStatusDetail        *api.ServerStatusDetail
 		wantTriggeredUpdate     *provisioning.ServerTriggeredUpdate
+		wantOSOnly              *bool
 	}{
 		{
 			name: "success - no update triggered",
@@ -8576,6 +8577,84 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 		},
 		{
+			name: "success - trigger OS only update, no application is recorded",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+				OSOnly: true,
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "IncusOS",
+						Version: "1",
+					},
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus", Version: "1"},
+						{Name: "openfga", Version: "2"},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+						{
+							Filename: "x86_64/openfga.raw.gz",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               require.NoError,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+			wantStatusDetail:        new(api.ServerStatusDetailReadyUpdatingOS),
+			wantTriggeredUpdate: &provisioning.ServerTriggeredUpdate{
+				OS: "2",
+			},
+			wantOSOnly: new(true),
+		},
+		{
+			name: "error - OS only update without an OS update",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: false,
+				},
+				OSOnly: true,
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: errassert.ValidationErrorContains(`An update restricted to the OS requires an update of the OS`),
+			assertLog: log.Noop,
+		},
+		{
 			name: "error - OS update combined with application update",
 			argUpdateRequest: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
@@ -8779,6 +8858,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			}
 
 			require.Equal(t, tc.wantUpdatedApplications, updatedApplications)
+
+			if tc.wantOSOnly != nil {
+				updateOSCalls := client.UpdateOSCalls()
+				require.Len(t, updateOSCalls, 1)
+				require.Equal(t, *tc.wantOSOnly, updateOSCalls[0].OsOnly)
+			}
 
 			if tc.wantStatusDetail != nil {
 				require.Equal(t, *tc.wantStatusDetail, ptr.From(gotStatusDetail))
