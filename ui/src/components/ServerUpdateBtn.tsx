@@ -38,6 +38,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
   const [selectedApplications, setSelectedApplications] = useState<string[]>(
     applicationsNeedingUpdate.map((application) => application.name),
   );
+  const [osOnly, setOsOnly] = useState(false);
 
   const toggleApplication = (name: string) => {
     setSelectedApplications((selected) =>
@@ -73,6 +74,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
       server.name,
       updateMode === "os",
       updateMode === "os" ? [] : selectedApplications,
+      updateMode === "os" && osOnly,
     )
       .then((response) => {
         setOpInProgress(false);
@@ -104,6 +106,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           setSelectedApplications(
             applicationsNeedingUpdate.map((application) => application.name),
           );
+          setOsOnly(false);
           setShowModal(true);
         }}
       />
@@ -142,6 +145,17 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           disabled={!osNeedsUpdate}
           onChange={() => setUpdateMode("os")}
         />
+        {updateMode === "os" && (
+          <div className="ms-4">
+            <Form.Check
+              type="checkbox"
+              id={`update-${server.name}-os-only`}
+              label="Leave the installed applications on their current version"
+              checked={osOnly}
+              onChange={() => setOsOnly((selected) => !selected)}
+            />
+          </div>
+        )}
         <Form.Check
           type="radio"
           id={`update-${server.name}-applications`}
@@ -170,8 +184,9 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
         )}
         <p>
           An update of the operating system also updates every installed
-          application. It is applied with the next reboot of the server, while
-          an application is updated right away.
+          application, unless it is restricted to the operating system. It is
+          applied with the next reboot of the server, while an application is
+          updated right away.
         </p>
         <p>
           <h3>Changes</h3>

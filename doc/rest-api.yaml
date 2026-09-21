@@ -5726,7 +5726,8 @@ definitions:
     ServerUpdatePost:
         description: |-
             ServerUpdatePost defines the update trigger information for an update request
-            for a server, either for the OS or for individual applications.
+            for a server, either for the OS, optionally restricted to it, or for
+            individual applications.
         properties:
             applications:
                 description: |-
@@ -5738,6 +5739,12 @@ definitions:
                 x-go-name: Applications
             os:
                 $ref: '#/definitions/ServerUpdateApplication'
+            os_only:
+                description: |-
+                    OSOnly restricts the update to the operating system and leaves the
+                    installed applications on the version they are on.
+                type: boolean
+                x-go-name: OSOnly
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerVersionData:
@@ -12387,8 +12394,8 @@ paths:
                 - application/json
             description: |-
                 Triggers an update operation on the server, either for the operating system,
-                which covers the installed applications as well, or for the given
-                applications.
+                which covers the installed applications as well unless the update is
+                restricted to the operating system, or for the given applications.
             operationId: server_system_update_post
             parameters:
                 - description: Name of the server
