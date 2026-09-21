@@ -409,6 +409,13 @@ type ClusterRemoveServersPost struct {
 	// Name of the server to be removed from the cluster.
 	// Example: ["server1"]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
+
+	// If set to true, the servers are removed from the cluster even if they are unreachable
+	// or not evacuated. Local instances and custom storage volumes of the removed servers
+	// are lost and the removed servers are not factory reset. The server records are kept in
+	// operations center, no longer being part of the cluster.
+	// Example: false
+	Force bool `json:"force" yaml:"force"`
 }
 
 type ClusterMemberConfigKey = incusapi.ClusterMemberConfigKey

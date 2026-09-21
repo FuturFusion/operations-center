@@ -846,6 +846,7 @@ type cmdClusterRemoveServer struct {
 	ocClient *client.OperationsCenterClient
 
 	flagServerNames []string
+	flagForce       bool
 }
 
 func (c *cmdClusterRemoveServer) Command() *cobra.Command {
@@ -859,6 +860,7 @@ func (c *cmdClusterRemoveServer) Command() *cobra.Command {
 	const flagServerNames = "server-names"
 	cmd.Flags().StringSliceVarP(&c.flagServerNames, flagServerNames, "s", nil, "Server names of the cluster members to be removed")
 	_ = cmd.MarkFlagRequired(flagServerNames)
+	cmd.Flags().BoolVarP(&c.flagForce, "force", "f", false, "if this flag is provided, the servers are removed even if they are unreachable or not evacuated")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -879,7 +881,11 @@ func (c *cmdClusterRemoveServer) validateArgsAndFlags(cmd *cobra.Command, args [
 func (c *cmdClusterRemoveServer) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.RemoveServerFromCluster(cmd.Context(), name, c.flagServerNames)
+	if c.flagForce {
+		cmd.Println(`WARNING: forceful removal of a cluster member does not evacuate and does not factory reset the server, the local instances and custom storage volumes of the removed server are lost. The server record is kept in operations center and can be removed with "provisioning server remove <name>".`)
+	}
+
+	err := c.ocClient.RemoveServerFromCluster(cmd.Context(), name, c.flagServerNames, c.flagForce)
 	if err != nil {
 		return err
 	}

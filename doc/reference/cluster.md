@@ -132,6 +132,56 @@ A_BOOLEAN_VARIABLE: true
 A_NUMERIC_VARIABLE: 42
 ```
 
+## Removing Servers from a Cluster
+
+Servers are removed from a cluster with:
+
+```
+operations-center provisioning cluster remove-servers <cluster> --server-names <server>
+```
+
+A regular removal expects the server to be evacuated and reachable. Operations
+Center removes the storage volumes it has created on the server, performs a
+factory reset on it and then removes it from the cluster. The server record is
+removed from Operations Center as part of the factory reset.
+
+### Removing a Lost Cluster Member
+
+A server, which has been lost and is not expected to come back online, can not
+be evacuated and can not be factory reset, so the regular removal does not
+apply to it. Such a server is removed with the `--force` flag:
+
+```
+operations-center provisioning cluster remove-servers <cluster> --server-names <server> --force
+```
+
+With `--force`, Operations Center:
+
+* does not require the server to be evacuated,
+* reports, but does not refuse, the local instances, the custom storage volumes
+  and the images, which are only present on the server and are therefore lost,
+* attempts the clean up of the storage volumes it has created on the server, but
+  continues, if the server does not respond,
+* does not perform a factory reset on the server,
+* removes the server from the cluster, the equivalent of
+  `incus cluster remove --force`. A server, which has already been removed from
+  the Incus cluster, is accepted as well.
+
+The server record is **kept** in Operations Center, no longer being part of the
+cluster. This preserves the data, which has been provided for the server, such
+as the BMC configuration, the description and the properties, so it remains
+available for the server, which replaces the lost one. Once the data is no
+longer needed, the record is removed with:
+
+```
+operations-center provisioning server remove <server>
+```
+
+At least one reachable member has to remain in the cluster to perform the
+removal, so the last member of a cluster can not be removed this way. Use
+`operations-center provisioning cluster remove <cluster> --force` to remove a
+cluster, which is gone entirely.
+
 ## Cluster Bulk Operations
 
 Operations Center allows to perform bulk operations on clusters, which are then

@@ -90,6 +90,15 @@ func TestE2E_WithToken_CreateClusterAndAddServerAndRemoveServer(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_CreateClusterAndForceRemoveLostServer(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster",
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		createClusterAndForceRemoveLostServer(),
+	)
+}
+
 func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
 	runE2ETest(
 		t,

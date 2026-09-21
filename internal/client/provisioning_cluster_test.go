@@ -923,7 +923,7 @@ func clusterActionRoutes(t *testing.T) []struct {
 			return c.AddServersToCluster(ctx, n, []string{"serverOne"}, false, false)
 		}, assertNotFound},
 		{"RemoveServerFromCluster", func(ctx context.Context, c client.OperationsCenterClient, n string) error {
-			return c.RemoveServerFromCluster(ctx, n, []string{"serverOne"})
+			return c.RemoveServerFromCluster(ctx, n, []string{"serverOne"}, false)
 		}, func(tt require.TestingT, err error, a ...any) {
 			// The cluster size is checked before the cluster is looked up.
 			require.ErrorContains(tt, err, "does not have enough servers for server removal")

@@ -1107,7 +1107,7 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if server.Cluster != nil {
-			return fmt.Errorf("Failed to delete server, server is part of cluster %q", *server.Cluster)
+			return fmt.Errorf("Failed to delete server, server is part of cluster %q: %w", *server.Cluster, domain.ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteByName(ctx, name)
@@ -1122,6 +1122,44 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 	}
 
 	return nil
+}
+
+// DetachFromCluster removes the link between the server and its cluster, while
+// keeping the server record itself.
+func (s *serverService) DetachFromCluster(ctx context.Context, name string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q for detach from cluster: %w", name, err)
+		}
+
+		if server.Cluster == nil {
+			return nil
+		}
+
+		server.Cluster = nil
+		server.ClusterCertificate = nil
+		server.ClusterConnectionURL = nil
+
+		// Drop the state, which only has a meaning for a member of a cluster.
+		// VersionData is left untouched, it is refreshed by the next poll.
+		server.StatusInternal.Update = nil
+
+		// The next connectivity check reports the detail matching the actual state.
+		server.StatusDetail = api.ServerStatusDetailNone
+		server.LastStatusUpdated = s.now()
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to detach server %q from cluster: %w", name, err)
+		}
+
+		return nil
+	})
 }
 
 // PollServers tests server connectivity for servers registered in operations center.

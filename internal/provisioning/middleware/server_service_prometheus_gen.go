@@ -335,6 +335,20 @@ func (_d ServerServiceWithPrometheus) DeploymentControlLoop(ctx context.Context,
 	return _d.base.DeploymentControlLoop(ctx, serverNameFilter)
 }
 
+// DetachFromCluster implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) DetachFromCluster(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DetachFromCluster", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DetachFromCluster(ctx, name)
+}
+
 // EndUpdateRunByCluster implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) EndUpdateRunByCluster(ctx context.Context, clusterName string) (err error) {
 	_since := time.Now()

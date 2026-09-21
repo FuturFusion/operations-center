@@ -3905,6 +3905,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Failed to delete server, server is part of cluster "one"`)
 			},
 		},
@@ -3939,6 +3940,126 @@ func TestServerService_DeleteByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_DetachFromCluster(t *testing.T) {
+	tests := []struct {
+		name                string
+		nameArg             string
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+		repoUpdateErr       error
+
+		assertErr    require.ErrorAssertionFunc
+		assertServer func(t *testing.T, server *provisioning.Server)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:                 "one",
+				Cluster:              new("clusterOne"),
+				ClusterCertificate:   new("cluster certificate"),
+				ClusterConnectionURL: new("https://cluster/"),
+				Status:               api.ServerStatusOffline,
+				StatusDetail:         api.ServerStatusDetailReadyEvacuating,
+				StatusInternal: provisioning.ServerStatusInternal{
+					Update: &provisioning.ServerUpdate{
+						RebootPending: true,
+					},
+				},
+				Description: "a description worth keeping",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+			assertServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				require.NotNil(t, server)
+				require.Nil(t, server.Cluster)
+				require.Nil(t, server.ClusterCertificate)
+				require.Nil(t, server.ClusterConnectionURL)
+				require.Nil(t, server.StatusInternal.Update)
+				require.Equal(t, api.ServerStatusDetailNone, server.StatusDetail)
+
+				// The data provided for the server is preserved.
+				require.Equal(t, "a description worth keeping", server.Description)
+				require.Equal(t, api.BMCAPITypeRedfishV1Generic, server.BMCConfig.APIType)
+			},
+		},
+		{
+			name:    "success - server is not part of a cluster",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
+				Cluster: nil,
+			},
+
+			assertErr: require.NoError,
+			assertServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				// The record is left untouched.
+				require.Nil(t, server)
+			},
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - repo.Update",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
+				Cluster: new("clusterOne"),
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var updatedServer *provisioning.Server
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					updatedServer = &server
+					return tc.repoUpdateErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.DetachFromCluster(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			if tc.assertServer != nil {
+				tc.assertServer(t, updatedServer)
+			}
 		})
 	}
 }

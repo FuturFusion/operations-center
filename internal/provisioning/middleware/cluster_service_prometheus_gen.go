@@ -389,7 +389,7 @@ func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, 
 }
 
 // RemoveServer implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) RemoveServer(ctx context.Context, name string, removedServerNames []string) (err error) {
+func (_d ClusterServiceWithPrometheus) RemoveServer(ctx context.Context, name string, removedServerNames []string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -399,7 +399,7 @@ func (_d ClusterServiceWithPrometheus) RemoveServer(ctx context.Context, name st
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServer", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RemoveServer(ctx, name, removedServerNames)
+	return _d.base.RemoveServer(ctx, name, removedServerNames, force)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.

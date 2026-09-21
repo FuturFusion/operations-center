@@ -1506,7 +1506,22 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	return true, "", nil
 }
 
-func (s *clusterService) RemoveServer(ctx context.Context, name string, removedServerNames []string) error {
+// ocCreatedStorageVolumes are the local storage volumes, operations center
+// creates on every member, when it joins a cluster.
+var ocCreatedStorageVolumes = []string{
+	"backups",
+	"images",
+	"logs",
+}
+
+// RemoveServer removes the given servers from the cluster.
+//
+// With force set, the servers are removed even if they are unreachable or not
+// evacuated. The checks, which protect the local resources of the removed
+// servers, are reported but do not block, the removed servers are not factory
+// reset and their server records are kept in operations center, detached from
+// the cluster.
+func (s *clusterService) RemoveServer(ctx context.Context, name string, removedServerNames []string, force bool) error {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: new(name),
 	})
@@ -1518,47 +1533,125 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 		return fmt.Errorf("Cluster %q does not have enough servers for server removal, current cluster size is %d, number of servers to be removed: %d: %w", name, len(servers), len(removedServerNames), domain.ErrOperationNotPermitted)
 	}
 
-	// Find endpoint to talk to, must not be one of the servers, that get removed from the cluster.
-	var endpoint provisioning.Server
-	for _, server := range servers {
-		if !slices.Contains(removedServerNames, server.Name) {
-			endpoint = server
-		}
-	}
-
-	ocCreatedStorageVolumes := []string{
-		"backups",
-		"images",
-		"logs",
-	}
-
+	removedServers := make([]provisioning.Server, 0, len(removedServerNames))
 	for _, removedServerName := range removedServerNames {
-		var removedServer provisioning.Server
-		var found bool
-		for _, server := range servers {
-			if server.Name == removedServerName {
-				removedServer = server.Clone()
-				found = true
-			}
-		}
+		idx := slices.IndexFunc(servers, func(server provisioning.Server) bool {
+			return server.Name == removedServerName
+		})
 
-		if !found {
+		if idx < 0 {
 			return fmt.Errorf("Server removal failed, server %q is not part of the cluster %q: %w", removedServerName, name, domain.ErrNotFound)
 		}
 
-		if ptr.From(removedServer.VersionData.InMaintenance) != api.InMaintenanceEvacuated {
-			return fmt.Errorf("Server removal failed, server %q is not in state evacuated: %w", removedServerName, domain.ErrOperationNotPermitted)
-		}
+		removedServers = append(removedServers, servers[idx].Clone())
+	}
 
-		// Make sure, our inventory information is up to date.
+	// Find endpoint to talk to, must not be one of the servers, that get removed from the cluster.
+	endpoint, err := s.removeServerEndpoint(ctx, servers, removedServerNames)
+	if err != nil {
+		return err
+	}
+
+	incusClient, err := s.client.IncusClient(ctx, endpoint)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus client for server %q: %w", endpoint.GetName(), err)
+	}
+
+	err = s.removeServerPreCheck(ctx, name, removedServers, removedServerNames, incusClient, force)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, removedServerName := range removedServerNames {
+		err = s.removeSingleServer(ctx, name, removedServerName, incusClient, force)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if force {
+		// The inventory of the removed servers is gone with them.
 		err = s.ResyncInventoryByName(ctx, name)
 		if err != nil {
+			slog.WarnContext(ctx, "Forceful server removal failed to resync the inventory", slog.String("cluster", name), logger.Err(err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+// removeServerEndpoint returns a reachable member of the cluster, which is not
+// one of the servers, that get removed from the cluster.
+func (s *clusterService) removeServerEndpoint(ctx context.Context, servers provisioning.Servers, removedServerNames []string) (provisioning.Server, error) {
+	// The servers, which are reported ready, are tried first.
+	ready := make([]provisioning.Server, 0, len(servers))
+	rest := make([]provisioning.Server, 0, len(servers))
+
+	for _, server := range servers {
+		if slices.Contains(removedServerNames, server.Name) {
+			continue
+		}
+
+		if server.Status == api.ServerStatusReady && server.StatusDetail == api.ServerStatusDetailNone {
+			ready = append(ready, server)
+			continue
+		}
+
+		rest = append(rest, server)
+	}
+
+	candidates := slices.Concat(ready, rest)
+
+	errs := make([]error, 0, len(candidates)+1)
+	for _, candidate := range candidates {
+		err := s.client.Ping(ctx, candidate)
+		if err == nil {
+			return candidate, nil
+		}
+
+		errs = append(errs, fmt.Errorf("Server %q: %w", candidate.Name, err))
+	}
+
+	errs = append(errs, domain.ErrOperationNotPermitted)
+
+	return provisioning.Server{}, fmt.Errorf("Server removal failed, no reachable server left in cluster to perform the removal: %w", errors.Join(errs...))
+}
+
+// removeServerPreCheck verifies, that the servers can be removed from the
+// cluster without losing resources. With force set, the findings are reported
+// but do not block the removal.
+func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, removedServers []provisioning.Server, removedServerNames []string, incusClient provisioning.InstanceServer, force bool) error {
+	rejectOrWarn := func(format string, a ...any) error {
+		if force {
+			slog.WarnContext(ctx, "Forceful server removal ignores blocking condition", slog.String("cluster", name), slog.String("condition", fmt.Sprintf(format, a...)))
+			return nil
+		}
+
+		return fmt.Errorf("Server removal failed, %s: %w", fmt.Sprintf(format, a...), domain.ErrOperationNotPermitted)
+	}
+
+	// Make sure, our inventory information is up to date.
+	err := s.ResyncInventoryByName(ctx, name)
+	if err != nil {
+		if !force {
 			return fmt.Errorf("Inventory resync for cluster %q failed: %w", name, err)
+		}
+
+		slog.WarnContext(ctx, "Forceful server removal continues with potentially stale inventory", slog.String("cluster", name), logger.Err(err))
+	}
+
+	for _, removedServer := range removedServers {
+		if ptr.From(removedServer.VersionData.InMaintenance) != api.InMaintenanceEvacuated {
+			err = rejectOrWarn("server %q is not in state evacuated", removedServer.Name)
+			if err != nil {
+				return err
+			}
 		}
 
 		localResources, err := s.inventorySvc.GetAllWithFilter(ctx, inventory.InventoryAggregateFilter{
 			Clusters:           []string{name},
-			Servers:            []string{removedServerName},
+			Servers:            []string{removedServer.Name},
 			ProjectIncludeNull: true,
 			ParentIncludeNull:  true,
 		})
@@ -1575,7 +1668,10 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 			}
 
 			if len(localInstances) > 0 {
-				return fmt.Errorf("Server removal failed, server %q still has instances: %w", removedServerName, domain.ErrOperationNotPermitted)
+				err = rejectOrWarn("server %q still has instances (%v)", removedServer.Name, localInstances)
+				if err != nil {
+					return err
+				}
 			}
 
 			localStorageVolumes := []string{}
@@ -1593,14 +1689,12 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 			}
 
 			if len(localStorageVolumes) > 0 {
-				return fmt.Errorf("Server removal failed, server %q still has custom volumes (%v): %w", removedServerName, localStorageVolumes, domain.ErrOperationNotPermitted)
+				err = rejectOrWarn("server %q still has custom volumes (%v)", removedServer.Name, localStorageVolumes)
+				if err != nil {
+					return err
+				}
 			}
 		}
-	}
-
-	incusClient, err := s.client.IncusClient(ctx, endpoint)
-	if err != nil {
-		return fmt.Errorf("Failed to get incus client for server %q: %w", endpoint.GetName(), err)
 	}
 
 	// Images are tracked cluster-wide via their Locations. Removing a server that
@@ -1635,80 +1729,121 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 
 		if len(lostImages) > 0 {
 			slices.Sort(lostImages)
-			return fmt.Errorf("Server removal failed, the following images are only present on the server(s) being removed (%v): %w", lostImages, domain.ErrOperationNotPermitted)
+
+			err = rejectOrWarn("the following images are only present on the server(s) being removed (%v)", lostImages)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	var errs []error
-	for _, removedServerName := range removedServerNames {
-		err = func() error {
-			// Assign "database-client" role to server.
-			memberConfig, etag, err := incusClient.GetClusterMember(removedServerName)
-			if err != nil {
-				return fmt.Errorf("Failed to get cluster member configuration for server %q: %w", removedServerName, err)
-			}
+	return nil
+}
 
-			if !slices.Contains(memberConfig.Roles, "database-client") {
-				memberConfig.Roles = append(memberConfig.Roles, "database-client")
-			}
+// removeSingleServer removes one server from the cluster.
+func (s *clusterService) removeSingleServer(ctx context.Context, name string, removedServerName string, incusClient provisioning.InstanceServer, force bool) error {
+	// With force set, the server is expected to be unreachable, so the graceful
+	// cleanup is attempted but its failure does not stop the removal.
+	tolerate := func(err error) error {
+		if err == nil || !force {
+			return err
+		}
 
-			err = incusClient.UpdateClusterMember(removedServerName, memberConfig.ClusterMemberPut, etag)
-			if err != nil {
-				return fmt.Errorf("Failed to update cluster member configuration for server %q: %w", removedServerName, err)
-			}
+		slog.WarnContext(ctx, "Forceful server removal skips failed cleanup step", slog.String("cluster", name), slog.String("server", removedServerName), logger.Err(err))
 
-			// Remove configuration keys for backups, images and logs.
-			serverConfig, etag, err := incusClient.UseTarget(removedServerName).GetServer()
-			if err != nil {
-				return fmt.Errorf("Failed to get server configuration for %q: %w", removedServerName, err)
-			}
+		return nil
+	}
 
-			if serverConfig.Config != nil {
-				for _, storageVolumeName := range ocCreatedStorageVolumes {
-					serverConfig.Config[fmt.Sprintf("storage.%s_volume", storageVolumeName)] = ""
-				}
-			}
+	err := tolerate(assignDatabaseClientRole(removedServerName, incusClient))
+	if err != nil {
+		return err
+	}
 
-			err = incusClient.UseTarget(removedServerName).UpdateServer(serverConfig.ServerPut, etag)
-			if err != nil {
-				return fmt.Errorf("Failed to update server configuration for %q: %w", removedServerName, err)
-			}
+	err = tolerate(clearOCCreatedStorageVolumes(removedServerName, incusClient))
+	if err != nil {
+		return err
+	}
 
-			// Remove the local storage volumes for backups, images and logs.
-			for _, storageVolumeName := range ocCreatedStorageVolumes {
-				err = incusClient.UseTarget(removedServerName).DeleteStoragePoolVolume("local", "custom", storageVolumeName)
-				if err != nil {
-					if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
-						continue
-					}
-
-					return fmt.Errorf("Failed to remove operations center managed storage volume %q from server %q: %w", storageVolumeName, removedServerName, err)
-				}
-			}
-
-			// Perform factory reset on the removed server.
-			err = s.serverSvc.FactoryResetByName(ctx, removedServerName, nil, nil, true)
-			if err != nil {
-				return fmt.Errorf("Failed to trigger factory set on server %q: %w", removedServerName, err)
-			}
-
-			// Wait for the factory reset to take place.
-			time.Sleep(s.removeServerFactoryResetWaitDelay)
-
-			// Forcefully remove the server from the cluster.
-			err = s.deleteClusterMemberWithRetry(ctx, removedServerName, 1*time.Minute, incusClient)
-			if err != nil {
-				return fmt.Errorf("Server removal failed after %v: %w", 1*time.Minute, err)
-			}
-
-			return nil
-		}()
+	if !force {
+		// Perform factory reset on the removed server. This also removes the
+		// server record from operations center.
+		err = s.serverSvc.FactoryResetByName(ctx, removedServerName, nil, nil, true)
 		if err != nil {
-			errs = append(errs, err)
+			return fmt.Errorf("Failed to trigger factory set on server %q: %w", removedServerName, err)
+		}
+
+		// Wait for the factory reset to take place.
+		time.Sleep(s.removeServerFactoryResetWaitDelay)
+	}
+
+	// Forcefully remove the server from the cluster.
+	err = s.deleteClusterMemberWithRetry(ctx, removedServerName, 1*time.Minute, incusClient)
+	if err != nil {
+		return fmt.Errorf("Server removal failed after %v: %w", 1*time.Minute, err)
+	}
+
+	if force {
+		// The server has not been factory reset, so its record is kept, detached
+		// from the cluster, to preserve the data the user has provided for it.
+		err = s.serverSvc.DetachFromCluster(ctx, removedServerName)
+		if err != nil {
+			return fmt.Errorf("Failed to detach server %q from cluster %q: %w", removedServerName, name, err)
 		}
 	}
 
-	return errors.Join(errs...)
+	return nil
+}
+
+// assignDatabaseClientRole assigns the "database-client" role to the server.
+func assignDatabaseClientRole(removedServerName string, incusClient provisioning.InstanceServer) error {
+	memberConfig, etag, err := incusClient.GetClusterMember(removedServerName)
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster member configuration for server %q: %w", removedServerName, err)
+	}
+
+	if !slices.Contains(memberConfig.Roles, "database-client") {
+		memberConfig.Roles = append(memberConfig.Roles, "database-client")
+	}
+
+	err = incusClient.UpdateClusterMember(removedServerName, memberConfig.ClusterMemberPut, etag)
+	if err != nil {
+		return fmt.Errorf("Failed to update cluster member configuration for server %q: %w", removedServerName, err)
+	}
+
+	return nil
+}
+
+// clearOCCreatedStorageVolumes removes the configuration keys and the local
+// storage volumes for backups, images and logs.
+func clearOCCreatedStorageVolumes(removedServerName string, incusClient provisioning.InstanceServer) error {
+	serverConfig, etag, err := incusClient.UseTarget(removedServerName).GetServer()
+	if err != nil {
+		return fmt.Errorf("Failed to get server configuration for %q: %w", removedServerName, err)
+	}
+
+	if serverConfig.Config != nil {
+		for _, storageVolumeName := range ocCreatedStorageVolumes {
+			serverConfig.Config[fmt.Sprintf("storage.%s_volume", storageVolumeName)] = ""
+		}
+	}
+
+	err = incusClient.UseTarget(removedServerName).UpdateServer(serverConfig.ServerPut, etag)
+	if err != nil {
+		return fmt.Errorf("Failed to update server configuration for %q: %w", removedServerName, err)
+	}
+
+	for _, storageVolumeName := range ocCreatedStorageVolumes {
+		err = incusClient.UseTarget(removedServerName).DeleteStoragePoolVolume("local", "custom", storageVolumeName)
+		if err != nil {
+			if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+				continue
+			}
+
+			return fmt.Errorf("Failed to remove operations center managed storage volume %q from server %q: %w", storageVolumeName, removedServerName, err)
+		}
+	}
+
+	return nil
 }
 
 // refreshOSDataForMeshTunnelInterface refreshes the OS data of the given servers in
@@ -1766,6 +1901,11 @@ func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serve
 	for {
 		err = incusClient.DeleteClusterMember(serverName, true)
 		if err == nil {
+			return nil
+		}
+
+		// The server is already gone from the cluster, nothing left to do.
+		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 			return nil
 		}
 
