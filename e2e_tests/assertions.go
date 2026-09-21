@@ -618,6 +618,22 @@ func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []str
 	}
 }
 
+// assertServerDetachedFromCluster verifies, that the server record is kept in
+// operations center, no longer being part of a cluster.
+func assertServerDetachedFromCluster(t *testing.T, serverName string) {
+	t.Helper()
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == %q and .cluster == "") ] | length == 1'`, cpuArch, serverName)
+}
+
+// assertServerGone verifies, that the server record is removed from operations
+// center.
+func assertServerGone(t *testing.T, serverName string) {
+	t.Helper()
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, serverName)
+}
+
 func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
 	t.Helper()
 

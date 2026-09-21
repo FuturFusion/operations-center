@@ -61,6 +61,32 @@ func createClusterAndAddServerAndRemoveServer() func(ctx context.Context, t *tes
 	}
 }
 
+func createClusterAndForceRemoveLostServer() func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
+		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(ctx, t, tmpDir)
+
+		printServerList(t)
+
+		// Lose IncusOS03, it is neither evacuated nor reachable from now on.
+		err := stopInstanceWithContext(ctx, t, "IncusOS03")
+		require.NoError(t, err, "expect IncusOS03 to be stopped")
+
+		// Remove the lost IncusOS03 from the cluster.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03 --force`, cpuArch)
+
+		// Assertions
+		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02"})
+		assertServerDetachedFromCluster(t, "IncusOS03")
+
+		// The kept server record can now be removed from operations center.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning server remove IncusOS03`, cpuArch)
+
+		assertServerGone(t, "IncusOS03")
+	}
+}
+
 func createClusterWithChannelName(channelName string, serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
