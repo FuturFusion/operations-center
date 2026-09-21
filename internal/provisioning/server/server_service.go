@@ -1732,7 +1732,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	}
 
 	if updateRequest.OS.TriggerUpdate {
-		err = s.client.UpdateOS(ctx, *server)
+		err = s.client.UpdateOS(ctx, *server, false)
 		if err != nil {
 			previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepUpdate, err)
 

@@ -8709,7 +8709,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+				UpdateOSFunc: func(ctx context.Context, server provisioning.Server, osOnly bool) error {
 					return tc.clientUpdateOSErr
 				},
 				UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {

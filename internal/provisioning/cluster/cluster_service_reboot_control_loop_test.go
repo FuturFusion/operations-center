@@ -59,7 +59,7 @@ func rebootOnlyServerClient(world *serverWorld) *adapterMock.ServerClientPortMoc
 		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 			return api.ServerTypeIncus, nil
 		},
-		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+		UpdateOSFunc: func(ctx context.Context, server provisioning.Server, osOnly bool) error {
 			return errors.New("no update must be triggered during an on demand rolling reboot")
 		},
 		UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
