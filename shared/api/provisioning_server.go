@@ -1110,7 +1110,8 @@ type ServerSystemLogging = incusosapi.SystemLogging
 type ServerSystemSecurity = incusosapi.SystemSecurity
 
 // ServerUpdatePost defines the update trigger information for an update request
-// for a server, either for the OS or for individual applications.
+// for a server, either for the OS, optionally restricted to it, or for
+// individual applications.
 //
 // swagger:model
 type ServerUpdatePost struct {
@@ -1120,6 +1121,10 @@ type ServerUpdatePost struct {
 
 	// OS holds the update trigger information for the operating system.
 	OS ServerUpdateApplication `json:"os" yaml:"os"`
+
+	// OSOnly restricts the update to the operating system and leaves the
+	// installed applications on the version they are on.
+	OSOnly bool `json:"os_only" yaml:"os_only"`
 }
 
 // ServerUpdateApplication defines the update trigger information for a single
