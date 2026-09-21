@@ -322,3 +322,205 @@ func TestBMCHasRebootedSince(t *testing.T) {
 		})
 	}
 }
+
+func TestBMCData_Missing(t *testing.T) {
+	tests := []struct {
+		name string
+		data api.BMCData
+		ask  []api.BMCDataPart
+
+		want []api.BMCDataPart
+	}{
+		{
+			name: "everything has been collected",
+			data: api.BMCData{},
+			ask:  []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+
+			want: nil,
+		},
+		{
+			name: "the part asked for is unavailable",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+			}},
+			ask: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+
+			want: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+		},
+		{
+			name: "another part is unavailable",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartBIOSAttributes: "BMC returned HTTP 503",
+			}},
+			ask: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+
+			want: nil,
+		},
+		{
+			name: "several parts are unavailable and come back in collection order",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+				api.BMCDataPartSystem:       "BMC returned HTTP 503",
+			}},
+			ask: []api.BMCDataPart{api.BMCDataPartVirtualMedia, api.BMCDataPartSystem},
+
+			want: []api.BMCDataPart{api.BMCDataPartSystem, api.BMCDataPartVirtualMedia},
+		},
+		{
+			name: "nothing is asked for",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+			}},
+			ask: nil,
+
+			want: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.data.Missing(tc.ask...))
+		})
+	}
+}
+
+func TestBMCData_DescribeMissing(t *testing.T) {
+	data := api.BMCData{Unavailable: map[api.BMCDataPart]string{
+		api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+	}}
+
+	require.Equal(t, "virtual_media (BMC returned HTTP 503)", data.DescribeMissing(api.BMCDataPartVirtualMedia))
+	require.Equal(t, "nothing", data.DescribeMissing(api.BMCDataPartSystem))
+	require.Equal(t, "nothing", api.BMCData{}.DescribeMissing(api.BMCDataPartVirtualMedia))
+}
+
+// TestBMCDataParts_areComplete guards against a part being added to the
+// constants without being added to BMCDataParts, which Missing iterates and
+// which would silently never report the new part as missing.
+func TestBMCDataParts_areComplete(t *testing.T) {
+	declared := []api.BMCDataPart{
+		api.BMCDataPartSystem,
+		api.BMCDataPartManager,
+		api.BMCDataPartProcessor,
+		api.BMCDataPartTrustedModules,
+		api.BMCDataPartBIOSAttributes,
+		api.BMCDataPartVirtualMedia,
+	}
+
+	require.ElementsMatch(t, declared, api.BMCDataParts)
+
+	for _, part := range api.BMCDataParts {
+		t.Run(part.String(), func(t *testing.T) {
+			require.NotEmpty(t, part.String())
+
+			data := api.BMCData{Unavailable: map[api.BMCDataPart]string{part: "boom"}}
+			require.Equal(t, []api.BMCDataPart{part}, data.Missing(part))
+		})
+	}
+}
+
+func TestBMCData_CarryOver(t *testing.T) {
+	previous := api.BMCData{
+		BMCModel:         "iDRAC9",
+		ServerModel:      "PowerEdge R770",
+		ServerPowerState: "On",
+		ServerHasTPM:     true,
+		ServerBIOSAttributes: map[string]any{
+			"BootMode": "Uefi",
+		},
+		VirtualMedia: map[string]api.BMCVirtualMedia{
+			"system:1": {ID: "system:1", Inserted: true},
+		},
+	}
+
+	t.Run("a part, that was collected, keeps what was collected", func(t *testing.T) {
+		current := api.BMCData{ServerPowerState: "Off"}
+
+		got := current.CarryOver(previous)
+
+		require.Equal(t, "Off", got.ServerPowerState)
+		require.Nil(t, got.VirtualMedia, "nothing is inherited without a part being named")
+	})
+
+	t.Run("a part, that could not be collected, keeps what was observed before", func(t *testing.T) {
+		current := api.BMCData{
+			ServerPowerState: "Off",
+			Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+			},
+		}
+
+		got := current.CarryOver(previous)
+
+		require.Equal(t, previous.VirtualMedia, got.VirtualMedia)
+		require.Equal(t, "Off", got.ServerPowerState, "a part, that was collected, is not overwritten")
+		require.Equal(t, current.Unavailable, got.Unavailable, "the part stays named as not collected")
+	})
+
+	t.Run("nothing to inherit leaves the part at its zero value", func(t *testing.T) {
+		current := api.BMCData{
+			Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+			},
+		}
+
+		got := current.CarryOver(api.BMCData{})
+
+		require.Nil(t, got.VirtualMedia)
+	})
+}
+
+func TestBMCData_CarryOverCoversEveryField(t *testing.T) {
+	previous := api.BMCData{
+		BMCModel:                      "iDRAC9",
+		BMCFirmwareVersion:            "1.30.20.10",
+		BMCServiceIdentification:      "ServiceID1",
+		ServerManufacturer:            "Dell Inc.",
+		ServerModel:                   "PowerEdge R770",
+		ServerSubModel:                "SubModel",
+		ServerUUID:                    "e9de436e-b94e-4aef-8563-883aec84096e",
+		ServerAssetTag:                "AssetTag1",
+		ServerHostName:                "host1",
+		ServerSKU:                     "SKU123",
+		ServerSerialNumber:            "Serial123",
+		ServerBIOSVersion:             "1.7.5",
+		ServerBIOSAttributes:          map[string]any{"BootMode": "Uefi"},
+		ServerProcessorManufacturer:   "Intel",
+		ServerProcessorArchitecture:   "x86",
+		ServerProcessorInstructionSet: "x86-64",
+		ServerCPUSockets:              2,
+		ServerHasTPM:                  true,
+		ServerPowerState:              "On",
+		ServerLocationIndicatorActive: true,
+		ServerHealthStatus:            "OK",
+		ServerLastResetTime:           time.Date(2026, 8, 26, 9, 0, 0, 0, time.UTC),
+		ServerBootProgress:            api.BMCBootProgress{LastState: "OSRunning"},
+		VirtualMedia: map[string]api.BMCVirtualMedia{
+			"system:1": {ID: "system:1", Inserted: true},
+		},
+	}
+
+	unavailable := map[api.BMCDataPart]string{}
+	for _, part := range api.BMCDataParts {
+		unavailable[part] = "BMC returned HTTP 503"
+	}
+
+	// The protocol fields come off the connection rather than off a part, so
+	// they are what an unreachable BMC still reports about itself.
+	current := api.BMCData{
+		BMCProtocol:        "Redfish",
+		BMCProtocolVersion: "1.16.0",
+		BMCVendor:          "Dell",
+		Unavailable:        unavailable,
+	}
+
+	got := current.CarryOver(previous)
+
+	want := previous
+	want.BMCProtocol = "Redfish"
+	want.BMCProtocolVersion = "1.16.0"
+	want.BMCVendor = "Dell"
+	want.Unavailable = unavailable
+
+	require.Equal(t, want, got)
+}

@@ -738,6 +738,13 @@ type BMCData struct {
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+
+	// Unavailable names the parts, that could not be collected in the round, that
+	// produced this data, mapped to why. Every field belonging to a part listed
+	// here holds what was last observed of it rather than what is the case now,
+	// so it must not be read as a current observation: a BMC, that could not be
+	// asked, is not a BMC, that answered "nothing".
+	Unavailable map[BMCDataPart]string `json:"unavailable,omitempty" yaml:"unavailable,omitempty"`
 }
 
 // ServerPost defines a new server running Hypervisor OS.

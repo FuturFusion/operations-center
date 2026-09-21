@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -154,6 +155,144 @@ const (
 
 func (s BMCRebootState) String() string {
 	return string(s)
+}
+
+// BMCDataPart names a part of the BMC data, that is collected as a unit and can
+// fail as a unit. A BMC, that turns a part down, reports nothing about any of
+// its fields, which is why the part has to be named: what those fields hold is
+// then what was last observed, not what is the case now. See BMCData.Unavailable
+// and BMCData.CarryOver.
+type BMCDataPart string
+
+const (
+	// BMCDataPartSystem covers everything read off the computer system of the
+	// BMC, e.g. the power state, the model and the boot progress.
+	BMCDataPartSystem BMCDataPart = "system"
+
+	// BMCDataPartManager covers everything read off the manager of the BMC.
+	BMCDataPartManager BMCDataPart = "manager"
+
+	// BMCDataPartProcessor covers what the BMC reports about the first CPU.
+	BMCDataPartProcessor BMCDataPart = "processor"
+
+	// BMCDataPartTrustedModules covers, whether a trusted platform module is
+	// present in the server.
+	BMCDataPartTrustedModules BMCDataPart = "trusted_modules"
+
+	// BMCDataPartBIOSAttributes covers the BIOS settings reported by the BMC.
+	BMCDataPartBIOSAttributes BMCDataPart = "server_bios_attributes"
+
+	// BMCDataPartVirtualMedia covers the virtual media devices of the system and
+	// of the manager.
+	BMCDataPartVirtualMedia BMCDataPart = "virtual_media"
+)
+
+// BMCDataParts holds every part of the BMC data, in the order they are
+// collected.
+var BMCDataParts = []BMCDataPart{
+	BMCDataPartSystem,
+	BMCDataPartManager,
+	BMCDataPartProcessor,
+	BMCDataPartTrustedModules,
+	BMCDataPartBIOSAttributes,
+	BMCDataPartVirtualMedia,
+}
+
+func (p BMCDataPart) String() string {
+	return string(p)
+}
+
+// Missing returns the given parts, that could not be collected, in the order of
+// BMCDataParts. It is what a caller, which reads a field of a part, asks before
+// making a decision on that field.
+func (d BMCData) Missing(parts ...BMCDataPart) []BMCDataPart {
+	if len(d.Unavailable) == 0 {
+		return nil
+	}
+
+	var missing []BMCDataPart
+
+	for _, part := range BMCDataParts {
+		if !slices.Contains(parts, part) {
+			continue
+		}
+
+		_, unavailable := d.Unavailable[part]
+		if unavailable {
+			missing = append(missing, part)
+		}
+	}
+
+	return missing
+}
+
+// CarryOver returns the data with every part, that could not be collected this
+// round, taken from previous instead. The part stays named in Unavailable, so a
+// caller still knows, it is looking at what was observed before rather than at
+// what is the case now.
+func (d BMCData) CarryOver(previous BMCData) BMCData {
+	for part := range d.Unavailable {
+		switch part {
+		case BMCDataPartSystem:
+			d.ServerManufacturer = previous.ServerManufacturer
+			d.ServerModel = previous.ServerModel
+			d.ServerSubModel = previous.ServerSubModel
+			d.ServerUUID = previous.ServerUUID
+			d.ServerAssetTag = previous.ServerAssetTag
+			d.ServerHostName = previous.ServerHostName
+			d.ServerSKU = previous.ServerSKU
+			d.ServerSerialNumber = previous.ServerSerialNumber
+			d.ServerBIOSVersion = previous.ServerBIOSVersion
+			d.ServerPowerState = previous.ServerPowerState
+			d.ServerHealthStatus = previous.ServerHealthStatus
+			d.ServerLocationIndicatorActive = previous.ServerLocationIndicatorActive
+			d.ServerLastResetTime = previous.ServerLastResetTime
+			d.ServerBootProgress = previous.ServerBootProgress
+			d.ServerCPUSockets = previous.ServerCPUSockets
+
+		case BMCDataPartManager:
+			d.BMCModel = previous.BMCModel
+			d.BMCFirmwareVersion = previous.BMCFirmwareVersion
+			d.BMCServiceIdentification = previous.BMCServiceIdentification
+
+		case BMCDataPartProcessor:
+			d.ServerProcessorManufacturer = previous.ServerProcessorManufacturer
+			d.ServerProcessorArchitecture = previous.ServerProcessorArchitecture
+			d.ServerProcessorInstructionSet = previous.ServerProcessorInstructionSet
+
+		case BMCDataPartTrustedModules:
+			d.ServerHasTPM = previous.ServerHasTPM
+
+		case BMCDataPartBIOSAttributes:
+			d.ServerBIOSAttributes = previous.ServerBIOSAttributes
+
+		case BMCDataPartVirtualMedia:
+			d.VirtualMedia = previous.VirtualMedia
+		}
+	}
+
+	return d
+}
+
+// DescribeMissing renders the given parts along with the reason the BMC gave for
+// each of them, so an operator sees, what could not be asked and why.
+func (d BMCData) DescribeMissing(parts ...BMCDataPart) string {
+	descriptions := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		reason, unavailable := d.Unavailable[part]
+		if !unavailable {
+			continue
+		}
+
+		descriptions = append(descriptions, fmt.Sprintf("%s (%s)", part, reason))
+	}
+
+	if len(descriptions) == 0 {
+		return "nothing"
+	}
+
+	return strings.Join(descriptions, ", ")
 }
 
 // bmcBootProgressOrder holds the boot progress states in the order, in which
