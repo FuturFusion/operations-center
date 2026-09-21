@@ -69,6 +69,7 @@ export interface BMCData {
   server_boot_progress: BMCBootProgress;
   virtual_media: Record<string, BMCVirtualMedia>;
   last_updated: string;
+  unavailable?: Record<string, string>;
 }
 
 export interface BMCBootProgress {
