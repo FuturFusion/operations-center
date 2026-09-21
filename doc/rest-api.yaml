@@ -480,6 +480,17 @@ definitions:
                 example: e9de436e-b94e-4aef-8563-883aec84096e
                 type: string
                 x-go-name: ServerUUID
+            unavailable:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Unavailable names the parts, that could not be collected in the round, that
+                    produced this data, mapped to why. Every field belonging to a part listed
+                    here holds what was last observed of it rather than what is the case now,
+                    so it must not be read as a current observation: a BMC, that could not be
+                    asked, is not a BMC, that answered "nothing".
+                type: object
+                x-go-name: Unavailable
             virtual_media:
                 additionalProperties:
                     $ref: '#/definitions/BMCVirtualMedia'
