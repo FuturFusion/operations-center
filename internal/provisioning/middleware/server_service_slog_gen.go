@@ -639,6 +639,7 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 
 // BeginUpdateRunByCluster implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -814,8 +815,44 @@ func (_d ServerServiceWithSlog) DeploymentControlLoop(ctx context.Context, serve
 	return _d._base.DeploymentControlLoop(ctx, serverNameFilter)
 }
 
+// DetachFromCluster implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) DetachFromCluster(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DetachFromCluster")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DetachFromCluster returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DetachFromCluster returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DetachFromCluster finished")
+		}
+	}()
+	return _d._base.DetachFromCluster(ctx, name)
+}
+
 // EndUpdateRunByCluster implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) EndUpdateRunByCluster(ctx context.Context, clusterName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

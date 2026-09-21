@@ -88,6 +88,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			DeploymentControlLoopFunc: func(ctx context.Context, serverNameFilter *string) error {
 //				panic("mock out the DeploymentControlLoop method")
 //			},
+//			DetachFromClusterFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the DetachFromCluster method")
+//			},
 //			EndUpdateRunByClusterFunc: func(ctx context.Context, clusterName string) error {
 //				panic("mock out the EndUpdateRunByCluster method")
 //			},
@@ -271,6 +274,9 @@ type ServerServiceMock struct {
 
 	// DeploymentControlLoopFunc mocks the DeploymentControlLoop method.
 	DeploymentControlLoopFunc func(ctx context.Context, serverNameFilter *string) error
+
+	// DetachFromClusterFunc mocks the DetachFromCluster method.
+	DetachFromClusterFunc func(ctx context.Context, name string) error
 
 	// EndUpdateRunByClusterFunc mocks the EndUpdateRunByCluster method.
 	EndUpdateRunByClusterFunc func(ctx context.Context, clusterName string) error
@@ -566,6 +572,13 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// ServerNameFilter is the serverNameFilter argument value.
 			ServerNameFilter *string
+		}
+		// DetachFromCluster holds details about calls to the DetachFromCluster method.
+		DetachFromCluster []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// EndUpdateRunByCluster holds details about calls to the EndUpdateRunByCluster method.
 		EndUpdateRunByCluster []struct {
@@ -899,6 +912,7 @@ type ServerServiceMock struct {
 	lockDeleteByName                         sync.RWMutex
 	lockDeployByName                         sync.RWMutex
 	lockDeploymentControlLoop                sync.RWMutex
+	lockDetachFromCluster                    sync.RWMutex
 	lockEndUpdateRunByCluster                sync.RWMutex
 	lockEvacuateSystemByName                 sync.RWMutex
 	lockFactoryResetByName                   sync.RWMutex
@@ -1756,6 +1770,42 @@ func (mock *ServerServiceMock) DeploymentControlLoopCalls() []struct {
 	mock.lockDeploymentControlLoop.RLock()
 	calls = mock.calls.DeploymentControlLoop
 	mock.lockDeploymentControlLoop.RUnlock()
+	return calls
+}
+
+// DetachFromCluster calls DetachFromClusterFunc.
+func (mock *ServerServiceMock) DetachFromCluster(ctx context.Context, name string) error {
+	if mock.DetachFromClusterFunc == nil {
+		panic("ServerServiceMock.DetachFromClusterFunc: method is nil but ServerService.DetachFromCluster was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockDetachFromCluster.Lock()
+	mock.calls.DetachFromCluster = append(mock.calls.DetachFromCluster, callInfo)
+	mock.lockDetachFromCluster.Unlock()
+	return mock.DetachFromClusterFunc(ctx, name)
+}
+
+// DetachFromClusterCalls gets all the calls that were made to DetachFromCluster.
+// Check the length with:
+//
+//	len(mockedServerService.DetachFromClusterCalls())
+func (mock *ServerServiceMock) DetachFromClusterCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockDetachFromCluster.RLock()
+	calls = mock.calls.DetachFromCluster
+	mock.lockDetachFromCluster.RUnlock()
 	return calls
 }
 
