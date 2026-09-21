@@ -9686,9 +9686,12 @@ func TestServerService_ResyncBMCData(t *testing.T) {
 					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					wantDetails := tc.bmcClientGetData
+					// What the BMC reported is stored as it is, except for the
+					// parts it could not report, which keep what was observed of
+					// them before.
+					wantDetails := tc.bmcClientGetData.CarryOver(tc.repoGetByNameServer.BMCData)
 					wantDetails.LastUpdated = fixedDate
-					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored verbatim as reported by the BMC")
+					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored as reported by the BMC")
 					require.Equal(t, new(strings.ToLower(wantDetails.ServerUUID)), in.SystemUUID, "system UUID should be stored in lower case")
 
 					return tc.repoUpdateErr
@@ -11425,6 +11428,32 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "success - a part, the BMC could not report, keeps what it last held",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+				BMCData: api.BMCData{
+					ServerPowerState: "On",
+					VirtualMedia: map[string]api.BMCVirtualMedia{
+						"system:1": {ID: "system:1", Inserted: true},
+					},
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID:       "e9de436e-b94e-4aef-8563-883aec84096e",
+				ServerPowerState: "Off",
+				Unavailable: map[api.BMCDataPart]string{
+					api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:    "error - repo.Update",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -11451,9 +11480,12 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					wantDetails := tc.bmcClientGetData
+					// What the BMC reported is stored as it is, except for the
+					// parts it could not report, which keep what was observed of
+					// them before.
+					wantDetails := tc.bmcClientGetData.CarryOver(tc.repoGetByNameServer.BMCData)
 					wantDetails.LastUpdated = fixedDate
-					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored verbatim as reported by the BMC")
+					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored as reported by the BMC")
 					require.Equal(t, new(strings.ToLower(wantDetails.ServerUUID)), in.SystemUUID, "system UUID should be stored in lower case")
 
 					return tc.repoUpdateErr

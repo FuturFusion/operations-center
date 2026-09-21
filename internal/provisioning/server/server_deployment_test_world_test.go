@@ -166,6 +166,7 @@ type bmcWorld struct {
 	registers           bool
 	registrationDelay   time.Duration
 	getDataFails        bool
+	unavailableParts    map[api.BMCDataPart]string
 	forgetsBIOSTask     bool
 	rebootsEarly        bool
 	haltsAfterInstall   bool
@@ -251,6 +252,28 @@ func (w *bmcWorld) setGetDataFails(fails bool) {
 	defer w.mu.Unlock()
 
 	w.getDataFails = fails
+}
+
+// setPartUnavailable makes the BMC answer for everything but the given part, the
+// way a BMC does, whose data sources are temporarily unavailable. The fields of
+// the part keep whatever the world holds, so a test can tell a caller deciding
+// on them apart from one, that establishes the part was collected first.
+func (w *bmcWorld) setPartUnavailable(part api.BMCDataPart, reason string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.unavailableParts == nil {
+		w.unavailableParts = map[api.BMCDataPart]string{}
+	}
+
+	w.unavailableParts[part] = reason
+}
+
+func (w *bmcWorld) setPartAvailable(part api.BMCDataPart) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	delete(w.unavailableParts, part)
 }
 
 func (w *bmcWorld) isPoweredOn() bool {
@@ -493,6 +516,24 @@ func (w *bmcWorld) bmcData() api.BMCData {
 
 	if !w.noBootProgress {
 		data.ServerBootProgress = w.bootProgress
+	}
+
+	// A part, the BMC did not answer for, is left at its zero value and named,
+	// the same way the Redfish adapter records it.
+	if len(w.unavailableParts) > 0 {
+		data.Unavailable = maps.Clone(w.unavailableParts)
+
+		for part := range w.unavailableParts {
+			switch part {
+			case api.BMCDataPartVirtualMedia:
+				data.VirtualMedia = nil
+
+			case api.BMCDataPartSystem:
+				data.ServerPowerState = ""
+				data.ServerLastResetTime = time.Time{}
+				data.ServerBootProgress = api.BMCBootProgress{}
+			}
+		}
 	}
 
 	return data

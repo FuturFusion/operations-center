@@ -749,7 +749,22 @@ func Test_bmcWaitConditions(t *testing.T) {
 			condition, ok := bmcWaitConditions[tc.state]
 			require.True(t, ok, "state %q has no BMC wait condition", tc.state)
 
-			require.Equal(t, tc.want, condition(&deployment, tc.data))
+			require.Equal(t, tc.want, condition.met(&deployment, tc.data))
+		})
+	}
+}
+
+func Test_bmcWaitConditionsDeclareTheirParts(t *testing.T) {
+	require.NotEmpty(t, bmcWaitConditions)
+
+	for state, condition := range bmcWaitConditions {
+		t.Run(state.String(), func(t *testing.T) {
+			require.NotNil(t, condition.met)
+			require.NotEmpty(t, condition.requires)
+
+			for _, part := range condition.requires {
+				require.Contains(t, api.BMCDataParts, part)
+			}
 		})
 	}
 }
@@ -800,7 +815,7 @@ func Test_deploymentMediaHoldsImage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, deploymentMediaHoldsImage(&deployment, tc.data))
+			require.Equal(t, tc.want, deploymentMediaHoldsImage.met(&deployment, tc.data))
 		})
 	}
 }
@@ -1240,6 +1255,79 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 			require.Error(t, err, "state %q reached none of the failing collaborators", state)
 			require.NotContains(t, err.Error(), "is not an action", "action state %q is not dispatched", state)
 			require.NotContains(t, err.Error(), "is not a wait", "wait state %q is not dispatched", state)
+		})
+	}
+}
+
+func Test_deploymentBMCData_requiresParts(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     api.BMCData
+		requires []api.BMCDataPart
+
+		assertErr require.ErrorAssertionFunc
+		wantErr   string
+	}{
+		{
+			name:     "the part asked for has been collected",
+			data:     api.BMCData{ServerPowerState: "Off"},
+			requires: []api.BMCDataPart{api.BMCDataPartSystem},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "the part asked for could not be collected",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503: IDRAC.2.8.SYS518",
+			}},
+			requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+
+			assertErr: require.Error,
+			wantErr:   `The BMC of server "one" did not report virtual_media (BMC returned HTTP 503: IDRAC.2.8.SYS518)`,
+		},
+		{
+			name: "another part could not be collected",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartBIOSAttributes: "BMC returned HTTP 503",
+			}},
+			requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "nothing is read off the BMC data",
+			data: api.BMCData{Unavailable: map[api.BMCDataPart]string{
+				api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
+			}},
+			requires: nil,
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &serverService{now: func() time.Time { return deploymentTestNow }}
+
+			// The data is fresh, so it is taken as is and nothing is collected
+			// from the BMC for this.
+			tc.data.LastUpdated = deploymentTestNow
+
+			server := provisioning.Server{Name: "one", BMCData: tc.data}
+
+			current, err := s.deploymentBMCData(context.Background(), server, tc.requires)
+
+			tc.assertErr(t, err)
+
+			if tc.wantErr == "" {
+				require.NotNil(t, current)
+
+				return
+			}
+
+			require.Nil(t, current)
+			require.Contains(t, err.Error(), tc.wantErr)
+			require.True(t, domain.IsRetryableError(err), "a BMC, that could not be asked, is asked again")
 		})
 	}
 }
