@@ -20,6 +20,7 @@ const ClusterRemoveServerBtn: FC<Props> = ({ cluster, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
   const [serverNames, setServerNames] = useState<string[]>([]);
+  const [force, setForce] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
   const actionStyle = {
@@ -31,7 +32,7 @@ const ClusterRemoveServerBtn: FC<Props> = ({ cluster, recommended }) => {
     setOpInProgress(true);
     clusterRemoveServer(
       cluster.name,
-      JSON.stringify({ server_names: serverNames }, null, 2),
+      JSON.stringify({ server_names: serverNames, force: force }, null, 2),
     )
       .then((response) => {
         setOpInProgress(false);
@@ -87,6 +88,25 @@ const ClusterRemoveServerBtn: FC<Props> = ({ cluster, recommended }) => {
                 disabled={opInProgress}
                 onChange={(values: string[]) => setServerNames(values)}
               />
+            </Form.Group>
+            <Form.Group
+              controlId="force"
+              className="mb-3 d-flex align-items-center gap-2"
+            >
+              <Form.Check
+                type="checkbox"
+                name="force"
+                checked={force}
+                disabled={opInProgress}
+                onChange={(e) => setForce(e.target.checked)}
+              />
+              <Form.Label className="me-2 mb-0">
+                If set to true, the servers are removed even if they are
+                unreachable or not evacuated. The local instances and custom
+                storage volumes of the removed servers are lost and the removed
+                servers are not factory reset. The server records are kept, no
+                longer being part of the cluster.
+              </Form.Label>
             </Form.Group>
           </div>
         </div>
