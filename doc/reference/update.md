@@ -18,17 +18,21 @@ where the updates are provided manually by the administrators.
 
 ## Trigger an update
 
-An update can be triggered either for the operating system or for individual
-applications:
+An update can be triggered for the whole server, for the operating system only
+or for individual applications:
 
 ```shell
+operations-center provisioning server system update <server>
 operations-center provisioning server system update <server> --os
 operations-center provisioning server system update <server> --application incus
 ```
 
-Triggering an update of the operating system makes IncusOS update every
-installed application as well. `--os` therefore covers the whole server and can
-not be combined with `--application`.
+Without any flag, the operating system and every installed application are
+updated.
+
+`--os` restricts the update to the operating system and leaves the installed
+applications on the version they are on, while `--application` updates the given
+applications only. The two flags can not be combined.
 
 An update of the operating system is staged and applied with the next reboot of
 the server, while an application is updated right away, which restarts that
@@ -37,7 +41,8 @@ application.
 Since the update is performed by the server itself, a successful invocation only
 means the update has been triggered. Operations Center reports the server as
 `updating` until the server no longer reports any component in need of an
-update.
+update. With `--os` only the operating system decides that, so the server
+leaves `updating` while its applications may still need an update.
 
 ## Filtering
 

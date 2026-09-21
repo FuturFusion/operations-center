@@ -357,13 +357,14 @@ func (c *cmdServerUpdate) Command() *cobra.Command {
 
   Triggers an update on a server.
 
-  An update of the OS makes IncusOS update every installed application as well,
-  so "--os" can not be combined with "--application".
+  Without any flag, the OS and every installed application are updated. Use
+  "--os" to update the OS on its own or "--application" to update the given
+  applications. The two flags can not be combined.
 `
 
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger an update")
-	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger update of the OS and of all installed applications")
-	cmd.Flags().StringSliceVar(&c.flagApplications, "application", nil, "trigger update for the given application, can be provided multiple times")
+	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger update of the OS only and leave the installed applications untouched")
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", nil, "trigger update for the given application only, can be provided multiple times")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -379,11 +380,7 @@ func (c *cmdServerUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string
 	}
 
 	if c.flagUpdateOS && len(c.flagApplications) > 0 {
-		return fmt.Errorf(`"--os" already covers the applications and can not be combined with "--application"`)
-	}
-
-	if !c.flagUpdateOS && len(c.flagApplications) == 0 {
-		return fmt.Errorf(`One of "--os" or "--application" is required`)
+		return fmt.Errorf(`"--os" and "--application" can not be combined`)
 	}
 
 	return nil
@@ -392,11 +389,13 @@ func (c *cmdServerUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string
 func (c *cmdServerUpdate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
+	// Without "--application", the OS is updated, which covers the applications unless "--os" is given.
 	updateRequest := api.ServerUpdatePost{
 		OS: api.ServerUpdateApplication{
 			Name:          "os",
-			TriggerUpdate: c.flagUpdateOS,
+			TriggerUpdate: len(c.flagApplications) == 0,
 		},
+		OSOnly: c.flagUpdateOS,
 	}
 
 	for _, application := range c.flagApplications {
