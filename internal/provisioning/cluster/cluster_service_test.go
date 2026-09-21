@@ -14334,8 +14334,11 @@ func TestClusterService_RemoveServer(t *testing.T) {
 		incusClientUpdateServerErr             error
 		incusClientDeleteStoragePoolVolumeErrs queue.Errs
 		serverSvcFactoryResetByNameErr         error
+		serverSvcDetachFromClusterErr          error
+		clientPingErrs                         queue.Errs
 		incusClientDeleteClusterMemberErr      error
 		incusClientHasExtension                bool
+		forceArg                               bool
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -14861,6 +14864,176 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
 		},
+
+		{
+			name:                    "success - force with unreachable server",
+			forceArg:                true,
+			incusClientHasExtension: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					// Server is neither evacuated nor reachable.
+					Name:   "serverOne",
+					Status: api.ServerStatusOffline,
+				},
+				{
+					Name:   "serverTwo",
+					Status: api.ServerStatusReady,
+				},
+			},
+			inventorySyncerErr: boom.Error,
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
+			incusClientGetServerErr:        boom.Error,
+			serverSvcFactoryResetByNameErr: boom.Error, // must not be called
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("Forceful server removal"),
+		},
+		{
+			name:                    "success - force with lost local resources",
+			forceArg:                true,
+			incusClientHasExtension: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusOffline,
+				},
+				{
+					Name:   "serverTwo",
+					Status: api.ServerStatusReady,
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Value: inventory.InventoryAggregates{
+						{
+							Instances: inventory.Instances{
+								{
+									Name: "instanceOne",
+								},
+							},
+							StorageVolumes: inventory.StorageVolumes{
+								{
+									Name: "custom/data",
+								},
+							},
+							Images: inventory.Images{
+								{
+									Name:        "imageOne",
+									ProjectName: "default",
+									Object: inventory.IncusImageWrapper{
+										Image: incusapi.Image{
+											Locations: []string{"serverOne"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("Forceful server removal ignores blocking condition"),
+		},
+		{
+			name:     "success - force with server already removed from incus cluster",
+			forceArg: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusOffline,
+				},
+				{
+					Name:   "serverTwo",
+					Status: api.ServerStatusReady,
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
+			incusClientDeleteClusterMemberErr: incusapi.StatusErrorf(404, "Cluster member not found"),
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("Forceful server removal"),
+		},
+		{
+			name:     "error - force - no reachable server left in cluster",
+			forceArg: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusOffline,
+				},
+				{
+					Name:   "serverTwo",
+					Status: api.ServerStatusOffline,
+				},
+			},
+			clientPingErrs: queue.Errs{boom.Error},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "no reachable server left in cluster")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:     "error - force - serverSvc.DetachFromCluster",
+			forceArg: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusOffline,
+				},
+				{
+					Name:   "serverTwo",
+					Status: api.ServerStatusReady,
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
+			serverSvcDetachFromClusterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Contains("Forceful server removal"),
+		},
+		{
+			name:     "error - force - cluster minimum size",
+			forceArg: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				// cluster only has 1 server
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Cluster "one" does not have enough servers for server removal`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:     "error - force - server not part of cluster",
+			forceArg: true,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				// serverOne is not part of cluster
+				{
+					Name: "serverTwo",
+				},
+				{
+					Name: "serverThree",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+			},
+			assertLog: log.Empty,
+		},
 	}
 
 	for _, tc := range tests {
@@ -14881,6 +15054,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				},
 				FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 					return tc.serverSvcFactoryResetByNameErr
+				},
+				DetachFromClusterFunc: func(ctx context.Context, name string) error {
+					return tc.serverSvcDetachFromClusterErr
 				},
 			}
 
@@ -14926,6 +15102,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
 					return incusClient, tc.clientIncusClientErr
 				},
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErrs.PopOrNil(t)
+				},
 			}
 
 			inventorySvc := &inventoryServiceMock.InventoryAggregateServiceMock{
@@ -14960,7 +15139,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			defer cancel()
 
 			// Run test
-			err = clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"})
+			err = clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"}, tc.forceArg)
 
 			// Assert
 			tc.assertErr(t, err)
