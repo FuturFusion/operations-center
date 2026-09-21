@@ -718,13 +718,14 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 }
 
 // UpdateOS implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisioning.Server, osOnly bool) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Bool("osOnly", osOnly),
 		)
 	}
 	log.DebugContext(ctx, "=> calling UpdateOS")
@@ -745,7 +746,7 @@ func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisio
 			log.DebugContext(ctx, "<= method UpdateOS finished")
 		}
 	}()
-	return _d._base.UpdateOS(ctx, server)
+	return _d._base.UpdateOS(ctx, server, osOnly)
 }
 
 // UpdateProviderConfig implements provisioning.ServerClientPort.

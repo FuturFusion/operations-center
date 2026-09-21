@@ -114,7 +114,7 @@ type ServerClientPort interface {
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
 	Restore(ctx context.Context, server Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error
-	UpdateOS(ctx context.Context, server Server) error
+	UpdateOS(ctx context.Context, server Server, osOnly bool) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	AddApplication(ctx context.Context, server Server, application string) error
 	RestartApplication(ctx context.Context, server Server, application string) error

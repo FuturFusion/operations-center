@@ -85,7 +85,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
-//			UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+//			UpdateOSFunc: func(ctx context.Context, server provisioning.Server, osOnly bool) error {
 //				panic("mock out the UpdateOS method")
 //			},
 //			UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
@@ -174,7 +174,7 @@ type ServerClientPortMock struct {
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateOSFunc mocks the UpdateOS method.
-	UpdateOSFunc func(ctx context.Context, server provisioning.Server) error
+	UpdateOSFunc func(ctx context.Context, server provisioning.Server, osOnly bool) error
 
 	// UpdateProviderConfigFunc mocks the UpdateProviderConfig method.
 	UpdateProviderConfigFunc func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error
@@ -364,6 +364,8 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// OsOnly is the osOnly argument value.
+			OsOnly bool
 		}
 		// UpdateProviderConfig holds details about calls to the UpdateProviderConfig method.
 		UpdateProviderConfig []struct {
@@ -1231,21 +1233,23 @@ func (mock *ServerClientPortMock) UpdateNetworkConfigCalls() []struct {
 }
 
 // UpdateOS calls UpdateOSFunc.
-func (mock *ServerClientPortMock) UpdateOS(ctx context.Context, server provisioning.Server) error {
+func (mock *ServerClientPortMock) UpdateOS(ctx context.Context, server provisioning.Server, osOnly bool) error {
 	if mock.UpdateOSFunc == nil {
 		panic("ServerClientPortMock.UpdateOSFunc: method is nil but ServerClientPort.UpdateOS was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		OsOnly bool
 	}{
 		Ctx:    ctx,
 		Server: server,
+		OsOnly: osOnly,
 	}
 	mock.lockUpdateOS.Lock()
 	mock.calls.UpdateOS = append(mock.calls.UpdateOS, callInfo)
 	mock.lockUpdateOS.Unlock()
-	return mock.UpdateOSFunc(ctx, server)
+	return mock.UpdateOSFunc(ctx, server, osOnly)
 }
 
 // UpdateOSCalls gets all the calls that were made to UpdateOS.
@@ -1255,10 +1259,12 @@ func (mock *ServerClientPortMock) UpdateOS(ctx context.Context, server provision
 func (mock *ServerClientPortMock) UpdateOSCalls() []struct {
 	Ctx    context.Context
 	Server provisioning.Server
+	OsOnly bool
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		OsOnly bool
 	}
 	mock.lockUpdateOS.RLock()
 	calls = mock.calls.UpdateOS

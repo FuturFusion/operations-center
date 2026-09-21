@@ -357,7 +357,7 @@ func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPort
 		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 			return api.ServerTypeIncus, nil
 		},
-		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+		UpdateOSFunc: func(ctx context.Context, server provisioning.Server, osOnly bool) error {
 			world.set(server.Name, versionDataUpdating, false)
 			world.deferTransition(serverWorldTransition{
 				server:      server.Name,

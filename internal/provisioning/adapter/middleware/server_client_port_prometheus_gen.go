@@ -334,7 +334,7 @@ func (_d ServerClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context
 }
 
 // UpdateOS implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithPrometheus) UpdateOS(ctx context.Context, server provisioning.Server, osOnly bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -344,7 +344,7 @@ func (_d ServerClientPortWithPrometheus) UpdateOS(ctx context.Context, server pr
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateOS", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateOS(ctx, server)
+	return _d.base.UpdateOS(ctx, server, osOnly)
 }
 
 // UpdateProviderConfig implements provisioning.ServerClientPort.

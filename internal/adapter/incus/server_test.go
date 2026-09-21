@@ -3905,7 +3905,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "UpdateOS",
 			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
-				return nil, client.UpdateOS(ctx, target)
+				return nil, client.UpdateOS(ctx, target, false)
 			},
 			testCases: []methodTestCase{
 				{
