@@ -1,6 +1,7 @@
 package provisioning_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -35,10 +36,21 @@ func TestServerUpdate_claim(t *testing.T) {
 
 	// A reported failure ends the attempt but keeps the budget, so the retries of
 	// one step accumulate no matter how far apart the attempts are.
-	serverUpdate.Fail(provisioning.ServerUpdateStepEvacuate, boom.Error)
+	serverUpdate.Fail(now, provisioning.ServerUpdateStepEvacuate, boom.Error)
 	require.Equal(t, 1, serverUpdate.Retries)
+	require.Equal(t, boom.Error.Error(), serverUpdate.FirstError)
 	require.Equal(t, boom.Error.Error(), serverUpdate.LastError)
 	require.Equal(t, provisioning.ServerUpdateStepNone, serverUpdate.InFlightStep(now))
+
+	// The next attempt of the same step backs off from the failed one.
+	require.Equal(t, time.Minute, serverUpdate.RetryBackoffRemaining(now, time.Minute))
+	require.Zero(t, serverUpdate.RetryBackoffRemaining(now.Add(time.Minute), time.Minute))
+
+	// The first error is the one, which describes the actual problem, so a later,
+	// derived failure does not overwrite it.
+	serverUpdate.Fail(now, provisioning.ServerUpdateStepEvacuate, errors.New("derived failure"))
+	require.Equal(t, boom.Error.Error(), serverUpdate.FirstError)
+	require.Equal(t, "derived failure", serverUpdate.LastError)
 
 	serverUpdate.Claim(now.Add(time.Hour), provisioning.ServerUpdateStepEvacuate)
 	require.Equal(t, 2, serverUpdate.Retries)
@@ -51,7 +63,10 @@ func TestServerUpdate_claim(t *testing.T) {
 	serverUpdate.Release(provisioning.ServerUpdateStepEvacuate)
 	require.Equal(t, provisioning.ServerUpdateStepNone, serverUpdate.Step)
 	require.Zero(t, serverUpdate.Retries)
+	require.Empty(t, serverUpdate.FirstError)
 	require.Empty(t, serverUpdate.LastError)
+	require.Zero(t, serverUpdate.FailedAt)
+	require.Zero(t, serverUpdate.RetryBackoffRemaining(now, time.Minute))
 
 	serverUpdate.Claim(now, provisioning.ServerUpdateStepRestore)
 	require.Equal(t, 1, serverUpdate.Retries)

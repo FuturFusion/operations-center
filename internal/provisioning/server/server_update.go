@@ -28,8 +28,17 @@ func (s *serverService) claimRollingUpdateStep(server *provisioning.Server, step
 	}
 
 	retries := step.Retries()
-	if serverUpdate.Step == step && serverUpdate.Retries >= retries {
-		return fmt.Errorf("Failed to %s server %q in %d attempts, lastErr: %s: %w", step, server.Name, retries, serverUpdate.LastError, domain.ErrTerminal)
+	if serverUpdate.Step == step {
+		if serverUpdate.Retries >= retries {
+			return fmt.Errorf("Failed to %s server %q in %d attempts, firstErr: %s, lastErr: %s: %w", step, server.Name, retries, serverUpdate.FirstError, serverUpdate.LastError, domain.ErrTerminal)
+		}
+
+		// A failed attempt is not retried immediately. The condition, which made
+		// it fail, is often transient but needs longer to clear than the control
+		// loop needs to pick the server up again.
+		if serverUpdate.RetryBackoffRemaining(now, s.rollingUpdateStepRetryBackoff) > 0 {
+			return domain.NewRetryableErr(fmt.Errorf("Step %q for server %q backs off for %s after a failed attempt, lastErr: %s", step, server.Name, s.rollingUpdateStepRetryBackoff, serverUpdate.LastError))
+		}
 	}
 
 	serverUpdate.Claim(now, step)
@@ -50,7 +59,7 @@ func (s *serverService) recordRollingUpdateStepFailure(ctx context.Context, name
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		server.StatusInternal.Update.Fail(step, stepErr)
+		server.StatusInternal.Update.Fail(s.now(), step, stepErr)
 
 		if step.OwnsStatusDetail(server.StatusDetail) {
 			server.StatusDetail = api.ServerStatusDetailNone
