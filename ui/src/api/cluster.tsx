@@ -19,7 +19,7 @@ export const fetchClusters = (filter: string): Promise<Cluster[]> => {
 export const fetchCluster = (name: string): Promise<Cluster> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

@@ -6,11 +6,12 @@ import {
   SystemSettings,
   SystemUpdates,
 } from "types/settings";
+import { processResponse } from "util/response";
 
 export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/certificate`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -19,7 +20,7 @@ export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
 export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/network`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -28,7 +29,7 @@ export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
 export const fetchSystemSecurity = (): Promise<SystemSecurity> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/security`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -37,7 +38,7 @@ export const fetchSystemSecurity = (): Promise<SystemSecurity> => {
 export const fetchSystemSettings = (): Promise<SystemSettings> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/settings`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -46,7 +47,7 @@ export const fetchSystemSettings = (): Promise<SystemSettings> => {
 export const fetchSystemUpdates = (): Promise<SystemUpdates> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/updates`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

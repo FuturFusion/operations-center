@@ -6,7 +6,7 @@ import { processResponse } from "util/response";
 export const fetchSettings = (): Promise<Settings> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -29,7 +29,7 @@ export const fetchServers = (filter: string): Promise<Server[]> => {
 export const fetchServer = (name: string): Promise<Server> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -38,7 +38,7 @@ export const fetchServer = (name: string): Promise<Server> => {
 export const fetchServerChangelog = (name: string): Promise<Changelog> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/changelog`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -288,7 +288,7 @@ export const fetchServerBMCLogEntries = (
 export const fetchSystemNetwork = (name: string): Promise<object> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/network`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -312,7 +312,7 @@ export const updateSystemNetwork = (
 export const fetchSystemStorage = (name: string): Promise<object> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/storage`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
