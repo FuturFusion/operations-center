@@ -4,6 +4,7 @@ import SystemCertForm from "components/SystemCertForm";
 import SystemCertOverview from "components/SystemCertOverview";
 import { useNotification } from "context/notificationContext";
 import { SystemCertificatePost } from "types/settings";
+import { errorMessage } from "util/response";
 
 const SystemCertConfiguration = () => {
   const { notify } = useNotification();
@@ -17,7 +18,7 @@ const SystemCertConfiguration = () => {
           queryClient.invalidateQueries({ queryKey: ["system_certificate"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during system certificate update: ${e}`);

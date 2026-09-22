@@ -9,6 +9,7 @@ import { useNotification } from "context/notificationContext";
 import { useChannels } from "context/useChannels";
 import { Update } from "types/update";
 import { handleCtrlA } from "util/util";
+import { errorMessage } from "util/response";
 
 interface Props {
   update: Update;
@@ -38,7 +39,7 @@ const UpdateChannelBtn: FC<Props> = ({ update }) => {
           queryClient.invalidateQueries({ queryKey: ["updates"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

@@ -10,6 +10,7 @@ export interface APIResponse<T> {
 
 export interface ErrorMetadata {
   reason: string;
+  hint?: string;
   details?: Record<string, string>;
   request_id?: string;
 }

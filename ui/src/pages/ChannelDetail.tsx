@@ -9,6 +9,7 @@ import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ChannelConfiguration from "pages/ChannelConfiguration";
 import ChannelOverview from "pages/ChannelOverview";
+import { errorMessage } from "util/response";
 
 const ChannelDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -56,7 +57,7 @@ const ChannelDetail = () => {
           navigate("/ui/provisioning/updates-view/channels");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during channel deletion: ${e}`);

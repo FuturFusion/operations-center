@@ -12,6 +12,7 @@ import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ClusterTemplateOverview from "pages/ClusterTemplateOverview";
 import ClusterTemplateConfiguration from "pages/ClusterTemplateConfiguration";
+import { errorMessage } from "util/response";
 
 const ClusterTemplateDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -46,7 +47,7 @@ const ClusterTemplateDetail = () => {
           navigate("/ui/provisioning/clusters-view/templates");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during cluster template deletion: ${e}`);

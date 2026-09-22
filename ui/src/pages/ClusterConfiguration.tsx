@@ -4,6 +4,7 @@ import { fetchCluster, renameCluster, updateCluster } from "api/cluster";
 import ClusterForm from "components/ClusterForm";
 import { useNotification } from "context/notificationContext";
 import { ClusterFormValues } from "types/cluster";
+import { errorMessage } from "util/response";
 
 const ClusterConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -52,7 +53,7 @@ const ClusterConfiguration = () => {
             navigate(`/ui/provisioning/clusters/${newName}/configuration`);
             return;
           }
-          notify.error(response.error);
+          notify.error(errorMessage(response));
         })
         .catch((e) => {
           notify.error(`Error during server rename: ${e}`);

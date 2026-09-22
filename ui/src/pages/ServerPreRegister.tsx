@@ -5,6 +5,7 @@ import Breadcrumbs from "components/Breadcrumbs";
 import ServerPreRegisterForm from "components/ServerPreRegisterForm";
 import { useNotification } from "context/notificationContext";
 import { ServerPreRegisterFormValues } from "types/server";
+import { errorMessage } from "util/response";
 
 const ServerPreRegister = () => {
   const { notify } = useNotification();
@@ -41,7 +42,7 @@ const ServerPreRegister = () => {
           navigate("/ui/provisioning/servers-view");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during server pre registration: ${e}`);

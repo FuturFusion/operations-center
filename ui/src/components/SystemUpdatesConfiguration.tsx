@@ -3,6 +3,7 @@ import { fetchSystemUpdates, updateSystemUpdates } from "api/settings";
 import SystemUpdatesForm from "components/SystemUpdatesForm";
 import { useNotification } from "context/notificationContext";
 import { SystemUpdates } from "types/settings";
+import { errorMessage } from "util/response";
 
 const SystemUpdatesConfiguration = () => {
   const { notify } = useNotification();
@@ -14,7 +15,7 @@ const SystemUpdatesConfiguration = () => {
           notify.success(`System updates updated`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during system updates update: ${e}`);

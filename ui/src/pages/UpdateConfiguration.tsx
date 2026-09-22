@@ -4,6 +4,7 @@ import { fetchUpdate, updateUpdate } from "api/update";
 import UpdateForm from "components/UpdateForm";
 import { useNotification } from "context/notificationContext";
 import { UpdateFormValues } from "types/update";
+import { errorMessage } from "util/response";
 
 const UpdateConfiguration = () => {
   const { uuid } = useParams() as { uuid: string };
@@ -20,7 +21,7 @@ const UpdateConfiguration = () => {
           navigate(`/ui/provisioning/updates/${uuid}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during Update update: ${e}`);

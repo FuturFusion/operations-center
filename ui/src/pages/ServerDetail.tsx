@@ -10,6 +10,7 @@ import { useNotification } from "context/notificationContext";
 import ServerBMC from "pages/ServerBMC";
 import ServerOverview from "pages/ServerOverview";
 import ServerConfiguration from "pages/ServerConfiguration";
+import { errorMessage } from "util/response";
 
 const ServerDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -44,7 +45,7 @@ const ServerDetail = () => {
           navigate("/ui/provisioning/servers-view");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during server deletion: ${e}`);

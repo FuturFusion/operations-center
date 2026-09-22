@@ -5,6 +5,7 @@ import { importUpdates } from "api/update";
 import FileUploader from "components/FileUploader";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
+import { errorMessage } from "util/response";
 
 const ImportUpdatesBtn: FC = () => {
   const [showModal, setShowModal] = useState(false);
@@ -20,7 +21,7 @@ const ImportUpdatesBtn: FC = () => {
           setShowModal(false);
           return true;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
         return false;
       })
       .catch((e) => {

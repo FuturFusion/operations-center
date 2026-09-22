@@ -9,6 +9,7 @@ import ServerSelect from "components/ServerSelect";
 import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { Cluster } from "types/cluster";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -42,7 +43,7 @@ const ClusterRemoveServerBtn: FC<Props> = ({ cluster, recommended }) => {
           queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

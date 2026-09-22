@@ -7,6 +7,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Cluster, ClusterBulkUpdateFormValues } from "types/cluster";
 import YAML from "yaml";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -48,7 +49,7 @@ const ClusterBulkActionModal: FC<Props> = ({ cluster, show, handleClose }) => {
             handleClose();
             return;
           }
-          notify.error(response.error);
+          notify.error(errorMessage(response));
         })
         .catch((e) => {
           notify.error(`Error during token update: ${e}`);

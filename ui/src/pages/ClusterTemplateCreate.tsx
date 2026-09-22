@@ -4,6 +4,7 @@ import { createClusterTemplate } from "api/cluster_template";
 import Breadcrumbs from "components/Breadcrumbs";
 import ClusterTemplateForm from "components/ClusterTemplateForm";
 import { ClusterTemplateFormValues } from "types/cluster_template";
+import { errorMessage } from "util/response";
 
 const ClusterTemplateCreate = () => {
   const { notify } = useNotification();
@@ -17,7 +18,7 @@ const ClusterTemplateCreate = () => {
           navigate("/ui/provisioning/clusters-view/templates");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during cluster template creation: ${e}`);

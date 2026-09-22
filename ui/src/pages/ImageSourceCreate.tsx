@@ -5,6 +5,7 @@ import { createImageSource } from "api/image_incus_source";
 import Breadcrumbs from "components/Breadcrumbs";
 import ImageSourceForm from "components/ImageSourceForm";
 import type { ImageSource } from "types/image_incus_source";
+import { errorMessage } from "util/response";
 
 const ImageSourceCreate = () => {
   const { notify } = useNotification();
@@ -20,7 +21,7 @@ const ImageSourceCreate = () => {
           navigate("/ui/images-view/sources");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source creation: ${e}`);

@@ -9,6 +9,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Server } from "types/server";
 import { useQueryClient } from "@tanstack/react-query";
+import { errorMessage } from "util/response";
 
 interface Props {
   server: Server;
@@ -82,7 +83,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

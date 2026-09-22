@@ -9,6 +9,7 @@ import ImportUpdatesBtn from "components/ImportUpdatesBtn";
 import UpdateActions from "components/UpdateActions";
 import { useNotification } from "context/notificationContext";
 import { formatDate } from "util/date";
+import { errorMessage } from "util/response";
 
 const Update = () => {
   const refetchInterval = 10000; // 10 seconds
@@ -33,7 +34,7 @@ const Update = () => {
           notify.success(`Updates refresh triggered successfully`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during refreshing updates: ${e}`);
@@ -48,7 +49,7 @@ const Update = () => {
           notify.success(`Updates cleanup performed successfully`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during updates cleanup: ${e}`);

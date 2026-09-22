@@ -5,6 +5,7 @@ import TabView from "components/TabView";
 import ClusterCreateForm from "components/ClusterCreateForm";
 import { useNotification } from "context/notificationContext";
 import { ClusterPost } from "types/cluster";
+import { errorMessage } from "util/response";
 
 const ClusterCreate = () => {
   const { notify } = useNotification();
@@ -19,7 +20,7 @@ const ClusterCreate = () => {
           navigate(`/ui/provisioning/clusters-view/clusters`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during cluster creation: ${e}`);

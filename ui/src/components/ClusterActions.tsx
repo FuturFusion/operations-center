@@ -17,6 +17,7 @@ import ClusterCancelOperationBtn from "components/ClusterCancelOperationBtn";
 import ClusterRebootBtn from "components/ClusterRebootBtn";
 import ClusterRemoveServerBtn from "components/ClusterRemoveServerBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -59,7 +60,7 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
           notify.success(`Cluster inventory resync triggered`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during cluster inventory sync: ${e}`);

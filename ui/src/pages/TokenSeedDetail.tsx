@@ -9,6 +9,7 @@ import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import TokenSeedOverview from "pages/TokenSeedOverview";
 import TokenSeedConfiguration from "pages/TokenSeedConfiguration";
+import { errorMessage } from "util/response";
 
 const TokenSeedDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -49,7 +50,7 @@ const TokenSeedDetail = () => {
           navigate(`/ui/provisioning/tokens/${uuid}/seeds`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token seed deletion: ${e}`);

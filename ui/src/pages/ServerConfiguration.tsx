@@ -14,6 +14,7 @@ import { useNotification } from "context/notificationContext";
 import { APIResponse } from "types/response";
 import { ServerFormValues } from "types/server";
 import YAML from "yaml";
+import { errorMessage } from "util/response";
 
 const ServerConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -139,7 +140,7 @@ const ServerConfiguration = () => {
             navigate(`/ui/provisioning/servers/${newName}/configuration`);
             return;
           }
-          notify.error(response.error);
+          notify.error(errorMessage(response));
         })
         .catch((e) => {
           notify.error(`Error during server rename: ${e}`);

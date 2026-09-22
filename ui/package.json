@@ -16,7 +16,6 @@
     "@tanstack/react-query": "5.102.8",
     "bootstrap": "5.3.8",
     "formik": "2.4.9",
-    "html-react-parser": "6.1.7",
     "react": "^19.3.0",
     "react-bootstrap": "2.10.10",
     "react-datepicker": "9.1.0",

@@ -3,6 +3,7 @@ import { fetchSystemSecurity, updateSystemSecurity } from "api/settings";
 import SystemSecurityForm from "components/SystemSecurityForm";
 import { useNotification } from "context/notificationContext";
 import { SystemSecurity } from "types/settings";
+import { errorMessage } from "util/response";
 
 const SystemSecurityConfiguration = () => {
   const { notify } = useNotification();
@@ -14,7 +15,7 @@ const SystemSecurityConfiguration = () => {
           notify.success(`System security updated`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during system security update: ${e}`);

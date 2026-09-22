@@ -6,6 +6,7 @@ import { deleteImageSource, refreshImageSource } from "api/image_incus_source";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { ImageSource } from "types/image_incus_source";
+import { errorMessage } from "util/response";
 
 interface Props {
   source: ImageSource;
@@ -30,7 +31,7 @@ const ImageSourceActions: FC<Props> = ({ source }) => {
           queryClient.invalidateQueries({ queryKey: ["incus-images"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source refresh: ${e}`);
@@ -47,7 +48,7 @@ const ImageSourceActions: FC<Props> = ({ source }) => {
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source deletion: ${e}`);

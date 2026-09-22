@@ -4,6 +4,7 @@ import { fetchTokenSeed, updateTokenSeed } from "api/token";
 import TokenSeedForm from "components/TokenSeedForm";
 import { useNotification } from "context/notificationContext";
 import { TokenSeed } from "types/token";
+import { errorMessage } from "util/response";
 
 const TokenSeedConfiguration = () => {
   const { uuid, name } = useParams() as { uuid: string; name: string };
@@ -22,7 +23,7 @@ const TokenSeedConfiguration = () => {
           );
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token seed update: ${e}`);

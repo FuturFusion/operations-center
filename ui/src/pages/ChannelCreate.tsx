@@ -4,6 +4,7 @@ import { createChannel } from "api/channel";
 import Breadcrumbs from "components/Breadcrumbs";
 import ChannelForm from "components/ChannelForm";
 import type { Channel } from "types/channel";
+import { errorMessage } from "util/response";
 
 const ChannelCreate = () => {
   const { notify } = useNotification();
@@ -17,7 +18,7 @@ const ChannelCreate = () => {
           navigate("/ui/provisioning/updates-view/channels");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during channel creation: ${e}`);
