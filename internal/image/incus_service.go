@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -813,11 +814,15 @@ func (s *imageIncusService) isSpaceAvailable(ctx context.Context, downloadImage 
 	}
 
 	if ui.TotalSpaceBytes < 1 {
+		//domain-errors:internal Programmer error, the files repository reports nonsense.
 		return fmt.Errorf("Files repository reported an invalid total space: %d", ui.TotalSpaceBytes)
 	}
 
 	if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
-		return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+		return domain.NewErrorf(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage, "Not enough space available in the files repository, %d bytes are required, %d bytes are available and 10%% of the total space is kept free after the download", requiredSpaceTotal, ui.AvailableSpaceBytes).
+			WithHintf("Free space in the files repository, e.g. by removing images which are no longer needed.").
+			WithDetail("required_bytes", strconv.FormatInt(requiredSpaceTotal, 10)).
+			WithDetail("available_bytes", strconv.FormatUint(ui.AvailableSpaceBytes, 10))
 	}
 
 	return nil
@@ -859,7 +864,14 @@ func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem)
 	if item.file.HashSha256 != "" {
 		checksum := hex.EncodeToString(h.Sum(nil))
 		if item.file.HashSha256 != checksum {
-			return fmt.Errorf("Image file sha256 mismatch for image %q, version %q, file %q from source %q: manifest: %s, actual: %s", item.image.Name, item.versionIdentifier, item.filename, item.source.Name, item.file.HashSha256, checksum)
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "File %q of image %q, version %q does not match the checksum the source %q declares for it", item.filename, item.image.Name, item.versionIdentifier, item.source.Name).
+				WithHintf("The download is corrupt or the source is inconsistent, try again and check the source, if it keeps failing.").
+				WithDetail("image", item.image.Name).
+				WithDetail("version", item.versionIdentifier).
+				WithDetail("file", item.filename).
+				WithDetail("source", item.source.Name).
+				WithDetail("expected_sha256", item.file.HashSha256).
+				WithDetail("actual_sha256", checksum)
 		}
 	}
 
