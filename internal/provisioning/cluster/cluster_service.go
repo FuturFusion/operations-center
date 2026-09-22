@@ -2420,10 +2420,11 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 		err = s.ResyncInventoryByName(ctx, cluster.Name)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("Failed to resync inventory: %w", err))
-			s.warning.Emit(ctx, warning.NewWarning(
+			s.warning.Emit(ctx, warning.NewWarningFromError(
 				api.WarningTypeClusterInventoryResyncFailed,
 				scope,
-				err.Error(),
+				err,
+				"",
 			))
 			continue
 		}
@@ -2770,14 +2771,15 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 				if !domain.IsRetryableError(err) {
 					s.warning.Emit(
 						ctx,
-						warning.NewWarning(
+						warning.NewWarningFromError(
 							api.WarningTypeClusterRollingUpdateNextAction,
 							api.WarningScope{
 								Scope:      "poll_servers",
 								EntityType: "cluster",
 								Entity:     cluster.Name,
 							},
-							fmt.Sprintf("Rolling cluster update blocked, failed to refresh server state information: %v", err),
+							err,
+							"Rolling cluster update blocked, failed to refresh server state information",
 						),
 					)
 
@@ -3054,10 +3056,11 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			if domain.IsRetryableError(err) {
 				s.warning.Emit(
 					ctx,
-					warning.NewWarning(
+					warning.NewWarningFromError(
 						api.WarningTypeClusterRollingUpdateNextAction,
 						scope,
-						fmt.Sprintf("Rolling cluster update next action: %v", err),
+						err,
+						"Rolling cluster update next action",
 					),
 				)
 				return nil
@@ -3066,7 +3069,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			if errors.Is(err, domain.ErrTerminal) {
 				inProgressStatus := cluster.UpdateStatus.InProgressStatus
 				inProgressStatus.InProgress = api.ClusterUpdateInProgressError
-				inProgressStatus.Error = err.Error()
+				inProgressStatus.Error = domain.UserMessage(err)
 
 				updateErr := s.updateInProgressStatus(ctx, cluster.Name, inProgressStatus)
 				if updateErr != nil {
@@ -3888,10 +3891,11 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 
 				s.warning.Emit(
 					ctx,
-					warning.NewWarning(
+					warning.NewWarningFromError(
 						api.WarningTypeUnreachable,
 						scope,
-						fmt.Sprintf("Failed to re-establish event stream: %v", err),
+						err,
+						"Failed to re-establish event stream",
 					),
 				)
 
@@ -3926,10 +3930,11 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 					if err != nil {
 						s.warning.Emit(
 							ctx,
-							warning.NewWarning(
+							warning.NewWarningFromError(
 								api.WarningTypeClusterInventoryResyncFailed,
 								scope,
-								fmt.Sprintf("Failed to resync %q: %v", string(event.ResourceType), err),
+								err,
+								"Failed to resync %q", string(event.ResourceType),
 							),
 						)
 					} else {
