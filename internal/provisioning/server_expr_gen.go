@@ -542,7 +542,9 @@ type ExprServerUpdate struct {
 	RebootPending   bool                       `json:"reboot_pending,omitempty" expr:"reboot_pending"`
 	KeepEvacuated   bool                       `json:"keep_evacuated,omitempty" expr:"keep_evacuated"`
 	Retries         int                        `json:"retries,omitempty" expr:"retries"`
+	FirstError      string                     `json:"first_error,omitempty" expr:"first_error"`
 	LastError       string                     `json:"last_error,omitempty" expr:"last_error"`
+	FailedAt        time.Time                  `json:"failed_at,omitzero" expr:"failed_at"`
 	StartedAt       time.Time                  `json:"started_at,omitzero" expr:"started_at"`
 	Triggered       *ExprServerTriggeredUpdate `json:"triggered,omitempty" expr:"triggered"`
 }
@@ -1186,7 +1188,9 @@ func ToExprServerUpdate(s ServerUpdate) ExprServerUpdate {
 		RebootPending:   s.RebootPending,
 		KeepEvacuated:   s.KeepEvacuated,
 		Retries:         s.Retries,
+		FirstError:      s.FirstError,
 		LastError:       s.LastError,
+		FailedAt:        s.FailedAt,
 		StartedAt:       s.StartedAt,
 		Triggered:       toPtr(ToExprServerTriggeredUpdate(fromPtr(s.Triggered))),
 	}
