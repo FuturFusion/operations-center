@@ -17,18 +17,11 @@ var componentCacheRepo = logger.RegisterComponent("system.cache_repo")
 
 // CacheRepoWithSlog implements system.CacheRepo that is instrumented with slog logger.
 type CacheRepoWithSlog struct {
-	_base                 system.CacheRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      system.CacheRepo
+	_component logger.Component
 }
 
 type CacheRepoWithSlogOption func(s *CacheRepoWithSlog)
-
-func CacheRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) CacheRepoWithSlogOption {
-	return func(_base *CacheRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // CacheRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func CacheRepoWithSlogWithComponent(component logger.Component) CacheRepoWithSlo
 // NewCacheRepoWithSlog instruments an implementation of the system.CacheRepo with simple logging.
 func NewCacheRepoWithSlog(base system.CacheRepo, opts ...CacheRepoWithSlogOption) CacheRepoWithSlog {
 	this := CacheRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentCacheRepo,
+		_base:      base,
+		_component: componentCacheRepo,
 	}
 
 	for _, opt := range opts {
@@ -76,11 +68,7 @@ func (_d CacheRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CleanupAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CleanupAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method CleanupAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CleanupAll finished")
 		}

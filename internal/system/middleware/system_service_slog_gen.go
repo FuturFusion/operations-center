@@ -18,18 +18,11 @@ var componentSystemService = logger.RegisterComponent("system.system_service")
 
 // SystemServiceWithSlog implements system0.SystemService that is instrumented with slog logger.
 type SystemServiceWithSlog struct {
-	_base                 system0.SystemService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      system0.SystemService
+	_component logger.Component
 }
 
 type SystemServiceWithSlogOption func(s *SystemServiceWithSlog)
-
-func SystemServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) SystemServiceWithSlogOption {
-	return func(_base *SystemServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // SystemServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func SystemServiceWithSlogWithComponent(component logger.Component) SystemServic
 // NewSystemServiceWithSlog instruments an implementation of the system0.SystemService with simple logging.
 func NewSystemServiceWithSlog(base system0.SystemService, opts ...SystemServiceWithSlogOption) SystemServiceWithSlog {
 	this := SystemServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentSystemService,
+		_base:      base,
+		_component: componentSystemService,
 	}
 
 	for _, opt := range opts {
@@ -77,11 +69,7 @@ func (_d SystemServiceWithSlog) CleanCache(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CleanCache returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CleanCache returned an error")
-			}
+			log.DebugContext(ctx, "<= method CleanCache returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CleanCache finished")
 		}
@@ -112,11 +100,7 @@ func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetCertificate finished")
 		}
@@ -240,11 +224,7 @@ func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, for
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method TriggerCertificateRenew returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method TriggerCertificateRenew returned an error")
-			}
+			log.DebugContext(ctx, "<= method TriggerCertificateRenew returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method TriggerCertificateRenew finished")
 		}
@@ -276,11 +256,7 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateCertificate finished")
 		}
@@ -311,11 +287,7 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg sys
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
 		}
@@ -346,11 +318,7 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg sy
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSecurityConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSecurityConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSecurityConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSecurityConfig finished")
 		}
@@ -381,11 +349,7 @@ func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg sy
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSettingsConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSettingsConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSettingsConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSettingsConfig finished")
 		}
@@ -416,11 +380,7 @@ func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg sys
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateUpdatesConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateUpdatesConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateUpdatesConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateUpdatesConfig finished")
 		}
