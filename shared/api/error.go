@@ -126,6 +126,17 @@ const (
 	ErrorReasonInsufficientStorage   ErrorReason = "insufficient_storage"
 )
 
+// Specific error reasons, which identify a concrete error condition.
+const (
+	ErrorReasonClusterTooSmall            ErrorReason = "cluster_too_small"
+	ErrorReasonImagesOnlyOnRemovedServers ErrorReason = "images_only_on_removed_servers"
+	ErrorReasonServerHasCustomVolumes     ErrorReason = "server_has_custom_volumes"
+	ErrorReasonServerHasInstances         ErrorReason = "server_has_instances"
+	ErrorReasonServerIsClusterMember      ErrorReason = "server_is_cluster_member"
+	ErrorReasonServerNotClusterMember     ErrorReason = "server_not_cluster_member"
+	ErrorReasonServerNotEvacuated         ErrorReason = "server_not_evacuated"
+)
+
 // ErrorMetadata is reported in the metadata of an error response.
 //
 // swagger:model
