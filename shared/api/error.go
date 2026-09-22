@@ -145,6 +145,11 @@ type ErrorMetadata struct {
 	// Example: not_found
 	Reason ErrorReason `json:"reason" yaml:"reason"`
 
+	// Hint tells the user how to resolve the error, if the error is known to be
+	// resolvable by the user.
+	// Example: Remove the server from the cluster first.
+	Hint string `json:"hint,omitempty" yaml:"hint,omitempty"`
+
 	// Details contains the dynamic values of the error message in machine
 	// readable form.
 	// Example: {"server": "server01"}
