@@ -3906,7 +3906,8 @@ func TestServerService_DeleteByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember)(tt, err, a...)
-				errassert.UserMessageContains(`Server "one" is a member of cluster "one" and can not be deleted, remove it from the cluster first`)(tt, err, a...)
+				errassert.UserMessageContains(`Server "one" is a member of cluster "one" and can not be deleted`)(tt, err, a...)
+				errassert.HintIs("Remove the server from the cluster first.")(tt, err, a...)
 			},
 		},
 		{

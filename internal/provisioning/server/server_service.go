@@ -471,10 +471,12 @@ func lifecycleOperationNotPermittedErr(server *provisioning.Server) error {
 	cluster := ptr.From(server.Cluster)
 	if cluster == "" {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Lifecycle operations for server %q are currently not permitted, an update is in progress", server.Name).
+			WithHintf("Wait for the update to complete or use the force option.").
 			WithDetail("server", server.Name)
 	}
 
 	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Lifecycle operations for server %q are currently not permitted, cluster %q has an update in progress", server.Name, cluster).
+		WithHintf("Wait for the update of the cluster to complete or use the force option.").
 		WithDetail("server", server.Name).
 		WithDetail("cluster", cluster)
 }
@@ -633,6 +635,7 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 
 		if !force && previousServer.Cluster != nil && previousServer.Channel != server.Channel {
 			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "The update channel of server %q is managed by cluster %q and can not be changed for a single server", server.Name, *previousServer.Cluster).
+				WithHintf("Change the update channel of cluster %q instead.", *previousServer.Cluster).
 				WithDetail("server", server.Name).
 				WithDetail("cluster", *previousServer.Cluster)
 		}
@@ -1114,7 +1117,8 @@ func (s *serverService) Rename(ctx context.Context, oldName string, newName stri
 		}
 
 		if server.Cluster != nil {
-			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be renamed, remove it from the cluster first", oldName, *server.Cluster).
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be renamed", oldName, *server.Cluster).
+				WithHintf("Remove the server from the cluster first.").
 				WithDetail("server", oldName).
 				WithDetail("cluster", *server.Cluster)
 		}
@@ -1142,7 +1146,8 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if server.Cluster != nil {
-			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be deleted, remove it from the cluster first", name, *server.Cluster).
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be deleted", name, *server.Cluster).
+				WithHintf("Remove the server from the cluster first.").
 				WithDetail("server", name).
 				WithDetail("cluster", *server.Cluster)
 		}
@@ -1795,7 +1800,8 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 	}
 
 	if server.Type.IsIncus() && server.Cluster != nil && !force {
-		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q, a factory reset of a cluster member is only permitted with force", name, *server.Cluster).
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q, a factory reset of a cluster member is not permitted", name, *server.Cluster).
+			WithHintf("Remove the server from the cluster first or use the force option.").
 			WithDetail("server", name).
 			WithDetail("cluster", *server.Cluster)
 	}
