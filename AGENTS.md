@@ -11,6 +11,13 @@
  - Commit messages should similarly be kept as short and to the point as possible, no need to summarize the whole issue.
  - We don't use the define and test one line `if` syntax, instead splitting defintion and testing across two lines.
 
+# Error handling
+
+ - User facing errors are reported with `domain.NewErrorf`, which carries the kind, the message for the user and optionally a reason, a hint and details.
+ - An error is either returned or logged, never both. A failed request is logged once by the response middleware.
+ - See `doc/development/error-handling.md` for the conventions.
+ - `make lint` runs `cmd/domain-errors`, which reports the places not following them. An error, which is internal by design, says so with a `//domain-errors:internal <why>` comment on the line above.
+
 # Testing / validation
 
  - The commit structure described in `CONTRIBUTING.md` should generally be followed.
