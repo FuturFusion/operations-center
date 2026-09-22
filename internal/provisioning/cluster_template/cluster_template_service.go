@@ -146,7 +146,9 @@ func applyVariables(template string, variables api.ClusterTemplateVariables, var
 		_, ok := variableValues[variableName]
 		if !ok {
 			if variableDefinition.DefaultValue == "" {
-				return "", fmt.Errorf("No value provided for variable %q, which is required, since it has no default value defined", variableName)
+				return "", domain.NewErrorf(domain.ErrInvalidArgument, "", "No value provided for variable %q, which is required, because it has no default value", variableName).
+					WithHintf("Provide a value for the variable or give it a default value in the cluster template.").
+					WithDetail("variable", variableName)
 			}
 
 			// Use default value.

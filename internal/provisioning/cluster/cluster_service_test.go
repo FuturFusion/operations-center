@@ -32,6 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
@@ -749,7 +750,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": config is not an object`)
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", the configuration is not an object`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -802,7 +803,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": "enabled" is not a bool`)
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", "enabled" is not a bool`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -856,7 +857,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": can not enable LVM on servers with internal ID > 2000`)
+				require.ErrorContains(tt, err, `The OS service "lvm" can not be enabled on server "server1"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -984,7 +985,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to determine an IP address for the network interface with "cluster" role`)
+				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "cluster" or "management"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -1165,7 +1166,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to determine an IP address for the network interface with "management" role`)
+				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "management"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -4161,7 +4162,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "new": Failed to determine the network interface with "cluster" role required for the internal mesh network`)
+				require.ErrorContains(tt, err, `Server "new": The server does not have a network interface with the role "cluster" or "management"`)
 			},
 		},
 		{
@@ -14399,8 +14400,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Cluster "one" does not have enough servers for server removal`)
+				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall)(tt, err, a...)
+				errassert.UserMessageContains(`Cluster "one" has 1 servers, removing 1 of them would leave the cluster without any server`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14417,8 +14418,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrNotFound)
-				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" is not part of the cluster "one"`)
+				errassert.DomainError(domain.ErrNotFound, api.ErrorReasonServerNotClusterMember)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" is not a member of cluster "one"`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14435,8 +14436,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" is not in state evacuated`)
+				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerNotEvacuated)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" must be evacuated before it can be removed from cluster "one"`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14512,7 +14513,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" still has instances`)
+				errassert.ReasonIs(api.ErrorReasonServerHasInstances)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" still has instances`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14549,7 +14551,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" still has custom volumes`)
+				errassert.ReasonIs(api.ErrorReasonServerHasCustomVolumes)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" still has custom storage volumes`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14618,7 +14621,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `the following images are only present on the server(s) being removed`)
+				errassert.ReasonIs(api.ErrorReasonImagesOnlyOnRemovedServers)(tt, err, a...)
+				errassert.UserMessageContains("are only present on the servers being removed")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14975,7 +14979,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "no reachable server left in cluster")
+				errassert.UserMessageContains(`None of the remaining servers of cluster "one" is reachable to perform the removal`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -15011,8 +15015,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Cluster "one" does not have enough servers for server removal`)
+				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall)(tt, err, a...)
+				errassert.UserMessageContains(`Cluster "one" has 1 servers, removing 1 of them would leave the cluster without any server`)(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -16120,7 +16124,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-				require.ErrorContains(tt, err, `Delete for cluster in state "ready":`)
+				require.ErrorContains(tt, err, `can not be deleted while it is in state "ready"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -16131,7 +16135,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-				require.ErrorContains(tt, err, "Delete for cluster with invalid state:")
+				require.ErrorContains(tt, err, "can not be deleted, its state is invalid")
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -16145,7 +16149,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-				require.ErrorContains(tt, err, "Delete for cluster with 1 linked servers ([one])")
+				require.ErrorContains(tt, err, "still has 1 servers ([one]), remove them from the cluster first")
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
