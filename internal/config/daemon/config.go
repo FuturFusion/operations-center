@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -108,7 +109,7 @@ func NetworkSetDefaults(cfg system.NetworkPut) (system.NetworkPut, error) {
 
 		ip := net.ParseIP(addr)
 		if ip == nil {
-			return nil, fmt.Errorf("%q is not a valid IP address", addr)
+			return nil, domain.NewValidationErrf("Invalid config, %q is not a valid IP address", addr)
 		}
 
 		return ip, nil
