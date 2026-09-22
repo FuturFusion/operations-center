@@ -24,6 +24,7 @@ const (
 	incusOSCustomizerURL            = "https://incusos-customizer.linuxcontainers.org"
 	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
 	operationsCenterVMHealthTimeout = 2 * time.Minute
+	instanceCreationStagger         = 5 * time.Second
 )
 
 func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
@@ -110,9 +111,9 @@ func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir stri
 		err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
 		require.NoError(t, err)
 
-		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, strechedTimeout(5*time.Minute), tmpDir)
+		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
 
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, strechedTimeout(5*time.Minute), cpuArch, tmpDir)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
 	}
 
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
@@ -613,8 +614,15 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 	for i, name := range names {
 		errgrp.Go(func() (err error) {
 			// Reduce the load during instance creation, attempt to mitigate the
-			// "Failed to deactivate zvol." issue.
-			time.Sleep(time.Duration(i) * 5 * time.Second)
+			// "Failed to deactivate zvol." issue. Serialized instance creation
+			// spreads the load by itself, so the stagger is only needed, if the
+			// instances are created concurrently.
+			if concurrentSetup && i > 0 {
+				err = sleepWithContext(errgrpctx, time.Duration(i)*instanceCreationStagger)
+				if err != nil {
+					return err
+				}
+			}
 
 			stop := timeTrack(t, fmt.Sprintf("createIncusOSInstance %s", name), "false")
 			defer stop()

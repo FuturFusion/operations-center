@@ -2,9 +2,11 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -118,6 +120,36 @@ func Test_isTransientStorageError(t *testing.T) {
 			require.Equal(t, tc.want, isTransientStorageError(resp))
 		})
 	}
+}
+
+func Test_isFile(t *testing.T) {
+	dir := t.TempDir()
+
+	file := filepath.Join(dir, "file")
+	require.NoError(t, os.WriteFile(file, []byte("content"), 0o600))
+
+	// A path below a file is not a directory, so stat fails with something other
+	// than fs.ErrNotExist, which must not be dereferenced.
+	require.False(t, isFile(filepath.Join(file, "below-a-file")))
+
+	require.True(t, isFile(file))
+	require.False(t, isFile(dir))
+	require.False(t, isFile(filepath.Join(dir, "missing")))
+}
+
+func Test_waitForTCPPort_contextDone(t *testing.T) {
+	// The interval is long and the deadline is short, so the context is only
+	// observed, if the wait between two attempts observes it as well.
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+
+	// The address is deliberately one, which is not listening, so only the
+	// context can end the wait.
+	err := waitForTCPPort(ctx, t, "127.0.0.1:1", 30*time.Second)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(start), 5*time.Second)
 }
 
 func Test_errNotAnIncusOSImage(t *testing.T) {

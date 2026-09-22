@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -29,7 +28,7 @@ import (
 // isFile checks if a path is a regular file.
 func isFile(path string) bool {
 	info, err := os.Stat(path)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
+	if err != nil {
 		return false
 	}
 
@@ -951,7 +950,10 @@ func waitForTCPPort(ctx context.Context, t *testing.T, hostPort string, interval
 				return nil
 			}
 
-			time.Sleep(interval)
+			err = sleepWithContext(ctx, interval)
+			if err != nil {
+				return fmt.Errorf("timeout reached while waiting for %s: %w", hostPort, err)
+			}
 		}
 	}
 }
