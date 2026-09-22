@@ -1114,10 +1114,11 @@ func (d *Daemon) setupBackgroundTasks(
 		if err != nil {
 			warningSvc.Emit(
 				ctx,
-				warning.NewWarning(
+				warning.NewWarningFromError(
 					api.WarningTypeUpdateRefreshFailed,
 					scope,
-					fmt.Sprintf("Refresh update failed: %v", err),
+					err,
+					"Refresh update failed",
 				),
 			)
 
@@ -1162,10 +1163,11 @@ func (d *Daemon) setupBackgroundTasks(
 		if err != nil {
 			warningSvc.Emit(
 				ctx,
-				warning.NewWarning(
+				warning.NewWarningFromError(
 					api.WarningTypeUpdateRefreshFailed,
 					scope,
-					fmt.Sprintf("Refresh image sources failed: %v", err),
+					err,
+					"Refresh image sources failed",
 				),
 			)
 
@@ -1480,10 +1482,11 @@ func (d *Daemon) setupBackgroundTasks(
 		if err != nil {
 			warningSvc.Emit(
 				ctx,
-				warning.NewWarning(
+				warning.NewWarningFromError(
 					api.WarningTypeACMECertificateUpdateFailed,
 					scope,
-					fmt.Sprintf("ACME server certificate renewal task failed: %v", err),
+					err,
+					"ACME server certificate renewal task failed",
 				),
 			)
 			return
@@ -1527,12 +1530,12 @@ func (d *Daemon) setupBackgroundTasks(
 			valid, err := certificate.Validate(*cluster.Certificate, config.CertificateExpiryWarningThreshold)
 			if err != nil {
 				if valid {
-					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+					warnings = append(warnings, warning.NewWarningFromError(api.WarningTypeCertificateExpiration, scope, err, ""))
 
 					continue
 				}
 
-				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+				warnings = append(warnings, warning.NewWarningFromError(api.WarningTypeCertificateInvalid, scope, err, ""))
 			}
 		}
 
@@ -1565,12 +1568,12 @@ func (d *Daemon) setupBackgroundTasks(
 			valid, err := certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
 			if err != nil {
 				if valid {
-					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+					warnings = append(warnings, warning.NewWarningFromError(api.WarningTypeCertificateExpiration, scope, err, ""))
 
 					continue
 				}
 
-				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+				warnings = append(warnings, warning.NewWarningFromError(api.WarningTypeCertificateInvalid, scope, err, ""))
 			}
 		}
 
