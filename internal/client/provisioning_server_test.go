@@ -714,7 +714,7 @@ func Test_DeleteServer(t *testing.T) {
 			tcNameArg: "clusteredServer",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `server is part of cluster "clusterOne"`)
+				require.ErrorContains(tt, err, `is a member of cluster "clusterOne" and can not be deleted`)
 			},
 			assertFunc: func(t *testing.T) {
 				t.Helper()
