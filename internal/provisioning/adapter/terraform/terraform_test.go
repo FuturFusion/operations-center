@@ -48,7 +48,7 @@ func TestTerraform_Init(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server-1": Failed to determine the network interface with "cluster" role required for the internal mesh network`)
+				require.ErrorContains(tt, err, `Server "server-1": The server does not have a network interface with the role "cluster" or "management"`)
 			},
 			wantNoRenderedConfig: true,
 		},
