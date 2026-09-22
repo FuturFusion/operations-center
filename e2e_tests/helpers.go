@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -29,7 +28,7 @@ import (
 // isFile checks if a path is a regular file.
 func isFile(path string) bool {
 	info, err := os.Stat(path)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
+	if err != nil {
 		return false
 	}
 
@@ -38,6 +37,56 @@ func isFile(path string) bool {
 	}
 
 	return true
+}
+
+const (
+	// incusOSImageMinSize is a floor for the size of an IncusOS image.
+	incusOSImageMinSize = 64 * 1024 * 1024
+
+	// gptHeaderMagic marks the GPT header of an IncusOS image.
+	gptHeaderMagic = "EFI PART"
+)
+
+// gptHeaderOffsets are the offsets, at which the GPT header is found. It lives
+// in the second logical block, which puts it at 512 for a 512 byte and at 2048
+// for a 4096 byte logical sector size. The IncusOS images use the latter.
+var gptHeaderOffsets = []int64{512, 2048}
+
+// errNotAnIncusOSImage returns an error, if the file at path is not a usable
+// IncusOS image.
+func errNotAnIncusOSImage(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("Failed to stat %q: %w", path, err)
+	}
+
+	if info.Size() < incusOSImageMinSize {
+		return fmt.Errorf("File %q holds %d bytes, which is below the %d bytes expected of an IncusOS image", path, info.Size(), incusOSImageMinSize)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("Failed to open %q: %w", path, err)
+	}
+
+	defer func() {
+		_ = file.Close()
+	}()
+
+	magic := make([]byte, len(gptHeaderMagic))
+
+	for _, offset := range gptHeaderOffsets {
+		_, err := file.ReadAt(magic, offset)
+		if err != nil {
+			return fmt.Errorf("Failed to read %q at offset %d: %w", path, offset, err)
+		}
+
+		if string(magic) == gptHeaderMagic {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("File %q carries no GPT header at any of the offsets %v, so it is not an IncusOS image", path, gptHeaderOffsets)
 }
 
 // isExecutable checks if path is an executable file that the current user can run.
@@ -901,7 +950,10 @@ func waitForTCPPort(ctx context.Context, t *testing.T, hostPort string, interval
 				return nil
 			}
 
-			time.Sleep(interval)
+			err = sleepWithContext(ctx, interval)
+			if err != nil {
+				return fmt.Errorf("timeout reached while waiting for %s: %w", hostPort, err)
+			}
 		}
 	}
 }
@@ -1194,6 +1246,7 @@ func waitInstanceStatusRunning(ctx context.Context, t *testing.T, name string, t
 const (
 	storageRetryAttempts = 3
 	storageSettleDelay   = 10 * time.Second
+	instanceStopTimeout  = 2 * time.Minute
 )
 
 // transientStorageErrors are fragments of error messages, which indicate a
@@ -1228,6 +1281,19 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// stopInstanceAttempt performs a single attempt to shut the given instance down
+// cleanly.
+func stopInstanceAttempt(ctx context.Context, t *testing.T, name string) cmdResponse {
+	t.Helper()
+
+	timeout := strechedTimeout(instanceStopTimeout)
+
+	ctx, cancel := context.WithTimeout(ctx, timeout+strechedTimeout(30*time.Second))
+	defer cancel()
+
+	return runWithContext(ctx, t, `incus stop --timeout %d %s`, int(timeout.Seconds()), name)
+}
+
 // stopInstanceWithContext stops the given instance and verifies, that the
 // instance is actually stopped afterwards.
 func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) error {
@@ -1236,7 +1302,7 @@ func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) err
 	var lastErr error
 
 	for attempt := range storageRetryAttempts {
-		resp := runWithContext(ctx, t, `incus stop %s`, name)
+		resp := stopInstanceAttempt(ctx, t, name)
 		if resp.Success() {
 			return nil
 		}
@@ -1601,8 +1667,15 @@ func debugf(format string, args ...any) {
 	_, _ = fmt.Fprintln(out, indent(fmt.Sprintf(format, args...), "debug: "))
 }
 
+const (
+	debugJournalSinceGrace = 1 * time.Minute
+	debugJournalMaxLines   = 50000
+)
+
 func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 	t.Helper()
+
+	start := time.Now()
 
 	return func() {
 		// Print additional debug information in the case of an error.
@@ -1634,9 +1707,11 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 
 		operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_journal_%s.log", timestamp))
 		fmt.Printf("operations-center journal saved in %q\n", operationsCenterJournalFilename)
-		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center -n 1000`)
+
+		journalSince := int((time.Since(start) + debugJournalSinceGrace).Seconds())
+		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, journalSince, debugJournalMaxLines)
 		if !resp.Success() {
-			t.Error(resp.Error())
+			t.Logf("Failed to get the operations-center journal: %s", resp.Error())
 		} else {
 			err = os.WriteFile(operationsCenterJournalFilename, resp.output.Bytes(), 0o600)
 			if err != nil {
@@ -1644,9 +1719,9 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			}
 		}
 
-		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*")) | .name'`)
+		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter")) | .name'`)
 		if !resp.Success() {
-			t.Error(resp.Error())
+			t.Logf("Failed to list the instances: %s", resp.Error())
 		} else {
 			for instance := range strings.Lines(resp.OutputTrimmed()) {
 				instance = strings.TrimSpace(instance)
@@ -1656,7 +1731,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 
 				consoleResp := runQuietWithContext(ctx, t, `incus console %s --show-log`, instance)
 				if !consoleResp.Success() {
-					t.Error(consoleResp.Error())
+					t.Logf("Failed to get the console log of %q: %s", instance, consoleResp.Error())
 				} else {
 					err = os.WriteFile(consoleFilename, []byte(ansiEscapeSequence.ReplaceAllString(consoleResp.Output(), "")), 0o600)
 					if err != nil {
@@ -1664,12 +1739,16 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 					}
 				}
 
+				if !strings.HasPrefix(instance, "IncusOS") {
+					continue
+				}
+
 				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
 				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
 
 				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)
 				if !resp.Success() {
-					t.Error(resp.Error())
+					t.Logf("Failed to get the incus journal of %q: %s", instance, resp.Error())
 				} else {
 					err = os.WriteFile(incusJournalFilename, resp.output.Bytes(), 0o600)
 					if err != nil {

@@ -182,6 +182,11 @@ const (
 	// rolling reboot, before the run is failed.
 	ClusterRollingUpdateStepRetries = 3
 
+	// Time waited after a failed attempt of a step of a cluster wide rolling
+	// update or rolling reboot, before it is triggered again, so the retry budget
+	// is not spent on a condition, which has not had the time to clear.
+	ClusterRollingUpdateStepRetryBackoff = 30 * time.Second
+
 	// Time waited between the restore of a server and the evacuation of the next
 	// one, if the cluster does not configure a delay of its own.
 	ClusterRollingUpdatePostRestoreDelay = 1 * time.Minute

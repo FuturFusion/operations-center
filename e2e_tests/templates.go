@@ -7,6 +7,10 @@ import (
 var (
 	operationsCenterSettingsWithRegistrationScriptletYAML = []byte(`---
 log_level: INFO
+log_levels:
+  # The tests poll the API in a loop, so the access log alone produces multiple
+  # lines per second and pushes everything else out of the captured journal.
+  access_log: WARN
 server_registration_scriptlet: |
   def server_registration(candidate):
     server.set_description("some description")

@@ -20,15 +20,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	incusOSCustomizerURL            = "https://incusos-customizer.linuxcontainers.org"
+	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
+	operationsCenterVMHealthTimeout = 2 * time.Minute
+	instanceCreationStagger         = 5 * time.Second
+)
+
 func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	getOperationsCenterIncusOSISO(ctx, t, tmpDir)
+	fresh := getOperationsCenterIncusOSISO(ctx, t, tmpDir)
 
-	importOperationsCenterIncusOSISOStorageVolume(t, tmpDir)
+	importOperationsCenterIncusOSISOStorageVolume(ctx, t, tmpDir, fresh)
 
 	installed := installOperationsCenterVM(ctx, t)
 
@@ -104,9 +111,9 @@ func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir stri
 		err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
 		require.NoError(t, err)
 
-		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, strechedTimeout(5*time.Minute), tmpDir)
+		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
 
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, strechedTimeout(5*time.Minute), cpuArch, tmpDir)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
 	}
 
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
@@ -238,51 +245,95 @@ func getClientCertificate(t *testing.T) string {
 	return string(clientCertificate)
 }
 
-func getOperationsCenterIncusOSISO(ctx context.Context, t *testing.T, tmpDir string) {
+// getOperationsCenterIncusOSISO makes the IncusOS image of the Operations
+// Center VM available in tmpDir and reports, whether it had to be downloaded.
+func getOperationsCenterIncusOSISO(ctx context.Context, t *testing.T, tmpDir string) (fresh bool) {
 	t.Helper()
 
-	if !isFile(filepath.Join(tmpDir, "IncusOS_OperationsCenter.iso")) {
-		stop := timeTrack(t)
-		defer stop()
+	isoPath := filepath.Join(tmpDir, operationsCenterISOName)
 
-		clientCertificate := getClientCertificate(t)
+	if isFile(isoPath) {
+		err := errNotAnIncusOSImage(isoPath)
+		if err == nil {
+			return false
+		}
 
-		clientCertificateJSONString, err := json.Marshal(clientCertificate)
-		require.NoError(t, err)
-
-		operationsCenterSeed := replacePlaceholders(
-			operationsCenterSeedTemplate,
-			map[string]string{
-				"$CLIENT_CERTIFICATE$": string(clientCertificateJSONString),
-			},
-		)
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://incusos-customizer.linuxcontainers.org/1.0/images", bytes.NewBuffer(operationsCenterSeed))
-		require.NoError(t, err)
-
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		imagesData, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		err = resp.Body.Close()
-		require.NoError(t, err)
-
-		imageDownloadURL := gjson.GetBytes(imagesData, "metadata.image").String()
-
-		mustRunWithTimeout(t, `curl -o %s --compressed https://incusos-customizer.linuxcontainers.org%s`, 5*time.Minute, filepath.Join(tmpDir, "IncusOS_OperationsCenter.iso"), imageDownloadURL)
+		t.Logf("Discarding the cached Operations Center image: %v", err)
+		require.NoError(t, os.Remove(isoPath))
 	}
+
+	stop := timeTrack(t)
+	defer stop()
+
+	clientCertificate := getClientCertificate(t)
+
+	clientCertificateJSONString, err := json.Marshal(clientCertificate)
+	require.NoError(t, err)
+
+	operationsCenterSeed := replacePlaceholders(
+		operationsCenterSeedTemplate,
+		map[string]string{
+			"$CLIENT_CERTIFICATE$": string(clientCertificateJSONString),
+		},
+	)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, incusOSCustomizerURL+"/1.0/images", bytes.NewBuffer(operationsCenterSeed))
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	imagesData, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "The IncusOS customizer rejected the image request: %s", tail(string(imagesData), 20))
+
+	imageDownloadURL := gjson.GetBytes(imagesData, "metadata.image").String()
+
+	require.NotEmptyf(t, imageDownloadURL, "The IncusOS customizer returned no image path: %s", tail(string(imagesData), 20))
+
+	mustRunWithTimeout(t, `curl -fsSL -o %s --compressed --retry 3 --retry-connrefused --retry-delay 5 %s%s`, 5*time.Minute, isoPath, incusOSCustomizerURL, imageDownloadURL)
+
+	err = errNotAnIncusOSImage(isoPath)
+	if err != nil {
+		fileResp := runWithContext(ctx, t, `ls -l %s; file %s`, isoPath, isoPath)
+		t.Logf("The downloaded Operations Center image is not usable: %s", fileResp.Output())
+
+		require.NoError(t, os.Remove(isoPath))
+		require.NoError(t, err)
+	}
+
+	return true
 }
 
-func importOperationsCenterIncusOSISOStorageVolume(t *testing.T, tmpDir string) {
+// importOperationsCenterIncusOSISOStorageVolume imports the IncusOS image of the
+// Operations Center VM as a storage volume.
+func importOperationsCenterIncusOSISOStorageVolume(ctx context.Context, t *testing.T, tmpDir string, fresh bool) {
 	t.Helper()
 
 	storageVolumes := mustRun(t, "incus storage volume list default -f compact")
-	if !strings.Contains(storageVolumes.Output(), "IncusOS_OperationsCenter.iso") {
-		stop := timeTrack(t)
-		defer stop()
+	volumeExists := strings.Contains(storageVolumes.Output(), operationsCenterISOName)
 
-		mustRunWithTimeout(t, `incus storage volume import default %s IncusOS_OperationsCenter.iso --type=iso`, 5*time.Minute, filepath.Join(tmpDir, "IncusOS_OperationsCenter.iso"))
+	if volumeExists && !fresh {
+		return
 	}
+
+	stop := timeTrack(t)
+	defer stop()
+
+	if volumeExists {
+		t.Logf("Replacing the storage volume %q with the freshly downloaded image", operationsCenterISOName)
+
+		status := mustInstanceStatus(ctx, t, "OperationsCenter")
+		if status != "" {
+			require.NoError(t, removeInstanceWithContext(ctx, t, "OperationsCenter"))
+		}
+
+		require.NoError(t, retryStorageCmdWithContext(ctx, t, fmt.Sprintf("delete the storage volume %q", operationsCenterISOName), `incus storage volume delete default %s`, operationsCenterISOName))
+	}
+
+	mustRunWithTimeout(t, `incus storage volume import default %s %s --type=iso`, 5*time.Minute, filepath.Join(tmpDir, operationsCenterISOName), operationsCenterISOName)
 }
 
 func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed bool) {
@@ -295,7 +346,7 @@ func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed boo
 		status = waitInstanceStatusRunning(ctx, t, "OperationsCenter", 2*time.Minute)
 	}
 
-	if status == instanceStatusRunning {
+	if status == instanceStatusRunning && operationsCenterVMUsable(ctx, t) {
 		return false
 	}
 
@@ -309,13 +360,34 @@ func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed boo
 
 	mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, cpuCount, memorySize, diskSize)
 	mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
-	mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=IncusOS_OperationsCenter.iso boot.priority=10`)
+	mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=%s boot.priority=10`, operationsCenterISOName)
 	mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
 	require.NoError(t, startInstanceWithContext(ctx, t, "OperationsCenter"))
 
 	t.Log("Waiting for Operations Center to complete installation")
 	mustWaitAgentRunningWithTimeout(ctx, t, "OperationsCenter", 5*time.Minute)
 	mustWaitExpectedLogWithTimeout(ctx, t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+
+	return true
+}
+
+// operationsCenterVMUsable reports, whether the Operations Center VM, which is
+// found running, is actually usable, i.e. its incus agent answers. The status
+// alone is no evidence: a VM, which is stuck, e.g. at the boot manager of a boot
+// media it can not boot, stays in the status "Running" indefinitely and every
+// test, which reuses it, only reproduces the same failure.
+func operationsCenterVMUsable(ctx context.Context, t *testing.T) bool {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(operationsCenterVMHealthTimeout))
+	defer cancel()
+
+	err := waitAgentRunningWithContext(ctx, t, "OperationsCenter")
+	if err != nil {
+		t.Logf("Operations Center VM is running, but not usable, installing it from scratch: %v", err)
+
+		return false
+	}
 
 	return true
 }
@@ -542,8 +614,15 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 	for i, name := range names {
 		errgrp.Go(func() (err error) {
 			// Reduce the load during instance creation, attempt to mitigate the
-			// "Failed to deactivate zvol." issue.
-			time.Sleep(time.Duration(i) * 5 * time.Second)
+			// "Failed to deactivate zvol." issue. Serialized instance creation
+			// spreads the load by itself, so the stagger is only needed, if the
+			// instances are created concurrently.
+			if concurrentSetup && i > 0 {
+				err = sleepWithContext(errgrpctx, time.Duration(i)*instanceCreationStagger)
+				if err != nil {
+					return err
+				}
+			}
 
 			stop := timeTrack(t, fmt.Sprintf("createIncusOSInstance %s", name), "false")
 			defer stop()

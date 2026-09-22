@@ -448,7 +448,7 @@ func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 		}
 
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
 		mustRunWithContext(ctx, t, `incus remote remove %s`, clusterName)
@@ -638,7 +638,7 @@ func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(5*time.Minute), cpuArch)
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, 5*time.Minute, cpuArch)
 	require.NoError(t, err, "expect 1 not clustered server")
 	if !ok {
 		fmt.Println("====[ Server List ]====")

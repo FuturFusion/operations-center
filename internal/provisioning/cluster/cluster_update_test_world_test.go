@@ -117,6 +117,8 @@ type controlLoopEnv struct {
 	serverDB  provisioning.ServerRepo
 	clock     *testClock
 	logBuf    *bytes.Buffer
+
+	rollingUpdateStepRetryBackoff time.Duration
 }
 
 // setupControlLoopCluster wires up a cluster service backed by a real SQLite
@@ -237,6 +239,7 @@ func newControlLoopServices(t *testing.T, env *controlLoopEnv, listenerName stri
 	serverSvc := provisioningServer.New(
 		env.serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
 		provisioningServer.WithRebootStatusUpdateGracePeriod(0),
+		provisioningServer.WithRollingUpdateStepRetryBackoff(env.rollingUpdateStepRetryBackoff),
 		provisioningServer.WithNow(env.clock.Now),
 	)
 

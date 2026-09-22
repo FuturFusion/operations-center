@@ -19,7 +19,7 @@ Use `-run` to run specific tests, e.g. `-run TestE2E/create_cluster`.
 
 Other environment variables that can be set to control the tests:
 
-* `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`: Directory to use for temporary files. If not set, a temporary directory is created below the home directory of the current user. It is *not* removed automatically. Setting this explicitly is recommended for developers, since artifacts (e.g. ISO files) are taken from the temporary directory if present, which speeds up the tests on subsequent runs.
+* `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`: Directory to use for temporary files. If not set, a temporary directory is created below the home directory of the current user. It is *not* removed automatically. Setting this explicitly is recommended for developers, since artifacts (e.g. ISO files) are taken from the temporary directory if present, which speeds up the tests on subsequent runs. A cached IncusOS image is validated before it is reused and discarded, if it is not usable, so a failed download does not poison the directory.
 * `OPERATIONS_CENTER_E2E_TEST_DISK_SIZE`: Disk size to use for the IncusOS instances (default: "50GiB")
 * `OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE`: Memory size to use for the IncusOS instances (default: "4GiB")
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")
@@ -215,7 +215,10 @@ state of the instance:
   output of the command matches one of the `transientStorageErrors`. Any other
   failure is returned immediately, so genuine errors are not retried.
 
-Since a tolerated stall costs up to the 5 minute timeout of Incus, the timeouts
+A single attempt to shut an instance down cleanly is bounded by
+`instanceStopTimeout`, so an instance, which can not shut down, e.g. because it
+never booted an OS, fails the attempt instead of blocking for as long as Incus is
+willing to wait. Since a tolerated stall costs up to that timeout, the timeouts
 of `createIncusOSInstances` and of the cleanup registered by `cleanupIncusOS`
 contain the corresponding headroom.
 
@@ -260,6 +263,16 @@ which polls e.g. a growing journal once per second for several minutes, would
 otherwise fill the debug output with hundreds of copies of the very same log.
 Failures are always recorded in full.
 
+### Broken setup of the Operations Center
+
+Every test depends on `setupOperationsCenter`, so a failure of it is terminal for
+the whole run.
+
+`setupOperationsCenterOrMarkBroken` therefore records such a failure and the
+remaining tests skip with that reason instead of reproducing it. Only the shared
+setup is covered, a failure of the per test setup or of a test body is
+independent and keeps its signal.
+
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in
@@ -278,8 +291,9 @@ creation is only partially successful.
 
 The Operations Center VM is the exception, it is deliberately not cleaned up and
 reused across test cases and test runs. `setupOperationsCenter` therefore only
-reuses it, if it is running. A VM found in any other state is removed and
-installed from scratch.
+reuses it, if it is running *and* its incus agent answers. A VM found in any
+other state, or one, which is running but stuck, e.g. at the boot manager of a
+boot media it can not boot, is removed and installed from scratch.
 The same applies to left over `IncusOS0x` instances in `createIncusOSInstances`.
 
 Examples:
@@ -300,6 +314,21 @@ Examples:
 For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR` to a truthy value.
+
+### Migratable workload
+
+A rolling reboot and a rolling update migrate the workload of a server away and
+back again. An instance, whose status is `Running`, is not necessarily migratable
+yet: the wrapper, which fetches the incus agent binary, mounts the 9p share of
+the agent in the guest, and for as long as it is mounted, QEMU refuses to migrate
+the instance with `Migration is disabled when VirtFS export path ... is mounted
+in the guest using mount_tag 'agent'`.
+
+The wrapper unmounts the share before it execs the agent, and the agent only
+answers afterwards, so `assertWorkloadRunning` waits for `incus exec` to succeed
+for every instance of the workload before the run is triggered. The share is
+mounted again whenever the agent restarts, so this narrows the window rather than
+closing it.
 
 ### Fake BMC
 

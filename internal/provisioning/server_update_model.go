@@ -134,8 +134,19 @@ type ServerUpdate struct {
 
 	// Retries counts the attempts already spent on Step. It is kept across the
 	// attempts of one step and reset when the server advances to the next.
-	Retries   int    `json:"retries,omitempty"`
-	LastError string `json:"last_error,omitempty"`
+	Retries int `json:"retries,omitempty"`
+
+	// FirstError and LastError are the errors of the first and of the most recent
+	// failed attempt of Step. The first one is kept as well, because it is
+	// usually the one, which describes the actual problem: a failed attempt can
+	// leave the server in a state, which makes every later attempt fail with a
+	// different, derived error.
+	FirstError string `json:"first_error,omitempty"`
+	LastError  string `json:"last_error,omitempty"`
+
+	// FailedAt is the time of the most recent failed attempt of Step, from which
+	// the backoff before the next attempt is measured.
+	FailedAt time.Time `json:"failed_at,omitzero"`
 
 	StartedAt time.Time `json:"started_at,omitzero"`
 
@@ -230,7 +241,9 @@ func (u *ServerUpdate) Claim(now time.Time, step ServerUpdateStep) {
 	if u.Step != step {
 		u.Step = step
 		u.Retries = 0
+		u.FirstError = ""
 		u.LastError = ""
+		u.FailedAt = time.Time{}
 	}
 
 	u.StepTriggeredAt = now
@@ -258,19 +271,37 @@ func (u *ServerUpdate) ReleaseAll() {
 	u.Step = ServerUpdateStepNone
 	u.StepTriggeredAt = time.Time{}
 	u.Retries = 0
+	u.FirstError = ""
 	u.LastError = ""
+	u.FailedAt = time.Time{}
 }
 
 // Fail records, that the attempt of the given step has failed. The step and the
 // attempts spent on it are kept, so the next attempt is counted against the same
 // budget.
-func (u *ServerUpdate) Fail(step ServerUpdateStep, err error) {
+func (u *ServerUpdate) Fail(now time.Time, step ServerUpdateStep, err error) {
 	if u == nil || u.Step != step {
 		return
 	}
 
 	u.StepTriggeredAt = time.Time{}
+	u.FailedAt = now
 	u.LastError = err.Error()
+
+	if u.FirstError == "" {
+		u.FirstError = u.LastError
+	}
+}
+
+// RetryBackoffRemaining returns the time, which still has to pass after the most
+// recent failed attempt of the step, before the next one may be triggered. A
+// step, which has not failed yet, backs off for nothing.
+func (u *ServerUpdate) RetryBackoffRemaining(now time.Time, backoff time.Duration) time.Duration {
+	if u == nil || u.FailedAt.IsZero() {
+		return 0
+	}
+
+	return max(u.FailedAt.Add(backoff).Sub(now), 0)
 }
 
 // ServerTriggeredUpdate records the components an update has been triggered for

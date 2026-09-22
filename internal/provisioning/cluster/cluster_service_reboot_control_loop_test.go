@@ -126,6 +126,19 @@ func setupRebootOnlyCluster(t *testing.T, ctx context.Context, listenerName stri
 	return clusterSvc, world, logBuf
 }
 
+func setupRebootOnlyClusterWithRetryBackoff(t *testing.T, ctx context.Context, listenerName string, retryBackoff time.Duration, servers ...provisioning.Server) (provisioning.ClusterService, *serverWorld, *controlLoopEnv) {
+	t.Helper()
+
+	world := rebootOnlyWorld(servers...)
+
+	env := setupControlLoopEnv(t, ctx, servers...)
+	env.rollingUpdateStepRetryBackoff = retryBackoff
+
+	clusterSvc, _ := newControlLoopServices(t, env, listenerName, rebootOnlyServerClient(world), "1")
+
+	return clusterSvc, world, env
+}
+
 // driveRebootToCompletion runs the control loop until the rolling reboot has
 // finished and returns the progress descriptions, a user would have observed.
 func driveRebootToCompletion(t *testing.T, ctx context.Context, clusterSvc provisioning.ClusterService, world *serverWorld, iterations int, beforeIteration ...func(ctx context.Context)) []string {
@@ -403,6 +416,78 @@ func TestClusterService_ClusterRollingRebootControlLoopFailingRestore(t *testing
 
 	require.NotEmpty(t, terminal, "rolling reboot did not report a terminal error, observed: %v", dedupe(observed))
 	require.GreaterOrEqual(t, restoreAttempts, 2, "restore has not been retried")
+}
+
+func TestClusterService_ClusterRollingRebootControlLoopBacksOffBetweenRestoreAttempts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
+	defer cancel()
+
+	const retryBackoff = 30 * time.Second
+
+	clusterSvc, world, env := setupRebootOnlyClusterWithRetryBackoff(t, ctx, "ClusterRollingRebootBacksOffBetweenRestoreAttempts", retryBackoff, clusterMemberServer(t, "one"))
+
+	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+	require.NoError(t, err)
+
+	restoreAttempts := 0
+
+	// drive advances the rolling reboot by one iteration of the control loop and
+	// fails every restore, which the previous iteration has triggered.
+	drive := func() {
+		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		require.NoError(t, err)
+
+		description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
+		pending := world.pendingCount()
+
+		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+		if !domain.IsRetryableError(err) && !errors.Is(err, domain.ErrTerminal) {
+			require.NoError(t, err)
+		}
+
+		if pending > 0 {
+			if strings.Contains(description, "restoring") {
+				restoreAttempts++
+				world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
+			} else {
+				world.release(ctx)
+			}
+		}
+
+		time.Sleep(controlLoopInterval)
+	}
+
+	// Drive the rolling reboot up to the first failed restore.
+	for range 300 {
+		if restoreAttempts > 0 {
+			break
+		}
+
+		drive()
+	}
+
+	require.Equal(t, 1, restoreAttempts, "the restore has not been attempted at all")
+
+	// For as long as the backoff has not elapsed, the failed attempt is not
+	// retried, no matter how often the control loop picks the server up.
+	for range 50 {
+		drive()
+	}
+
+	require.Equal(t, 1, restoreAttempts, "the restore has been retried within the backoff")
+
+	// Past the backoff, the next attempt is granted.
+	env.clock.advance(retryBackoff + time.Second)
+
+	for range 300 {
+		if restoreAttempts > 1 {
+			break
+		}
+
+		drive()
+	}
+
+	require.Equal(t, 2, restoreAttempts, "the restore has not been retried after the backoff")
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopTransientRestoreFailure(t *testing.T) {
