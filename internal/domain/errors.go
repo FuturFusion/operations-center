@@ -22,6 +22,8 @@ var (
 	ErrNotAuthorized = errors.New("Not authorized")
 
 	ErrTerminal = errors.New("Terminal")
+
+	ErrInvalidArgument = ErrValidation("Invalid argument")
 )
 
 type ErrValidation string
@@ -52,7 +54,7 @@ func NewRetryableErr(err error) error {
 }
 
 func (e ErrRetryable) Error() string {
-	return fmt.Sprintf("Retryable: %v", e.innerErr.Error())
+	return e.innerErr.Error()
 }
 
 func (e ErrRetryable) Unwrap() error {
