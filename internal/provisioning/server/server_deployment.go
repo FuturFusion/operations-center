@@ -854,12 +854,18 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 	}
 
 	if !deployment.CancelRequested && now.Sub(deployment.StartedAt) > config.ServerDeploymentTimeout {
-		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment did not complete within %s", config.ServerDeploymentTimeout))
+		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment did not complete within %s", config.ServerDeploymentTimeout).
+			WithHintf("Check the server and the BMC, then start the deployment again.").
+			WithDetail("server", name).
+			WithDetail("timeout", config.ServerDeploymentTimeout.String()))
 	}
 
 	definition, ok := deploymentStates[deployment.State]
 	if !ok {
-		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment is in the unknown state %q", deployment.State))
+		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment is in the state %q, which Operations Center does not know how to continue from", deployment.State).
+			WithHintf("Start the deployment again.").
+			WithDetail("server", name).
+			WithDetail("deployment_state", string(deployment.State)))
 	}
 
 	switch definition.kind {
@@ -948,7 +954,11 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.updateDeployment(ctx, server.Name, mutate)
 	}
 
-	timeoutErr := fmt.Errorf("Deployment state %q did not complete within %s", deployment.State, definition.timeout)
+	timeoutErr := domain.NewErrorf(domain.ErrTerminal, "", "The deployment step %q did not complete within %s", deployment.State, definition.timeout).
+		WithHintf("Check the server and the BMC, then start the deployment again.").
+		WithDetail("server", server.Name).
+		WithDetail("deployment_state", string(deployment.State)).
+		WithDetail("timeout", definition.timeout.String())
 
 	if definition.fallback == "" {
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
@@ -1069,6 +1079,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, err
 	}
 
+	//domain-errors:internal Programmer error, the state table and the state disagree.
 	return nil, fmt.Errorf("Deployment state %q is not an action", deployment.State)
 }
 
@@ -1369,6 +1380,7 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 		return serverHasRegistered(server), nil, nil
 	}
 
+	//domain-errors:internal Programmer error, the state table and the state disagree.
 	return false, nil, fmt.Errorf("Deployment state %q is not a wait", deployment.State)
 }
 
@@ -1421,6 +1433,7 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return false, nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 

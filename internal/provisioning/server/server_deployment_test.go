@@ -1257,7 +1257,7 @@ func TestServerService_DeploymentControlLoopFailsATerminallyBrokenDeployment(t *
 			},
 
 			wantFailedState: api.ServerDeploymentState("bogus"),
-			wantLastError:   `Deployment is in the unknown state "bogus"`,
+			wantLastError:   `The deployment is in the state "bogus", which Operations Center does not know how to continue from`,
 		},
 		{
 			name: "the deployment as a whole timed out",
@@ -1268,7 +1268,7 @@ func TestServerService_DeploymentControlLoopFailsATerminallyBrokenDeployment(t *
 			},
 
 			wantFailedState: api.ServerDeploymentStateWaitInstall,
-			wantLastError:   "Deployment did not complete within " + config.ServerDeploymentTimeout.String(),
+			wantLastError:   "The deployment did not complete within " + config.ServerDeploymentTimeout.String(),
 		},
 	}
 

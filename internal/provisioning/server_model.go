@@ -314,7 +314,7 @@ var ErrSelfUpdateNotification = errors.New("self update notification")
 func DetermineManagementRoleURL(osdata api.OSData) (string, error) {
 	ip := osdata.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 	if ip == nil {
-		return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "management" role`)
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `The server does not have an IP address on a network interface with the role "management"`)
 	}
 
 	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
@@ -343,7 +343,7 @@ func DetermineMeshTunnelInterface(osdata api.OSData) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf(`Failed to determine the network interface with "cluster" role required for the internal mesh network`)
+	return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `The server does not have a network interface with the role "cluster" or "management", which is required for the internal mesh network`)
 }
 
 type BMCTaskMonitor struct {

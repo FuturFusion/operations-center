@@ -998,7 +998,7 @@ func TestServerService_DeploymentControlLoopGivesUpOnAServerNeverReachingAState(
 	deployment := server.StatusInternal.Deployment
 
 	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
-	require.Contains(t, deployment.LastError, "Deployment did not complete within "+config.ServerDeploymentTimeout.String())
+	require.Contains(t, deployment.LastError, "The deployment did not complete within "+config.ServerDeploymentTimeout.String())
 	require.Equal(t, api.ServerStatusUnregistered, server.Status)
 	require.Equal(t, api.ServerStatusDetailUnregisteredDeploymentFailed, server.StatusDetail)
 

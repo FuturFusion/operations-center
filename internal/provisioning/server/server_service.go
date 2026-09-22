@@ -214,6 +214,7 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 	if newServer.BMCConfig.HasBMC() {
 		client, ok := s.bmcServerClients[newServer.BMCConfig.APIType]
 		if !ok {
+			//domain-errors:internal Programmer error, the BMC API type is not handled.
 			return provisioning.Server{}, fmt.Errorf("Failed to get BMC server client for type %q", newServer.BMCConfig.APIType)
 		}
 
@@ -464,13 +465,33 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter provis
 	return serverIDs, nil
 }
 
+// lifecycleOperationNotPermittedErr reports that a lifecycle operation for the
+// given server is currently blocked by an ongoing update of its cluster.
+func lifecycleOperationNotPermittedErr(server *provisioning.Server) error {
+	cluster := ptr.From(server.Cluster)
+	if cluster == "" {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Lifecycle operations for server %q are currently not permitted, an update is in progress", server.Name).
+			WithDetail("server", server.Name)
+	}
+
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Lifecycle operations for server %q are currently not permitted, cluster %q has an update in progress", server.Name, cluster).
+		WithDetail("server", server.Name).
+		WithDetail("cluster", cluster)
+}
+
 func (s *serverService) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, domain.NewErrorf(domain.ErrNotFound, "", "Server %q not found", name).
+				WithDetail("server", name).
+				WithCause(err)
+		}
+
 		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
@@ -583,6 +604,7 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 	if bmcConnectionTest && server.BMCConfig.HasBMC() {
 		client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 		if !ok {
+			//domain-errors:internal Programmer error, the BMC API type is not handled.
 			return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 		}
 
@@ -610,7 +632,9 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 		}
 
 		if !force && previousServer.Cluster != nil && previousServer.Channel != server.Channel {
-			return fmt.Errorf("Update of channel not allowed for clustered server %q: %w", server.Name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "The update channel of server %q is managed by cluster %q and can not be changed for a single server", server.Name, *previousServer.Cluster).
+				WithDetail("server", server.Name).
+				WithDetail("cluster", *previousServer.Cluster)
 		}
 
 		err = s.repo.Update(ctx, server)
@@ -870,7 +894,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		server, err = s.repo.GetByCertificate(ctx, authenticationCertificatePEM)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate (fingerprint: %s): %w", serverUpdate.ConnectionURL, serverUpdate.Cause, incustls.CertFingerprint(serverUpdate.AuthenticationCertificate), domain.ErrNotAuthorized)
+				return domain.NewErrorf(domain.ErrNotAuthorized, "", "Failed to find server (%s) with cause %q by certificate (fingerprint: %s)", serverUpdate.ConnectionURL, serverUpdate.Cause, incustls.CertFingerprint(serverUpdate.AuthenticationCertificate))
 			}
 
 			return fmt.Errorf("Failed to get server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, err)
@@ -986,6 +1010,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		}
 
 		if len(servers) > 1 {
+			//domain-errors:internal Violated invariant, nothing the user can do about it.
 			return fmt.Errorf(`Invalid internal state, expect at most 1 server of type "operations-center", found %d`, len(servers))
 		}
 
@@ -1071,7 +1096,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 
 func (s *serverService) Rename(ctx context.Context, oldName string, newName string) error {
 	if oldName == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	if newName == "" {
@@ -1089,7 +1114,9 @@ func (s *serverService) Rename(ctx context.Context, oldName string, newName stri
 		}
 
 		if server.Cluster != nil {
-			return fmt.Errorf("Server %q is clustered: %w", oldName, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be renamed, remove it from the cluster first", oldName, *server.Cluster).
+				WithDetail("server", oldName).
+				WithDetail("cluster", *server.Cluster)
 		}
 
 		err = s.repo.Rename(ctx, oldName, newName)
@@ -1105,7 +1132,7 @@ func (s *serverService) Rename(ctx context.Context, oldName string, newName stri
 
 func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1115,18 +1142,15 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if server.Cluster != nil {
-			return fmt.Errorf("Failed to delete server, server is part of cluster %q: %w", *server.Cluster, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be deleted, remove it from the cluster first", name, *server.Cluster).
+				WithDetail("server", name).
+				WithDetail("cluster", *server.Cluster)
 		}
 
-		err = s.repo.DeleteByName(ctx, name)
-		if err != nil {
-			return fmt.Errorf("Failed to delete server: %w", err)
-		}
-
-		return nil
+		return s.repo.DeleteByName(ctx, name)
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to delete server: %w", err)
+		return fmt.Errorf("Failed to delete server %q: %w", name, err)
 	}
 
 	return nil
@@ -1136,7 +1160,7 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 // keeping the server record itself.
 func (s *serverService) DetachFromCluster(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -1255,11 +1279,11 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		}
 
 		if !server.Type.IsIncus() {
-			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not of type %q", name, api.ServerTypeIncus)
 		}
 
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
-			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
+			return lifecycleOperationNotPermittedErr(server)
 		}
 
 		if clusterUpdate {
@@ -1329,7 +1353,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 		}
 
 		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
-			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
+			return lifecycleOperationNotPermittedErr(server)
 		}
 
 		previousServer = server.Clone()
@@ -1389,7 +1413,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		}
 
 		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
-			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
+			return lifecycleOperationNotPermittedErr(server)
 		}
 
 		err = s.claimRollingUpdateStep(server, provisioning.ServerUpdateStepReboot)
@@ -1483,11 +1507,11 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		}
 
 		if !server.Type.IsIncus() {
-			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not of type %q", name, api.ServerTypeIncus)
 		}
 
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
-			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
+			return lifecycleOperationNotPermittedErr(server)
 		}
 
 		if clusterUpdate {
@@ -1555,7 +1579,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		}
 
 		if !server.Type.IsIncus() {
-			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not of type %q", name, api.ServerTypeIncus)
 		}
 
 		server.StatusDetail = api.ServerStatusDetailNone
@@ -1615,11 +1639,11 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		}
 
 		if server.Status != api.ServerStatusReady {
-			return fmt.Errorf("Server is not ready: %w", domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not ready, its current status is %q", name, server.Status)
 		}
 
 		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
-			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
+			return lifecycleOperationNotPermittedErr(server)
 		}
 
 		// Reject applications, which are not installed on the serer.
@@ -1758,7 +1782,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 func (s *serverService) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
@@ -1767,11 +1791,13 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 	}
 
 	if server.Type == api.ServerTypeOperationsCenter {
-		return fmt.Errorf("Factory reset of Operations Center: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q runs the Operations Center itself, a factory reset is not permitted", name)
 	}
 
 	if server.Type.IsIncus() && server.Cluster != nil && !force {
-		return fmt.Errorf("Factory reset of clustered server: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q, a factory reset of a cluster member is only permitted with force", name, *server.Cluster).
+			WithDetail("server", name).
+			WithDetail("cluster", *server.Cluster)
 	}
 
 	err = s.client.Ping(ctx, server)
@@ -2578,6 +2604,7 @@ func (s *serverService) resyncBMCData(ctx context.Context, server provisioning.S
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
@@ -2625,7 +2652,7 @@ func (s *serverService) SyncCluster(ctx context.Context, clusterName string) err
 
 func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name string) (*provisioning.Server, provisioning.BMCServerClientPort, error) {
 	if name == "" {
-		return nil, nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
@@ -2635,6 +2662,7 @@ func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name st
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return nil, nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
@@ -2643,7 +2671,7 @@ func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name st
 
 func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
@@ -2815,7 +2843,7 @@ func (s *serverService) applyBIOSAttributesByName(ctx context.Context, name stri
 // server or nil, if no profile matches.
 func (s *serverService) BIOSProfileByName(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
@@ -2859,7 +2887,7 @@ func (s *serverService) ValidateBIOSProfileByName(ctx context.Context, name stri
 
 func (s *serverService) resolveBIOSProfile(ctx context.Context, server provisioning.Server) (*provisioning.BIOSProfileResolution, error) {
 	if s.biosProfile == nil {
-		return nil, fmt.Errorf("No source of BIOS profiles is configured: %w", domain.ErrNotFound)
+		return nil, domain.NewErrorf(domain.ErrNotFound, "", "No source of BIOS profiles is configured")
 	}
 
 	resolution, err := s.biosProfile.Resolve(ctx, server)
@@ -2959,7 +2987,7 @@ func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([
 func (s *serverService) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
 	logSourceParts := strings.Split(logSource, "/")
 	if len(logSourceParts) != 2 || logSourceParts[0] == "" || logSourceParts[1] == "" {
-		return nil, fmt.Errorf(`Log source %q must have the structure "service/logService": %w`, logSource, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", `Log source %q must have the structure "service/logService"`, logSource)
 	}
 
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
@@ -3004,25 +3032,25 @@ type bmcAttachedMedia struct {
 // bmcAttachMediaByName skips awaiting the task monitor in the background, if wait is false.
 func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia, deploymentID string, wait bool) (bmcAttachedMedia, error) {
 	if name == "" {
-		return bmcAttachedMedia{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	tokenUUID, err := uuid.Parse(media.TokenUUID)
 	if err != nil {
-		return bmcAttachedMedia{}, fmt.Errorf("Invalid token UUID %q: %w", media.TokenUUID, domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Invalid token UUID %q", media.TokenUUID)
 	}
 
 	if media.Seed == "" {
-		return bmcAttachedMedia{}, fmt.Errorf("Token seed cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed cannot be empty")
 	}
 
 	if media.VirtualMediaID == "" {
-		return bmcAttachedMedia{}, fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Virtual media ID cannot be empty")
 	}
 
 	imageType := api.ImageType(media.Type)
 	if !imageType.IsValid() {
-		return bmcAttachedMedia{}, fmt.Errorf("Invalid image type %q: %w", media.Type, domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Invalid image type %q", media.Type)
 	}
 
 	// The undefined architecture is part of images.UpdateFileArchitectures, but
@@ -3030,7 +3058,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 	architecture := images.UpdateFileArchitecture(media.Architecture)
 	_, ok := images.UpdateFileArchitectures[architecture]
 	if !ok || architecture == images.UpdateFileArchitectureUndefined {
-		return bmcAttachedMedia{}, fmt.Errorf("Invalid architecture %q: %w", media.Architecture, domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Invalid architecture %q", media.Architecture)
 	}
 
 	// Verify the requested channel exists, if provided. An empty channel lets
@@ -3050,7 +3078,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 	}
 
 	if !seed.Public {
-		return bmcAttachedMedia{}, fmt.Errorf("Token seed %q must be public to attach it as installation media via the BMC: %w", media.Seed, domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q must be public to attach it as installation media via the BMC", media.Seed)
 	}
 
 	fingerprintID, err := s.tokenSvc.ResolveTokenSeedImageID(ctx, tokenUUID, seed.Name, imageType, architecture, media.Channel)
@@ -3062,7 +3090,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 	// at the public token seed image endpoint of Operations Center.
 	base := config.GetNetwork().OperationsCenterAddress
 	if base == "" {
-		return bmcAttachedMedia{}, fmt.Errorf("Operations Center address is not configured, cannot build installation media URL: %w", domain.ErrOperationNotPermitted)
+		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Operations Center address is not configured, cannot build installation media URL")
 	}
 
 	// OperationsCenterAddress is validated on config save.
@@ -3086,6 +3114,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return bmcAttachedMedia{}, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
@@ -3162,11 +3191,11 @@ func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, v
 // bmcDetachMediaByName returns the task monitor instead of awaiting it in the background, if wait is false.
 func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, virtualMediaID string, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	if virtualMediaID == "" {
-		return nil, fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Virtual media ID cannot be empty")
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
@@ -3176,6 +3205,7 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
