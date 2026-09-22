@@ -207,6 +207,7 @@ linters:
         path: ^e2e_tests/
         source: 'mustRun'
     paths:
+      - ^ui/node_modules/
       - third_party$
       - builtin$
       - examples$
@@ -229,6 +230,7 @@ formatters:
   exclusions:
     generated: lax
     paths:
+      - ^ui/node_modules/
       - third_party$
       - builtin$
       - examples$
