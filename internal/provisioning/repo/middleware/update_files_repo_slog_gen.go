@@ -20,18 +20,11 @@ var componentUpdateFilesRepo = logger.RegisterComponent("provisioning.update_fil
 
 // UpdateFilesRepoWithSlog implements provisioning.UpdateFilesRepo that is instrumented with slog logger.
 type UpdateFilesRepoWithSlog struct {
-	_base                 provisioning.UpdateFilesRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.UpdateFilesRepo
+	_component logger.Component
 }
 
 type UpdateFilesRepoWithSlogOption func(s *UpdateFilesRepoWithSlog)
-
-func UpdateFilesRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateFilesRepoWithSlogOption {
-	return func(_base *UpdateFilesRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // UpdateFilesRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func UpdateFilesRepoWithSlogWithComponent(component logger.Component) UpdateFile
 // NewUpdateFilesRepoWithSlog instruments an implementation of the provisioning.UpdateFilesRepo with simple logging.
 func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, opts ...UpdateFilesRepoWithSlogOption) UpdateFilesRepoWithSlog {
 	this := UpdateFilesRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentUpdateFilesRepo,
+		_base:      base,
+		_component: componentUpdateFilesRepo,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CleanupAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CleanupAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method CleanupAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CleanupAll finished")
 		}
@@ -115,11 +103,7 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CreateFromArchive returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CreateFromArchive returned an error")
-			}
+			log.DebugContext(ctx, "<= method CreateFromArchive returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CreateFromArchive finished")
 		}
@@ -150,11 +134,7 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Delete returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Delete returned an error")
-			}
+			log.DebugContext(ctx, "<= method Delete returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Delete finished")
 		}
@@ -187,11 +167,7 @@ func (_d UpdateFilesRepoWithSlog) Exists(ctx context.Context, update provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Exists returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Exists returned an error")
-			}
+			log.DebugContext(ctx, "<= method Exists returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Exists finished")
 		}
@@ -225,11 +201,7 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Get returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Get returned an error")
-			}
+			log.DebugContext(ctx, "<= method Get returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Get finished")
 		}
@@ -260,11 +232,7 @@ func (_d UpdateFilesRepoWithSlog) PruneFiles(ctx context.Context, update provisi
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method PruneFiles returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method PruneFiles returned an error")
-			}
+			log.DebugContext(ctx, "<= method PruneFiles returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method PruneFiles finished")
 		}
@@ -299,11 +267,7 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Put returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Put returned an error")
-			}
+			log.DebugContext(ctx, "<= method Put returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Put finished")
 		}
@@ -334,11 +298,7 @@ func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageIn
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UsageInformation returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UsageInformation returned an error")
-			}
+			log.DebugContext(ctx, "<= method UsageInformation returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UsageInformation finished")
 		}

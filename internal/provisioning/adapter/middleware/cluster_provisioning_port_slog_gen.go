@@ -17,18 +17,11 @@ var componentClusterProvisioningPort = logger.RegisterComponent("provisioning.cl
 
 // ClusterProvisioningPortWithSlog implements provisioning.ClusterProvisioningPort that is instrumented with slog logger.
 type ClusterProvisioningPortWithSlog struct {
-	_base                 provisioning.ClusterProvisioningPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterProvisioningPort
+	_component logger.Component
 }
 
 type ClusterProvisioningPortWithSlogOption func(s *ClusterProvisioningPortWithSlog)
-
-func ClusterProvisioningPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterProvisioningPortWithSlogOption {
-	return func(_base *ClusterProvisioningPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterProvisioningPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func ClusterProvisioningPortWithSlogWithComponent(component logger.Component) Cl
 // NewClusterProvisioningPortWithSlog instruments an implementation of the provisioning.ClusterProvisioningPort with simple logging.
 func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPort, opts ...ClusterProvisioningPortWithSlogOption) ClusterProvisioningPortWithSlog {
 	this := ClusterProvisioningPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterProvisioningPort,
+		_base:      base,
+		_component: componentClusterProvisioningPort,
 	}
 
 	for _, opt := range opts {
@@ -77,11 +69,7 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Apply returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Apply returned an error")
-			}
+			log.DebugContext(ctx, "<= method Apply returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Apply finished")
 		}
@@ -115,11 +103,7 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Init returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Init returned an error")
-			}
+			log.DebugContext(ctx, "<= method Init returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Init finished")
 		}
@@ -151,11 +135,7 @@ func (_d ClusterProvisioningPortWithSlog) SeedCertificate(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SeedCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SeedCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method SeedCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SeedCertificate finished")
 		}

@@ -21,18 +21,11 @@ var componentFlasherPort = logger.RegisterComponent("provisioning.flasher_port")
 
 // FlasherPortWithSlog implements provisioning.FlasherPort that is instrumented with slog logger.
 type FlasherPortWithSlog struct {
-	_base                 provisioning.FlasherPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.FlasherPort
+	_component logger.Component
 }
 
 type FlasherPortWithSlogOption func(s *FlasherPortWithSlog)
-
-func FlasherPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) FlasherPortWithSlogOption {
-	return func(_base *FlasherPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // FlasherPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -46,9 +39,8 @@ func FlasherPortWithSlogWithComponent(component logger.Component) FlasherPortWit
 // NewFlasherPortWithSlog instruments an implementation of the provisioning.FlasherPort with simple logging.
 func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWithSlogOption) FlasherPortWithSlog {
 	this := FlasherPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentFlasherPort,
+		_base:      base,
+		_component: componentFlasherPort,
 	}
 
 	for _, opt := range opts {
@@ -84,11 +76,7 @@ func (_d FlasherPortWithSlog) GenerateCompressedSeededImage(ctx context.Context,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GenerateCompressedSeededImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GenerateCompressedSeededImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method GenerateCompressedSeededImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GenerateCompressedSeededImage finished")
 		}
@@ -126,11 +114,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GenerateSeededImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GenerateSeededImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method GenerateSeededImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GenerateSeededImage finished")
 		}
@@ -162,11 +146,7 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uui
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProviderConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProviderConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProviderConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProviderConfig finished")
 		}
@@ -200,11 +180,7 @@ func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID strin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method OpenSeededImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method OpenSeededImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method OpenSeededImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method OpenSeededImage finished")
 		}
@@ -238,11 +214,7 @@ func (_d FlasherPortWithSlog) SeedImageFingerprintID(ctx context.Context, finger
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SeedImageFingerprintID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SeedImageFingerprintID returned an error")
-			}
+			log.DebugContext(ctx, "<= method SeedImageFingerprintID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SeedImageFingerprintID finished")
 		}

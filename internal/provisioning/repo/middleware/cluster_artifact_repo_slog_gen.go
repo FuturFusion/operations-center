@@ -18,18 +18,11 @@ var componentClusterArtifactRepo = logger.RegisterComponent("provisioning.cluste
 
 // ClusterArtifactRepoWithSlog implements provisioning.ClusterArtifactRepo that is instrumented with slog logger.
 type ClusterArtifactRepoWithSlog struct {
-	_base                 provisioning.ClusterArtifactRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterArtifactRepo
+	_component logger.Component
 }
 
 type ClusterArtifactRepoWithSlogOption func(s *ClusterArtifactRepoWithSlog)
-
-func ClusterArtifactRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterArtifactRepoWithSlogOption {
-	return func(_base *ClusterArtifactRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterArtifactRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ClusterArtifactRepoWithSlogWithComponent(component logger.Component) Cluste
 // NewClusterArtifactRepoWithSlog instruments an implementation of the provisioning.ClusterArtifactRepo with simple logging.
 func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, opts ...ClusterArtifactRepoWithSlogOption) ClusterArtifactRepoWithSlog {
 	this := ClusterArtifactRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterArtifactRepo,
+		_base:      base,
+		_component: componentClusterArtifactRepo,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CreateClusterArtifactFromPath returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CreateClusterArtifactFromPath returned an error")
-			}
+			log.DebugContext(ctx, "<= method CreateClusterArtifactFromPath returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CreateClusterArtifactFromPath finished")
 		}
@@ -117,11 +105,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactAll finished")
 		}
@@ -153,11 +137,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Con
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactAllNames finished")
 		}
@@ -192,11 +172,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactArchiveByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName finished")
 		}
@@ -229,11 +205,7 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactByName finished")
 		}

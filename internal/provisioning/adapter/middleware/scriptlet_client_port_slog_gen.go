@@ -18,18 +18,11 @@ var componentScriptletClientPort = logger.RegisterComponent("provisioning.adapte
 
 // ScriptletClientPortWithSlog implements scriptlet.ScriptletClientPort that is instrumented with slog logger.
 type ScriptletClientPortWithSlog struct {
-	_base                 scriptlet.ScriptletClientPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      scriptlet.ScriptletClientPort
+	_component logger.Component
 }
 
 type ScriptletClientPortWithSlogOption func(s *ScriptletClientPortWithSlog)
-
-func ScriptletClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ScriptletClientPortWithSlogOption {
-	return func(_base *ScriptletClientPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ScriptletClientPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ScriptletClientPortWithSlogWithComponent(component logger.Component) Script
 // NewScriptletClientPortWithSlog instruments an implementation of the scriptlet.ScriptletClientPort with simple logging.
 func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...ScriptletClientPortWithSlogOption) ScriptletClientPortWithSlog {
 	this := ScriptletClientPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentScriptletClientPort,
+		_base:      base,
+		_component: componentScriptletClientPort,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d ScriptletClientPortWithSlog) AddApplication(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddApplication finished")
 		}
@@ -116,11 +104,7 @@ func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSService returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSService returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSService finished")
 		}
@@ -153,11 +137,7 @@ func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server prov
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSystem returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSystem returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSystem returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSystem finished")
 		}
@@ -191,11 +171,7 @@ func (_d ScriptletClientPortWithSlog) TriggerSystemAction(ctx context.Context, s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method TriggerSystemAction returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method TriggerSystemAction returned an error")
-			}
+			log.DebugContext(ctx, "<= method TriggerSystemAction returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method TriggerSystemAction finished")
 		}
@@ -228,11 +204,7 @@ func (_d ScriptletClientPortWithSlog) UpdateOSService(ctx context.Context, serve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateOSService returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateOSService returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateOSService finished")
 		}
@@ -265,11 +237,7 @@ func (_d ScriptletClientPortWithSlog) UpdateSystem(ctx context.Context, server p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystem returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystem returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystem returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystem finished")
 		}

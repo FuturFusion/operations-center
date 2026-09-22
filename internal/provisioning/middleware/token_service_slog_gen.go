@@ -22,18 +22,11 @@ var componentTokenService = logger.RegisterComponent("provisioning.token_service
 
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.
 type TokenServiceWithSlog struct {
-	_base                 provisioning.TokenService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.TokenService
+	_component logger.Component
 }
 
 type TokenServiceWithSlogOption func(s *TokenServiceWithSlog)
-
-func TokenServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) TokenServiceWithSlogOption {
-	return func(_base *TokenServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // TokenServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -47,9 +40,8 @@ func TokenServiceWithSlogWithComponent(component logger.Component) TokenServiceW
 // NewTokenServiceWithSlog instruments an implementation of the provisioning.TokenService with simple logging.
 func NewTokenServiceWithSlog(base provisioning.TokenService, opts ...TokenServiceWithSlogOption) TokenServiceWithSlog {
 	this := TokenServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentTokenService,
+		_base:      base,
+		_component: componentTokenService,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (chann
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Consume returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Consume returned an error")
-			}
+			log.DebugContext(ctx, "<= method Consume returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Consume finished")
 		}
@@ -119,11 +107,7 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -155,11 +139,7 @@ func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedCon
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CreateTokenSeed returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CreateTokenSeed returned an error")
-			}
+			log.DebugContext(ctx, "<= method CreateTokenSeed returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CreateTokenSeed finished")
 		}
@@ -190,11 +170,7 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -226,11 +202,7 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteTokenSeedByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteTokenSeedByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteTokenSeedByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteTokenSeedByName finished")
 		}
@@ -261,11 +233,7 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -296,11 +264,7 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDs returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDs returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDs returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDs finished")
 		}
@@ -332,11 +296,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -372,11 +332,7 @@ func (_d TokenServiceWithSlog) GetCompressedTokenImageFromTokenSeed(ctx context.
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed finished")
 		}
@@ -410,11 +366,7 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetPreSeededImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetPreSeededImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetPreSeededImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetPreSeededImage finished")
 		}
@@ -451,11 +403,7 @@ func (_d TokenServiceWithSlog) GetPreparedTokenSeedImage(ctx context.Context, id
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetPreparedTokenSeedImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetPreparedTokenSeedImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetPreparedTokenSeedImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetPreparedTokenSeedImage finished")
 		}
@@ -491,11 +439,7 @@ func (_d TokenServiceWithSlog) GetSeekableTokenImageFromTokenSeed(ctx context.Co
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed finished")
 		}
@@ -527,11 +471,7 @@ func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uu
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetTokenProviderConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetTokenProviderConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetTokenProviderConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetTokenProviderConfig finished")
 		}
@@ -563,11 +503,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetTokenSeedAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetTokenSeedAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetTokenSeedAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetTokenSeedAll finished")
 		}
@@ -599,11 +535,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetTokenSeedAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetTokenSeedAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetTokenSeedAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetTokenSeedAllNames finished")
 		}
@@ -636,11 +568,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetTokenSeedByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetTokenSeedByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetTokenSeedByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetTokenSeedByName finished")
 		}
@@ -675,11 +603,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method PreparePreSeededImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method PreparePreSeededImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method PreparePreSeededImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method PreparePreSeededImage finished")
 		}
@@ -714,11 +638,7 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method PrepareTokenSeedImage returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method PrepareTokenSeedImage returned an error")
-			}
+			log.DebugContext(ctx, "<= method PrepareTokenSeedImage returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method PrepareTokenSeedImage finished")
 		}
@@ -754,11 +674,7 @@ func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id u
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResolveTokenSeedImageID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResolveTokenSeedImageID returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResolveTokenSeedImageID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResolveTokenSeedImageID finished")
 		}
@@ -789,11 +705,7 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}
@@ -824,11 +736,7 @@ func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateTokenSeed returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateTokenSeed returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateTokenSeed returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateTokenSeed finished")
 		}

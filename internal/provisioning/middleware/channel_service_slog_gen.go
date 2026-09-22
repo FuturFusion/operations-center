@@ -20,18 +20,11 @@ var componentChannelService = logger.RegisterComponent("provisioning.channel_ser
 
 // ChannelServiceWithSlog implements provisioning.ChannelService that is instrumented with slog logger.
 type ChannelServiceWithSlog struct {
-	_base                 provisioning.ChannelService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ChannelService
+	_component logger.Component
 }
 
 type ChannelServiceWithSlogOption func(s *ChannelServiceWithSlog)
-
-func ChannelServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ChannelServiceWithSlogOption {
-	return func(_base *ChannelServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ChannelServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func ChannelServiceWithSlogWithComponent(component logger.Component) ChannelServ
 // NewChannelServiceWithSlog instruments an implementation of the provisioning.ChannelService with simple logging.
 func NewChannelServiceWithSlog(base provisioning.ChannelService, opts ...ChannelServiceWithSlogOption) ChannelServiceWithSlog {
 	this := ChannelServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentChannelService,
+		_base:      base,
+		_component: componentChannelService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisio
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -116,11 +104,7 @@ func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -151,11 +135,7 @@ func (_d ChannelServiceWithSlog) GetAll(ctx context.Context) (channels provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -186,11 +166,7 @@ func (_d ChannelServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -222,11 +198,7 @@ func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (ch
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -259,11 +231,7 @@ func (_d ChannelServiceWithSlog) GetChangelogByName(ctx context.Context, name st
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetChangelogByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetChangelogByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetChangelogByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetChangelogByName finished")
 		}
@@ -311,11 +279,7 @@ func (_d ChannelServiceWithSlog) Update(ctx context.Context, newChannel provisio
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}

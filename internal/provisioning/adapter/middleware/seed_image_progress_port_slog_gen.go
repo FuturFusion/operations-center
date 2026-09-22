@@ -18,18 +18,11 @@ var componentSeedImageProgressPort = logger.RegisterComponent("provisioning.seed
 
 // SeedImageProgressPortWithSlog implements provisioning.SeedImageProgressPort that is instrumented with slog logger.
 type SeedImageProgressPortWithSlog struct {
-	_base                 provisioning.SeedImageProgressPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.SeedImageProgressPort
+	_component logger.Component
 }
 
 type SeedImageProgressPortWithSlogOption func(s *SeedImageProgressPortWithSlog)
-
-func SeedImageProgressPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) SeedImageProgressPortWithSlogOption {
-	return func(_base *SeedImageProgressPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // SeedImageProgressPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func SeedImageProgressPortWithSlogWithComponent(component logger.Component) Seed
 // NewSeedImageProgressPortWithSlog instruments an implementation of the provisioning.SeedImageProgressPort with simple logging.
 func NewSeedImageProgressPortWithSlog(base provisioning.SeedImageProgressPort, opts ...SeedImageProgressPortWithSlogOption) SeedImageProgressPortWithSlog {
 	this := SeedImageProgressPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentSeedImageProgressPort,
+		_base:      base,
+		_component: componentSeedImageProgressPort,
 	}
 
 	for _, opt := range opts {

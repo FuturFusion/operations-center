@@ -18,18 +18,11 @@ var componentClusterTemplateService = logger.RegisterComponent("provisioning.clu
 
 // ClusterTemplateServiceWithSlog implements provisioning.ClusterTemplateService that is instrumented with slog logger.
 type ClusterTemplateServiceWithSlog struct {
-	_base                 provisioning.ClusterTemplateService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterTemplateService
+	_component logger.Component
 }
 
 type ClusterTemplateServiceWithSlogOption func(s *ClusterTemplateServiceWithSlog)
-
-func ClusterTemplateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterTemplateServiceWithSlogOption {
-	return func(_base *ClusterTemplateServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterTemplateServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ClusterTemplateServiceWithSlogWithComponent(component logger.Component) Clu
 // NewClusterTemplateServiceWithSlog instruments an implementation of the provisioning.ClusterTemplateService with simple logging.
 func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService, opts ...ClusterTemplateServiceWithSlogOption) ClusterTemplateServiceWithSlog {
 	this := ClusterTemplateServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterTemplateService,
+		_base:      base,
+		_component: componentClusterTemplateService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Apply returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Apply returned an error")
-			}
+			log.DebugContext(ctx, "<= method Apply returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Apply finished")
 		}
@@ -117,11 +105,7 @@ func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -152,11 +136,7 @@ func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -187,11 +167,7 @@ func (_d ClusterTemplateServiceWithSlog) GetAll(ctx context.Context) (clusterTem
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -222,11 +198,7 @@ func (_d ClusterTemplateServiceWithSlog) GetAllNames(ctx context.Context) (strin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -258,11 +230,7 @@ func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -294,11 +262,7 @@ func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Rename returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Rename returned an error")
-			}
+			log.DebugContext(ctx, "<= method Rename returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Rename finished")
 		}
@@ -329,11 +293,7 @@ func (_d ClusterTemplateServiceWithSlog) Update(ctx context.Context, clusterTemp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}

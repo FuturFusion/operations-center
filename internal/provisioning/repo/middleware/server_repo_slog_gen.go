@@ -17,18 +17,11 @@ var componentServerRepo = logger.RegisterComponent("provisioning.server_repo")
 
 // ServerRepoWithSlog implements provisioning.ServerRepo that is instrumented with slog logger.
 type ServerRepoWithSlog struct {
-	_base                 provisioning.ServerRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ServerRepo
+	_component logger.Component
 }
 
 type ServerRepoWithSlogOption func(s *ServerRepoWithSlog)
-
-func ServerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerRepoWithSlogOption {
-	return func(_base *ServerRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ServerRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func ServerRepoWithSlogWithComponent(component logger.Component) ServerRepoWithS
 // NewServerRepoWithSlog instruments an implementation of the provisioning.ServerRepo with simple logging.
 func NewServerRepoWithSlog(base provisioning.ServerRepo, opts ...ServerRepoWithSlogOption) ServerRepoWithSlog {
 	this := ServerRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentServerRepo,
+		_base:      base,
+		_component: componentServerRepo,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -113,11 +101,7 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -148,11 +132,7 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -183,11 +163,7 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -218,11 +194,7 @@ func (_d ServerRepoWithSlog) GetAllNamesWithActiveDeployment(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeployment returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNamesWithActiveDeployment returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeployment returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeployment finished")
 		}
@@ -254,11 +226,7 @@ func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNamesWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNamesWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNamesWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNamesWithFilter finished")
 		}
@@ -290,11 +258,7 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -326,11 +290,7 @@ func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePE
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByCertificate finished")
 		}
@@ -362,11 +322,7 @@ func (_d ServerRepoWithSlog) GetByMachineID(ctx context.Context, machineID strin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByMachineID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByMachineID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByMachineID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByMachineID finished")
 		}
@@ -398,11 +354,7 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -434,11 +386,7 @@ func (_d ServerRepoWithSlog) GetBySystemUUID(ctx context.Context, systemUUID str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetBySystemUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetBySystemUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetBySystemUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetBySystemUUID finished")
 		}
@@ -470,11 +418,7 @@ func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Rename returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Rename returned an error")
-			}
+			log.DebugContext(ctx, "<= method Rename returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Rename finished")
 		}
@@ -505,11 +449,7 @@ func (_d ServerRepoWithSlog) Update(ctx context.Context, server provisioning.Ser
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}
