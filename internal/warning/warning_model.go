@@ -1,6 +1,7 @@
 package warning
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +23,11 @@ type Warning struct {
 	LastUpdated     time.Time         `json:"last_updated" db:"update_timestamp"`
 	Messages        []string          `json:"messages"     db:"marshal=json"`
 	Count           int
+
+	// Cause is the error, which caused the warning. It is reported in the log
+	// by WarningService.Emit, it is neither stored with the warning nor
+	// reported to the user.
+	Cause error `json:"-" db:"ignore"`
 }
 
 func NewWarning(warningType api.WarningType, scope api.WarningScope, message string) Warning {
@@ -35,6 +41,22 @@ func NewWarning(warningType api.WarningType, scope api.WarningScope, message str
 		Messages:   []string{message},
 		Count:      1,
 	}
+}
+
+// NewWarningFromError returns a warning, which reports the given error. The
+// message of the warning is the message of the error for the user, prefixed
+// with the given context, if any. The technical details of the error are only
+// reported in the log, see WarningService.Emit.
+func NewWarningFromError(warningType api.WarningType, scope api.WarningScope, cause error, format string, a ...any) Warning {
+	message := domain.UserMessage(cause)
+	if format != "" {
+		message = fmt.Sprintf(format, a...) + ": " + message
+	}
+
+	warning := NewWarning(warningType, scope, message)
+	warning.Cause = cause
+
+	return warning
 }
 
 // Match checks whether the given warning is within the given scope.

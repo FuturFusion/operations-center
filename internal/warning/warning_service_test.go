@@ -77,6 +77,19 @@ func TestWarningService_Emit(t *testing.T) {
 		return w
 	}
 
+	warningFromError := warning.NewWarningFromError(
+		api.WarningTypeUnreachable,
+		api.WarningScope{Scope: "test", EntityType: "test", Entity: "src1"},
+		fmt.Errorf("Failed to connect to server %q: %w", "src1", boom.Error),
+		"Server is unreachable",
+	)
+	warningFromError.UUID = uuidgen.FromPattern(t, "1")
+
+	wantWarningFromError := warningFromError
+	wantWarningFromError.FirstOccurrence = fixedNow
+	wantWarningFromError.LastOccurrence = fixedNow
+	wantWarningFromError.LastUpdated = fixedNow
+
 	tests := []struct {
 		name    string
 		warning warning.Warning
@@ -88,6 +101,13 @@ func TestWarningService_Emit(t *testing.T) {
 		assertLog   log.MatcherFunc
 		wantWarning warning.Warning
 	}{
+		{
+			name:    "success - warning reporting an error",
+			warning: warningFromError,
+
+			assertLog:   log.Contains(`Server is unreachable: Failed to connect to server "src1": boom! uuid=11111111-1111-1111-1111-111111111111 type="Server unreachable" scope=test entity_type=test entity=src1 err="Failed to connect to server \"src1\": boom!"`),
+			wantWarning: wantWarningFromError,
+		},
 		{
 			name:    "success - new warning",
 			warning: newTestWarning(t, "1", api.WarningTypeUnreachable, "src1", "message1"),

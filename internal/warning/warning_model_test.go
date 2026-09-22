@@ -1,6 +1,8 @@
 package warning_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -193,6 +195,59 @@ func TestWarning_Validate(t *testing.T) {
 			err := tc.warning.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestNewWarningFromError(t *testing.T) {
+	scope := api.WarningScope{Scope: "test", EntityType: "server", Entity: "one"}
+
+	tests := []struct {
+		name   string
+		cause  error
+		format string
+		args   []any
+
+		wantMessage string
+	}{
+		{
+			name:   "domain error",
+			cause:  domain.NewErrorf(domain.ErrNotFound, "", "Server %q not found", "one").WithCause(errors.New("no such column: name")),
+			format: "Server poll failed",
+
+			wantMessage: `Server poll failed: Server "one" not found`,
+		},
+		{
+			name:  "domain error without context",
+			cause: domain.NewErrorf(domain.ErrNotFound, "", "Server %q not found", "one"),
+
+			wantMessage: `Server "one" not found`,
+		},
+		{
+			name:   "wrapped kind",
+			cause:  fmt.Errorf("Server %q is clustered: %w", "one", domain.ErrOperationNotPermitted),
+			format: "Server rename failed",
+
+			wantMessage: `Server rename failed: Server "one" is clustered`,
+		},
+		{
+			name:   "formatted context",
+			cause:  errors.New("boom!"),
+			format: "Failed to resync %q",
+			args:   []any{"instances"},
+
+			wantMessage: `Failed to resync "instances": boom!`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			w := warning.NewWarningFromError(api.WarningTypeUnreachable, scope, tc.cause, tc.format, tc.args...)
+
+			require.Equal(t, []string{tc.wantMessage}, w.Messages, "only the message for the user is stored")
+			require.Equal(t, tc.cause, w.Cause, "the cause is kept for the log")
+			require.Equal(t, api.WarningTypeUnreachable, w.Type)
+			require.Equal(t, scope.Entity, w.Entity)
 		})
 	}
 }
