@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -23,9 +25,23 @@ import (
 func main() {
 	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(config.ApplicationName, config.ApplicationEnvPrefix))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, formatError(err))
 		os.Exit(1)
 	}
+}
+
+// formatError returns the error message reported to the user. For an error
+// caused by the server itself, the ID of the request is reported as well, it
+// allows to find the corresponding records in the log of the server.
+func formatError(err error) string {
+	message := "Error: " + err.Error()
+
+	var serverErr *client.ServerError
+	if errors.As(err, &serverErr) && serverErr.StatusCode >= http.StatusInternalServerError && serverErr.RequestID != "" {
+		message += fmt.Sprintf(" (request ID %s)", serverErr.RequestID)
+	}
+
+	return message
 }
 
 type env interface {
