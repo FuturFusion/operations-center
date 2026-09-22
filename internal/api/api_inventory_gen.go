@@ -3,8 +3,6 @@
 package api
 
 import (
-	"errors"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
@@ -29,24 +27,9 @@ func registerInventoryRoutes(
 		inventory.NewImageService(
 			inventoryRepoMiddleware.NewImageRepoWithSlog(
 				inventorySqlite.NewImage(db),
-				inventoryRepoMiddleware.ImageRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.ImageServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -54,24 +37,9 @@ func registerInventoryRoutes(
 		inventory.NewInstanceService(
 			inventoryRepoMiddleware.NewInstanceRepoWithSlog(
 				inventorySqlite.NewInstance(db),
-				inventoryRepoMiddleware.InstanceRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.InstanceServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -79,25 +47,10 @@ func registerInventoryRoutes(
 		inventory.NewNetworkService(
 			inventoryRepoMiddleware.NewNetworkRepoWithSlog(
 				inventorySqlite.NewNetwork(db),
-				inventoryRepoMiddleware.NetworkRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			inventory.NetworkWithSyncFilter(networkWithSyncFilter),
-		),
-		inventoryServiceMiddleware.NetworkServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -105,24 +58,9 @@ func registerInventoryRoutes(
 		inventory.NewNetworkACLService(
 			inventoryRepoMiddleware.NewNetworkACLRepoWithSlog(
 				inventorySqlite.NewNetworkACL(db),
-				inventoryRepoMiddleware.NetworkACLRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.NetworkACLServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -130,24 +68,9 @@ func registerInventoryRoutes(
 		inventory.NewNetworkAddressSetService(
 			inventoryRepoMiddleware.NewNetworkAddressSetRepoWithSlog(
 				inventorySqlite.NewNetworkAddressSet(db),
-				inventoryRepoMiddleware.NetworkAddressSetRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.NetworkAddressSetServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -155,26 +78,11 @@ func registerInventoryRoutes(
 		inventory.NewNetworkForwardService(
 			inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
 				inventorySqlite.NewNetworkForward(db),
-				inventoryRepoMiddleware.NetworkForwardRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			serverClient,
 			inventory.NetworkForwardWithParentFilter(networkForwardWithParentFilter),
-		),
-		inventoryServiceMiddleware.NetworkForwardServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -182,24 +90,9 @@ func registerInventoryRoutes(
 		inventory.NewNetworkIntegrationService(
 			inventoryRepoMiddleware.NewNetworkIntegrationRepoWithSlog(
 				inventorySqlite.NewNetworkIntegration(db),
-				inventoryRepoMiddleware.NetworkIntegrationRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.NetworkIntegrationServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -207,26 +100,11 @@ func registerInventoryRoutes(
 		inventory.NewNetworkLoadBalancerService(
 			inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithSlog(
 				inventorySqlite.NewNetworkLoadBalancer(db),
-				inventoryRepoMiddleware.NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			serverClient,
 			inventory.NetworkLoadBalancerWithParentFilter(networkLoadBalancerWithParentFilter),
-		),
-		inventoryServiceMiddleware.NetworkLoadBalancerServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -234,26 +112,11 @@ func registerInventoryRoutes(
 		inventory.NewNetworkPeerService(
 			inventoryRepoMiddleware.NewNetworkPeerRepoWithSlog(
 				inventorySqlite.NewNetworkPeer(db),
-				inventoryRepoMiddleware.NetworkPeerRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			serverClient,
 			inventory.NetworkPeerWithParentFilter(networkPeerWithParentFilter),
-		),
-		inventoryServiceMiddleware.NetworkPeerServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -261,24 +124,9 @@ func registerInventoryRoutes(
 		inventory.NewNetworkZoneService(
 			inventoryRepoMiddleware.NewNetworkZoneRepoWithSlog(
 				inventorySqlite.NewNetworkZone(db),
-				inventoryRepoMiddleware.NetworkZoneRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.NetworkZoneServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -286,24 +134,9 @@ func registerInventoryRoutes(
 		inventory.NewProfileService(
 			inventoryRepoMiddleware.NewProfileRepoWithSlog(
 				inventorySqlite.NewProfile(db),
-				inventoryRepoMiddleware.ProfileRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.ProfileServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -311,24 +144,9 @@ func registerInventoryRoutes(
 		inventory.NewProjectService(
 			inventoryRepoMiddleware.NewProjectRepoWithSlog(
 				inventorySqlite.NewProject(db),
-				inventoryRepoMiddleware.ProjectRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.ProjectServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -336,26 +154,11 @@ func registerInventoryRoutes(
 		inventory.NewStorageBucketService(
 			inventoryRepoMiddleware.NewStorageBucketRepoWithSlog(
 				inventorySqlite.NewStorageBucket(db),
-				inventoryRepoMiddleware.StorageBucketRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			serverClient,
 			inventory.StorageBucketWithParentFilter(storageBucketWithParentFilter),
-		),
-		inventoryServiceMiddleware.StorageBucketServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -363,24 +166,9 @@ func registerInventoryRoutes(
 		inventory.NewStoragePoolService(
 			inventoryRepoMiddleware.NewStoragePoolRepoWithSlog(
 				inventorySqlite.NewStoragePool(db),
-				inventoryRepoMiddleware.StoragePoolRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
-		),
-		inventoryServiceMiddleware.StoragePoolServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -388,26 +176,11 @@ func registerInventoryRoutes(
 		inventory.NewStorageVolumeService(
 			inventoryRepoMiddleware.NewStorageVolumeRepoWithSlog(
 				inventorySqlite.NewStorageVolume(db),
-				inventoryRepoMiddleware.StorageVolumeRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
 			serverClient,
 			inventory.StorageVolumeWithParentFilter(storageVolumeWithParentFilter),
-		),
-		inventoryServiceMiddleware.StorageVolumeServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
