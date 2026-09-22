@@ -275,6 +275,7 @@ func newServerError(resp *http.Response, response api.Response) error {
 	}
 
 	serverErr.Reason = metadata.Reason
+	serverErr.Hint = metadata.Hint
 	serverErr.Details = metadata.Details
 
 	if metadata.RequestID != "" {

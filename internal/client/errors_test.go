@@ -21,6 +21,7 @@ func TestServerError(t *testing.T) {
 
 		wantMessage   string
 		wantReason    api.ErrorReason
+		wantHint      string
 		wantDetails   map[string]string
 		wantRequestID string
 		assertErr     require.ErrorAssertionFunc
@@ -66,10 +67,11 @@ func TestServerError(t *testing.T) {
 			name:        "operation not permitted with details",
 			statusCode:  http.StatusBadRequest,
 			contentType: "application/json",
-			body:        `{"type":"error","error_code":400,"error":"Server \"one\" is a member of cluster \"two\"","metadata":{"reason":"server_is_cluster_member","details":{"server":"one","cluster":"two"}}}`,
+			body:        `{"type":"error","error_code":400,"error":"Server \"one\" is a member of cluster \"two\"","metadata":{"reason":"server_is_cluster_member","hint":"Remove the server from the cluster first.","details":{"server":"one","cluster":"two"}}}`,
 
 			wantMessage: `Server "one" is a member of cluster "two"`,
 			wantReason:  api.ErrorReason("server_is_cluster_member"),
+			wantHint:    "Remove the server from the cluster first.",
 			wantDetails: map[string]string{"server": "one", "cluster": "two"},
 			assertErr:   require.Error,
 		},
@@ -108,6 +110,7 @@ func TestServerError(t *testing.T) {
 
 			require.Equal(t, tc.statusCode, serverErr.StatusCode)
 			require.Equal(t, tc.wantReason, serverErr.Reason)
+			require.Equal(t, tc.wantHint, serverErr.Hint, "the hint of the server is reported to the user")
 			require.Equal(t, tc.wantDetails, serverErr.Details)
 			require.Equal(t, "request-id", serverErr.RequestID, "the request ID allows to find the error in the log of the server")
 

@@ -18,6 +18,9 @@ type ServerError struct {
 	// Reason identifies the cause of the error, see api.ErrorReason.
 	Reason api.ErrorReason
 
+	// Hint tells the user how to resolve the error, if the server reports one.
+	Hint string
+
 	// Details contains the dynamic values of the message in machine readable form.
 	Details map[string]string
 
