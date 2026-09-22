@@ -205,7 +205,7 @@ func runE2ETest(
 		}
 	}()
 
-	tmpDir := setupE2ETest(ctx, t)
+	tmpDir := e2eTestTmpDir(t)
 
 	resetDebugOutput()
 	resetVMDebugInfo()
@@ -216,12 +216,16 @@ func runE2ETest(
 	stop := timeTrack(t, name)
 	defer stop()
 
+	setupOperationsCenter(ctx, t, tmpDir)
+
 	setup(ctx, t, tmpDir)
 
 	test(ctx, t, tmpDir)
 }
 
-func setupE2ETest(ctx context.Context, t *testing.T) string {
+// e2eTestTmpDir verifies the preconditions of an end 2 end test and returns the
+// temporary directory it works in.
+func e2eTestTmpDir(t *testing.T) string {
 	t.Helper()
 
 	// Precheck
@@ -252,8 +256,6 @@ func setupE2ETest(ctx context.Context, t *testing.T) string {
 	require.NoError(t, err)
 
 	t.Logf("Temporary directory: %s", tmpDir)
-
-	setupOperationsCenter(ctx, t, tmpDir)
 
 	return tmpDir
 }

@@ -1601,8 +1601,15 @@ func debugf(format string, args ...any) {
 	_, _ = fmt.Fprintln(out, indent(fmt.Sprintf(format, args...), "debug: "))
 }
 
+const (
+	debugJournalSinceGrace = 1 * time.Minute
+	debugJournalMaxLines   = 50000
+)
+
 func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 	t.Helper()
+
+	start := time.Now()
 
 	return func() {
 		// Print additional debug information in the case of an error.
@@ -1634,9 +1641,11 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 
 		operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_journal_%s.log", timestamp))
 		fmt.Printf("operations-center journal saved in %q\n", operationsCenterJournalFilename)
-		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center -n 1000`)
+
+		journalSince := int((time.Since(start) + debugJournalSinceGrace).Seconds())
+		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, journalSince, debugJournalMaxLines)
 		if !resp.Success() {
-			t.Error(resp.Error())
+			t.Logf("Failed to get the operations-center journal: %s", resp.Error())
 		} else {
 			err = os.WriteFile(operationsCenterJournalFilename, resp.output.Bytes(), 0o600)
 			if err != nil {
@@ -1644,9 +1653,9 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			}
 		}
 
-		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*")) | .name'`)
+		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter")) | .name'`)
 		if !resp.Success() {
-			t.Error(resp.Error())
+			t.Logf("Failed to list the instances: %s", resp.Error())
 		} else {
 			for instance := range strings.Lines(resp.OutputTrimmed()) {
 				instance = strings.TrimSpace(instance)
@@ -1656,7 +1665,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 
 				consoleResp := runQuietWithContext(ctx, t, `incus console %s --show-log`, instance)
 				if !consoleResp.Success() {
-					t.Error(consoleResp.Error())
+					t.Logf("Failed to get the console log of %q: %s", instance, consoleResp.Error())
 				} else {
 					err = os.WriteFile(consoleFilename, []byte(ansiEscapeSequence.ReplaceAllString(consoleResp.Output(), "")), 0o600)
 					if err != nil {
@@ -1664,12 +1673,16 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 					}
 				}
 
+				if !strings.HasPrefix(instance, "IncusOS") {
+					continue
+				}
+
 				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
 				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
 
 				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)
 				if !resp.Success() {
-					t.Error(resp.Error())
+					t.Logf("Failed to get the incus journal of %q: %s", instance, resp.Error())
 				} else {
 					err = os.WriteFile(incusJournalFilename, resp.output.Bytes(), 0o600)
 					if err != nil {
