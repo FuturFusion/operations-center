@@ -968,11 +968,11 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
-	log.WarnContext(ctx, "Deployment wait timed out, falling back to the trigger", slog.String("fallback", definition.fallback.String()))
+	log.WarnContext(ctx, "Deployment wait timed out, falling back to the trigger", logger.Err(timeoutErr), slog.String("fallback", definition.fallback.String()))
 
 	return true, s.updateDeployment(ctx, server.Name, func(deployment *provisioning.ServerDeployment) {
 		deployment.Retries++
-		deployment.LastError = timeoutErr.Error()
+		deployment.LastError = domain.UserMessage(timeoutErr)
 		deployment.FallBackTo(now, definition.fallback)
 	})
 }
@@ -1802,7 +1802,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 
 		return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
 			deployment.FallbackAttempts++
-			deployment.LastError = stepErr.Error()
+			deployment.LastError = domain.UserMessage(stepErr)
 			deployment.LastAttemptAt = s.now()
 			deployment.FallBackTo(s.now(), retryFrom.state)
 		})
@@ -1816,7 +1816,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 
 	return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
 		deployment.Retries++
-		deployment.LastError = stepErr.Error()
+		deployment.LastError = domain.UserMessage(stepErr)
 		deployment.LastAttemptAt = s.now()
 	})
 }
@@ -1828,10 +1828,13 @@ func (s *serverService) failDeployment(ctx context.Context, name string, stepErr
 	slog.ErrorContext(ctx, "Deployment failed", slog.String("name", name), logger.Err(stepErr))
 
 	return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
-		deployment.LastError = stepErr.Error()
+		// The message is recorded twice on purpose: before the transition, so
+		// the history entry of the failing state carries it, and after it, since
+		// entering a state resets the error.
+		deployment.LastError = domain.UserMessage(stepErr)
 		deployment.FailedState = deployment.State
 		deployment.EnterState(s.now(), api.ServerDeploymentStateFailed)
-		deployment.LastError = stepErr.Error()
+		deployment.LastError = domain.UserMessage(stepErr)
 	})
 }
 

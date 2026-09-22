@@ -5,6 +5,7 @@ import (
 	"time"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -286,7 +287,7 @@ func (u *ServerUpdate) Fail(now time.Time, step ServerUpdateStep, err error) {
 
 	u.StepTriggeredAt = time.Time{}
 	u.FailedAt = now
-	u.LastError = err.Error()
+	u.LastError = domain.UserMessage(err)
 
 	if u.FirstError == "" {
 		u.FirstError = u.LastError

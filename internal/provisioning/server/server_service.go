@@ -2244,10 +2244,11 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 			s.warning.Emit(
 				ctx,
-				warning.NewWarning(
+				warning.NewWarningFromError(
 					api.WarningTypeManagementAddressMissing,
 					scope,
-					fmt.Sprintf("Failed to determine the connection URL of the server, keeping %q: %v", server.ConnectionURL, err),
+					err,
+					"Failed to determine the connection URL of the server, keeping %q", server.ConnectionURL,
 				),
 			)
 		}
@@ -2405,10 +2406,11 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			if err != nil {
 				s.warning.Emit(
 					ctx,
-					warning.NewWarning(
+					warning.NewWarningFromError(
 						api.WarningTypeServerRegistrationScriptletFailed,
 						scope,
-						fmt.Sprintf("Failed to run server registration scriptlet: %v", err),
+						err,
+						"Failed to run server registration scriptlet",
 					),
 				)
 			} else {
