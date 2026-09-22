@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -185,8 +186,11 @@ func (r *manualResponse) Code() int {
 
 // Error response.
 type errorResponse struct {
-	code int    // Code to return in both the HTTP header and Code field of the response body.
-	msg  string // Message to return in the Error field of the response body.
+	code    int               // Code to return in both the HTTP header and Code field of the response body.
+	msg     string            // Message to return in the Error field of the response body.
+	reason  api.ErrorReason   // Reason to return in the metadata of the response body.
+	details map[string]string // Details to return in the metadata of the response body.
+	err     error             // Original error, which is reported in the log, never to the client.
 }
 
 // BadRequest returns a bad request response (400) with the given error.
@@ -228,10 +232,15 @@ func Unavailable(err error) Response {
 func errorResponseFromError(status int, err error) Response {
 	message := http.StatusText(status)
 	if err != nil {
-		message += ": " + err.Error()
+		message = domain.UserMessage(err)
 	}
 
-	return &errorResponse{status, message}
+	return &errorResponse{
+		code:   status,
+		msg:    message,
+		reason: reasonForStatusCode(status),
+		err:    err,
+	}
 }
 
 func (r *errorResponse) String() string {
@@ -253,6 +262,13 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 		Type:  api.ErrorResponse,
 		Error: r.msg,
 		Code:  r.code, // Set the error code in the Code field of the response body.
+		Metadata: api.ErrorMetadata{
+			Reason:  r.reason,
+			Details: r.details,
+			// The request ID is set as response header before the request is
+			// served, see logger.RequestIDMiddleware.
+			RequestID: w.Header().Get(api.RequestIDHeader),
+		},
 	}
 
 	err := json.NewEncoder(output).Encode(resp)
@@ -283,12 +299,7 @@ func writeJSON(w http.ResponseWriter, body any) error {
 
 // Unauthorized return an unauthorized response (401) with the given error.
 func Unauthorized(err error) Response {
-	message := "unauthorized"
-	if err != nil {
-		message = err.Error()
-	}
-
-	return &errorResponse{http.StatusUnauthorized, message}
+	return errorResponseFromError(http.StatusUnauthorized, err)
 }
 
 type readCloserResponse struct {

@@ -1,6 +1,7 @@
 package response
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -18,20 +19,8 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 		}
 
 		resp := next(r)
-		switch {
-		case resp.Code() == -1:
-			log.DebugContext(r.Context(), "Manual response, response code unknown")
 
-		case resp.Code() >= 400 && resp.Code() < 500:
-			log.WarnContext(r.Context(), "Client error response", slog.Int("status_code", resp.Code()), slog.String("response", resp.String()))
-
-		case resp.Code() >= 500 && resp.Code() < 600:
-			log.ErrorContext(r.Context(), "Server error response", slog.Int("status_code", resp.Code()), slog.String("response", resp.String()))
-
-		default:
-			// Response content is omitted, since it might be huge.
-			log.DebugContext(r.Context(), "Response", slog.Int("status_code", resp.Code()))
-		}
+		logResponse(r.Context(), log, resp)
 
 		err := resp.Render(w)
 		if err != nil {
@@ -43,5 +32,47 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 
 			log.ErrorContext(r.Context(), "Render error")
 		}
+	}
+}
+
+// logResponse reports the outcome of the request. It is the single place, where
+// a failed request is logged, the layers below report their errors to the
+// caller instead of logging them.
+func logResponse(ctx context.Context, log *slog.Logger, resp Response) {
+	statusCode := resp.Code()
+
+	switch {
+	case statusCode == -1:
+		log.DebugContext(ctx, "Manual response, response code unknown")
+
+	case statusCode >= 400 && statusCode < 600:
+		attrs := []slog.Attr{
+			slog.Int("status_code", statusCode),
+			slog.String("response", resp.String()),
+		}
+
+		errResp, ok := resp.(*errorResponse)
+		if ok {
+			attrs = append(attrs, slog.String("reason", string(errResp.reason)))
+
+			if len(errResp.details) > 0 {
+				attrs = append(attrs, slog.Any("details", errResp.details))
+			}
+
+			if errResp.err != nil {
+				attrs = append(attrs, logger.Err(errResp.err))
+			}
+		}
+
+		level := slog.LevelWarn
+		if statusCode >= 500 {
+			level = slog.LevelError
+		}
+
+		log.LogAttrs(ctx, level, "Request failed", attrs...)
+
+	default:
+		// Response content is omitted, since it might be huge.
+		log.DebugContext(ctx, "Response", slog.Int("status_code", statusCode))
 	}
 }
