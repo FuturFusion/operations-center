@@ -17,18 +17,11 @@ var componentAuthorizer = logger.RegisterComponent("security.authz")
 
 // AuthorizerWithSlog implements authz.Authorizer that is instrumented with slog logger.
 type AuthorizerWithSlog struct {
-	_base                 authz.Authorizer
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      authz.Authorizer
+	_component logger.Component
 }
 
 type AuthorizerWithSlogOption func(s *AuthorizerWithSlog)
-
-func AuthorizerWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) AuthorizerWithSlogOption {
-	return func(_base *AuthorizerWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // AuthorizerWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func AuthorizerWithSlogWithComponent(component logger.Component) AuthorizerWithS
 // NewAuthorizerWithSlog instruments an implementation of the authz.Authorizer with simple logging.
 func NewAuthorizerWithSlog(base authz.Authorizer, opts ...AuthorizerWithSlogOption) AuthorizerWithSlog {
 	this := AuthorizerWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentAuthorizer,
+		_base:      base,
+		_component: componentAuthorizer,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d AuthorizerWithSlog) CheckPermission(ctx context.Context, details *authz
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CheckPermission returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CheckPermission returned an error")
-			}
+			log.DebugContext(ctx, "<= method CheckPermission returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CheckPermission finished")
 		}
