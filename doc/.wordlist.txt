@@ -25,6 +25,7 @@ gapped
 github
 GitHub
 goroutine
+goroutines
 GPG
 hostname
 HPE
