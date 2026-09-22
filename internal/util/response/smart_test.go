@@ -139,10 +139,10 @@ func TestSmartError(t *testing.T) {
 		},
 		{
 			name: "unclassified error",
-			err:  errors.New("boom!"),
+			err:  fmt.Errorf("Failed to fetch from %q table: %w", "servers", errors.New("no such column: name")),
 
 			wantCode:    http.StatusInternalServerError,
-			wantMessage: "boom!",
+			wantMessage: response.InternalErrorMessage,
 			wantReason:  api.ErrorReasonInternal,
 		},
 	}

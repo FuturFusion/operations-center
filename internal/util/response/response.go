@@ -235,6 +235,10 @@ func errorResponseFromError(status int, err error) Response {
 		message = domain.UserMessage(err)
 	}
 
+	if status == http.StatusInternalServerError {
+		message = InternalErrorMessage
+	}
+
 	return &errorResponse{
 		code:   status,
 		msg:    message,

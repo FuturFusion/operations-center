@@ -17,6 +17,11 @@ var httpResponseErrors = map[int][]error{
 	http.StatusForbidden: {os.ErrPermission},
 }
 
+// InternalErrorMessage is reported for an error, which is not caused by the
+// request itself. The details of such an error are only reported in the log,
+// they are of no use for the user and could disclose internals of the server.
+const InternalErrorMessage = "Internal server error, see the Operations Center log for details"
+
 // SmartError returns the right error response based on err.
 //
 // The status code and the reason are derived from the kind of the error. The
@@ -55,9 +60,14 @@ func SmartError(err error) Response {
 		details = domainErr.Details()
 	}
 
+	message := domain.UserMessage(err)
+	if statusCode == http.StatusInternalServerError {
+		message = InternalErrorMessage
+	}
+
 	return &errorResponse{
 		code:    statusCode,
-		msg:     domain.UserMessage(err),
+		msg:     message,
 		reason:  reason,
 		details: details,
 		err:     err,
