@@ -18,18 +18,11 @@ var componentSimplestreamsPort = logger.RegisterComponent("image.simplestreams_p
 
 // SimplestreamsPortWithSlog implements image.SimplestreamsPort that is instrumented with slog logger.
 type SimplestreamsPortWithSlog struct {
-	_base                 image.SimplestreamsPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      image.SimplestreamsPort
+	_component logger.Component
 }
 
 type SimplestreamsPortWithSlogOption func(s *SimplestreamsPortWithSlog)
-
-func SimplestreamsPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) SimplestreamsPortWithSlogOption {
-	return func(_base *SimplestreamsPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // SimplestreamsPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func SimplestreamsPortWithSlogWithComponent(component logger.Component) Simplest
 // NewSimplestreamsPortWithSlog instruments an implementation of the image.SimplestreamsPort with simple logging.
 func NewSimplestreamsPortWithSlog(base image.SimplestreamsPort, opts ...SimplestreamsPortWithSlogOption) SimplestreamsPortWithSlog {
 	this := SimplestreamsPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentSimplestreamsPort,
+		_base:      base,
+		_component: componentSimplestreamsPort,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.In
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetFile returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetFile returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetFile returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetFile finished")
 		}
@@ -116,11 +104,7 @@ func (_d SimplestreamsPortWithSlog) GetImageList(ctx context.Context, source ima
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetImageList returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetImageList returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetImageList returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetImageList finished")
 		}

@@ -17,18 +17,11 @@ var componentIncusImageSourcePort = logger.RegisterComponent("image.incus_image_
 
 // IncusImageSourcePortWithSlog implements image.IncusImageSourcePort that is instrumented with slog logger.
 type IncusImageSourcePortWithSlog struct {
-	_base                 image.IncusImageSourcePort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      image.IncusImageSourcePort
+	_component logger.Component
 }
 
 type IncusImageSourcePortWithSlogOption func(s *IncusImageSourcePortWithSlog)
-
-func IncusImageSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) IncusImageSourcePortWithSlogOption {
-	return func(_base *IncusImageSourcePortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // IncusImageSourcePortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func IncusImageSourcePortWithSlogWithComponent(component logger.Component) Incus
 // NewIncusImageSourcePortWithSlog instruments an implementation of the image.IncusImageSourcePort with simple logging.
 func NewIncusImageSourcePortWithSlog(base image.IncusImageSourcePort, opts ...IncusImageSourcePortWithSlogOption) IncusImageSourcePortWithSlog {
 	this := IncusImageSourcePortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentIncusImageSourcePort,
+		_base:      base,
+		_component: componentIncusImageSourcePort,
 	}
 
 	for _, opt := range opts {
@@ -77,11 +69,7 @@ func (_d IncusImageSourcePortWithSlog) DeleteBySource(ctx context.Context, sourc
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteBySource returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteBySource returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteBySource returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteBySource finished")
 		}
@@ -112,11 +100,7 @@ func (_d IncusImageSourcePortWithSlog) RefreshFromSource(ctx context.Context, so
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RefreshFromSource returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RefreshFromSource returned an error")
-			}
+			log.DebugContext(ctx, "<= method RefreshFromSource returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RefreshFromSource finished")
 		}
@@ -147,11 +131,7 @@ func (_d IncusImageSourcePortWithSlog) ValidateFilterExpression(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ValidateFilterExpression returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ValidateFilterExpression returned an error")
-			}
+			log.DebugContext(ctx, "<= method ValidateFilterExpression returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ValidateFilterExpression finished")
 		}

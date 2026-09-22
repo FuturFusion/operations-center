@@ -17,18 +17,11 @@ var componentIncusImageSourceService = logger.RegisterComponent("image.incus_ima
 
 // IncusImageSourceServiceWithSlog implements image.IncusImageSourceService that is instrumented with slog logger.
 type IncusImageSourceServiceWithSlog struct {
-	_base                 image.IncusImageSourceService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      image.IncusImageSourceService
+	_component logger.Component
 }
 
 type IncusImageSourceServiceWithSlogOption func(s *IncusImageSourceServiceWithSlog)
-
-func IncusImageSourceServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) IncusImageSourceServiceWithSlogOption {
-	return func(_base *IncusImageSourceServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // IncusImageSourceServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func IncusImageSourceServiceWithSlogWithComponent(component logger.Component) In
 // NewIncusImageSourceServiceWithSlog instruments an implementation of the image.IncusImageSourceService with simple logging.
 func NewIncusImageSourceServiceWithSlog(base image.IncusImageSourceService, opts ...IncusImageSourceServiceWithSlogOption) IncusImageSourceServiceWithSlog {
 	this := IncusImageSourceServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentIncusImageSourceService,
+		_base:      base,
+		_component: componentIncusImageSourceService,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d IncusImageSourceServiceWithSlog) Create(ctx context.Context, source ima
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -113,11 +101,7 @@ func (_d IncusImageSourceServiceWithSlog) DeleteByName(ctx context.Context, name
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -148,11 +132,7 @@ func (_d IncusImageSourceServiceWithSlog) GetAll(ctx context.Context) (incusImag
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -183,11 +163,7 @@ func (_d IncusImageSourceServiceWithSlog) GetAllNames(ctx context.Context) (stri
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -219,11 +195,7 @@ func (_d IncusImageSourceServiceWithSlog) GetByName(ctx context.Context, name st
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -253,11 +225,7 @@ func (_d IncusImageSourceServiceWithSlog) RefreshAll(ctx context.Context) (err e
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RefreshAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RefreshAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method RefreshAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RefreshAll finished")
 		}
@@ -288,11 +256,7 @@ func (_d IncusImageSourceServiceWithSlog) RefreshByName(ctx context.Context, nam
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RefreshByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RefreshByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method RefreshByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RefreshByName finished")
 		}
@@ -323,11 +287,7 @@ func (_d IncusImageSourceServiceWithSlog) Update(ctx context.Context, source ima
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}
