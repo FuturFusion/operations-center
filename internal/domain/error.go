@@ -17,6 +17,7 @@ type Error struct {
 	kind    error
 	reason  string
 	message string
+	hint    string
 	details map[string]string
 	cause   error
 }
@@ -34,6 +35,16 @@ func NewErrorf[Reason ~string](kind error, reason Reason, format string, a ...an
 		reason:  string(reason),
 		message: fmt.Sprintf(format, a...),
 	}
+}
+
+// WithHintf returns a copy of the error with a hint, which tells the user how
+// to resolve the error. The message describes what is wrong, the hint describes
+// what to do about it, so clients can report the two separately.
+func (e *Error) WithHintf(format string, a ...any) *Error {
+	err := e.clone()
+	err.hint = fmt.Sprintf(format, a...)
+
+	return err
 }
 
 // WithCause returns a copy of the error with the given cause attached. The
@@ -83,6 +94,11 @@ func (e *Error) Message() string {
 // Kind returns the kind of the error, e.g. ErrNotFound.
 func (e *Error) Kind() error {
 	return e.kind
+}
+
+// Hint returns the hint of the error or an empty string, if no hint is set.
+func (e *Error) Hint() string {
+	return e.hint
 }
 
 // Reason returns the reason of the error or an empty string, if no reason is set.
