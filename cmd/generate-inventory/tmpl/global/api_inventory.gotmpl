@@ -1,8 +1,6 @@
 package api
 
 import (
-	"errors"
-
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -27,11 +25,6 @@ func registerInventoryRoutes(
 		inventory.New{{ .Name | pascalcase }}Service(
 			inventoryRepoMiddleware.New{{ .Name | pascalcase }}RepoWithSlog(
 				inventorySqlite.New{{ .Name | pascalcase }}(db),
-				inventoryRepoMiddleware.{{ .Name | pascalcase }}RepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
 			clusterSvc,
 			serverClient,
@@ -44,16 +37,6 @@ func registerInventoryRoutes(
 			{{- if .HasParentFilter }}
 			inventory.{{ .Name | pascalcase }}WithParentFilter({{ .Name | camelcase }}WithParentFilter),
 			{{- end }}
-		),
-		inventoryServiceMiddleware.{{ .Name | pascalcase }}ServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
