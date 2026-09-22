@@ -105,3 +105,13 @@ func UserMessageContains(contains string) require.ErrorAssertionFunc {
 		require.Contains(tt, domain.UserMessage(err), contains, a...)
 	}
 }
+
+// HintIs asserts that err reports the given hint, which tells the user how to
+// resolve the error.
+func HintIs(hint string) require.ErrorAssertionFunc {
+	return func(tt require.TestingT, err error, a ...any) {
+		var domainErr *domain.Error
+		require.ErrorAs(tt, err, &domainErr, a...)
+		require.Equal(tt, hint, domainErr.Hint(), a...)
+	}
+}
