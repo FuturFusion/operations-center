@@ -20,18 +20,11 @@ var componentNetworkForwardService = logger.RegisterComponent("inventory.network
 
 // NetworkForwardServiceWithSlog implements inventory.NetworkForwardService that is instrumented with slog logger.
 type NetworkForwardServiceWithSlog struct {
-	_base                 inventory.NetworkForwardService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkForwardService
+	_component logger.Component
 }
 
 type NetworkForwardServiceWithSlogOption func(s *NetworkForwardServiceWithSlog)
-
-func NetworkForwardServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkForwardServiceWithSlogOption {
-	return func(_base *NetworkForwardServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkForwardServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkForwardServiceWithSlogWithComponent(component logger.Component) Netw
 // NewNetworkForwardServiceWithSlog instruments an implementation of the inventory.NetworkForwardService with simple logging.
 func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, opts ...NetworkForwardServiceWithSlogOption) NetworkForwardServiceWithSlog {
 	this := NetworkForwardServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkForwardService,
+		_base:      base,
+		_component: componentNetworkForwardService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -117,11 +105,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -153,11 +137,7 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -189,11 +169,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, cluste
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByName finished")
 		}
@@ -224,11 +200,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByUUID finished")
 		}
@@ -259,11 +231,7 @@ func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method SyncCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SyncCluster finished")
 		}

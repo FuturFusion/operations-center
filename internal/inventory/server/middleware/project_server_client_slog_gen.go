@@ -20,18 +20,11 @@ var componentProjectServerClient = logger.RegisterComponent("inventory.project_s
 
 // ProjectServerClientWithSlog implements inventory.ProjectServerClient that is instrumented with slog logger.
 type ProjectServerClientWithSlog struct {
-	_base                 inventory.ProjectServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ProjectServerClient
+	_component logger.Component
 }
 
 type ProjectServerClientWithSlogOption func(s *ProjectServerClientWithSlog)
-
-func ProjectServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProjectServerClientWithSlogOption {
-	return func(_base *ProjectServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProjectServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func ProjectServerClientWithSlogWithComponent(component logger.Component) Projec
 // NewProjectServerClientWithSlog instruments an implementation of the inventory.ProjectServerClient with simple logging.
 func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, opts ...ProjectServerClientWithSlogOption) ProjectServerClientWithSlog {
 	this := ProjectServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProjectServerClient,
+		_base:      base,
+		_component: componentProjectServerClient,
 	}
 
 	for _, opt := range opts {
@@ -82,11 +74,7 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProjectByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProjectByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProjectByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProjectByName finished")
 		}
@@ -118,11 +106,7 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProjects returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProjects returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProjects returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProjects finished")
 		}

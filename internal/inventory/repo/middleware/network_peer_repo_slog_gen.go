@@ -19,18 +19,11 @@ var componentNetworkPeerRepo = logger.RegisterComponent("inventory.network_peer_
 
 // NetworkPeerRepoWithSlog implements inventory.NetworkPeerRepo that is instrumented with slog logger.
 type NetworkPeerRepoWithSlog struct {
-	_base                 inventory.NetworkPeerRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkPeerRepo
+	_component logger.Component
 }
 
 type NetworkPeerRepoWithSlogOption func(s *NetworkPeerRepoWithSlog)
-
-func NetworkPeerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkPeerRepoWithSlogOption {
-	return func(_base *NetworkPeerRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkPeerRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func NetworkPeerRepoWithSlogWithComponent(component logger.Component) NetworkPee
 // NewNetworkPeerRepoWithSlog instruments an implementation of the inventory.NetworkPeerRepo with simple logging.
 func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, opts ...NetworkPeerRepoWithSlogOption) NetworkPeerRepoWithSlog {
 	this := NetworkPeerRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkPeerRepo,
+		_base:      base,
+		_component: componentNetworkPeerRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer invent
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -115,11 +103,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -150,11 +134,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
 		}
@@ -186,11 +166,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -222,11 +198,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -258,11 +230,7 @@ func (_d NetworkPeerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -294,11 +262,7 @@ func (_d NetworkPeerRepoWithSlog) UpdateByUUID(ctx context.Context, networkPeer 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}

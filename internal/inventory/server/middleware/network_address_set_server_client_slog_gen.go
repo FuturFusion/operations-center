@@ -20,18 +20,11 @@ var componentNetworkAddressSetServerClient = logger.RegisterComponent("inventory
 
 // NetworkAddressSetServerClientWithSlog implements inventory.NetworkAddressSetServerClient that is instrumented with slog logger.
 type NetworkAddressSetServerClientWithSlog struct {
-	_base                 inventory.NetworkAddressSetServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkAddressSetServerClient
+	_component logger.Component
 }
 
 type NetworkAddressSetServerClientWithSlogOption func(s *NetworkAddressSetServerClientWithSlog)
-
-func NetworkAddressSetServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkAddressSetServerClientWithSlogOption {
-	return func(_base *NetworkAddressSetServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkAddressSetServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkAddressSetServerClientWithSlogWithComponent(component logger.Compone
 // NewNetworkAddressSetServerClientWithSlog instruments an implementation of the inventory.NetworkAddressSetServerClient with simple logging.
 func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, opts ...NetworkAddressSetServerClientWithSlogOption) NetworkAddressSetServerClientWithSlog {
 	this := NetworkAddressSetServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkAddressSetServerClient,
+		_base:      base,
+		_component: componentNetworkAddressSetServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkAddressSetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkAddressSetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkAddressSetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkAddressSetByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkAddressSets returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkAddressSets returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkAddressSets returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkAddressSets finished")
 		}

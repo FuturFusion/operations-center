@@ -20,18 +20,11 @@ var componentStorageVolumeServerClient = logger.RegisterComponent("inventory.sto
 
 // StorageVolumeServerClientWithSlog implements inventory.StorageVolumeServerClient that is instrumented with slog logger.
 type StorageVolumeServerClientWithSlog struct {
-	_base                 inventory.StorageVolumeServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.StorageVolumeServerClient
+	_component logger.Component
 }
 
 type StorageVolumeServerClientWithSlogOption func(s *StorageVolumeServerClientWithSlog)
-
-func StorageVolumeServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageVolumeServerClientWithSlogOption {
-	return func(_base *StorageVolumeServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // StorageVolumeServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func StorageVolumeServerClientWithSlogWithComponent(component logger.Component) 
 // NewStorageVolumeServerClientWithSlog instruments an implementation of the inventory.StorageVolumeServerClient with simple logging.
 func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, opts ...StorageVolumeServerClientWithSlogOption) StorageVolumeServerClientWithSlog {
 	this := StorageVolumeServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentStorageVolumeServerClient,
+		_base:      base,
+		_component: componentStorageVolumeServerClient,
 	}
 
 	for _, opt := range opts {
@@ -85,11 +77,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageVolumeByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageVolumeByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageVolumeByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageVolumeByName finished")
 		}
@@ -122,11 +110,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageVolumes returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageVolumes returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageVolumes returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageVolumes finished")
 		}

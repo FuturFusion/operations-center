@@ -20,18 +20,11 @@ var componentNetworkIntegrationService = logger.RegisterComponent("inventory.net
 
 // NetworkIntegrationServiceWithSlog implements inventory.NetworkIntegrationService that is instrumented with slog logger.
 type NetworkIntegrationServiceWithSlog struct {
-	_base                 inventory.NetworkIntegrationService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkIntegrationService
+	_component logger.Component
 }
 
 type NetworkIntegrationServiceWithSlogOption func(s *NetworkIntegrationServiceWithSlog)
-
-func NetworkIntegrationServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkIntegrationServiceWithSlogOption {
-	return func(_base *NetworkIntegrationServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkIntegrationServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkIntegrationServiceWithSlogWithComponent(component logger.Component) 
 // NewNetworkIntegrationServiceWithSlog instruments an implementation of the inventory.NetworkIntegrationService with simple logging.
 func NewNetworkIntegrationServiceWithSlog(base inventory.NetworkIntegrationService, opts ...NetworkIntegrationServiceWithSlogOption) NetworkIntegrationServiceWithSlog {
 	this := NetworkIntegrationServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkIntegrationService,
+		_base:      base,
+		_component: componentNetworkIntegrationService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Co
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -117,11 +105,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetAllWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -153,11 +137,7 @@ func (_d NetworkIntegrationServiceWithSlog) GetByUUID(ctx context.Context, id uu
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -189,11 +169,7 @@ func (_d NetworkIntegrationServiceWithSlog) ResyncByName(ctx context.Context, cl
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByName finished")
 		}
@@ -224,11 +200,7 @@ func (_d NetworkIntegrationServiceWithSlog) ResyncByUUID(ctx context.Context, id
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByUUID finished")
 		}
@@ -259,11 +231,7 @@ func (_d NetworkIntegrationServiceWithSlog) SyncCluster(ctx context.Context, clu
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method SyncCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SyncCluster finished")
 		}

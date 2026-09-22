@@ -19,18 +19,11 @@ var componentImageRepo = logger.RegisterComponent("inventory.image_repo")
 
 // ImageRepoWithSlog implements inventory.ImageRepo that is instrumented with slog logger.
 type ImageRepoWithSlog struct {
-	_base                 inventory.ImageRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ImageRepo
+	_component logger.Component
 }
 
 type ImageRepoWithSlogOption func(s *ImageRepoWithSlog)
-
-func ImageRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageRepoWithSlogOption {
-	return func(_base *ImageRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ImageRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func ImageRepoWithSlogWithComponent(component logger.Component) ImageRepoWithSlo
 // NewImageRepoWithSlog instruments an implementation of the inventory.ImageRepo with simple logging.
 func NewImageRepoWithSlog(base inventory.ImageRepo, opts ...ImageRepoWithSlogOption) ImageRepoWithSlog {
 	this := ImageRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentImageRepo,
+		_base:      base,
+		_component: componentImageRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -115,11 +103,7 @@ func (_d ImageRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -150,11 +134,7 @@ func (_d ImageRepoWithSlog) DeleteWithFilter(ctx context.Context, filter invento
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
 		}
@@ -186,11 +166,7 @@ func (_d ImageRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -222,11 +198,7 @@ func (_d ImageRepoWithSlog) GetAllWithFilter(ctx context.Context, filter invento
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -258,11 +230,7 @@ func (_d ImageRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (image 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -294,11 +262,7 @@ func (_d ImageRepoWithSlog) UpdateByUUID(ctx context.Context, image inventory.Im
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}

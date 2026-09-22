@@ -20,18 +20,11 @@ var componentInstanceServerClient = logger.RegisterComponent("inventory.instance
 
 // InstanceServerClientWithSlog implements inventory.InstanceServerClient that is instrumented with slog logger.
 type InstanceServerClientWithSlog struct {
-	_base                 inventory.InstanceServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.InstanceServerClient
+	_component logger.Component
 }
 
 type InstanceServerClientWithSlogOption func(s *InstanceServerClientWithSlog)
-
-func InstanceServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InstanceServerClientWithSlogOption {
-	return func(_base *InstanceServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // InstanceServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func InstanceServerClientWithSlogWithComponent(component logger.Component) Insta
 // NewInstanceServerClientWithSlog instruments an implementation of the inventory.InstanceServerClient with simple logging.
 func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, opts ...InstanceServerClientWithSlogOption) InstanceServerClientWithSlog {
 	this := InstanceServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentInstanceServerClient,
+		_base:      base,
+		_component: componentInstanceServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetInstanceByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetInstanceByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetInstanceByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetInstanceByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetInstances returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetInstances returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetInstances returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetInstances finished")
 		}

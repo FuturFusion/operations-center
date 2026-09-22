@@ -18,18 +18,11 @@ var componentProvisioningClusterService = logger.RegisterComponent("inventory.pr
 
 // ProvisioningClusterServiceWithSlog implements inventory.ProvisioningClusterService that is instrumented with slog logger.
 type ProvisioningClusterServiceWithSlog struct {
-	_base                 inventory.ProvisioningClusterService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ProvisioningClusterService
+	_component logger.Component
 }
 
 type ProvisioningClusterServiceWithSlogOption func(s *ProvisioningClusterServiceWithSlog)
-
-func ProvisioningClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProvisioningClusterServiceWithSlogOption {
-	return func(_base *ProvisioningClusterServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProvisioningClusterServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ProvisioningClusterServiceWithSlogWithComponent(component logger.Component)
 // NewProvisioningClusterServiceWithSlog instruments an implementation of the inventory.ProvisioningClusterService with simple logging.
 func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterService, opts ...ProvisioningClusterServiceWithSlogOption) ProvisioningClusterServiceWithSlog {
 	this := ProvisioningClusterServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProvisioningClusterService,
+		_base:      base,
+		_component: componentProvisioningClusterService,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -114,11 +102,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, na
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetEndpoint returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetEndpoint returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetEndpoint returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetEndpoint finished")
 		}

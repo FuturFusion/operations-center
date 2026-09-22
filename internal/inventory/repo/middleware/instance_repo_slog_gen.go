@@ -19,18 +19,11 @@ var componentInstanceRepo = logger.RegisterComponent("inventory.instance_repo")
 
 // InstanceRepoWithSlog implements inventory.InstanceRepo that is instrumented with slog logger.
 type InstanceRepoWithSlog struct {
-	_base                 inventory.InstanceRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.InstanceRepo
+	_component logger.Component
 }
 
 type InstanceRepoWithSlogOption func(s *InstanceRepoWithSlog)
-
-func InstanceRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InstanceRepoWithSlogOption {
-	return func(_base *InstanceRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // InstanceRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func InstanceRepoWithSlogWithComponent(component logger.Component) InstanceRepoW
 // NewInstanceRepoWithSlog instruments an implementation of the inventory.InstanceRepo with simple logging.
 func NewInstanceRepoWithSlog(base inventory.InstanceRepo, opts ...InstanceRepoWithSlogOption) InstanceRepoWithSlog {
 	this := InstanceRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentInstanceRepo,
+		_base:      base,
+		_component: componentInstanceRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -115,11 +103,7 @@ func (_d InstanceRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -150,11 +134,7 @@ func (_d InstanceRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
 		}
@@ -186,11 +166,7 @@ func (_d InstanceRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -222,11 +198,7 @@ func (_d InstanceRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -258,11 +230,7 @@ func (_d InstanceRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (ins
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -294,11 +262,7 @@ func (_d InstanceRepoWithSlog) UpdateByUUID(ctx context.Context, instance invent
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}

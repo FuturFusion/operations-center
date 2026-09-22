@@ -20,18 +20,11 @@ var componentNetworkIntegrationServerClient = logger.RegisterComponent("inventor
 
 // NetworkIntegrationServerClientWithSlog implements inventory.NetworkIntegrationServerClient that is instrumented with slog logger.
 type NetworkIntegrationServerClientWithSlog struct {
-	_base                 inventory.NetworkIntegrationServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkIntegrationServerClient
+	_component logger.Component
 }
 
 type NetworkIntegrationServerClientWithSlogOption func(s *NetworkIntegrationServerClientWithSlog)
-
-func NetworkIntegrationServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkIntegrationServerClientWithSlogOption {
-	return func(_base *NetworkIntegrationServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkIntegrationServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkIntegrationServerClientWithSlogWithComponent(component logger.Compon
 // NewNetworkIntegrationServerClientWithSlog instruments an implementation of the inventory.NetworkIntegrationServerClient with simple logging.
 func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, opts ...NetworkIntegrationServerClientWithSlogOption) NetworkIntegrationServerClientWithSlog {
 	this := NetworkIntegrationServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkIntegrationServerClient,
+		_base:      base,
+		_component: componentNetworkIntegrationServerClient,
 	}
 
 	for _, opt := range opts {
@@ -82,11 +74,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkIntegrationByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkIntegrationByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkIntegrationByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkIntegrationByName finished")
 		}
@@ -118,11 +106,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkIntegrations returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkIntegrations returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkIntegrations returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkIntegrations finished")
 		}

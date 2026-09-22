@@ -17,18 +17,11 @@ var componentInventoryAggregateRepo = logger.RegisterComponent("inventory.invent
 
 // InventoryAggregateRepoWithSlog implements inventory.InventoryAggregateRepo that is instrumented with slog logger.
 type InventoryAggregateRepoWithSlog struct {
-	_base                 inventory.InventoryAggregateRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.InventoryAggregateRepo
+	_component logger.Component
 }
 
 type InventoryAggregateRepoWithSlogOption func(s *InventoryAggregateRepoWithSlog)
-
-func InventoryAggregateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InventoryAggregateRepoWithSlogOption {
-	return func(_base *InventoryAggregateRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // InventoryAggregateRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func InventoryAggregateRepoWithSlogWithComponent(component logger.Component) Inv
 // NewInventoryAggregateRepoWithSlog instruments an implementation of the inventory.InventoryAggregateRepo with simple logging.
 func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, opts ...InventoryAggregateRepoWithSlogOption) InventoryAggregateRepoWithSlog {
 	this := InventoryAggregateRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentInventoryAggregateRepo,
+		_base:      base,
+		_component: componentInventoryAggregateRepo,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, f
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}

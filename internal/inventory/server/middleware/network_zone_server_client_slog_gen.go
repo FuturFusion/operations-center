@@ -20,18 +20,11 @@ var componentNetworkZoneServerClient = logger.RegisterComponent("inventory.netwo
 
 // NetworkZoneServerClientWithSlog implements inventory.NetworkZoneServerClient that is instrumented with slog logger.
 type NetworkZoneServerClientWithSlog struct {
-	_base                 inventory.NetworkZoneServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkZoneServerClient
+	_component logger.Component
 }
 
 type NetworkZoneServerClientWithSlogOption func(s *NetworkZoneServerClientWithSlog)
-
-func NetworkZoneServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkZoneServerClientWithSlogOption {
-	return func(_base *NetworkZoneServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkZoneServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkZoneServerClientWithSlogWithComponent(component logger.Component) Ne
 // NewNetworkZoneServerClientWithSlog instruments an implementation of the inventory.NetworkZoneServerClient with simple logging.
 func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, opts ...NetworkZoneServerClientWithSlogOption) NetworkZoneServerClientWithSlog {
 	this := NetworkZoneServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkZoneServerClient,
+		_base:      base,
+		_component: componentNetworkZoneServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkZoneByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkZoneByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkZoneByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkZoneByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, e
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkZones returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkZones returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkZones returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkZones finished")
 		}

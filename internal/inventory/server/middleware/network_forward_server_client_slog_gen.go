@@ -20,18 +20,11 @@ var componentNetworkForwardServerClient = logger.RegisterComponent("inventory.ne
 
 // NetworkForwardServerClientWithSlog implements inventory.NetworkForwardServerClient that is instrumented with slog logger.
 type NetworkForwardServerClientWithSlog struct {
-	_base                 inventory.NetworkForwardServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkForwardServerClient
+	_component logger.Component
 }
 
 type NetworkForwardServerClientWithSlogOption func(s *NetworkForwardServerClientWithSlog)
-
-func NetworkForwardServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkForwardServerClientWithSlogOption {
-	return func(_base *NetworkForwardServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkForwardServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkForwardServerClientWithSlogWithComponent(component logger.Component)
 // NewNetworkForwardServerClientWithSlog instruments an implementation of the inventory.NetworkForwardServerClient with simple logging.
 func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, opts ...NetworkForwardServerClientWithSlogOption) NetworkForwardServerClientWithSlog {
 	this := NetworkForwardServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkForwardServerClient,
+		_base:      base,
+		_component: componentNetworkForwardServerClient,
 	}
 
 	for _, opt := range opts {
@@ -84,11 +76,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkForwardByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkForwardByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkForwardByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkForwardByName finished")
 		}
@@ -122,11 +110,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkForwards returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkForwards returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkForwards returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkForwards finished")
 		}

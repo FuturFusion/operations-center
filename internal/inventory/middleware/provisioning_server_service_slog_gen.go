@@ -18,18 +18,11 @@ var componentProvisioningServerService = logger.RegisterComponent("inventory.pro
 
 // ProvisioningServerServiceWithSlog implements inventory.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
-	_base                 inventory.ProvisioningServerService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ProvisioningServerService
+	_component logger.Component
 }
 
 type ProvisioningServerServiceWithSlogOption func(s *ProvisioningServerServiceWithSlog)
-
-func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProvisioningServerServiceWithSlogOption {
-	return func(_base *ProvisioningServerServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProvisioningServerServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ProvisioningServerServiceWithSlogWithComponent(component logger.Component) 
 // NewProvisioningServerServiceWithSlog instruments an implementation of the inventory.ProvisioningServerService with simple logging.
 func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProvisioningServerService,
+		_base:      base,
+		_component: componentProvisioningServerService,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllByClusterName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllByClusterName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllByClusterName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllByClusterName finished")
 		}
