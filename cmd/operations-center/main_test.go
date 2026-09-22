@@ -41,6 +41,12 @@ func TestFormatError(t *testing.T) {
 			want: `Error: Server "one" is clustered`,
 		},
 		{
+			name: "client error with a hint",
+			err:  &client.ServerError{StatusCode: http.StatusBadRequest, Message: `Server "one" is a member of cluster "two" and can not be deleted`, Hint: "Remove the server from the cluster first."},
+
+			want: "Error: Server \"one\" is a member of cluster \"two\" and can not be deleted\nHint: Remove the server from the cluster first.",
+		},
+		{
 			name: "server error reports the request ID",
 			err:  fmt.Errorf("Failed to delete server: %w", &client.ServerError{StatusCode: http.StatusInternalServerError, Message: "boom!", RequestID: "request-id"}),
 

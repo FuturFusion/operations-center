@@ -30,15 +30,25 @@ func main() {
 	}
 }
 
-// formatError returns the error message reported to the user. For an error
-// caused by the server itself, the ID of the request is reported as well, it
-// allows to find the corresponding records in the log of the server.
+// formatError returns the error message reported to the user. A hint of the
+// server, which tells the user how to resolve the error, is reported on its own
+// line. For an error caused by the server itself, the ID of the request is
+// reported as well, it allows to find the corresponding records in the log of
+// the server.
 func formatError(err error) string {
 	message := "Error: " + err.Error()
 
 	var serverErr *client.ServerError
-	if errors.As(err, &serverErr) && serverErr.StatusCode >= http.StatusInternalServerError && serverErr.RequestID != "" {
+	if !errors.As(err, &serverErr) {
+		return message
+	}
+
+	if serverErr.StatusCode >= http.StatusInternalServerError && serverErr.RequestID != "" {
 		message += fmt.Sprintf(" (request ID %s)", serverErr.RequestID)
+	}
+
+	if serverErr.Hint != "" {
+		message += "\nHint: " + serverErr.Hint
 	}
 
 	return message
