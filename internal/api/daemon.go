@@ -173,7 +173,6 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 			var authorizer authz.Authorizer = authzmiddleware.NewAuthorizerWithSlog(
 				authzchain.New(),
 				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-				authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 			)
 			return &authorizer
 		}(),
@@ -296,22 +295,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		inventory.NewInventoryAggregateService(
 			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
 				inventorySqlite.NewInventoryAggregate(dbWithTransaction),
-				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
 			),
-		),
-		inventoryServiceMiddleware.InventoryAggregateServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -529,20 +513,6 @@ func (d *Daemon) initAndLoadServerCert() error {
 	return nil
 }
 
-// isAuthzDeniedErr reports whether err is the negative answer of an authorizer
-// instead of a failure.
-func isAuthzDeniedErr(err error) bool {
-	return api.StatusErrorCheck(err, http.StatusForbidden, http.StatusUnauthorized)
-}
-
-// isAuthnFailedErr reports whether err is a rejected credential instead of a
-// failure of the authenticator itself.
-func isAuthnFailedErr(err error) bool {
-	var authErr *authnoidc.AuthError
-
-	return errors.As(err, &authErr)
-}
-
 func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Security) error {
 	d.configReloadMu.Lock()
 	defer d.configReloadMu.Unlock()
@@ -580,7 +550,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 				authnmiddleware.NewAutherWithSlog(
 					authnoidc.New(newOIDCVerifier),
 					authnmiddleware.AutherWithSlogWithComponent(authnoidc.Component),
-					authnmiddleware.AutherWithSlogWithInformativeErrFunc(isAuthnFailedErr),
 				),
 			)
 		}
@@ -621,12 +590,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		authzmiddleware.NewAuthorizerWithSlog(
 			unixsocket.New(),
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
-			authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 		),
 		authzmiddleware.NewAuthorizerWithSlog(
 			authztls.New(ctx, trustedFingerprints),
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzTLS),
-			authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 		),
 	}
 
@@ -639,7 +606,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 				authzmiddleware.NewAuthorizerWithSlog(
 					openfgaAuthorizer,
 					authzmiddleware.AuthorizerWithSlogWithComponent(authzopenfga.Component),
-					authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 				),
 			)
 		}
@@ -652,7 +618,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 			authzmiddleware.NewAuthorizerWithSlog(
 				oidcAuthorizer.New(),
 				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzOIDC),
-				authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 			),
 		)
 	}
@@ -660,7 +625,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	*d.authorizer = authzmiddleware.NewAuthorizerWithSlog(
 		authzchain.New(authorizers...),
 		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-		authzmiddleware.AuthorizerWithSlogWithInformativeErrFunc(isAuthzDeniedErr),
 	)
 
 	return errors.Join(errs...)
@@ -751,11 +715,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	updateSvcBase := provisioningUpdate.New(
 		provisioningRepoMiddleware.NewUpdateRepoWithSlog(
 			provisioningSqlite.NewUpdate(db),
-			provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
-				func(err error) bool {
-					return errors.Is(err, domain.ErrNotFound)
-				},
-			),
 		),
 		provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
 			repoUpdateFiles,
@@ -774,16 +733,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
-		provisioningServiceMiddleware.UpdateServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
-		),
 	), nil
 }
 
@@ -811,16 +760,6 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 			channelSvc,
 			imageFlasher,
 			client,
-		),
-		provisioningServiceMiddleware.TokenServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
@@ -878,29 +817,6 @@ func (d *Daemon) setupServerService(
 				client,
 				domain.RetryableWrapper(),
 			),
-			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
-				func(err error) bool {
-					// ErrSelfUpdateNotification is used as cause when the context is
-					// cancelled. This is an expected success path and therefore not
-					// an error.
-					if errors.Is(err, provisioning.ErrSelfUpdateNotification) {
-						return true
-					}
-
-					// Treat retryable errors as informational.
-					if domain.IsRetryableError(err) {
-						return true
-					}
-
-					// Errors caused by Operations Center not running on top of Incus OS
-					// are ignored.
-					if errors.Is(err, api.NotIncusOSError) {
-						return true
-					}
-
-					return false
-				},
-			),
 		),
 		runner,
 		tokenSvc,
@@ -941,16 +857,6 @@ func (d *Daemon) setupServerService(
 
 	return provisioningServiceMiddleware.NewServerServiceWithSlog(
 		serverSvc,
-		provisioningServiceMiddleware.ServerServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
-		),
 	)
 }
 
@@ -993,30 +899,12 @@ func (d *Daemon) setupClusterService(
 					client,
 					domain.RetryableWrapper(),
 				),
-				provisioningAdapterMiddleware.ClusterClientPortWithSlogWithInformativeErrFunc(func(err error) bool {
-					// Treat retryable errors as informational.
-					if domain.IsRetryableError(err) {
-						return true
-					}
-
-					return false
-				}),
 			),
 			serverSvc,
 			tokenSvc,
 			nil,
 			terraformProvisioner,
 			inventoryAggregateSvc,
-		),
-		provisioningServiceMiddleware.ClusterServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	), nil
 }
@@ -1027,16 +915,6 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 			provisioningRepoMiddleware.NewClusterTemplateRepoWithSlog(
 				provisioningSqlite.NewClusterTemplate(db),
 			),
-		),
-		provisioningServiceMiddleware.ClusterTemplateServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 }
@@ -1049,16 +927,6 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 			),
 			updateSvc,
 		),
-		provisioningServiceMiddleware.ChannelServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
-		),
 	)
 }
 
@@ -1069,16 +937,6 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 			systemRepoMiddleware.NewCacheRepoWithSlog(
 				systemLocalfs.New(d.env.CacheDir(), seedImageCacheDir),
 			),
-		),
-		systemServiceMiddleware.SystemServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 }
@@ -1107,21 +965,6 @@ func (d *Daemon) setupAPIRoutes(
 				d.clientKey,
 			),
 			domain.RetryableWrapper(),
-		),
-		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				// Treat not found errors as informational.
-				if errors.Is(err, domain.ErrNotFound) {
-					return true
-				}
-
-				return false
-			},
 		),
 	)
 
