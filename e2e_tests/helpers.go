@@ -40,6 +40,56 @@ func isFile(path string) bool {
 	return true
 }
 
+const (
+	// incusOSImageMinSize is a floor for the size of an IncusOS image.
+	incusOSImageMinSize = 64 * 1024 * 1024
+
+	// gptHeaderMagic marks the GPT header of an IncusOS image.
+	gptHeaderMagic = "EFI PART"
+)
+
+// gptHeaderOffsets are the offsets, at which the GPT header is found. It lives
+// in the second logical block, which puts it at 512 for a 512 byte and at 2048
+// for a 4096 byte logical sector size. The IncusOS images use the latter.
+var gptHeaderOffsets = []int64{512, 2048}
+
+// errNotAnIncusOSImage returns an error, if the file at path is not a usable
+// IncusOS image.
+func errNotAnIncusOSImage(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("Failed to stat %q: %w", path, err)
+	}
+
+	if info.Size() < incusOSImageMinSize {
+		return fmt.Errorf("File %q holds %d bytes, which is below the %d bytes expected of an IncusOS image", path, info.Size(), incusOSImageMinSize)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("Failed to open %q: %w", path, err)
+	}
+
+	defer func() {
+		_ = file.Close()
+	}()
+
+	magic := make([]byte, len(gptHeaderMagic))
+
+	for _, offset := range gptHeaderOffsets {
+		_, err := file.ReadAt(magic, offset)
+		if err != nil {
+			return fmt.Errorf("Failed to read %q at offset %d: %w", path, offset, err)
+		}
+
+		if string(magic) == gptHeaderMagic {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("File %q carries no GPT header at any of the offsets %v, so it is not an IncusOS image", path, gptHeaderOffsets)
+}
+
 // isExecutable checks if path is an executable file that the current user can run.
 func isExecutable(t *testing.T, path string) bool {
 	t.Helper()

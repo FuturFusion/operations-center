@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -114,6 +116,76 @@ func Test_isTransientStorageError(t *testing.T) {
 			}
 
 			require.Equal(t, tc.want, isTransientStorageError(resp))
+		})
+	}
+}
+
+func Test_errNotAnIncusOSImage(t *testing.T) {
+	// image returns the content of a file of the given size, which carries the
+	// GPT header at the given offset. A negative offset carries none.
+	image := func(size int, magicOffset int) []byte {
+		content := make([]byte, size)
+		if magicOffset >= 0 {
+			copy(content[magicOffset:], gptHeaderMagic)
+		}
+
+		return content
+	}
+
+	tests := []struct {
+		name    string
+		content []byte
+
+		wantErr string
+	}{
+		{
+			name:    "image with a 4096 byte sector size",
+			content: image(incusOSImageMinSize, 2048),
+		},
+		{
+			name:    "image with a 512 byte sector size",
+			content: image(incusOSImageMinSize, 512),
+		},
+		{
+			name:    "missing file",
+			content: nil,
+
+			wantErr: "Failed to stat",
+		},
+		{
+			name:    "empty file",
+			content: []byte{},
+
+			wantErr: "which is below the",
+		},
+		{
+			name:    "API index of the customizer instead of an image",
+			content: []byte(`{"type":"sync","status":"Success","status_code":200,"metadata":{}}`),
+
+			wantErr: "which is below the",
+		},
+		{
+			name:    "large file without a GPT header",
+			content: image(incusOSImageMinSize, -1),
+
+			wantErr: "carries no GPT header",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), operationsCenterISOName)
+			if tc.content != nil {
+				require.NoError(t, os.WriteFile(path, tc.content, 0o600))
+			}
+
+			err := errNotAnIncusOSImage(path)
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.ErrorContains(t, err, tc.wantErr)
 		})
 	}
 }
