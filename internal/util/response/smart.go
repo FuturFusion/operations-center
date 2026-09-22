@@ -49,14 +49,23 @@ func SmartError(err error) Response {
 
 	statusCode, reason := statusCodeAndReason(err)
 
-	var details map[string]string
+	var (
+		hint    string
+		details map[string]string
+	)
 
 	var domainErr *domain.Error
 	if errors.As(err, &domainErr) {
 		if domainErr.Reason() != "" {
 			reason = api.ErrorReason(domainErr.Reason())
+
+			pinnedStatusCode, ok := statusCodeByReason[reason]
+			if ok {
+				statusCode = pinnedStatusCode
+			}
 		}
 
+		hint = domainErr.Hint()
 		details = domainErr.Details()
 	}
 
@@ -69,9 +78,15 @@ func SmartError(err error) Response {
 		code:    statusCode,
 		msg:     message,
 		reason:  reason,
+		hint:    hint,
 		details: details,
 		err:     err,
 	}
+}
+
+// statusCodeByReason are the reasons, which decide the status code themselves.
+var statusCodeByReason = map[api.ErrorReason]int{
+	api.ErrorReasonInsufficientStorage: http.StatusInsufficientStorage,
 }
 
 // statusCodeAndReason returns the HTTP status code and the generic reason for

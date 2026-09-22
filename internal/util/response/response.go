@@ -189,6 +189,7 @@ type errorResponse struct {
 	code    int               // Code to return in both the HTTP header and Code field of the response body.
 	msg     string            // Message to return in the Error field of the response body.
 	reason  api.ErrorReason   // Reason to return in the metadata of the response body.
+	hint    string            // Hint to return in the metadata of the response body.
 	details map[string]string // Details to return in the metadata of the response body.
 	err     error             // Original error, which is reported in the log, never to the client.
 }
@@ -268,6 +269,7 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 		Code:  r.code, // Set the error code in the Code field of the response body.
 		Metadata: api.ErrorMetadata{
 			Reason:  r.reason,
+			Hint:    r.hint,
 			Details: r.details,
 			// The request ID is set as response header before the request is
 			// served, see logger.RequestIDMiddleware.

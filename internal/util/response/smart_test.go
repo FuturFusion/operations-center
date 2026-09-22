@@ -26,6 +26,7 @@ func TestSmartError(t *testing.T) {
 		wantCode    int
 		wantMessage string
 		wantReason  api.ErrorReason
+		wantHint    string
 		wantDetails map[string]string
 	}{
 		{
@@ -37,9 +38,10 @@ func TestSmartError(t *testing.T) {
 			wantReason:  api.ErrorReasonInvalidArgument,
 		},
 		{
-			name: "domain error with reason and details",
+			name: "domain error with reason, hint and details",
 			err: fmt.Errorf("Failed to delete server %q: %w", "one",
 				domain.NewErrorf(domain.ErrOperationNotPermitted, "server_is_cluster_member", "Server %q is a member of cluster %q", "one", "cluster").
+					WithHintf("Remove the server from cluster %q first.", "cluster").
 					WithDetail("server", "one").
 					WithCause(errors.New("boom!")),
 			),
@@ -47,7 +49,20 @@ func TestSmartError(t *testing.T) {
 			wantCode:    http.StatusBadRequest,
 			wantMessage: `Server "one" is a member of cluster "cluster"`,
 			wantReason:  api.ErrorReason("server_is_cluster_member"),
+			wantHint:    `Remove the server from cluster "cluster" first.`,
 			wantDetails: map[string]string{"server": "one"},
+		},
+		{
+			name: "reason pins the status code",
+			err: domain.NewErrorf(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage, "Not enough space available in the files repository").
+				WithHintf("Free space in the files repository.").
+				WithDetail("required_bytes", "100"),
+
+			wantCode:    http.StatusInsufficientStorage,
+			wantMessage: "Not enough space available in the files repository",
+			wantReason:  api.ErrorReasonInsufficientStorage,
+			wantHint:    "Free space in the files repository.",
+			wantDetails: map[string]string{"required_bytes": "100"},
 		},
 		{
 			name: "domain error of kind not found",
@@ -171,6 +186,7 @@ func TestSmartError(t *testing.T) {
 			metadata := errorMetadata(t, body.Metadata)
 
 			require.Equal(t, tc.wantReason, metadata.Reason)
+			require.Equal(t, tc.wantHint, metadata.Hint, "the hint tells the user how to resolve the error")
 			require.Equal(t, tc.wantDetails, metadata.Details)
 			require.Equal(t, "request-id", metadata.RequestID, "the request ID allows to find the error in the log")
 		})
