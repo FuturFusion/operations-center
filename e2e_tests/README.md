@@ -215,7 +215,10 @@ state of the instance:
   output of the command matches one of the `transientStorageErrors`. Any other
   failure is returned immediately, so genuine errors are not retried.
 
-Since a tolerated stall costs up to the 5 minute timeout of Incus, the timeouts
+A single attempt to shut an instance down cleanly is bounded by
+`instanceStopTimeout`, so an instance, which can not shut down, e.g. because it
+never booted an OS, fails the attempt instead of blocking for as long as Incus is
+willing to wait. Since a tolerated stall costs up to that timeout, the timeouts
 of `createIncusOSInstances` and of the cleanup registered by `cleanupIncusOS`
 contain the corresponding headroom.
 
@@ -260,6 +263,16 @@ which polls e.g. a growing journal once per second for several minutes, would
 otherwise fill the debug output with hundreds of copies of the very same log.
 Failures are always recorded in full.
 
+### Broken setup of the Operations Center
+
+Every test depends on `setupOperationsCenter`, so a failure of it is terminal for
+the whole run.
+
+`setupOperationsCenterOrMarkBroken` therefore records such a failure and the
+remaining tests skip with that reason instead of reproducing it. Only the shared
+setup is covered, a failure of the per test setup or of a test body is
+independent and keeps its signal.
+
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in
@@ -278,8 +291,9 @@ creation is only partially successful.
 
 The Operations Center VM is the exception, it is deliberately not cleaned up and
 reused across test cases and test runs. `setupOperationsCenter` therefore only
-reuses it, if it is running. A VM found in any other state is removed and
-installed from scratch.
+reuses it, if it is running *and* its incus agent answers. A VM found in any
+other state, or one, which is running but stuck, e.g. at the boot manager of a
+boot media it can not boot, is removed and installed from scratch.
 The same applies to left over `IncusOS0x` instances in `createIncusOSInstances`.
 
 Examples:

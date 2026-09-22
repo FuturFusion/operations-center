@@ -1244,6 +1244,7 @@ func waitInstanceStatusRunning(ctx context.Context, t *testing.T, name string, t
 const (
 	storageRetryAttempts = 3
 	storageSettleDelay   = 10 * time.Second
+	instanceStopTimeout  = 2 * time.Minute
 )
 
 // transientStorageErrors are fragments of error messages, which indicate a
@@ -1278,6 +1279,19 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// stopInstanceAttempt performs a single attempt to shut the given instance down
+// cleanly.
+func stopInstanceAttempt(ctx context.Context, t *testing.T, name string) cmdResponse {
+	t.Helper()
+
+	timeout := strechedTimeout(instanceStopTimeout)
+
+	ctx, cancel := context.WithTimeout(ctx, timeout+strechedTimeout(30*time.Second))
+	defer cancel()
+
+	return runWithContext(ctx, t, `incus stop --timeout %d %s`, int(timeout.Seconds()), name)
+}
+
 // stopInstanceWithContext stops the given instance and verifies, that the
 // instance is actually stopped afterwards.
 func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) error {
@@ -1286,7 +1300,7 @@ func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) err
 	var lastErr error
 
 	for attempt := range storageRetryAttempts {
-		resp := runWithContext(ctx, t, `incus stop %s`, name)
+		resp := stopInstanceAttempt(ctx, t, name)
 		if resp.Success() {
 			return nil
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -194,6 +195,11 @@ func runE2ETest(
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
+	reason := setupBrokenReason()
+	if reason != "" {
+		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
+	}
+
 	timeout := strechedTimeout(testTimeout)
 
 	ctx, cancel := context.WithTimeout(t.Context(), timeout)
@@ -216,11 +222,48 @@ func runE2ETest(
 	stop := timeTrack(t, name)
 	defer stop()
 
-	setupOperationsCenter(ctx, t, tmpDir)
+	setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
 
 	setup(ctx, t, tmpDir)
 
 	test(ctx, t, tmpDir)
+}
+
+var (
+	setupBrokenMu     sync.Mutex
+	setupBrokenReport string
+)
+
+// setupOperationsCenterOrMarkBroken sets the Operations Center up and records a
+// failure to do so, so the remaining tests skip instead of reproducing it.
+func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
+
+	// A failure unwinds through runtime.Goexit, which runs the deferred
+	// functions, so the report is recorded either way.
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+
+		setupBrokenMu.Lock()
+		defer setupBrokenMu.Unlock()
+
+		if setupBrokenReport == "" {
+			setupBrokenReport = fmt.Sprintf("setup of the Operations Center failed in %s", t.Name())
+		}
+	}()
+
+	setupOperationsCenter(ctx, t, tmpDir)
+}
+
+// setupBrokenReason returns the report of the test, which found the setup of the
+// Operations Center broken, or an empty string, if none did so far.
+func setupBrokenReason() string {
+	setupBrokenMu.Lock()
+	defer setupBrokenMu.Unlock()
+
+	return setupBrokenReport
 }
 
 // e2eTestTmpDir verifies the preconditions of an end 2 end test and returns the

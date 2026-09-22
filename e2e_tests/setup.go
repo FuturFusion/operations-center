@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	incusOSCustomizerURL    = "https://incusos-customizer.linuxcontainers.org"
-	operationsCenterISOName = "IncusOS_OperationsCenter.iso"
+	incusOSCustomizerURL            = "https://incusos-customizer.linuxcontainers.org"
+	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
+	operationsCenterVMHealthTimeout = 2 * time.Minute
 )
 
 func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
@@ -344,7 +345,7 @@ func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed boo
 		status = waitInstanceStatusRunning(ctx, t, "OperationsCenter", 2*time.Minute)
 	}
 
-	if status == instanceStatusRunning {
+	if status == instanceStatusRunning && operationsCenterVMUsable(ctx, t) {
 		return false
 	}
 
@@ -365,6 +366,27 @@ func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed boo
 	t.Log("Waiting for Operations Center to complete installation")
 	mustWaitAgentRunningWithTimeout(ctx, t, "OperationsCenter", 5*time.Minute)
 	mustWaitExpectedLogWithTimeout(ctx, t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+
+	return true
+}
+
+// operationsCenterVMUsable reports, whether the Operations Center VM, which is
+// found running, is actually usable, i.e. its incus agent answers. The status
+// alone is no evidence: a VM, which is stuck, e.g. at the boot manager of a boot
+// media it can not boot, stays in the status "Running" indefinitely and every
+// test, which reuses it, only reproduces the same failure.
+func operationsCenterVMUsable(ctx context.Context, t *testing.T) bool {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(operationsCenterVMHealthTimeout))
+	defer cancel()
+
+	err := waitAgentRunningWithContext(ctx, t, "OperationsCenter")
+	if err != nil {
+		t.Logf("Operations Center VM is running, but not usable, installing it from scratch: %v", err)
+
+		return false
+	}
 
 	return true
 }
