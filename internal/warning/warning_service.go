@@ -92,6 +92,7 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		}
 
 		if len(dbWarnings) > 1 {
+			//domain-errors:internal Violated invariant, nothing the user can do about it.
 			return fmt.Errorf("Invalid warning state for scope %v", scope)
 		}
 

@@ -3,6 +3,7 @@ package entities
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -15,18 +16,27 @@ func init() {
 }
 
 func warningMapErr(err error, entity string) error {
+	entityName := strings.ReplaceAll(entity, "_", " ")
+
 	if errors.Is(err, ErrNotFound) {
-		return domain.ErrNotFound
+		return fmt.Errorf("%s not found: %w", entityName, domain.ErrNotFound)
 	}
 
 	if errors.Is(err, ErrConflict) {
-		return domain.ErrConstraintViolation
+		return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s already exists", entityName).WithCause(err)
 	}
 
 	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) {
-		if sqliteErr.Code == sqlite3.ErrConstraint {
-			return fmt.Errorf("%w: %v", domain.ErrConstraintViolation, err)
+	if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint {
+		switch sqliteErr.ExtendedCode {
+		case sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey:
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s already exists", entityName).WithCause(err)
+
+		case sqlite3.ErrConstraintForeignKey:
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s references an entity, which does not exist", entityName).WithCause(err)
+
+		default:
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s violates a constraint of the database", entityName).WithCause(err)
 		}
 	}
 
