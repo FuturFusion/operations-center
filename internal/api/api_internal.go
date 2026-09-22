@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/dump"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
@@ -53,7 +54,7 @@ func (i *internalHandler) sqlGet(r *http.Request) response.Response {
 			dumpResult, err = dumpTables(ctx, i.db)
 
 		default:
-			return fmt.Errorf("Failed to perform dump due to missing dump option")
+			return domain.NewValidationErrf("Invalid value %q for form parameter %q", dumpFormValue, "dump")
 		}
 
 		return err

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -128,7 +129,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		var status api.UpdateStatus
 		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
 		if err != nil {
-			return response.SmartError(fmt.Errorf("Invalid status"))
+			return response.SmartError(domain.NewValidationErrf("Invalid value %q for query parameter %q", r.URL.Query().Get("status"), "status"))
 		}
 
 		filter.Status = &status
