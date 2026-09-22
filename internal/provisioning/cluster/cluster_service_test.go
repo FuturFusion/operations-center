@@ -14402,6 +14402,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall)(tt, err, a...)
 				errassert.UserMessageContains(`Cluster "one" has 1 servers, removing 1 of them would leave the cluster without any server`)(tt, err, a...)
+				errassert.HintIs("Keep at least one server in the cluster or delete the cluster instead.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14437,7 +14438,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerNotEvacuated)(tt, err, a...)
-				errassert.UserMessageContains(`Server "serverOne" must be evacuated before it can be removed from cluster "one"`)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" can not be removed from cluster "one", it is not evacuated`)(tt, err, a...)
+				errassert.HintIs("Evacuate the server first or use the force option.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14514,7 +14516,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				errassert.ReasonIs(api.ErrorReasonServerHasInstances)(tt, err, a...)
-				errassert.UserMessageContains(`Server "serverOne" still has instances`)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" can not be removed from cluster "one", it still has instances (instance)`)(tt, err, a...)
+				errassert.HintIs("Move or delete the instances first or use the force option.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14552,7 +14555,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				errassert.ReasonIs(api.ErrorReasonServerHasCustomVolumes)(tt, err, a...)
-				errassert.UserMessageContains(`Server "serverOne" still has custom storage volumes`)(tt, err, a...)
+				errassert.UserMessageContains(`Server "serverOne" can not be removed from cluster "one", it still has custom storage volumes`)(tt, err, a...)
+				errassert.HintIs("Move or delete the custom storage volumes first or use the force option.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -14623,6 +14627,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				errassert.ReasonIs(api.ErrorReasonImagesOnlyOnRemovedServers)(tt, err, a...)
 				errassert.UserMessageContains("are only present on the servers being removed")(tt, err, a...)
+				errassert.HintIs("Copy the images to a server, which stays in the cluster, or use the force option.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -15017,6 +15022,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall)(tt, err, a...)
 				errassert.UserMessageContains(`Cluster "one" has 1 servers, removing 1 of them would leave the cluster without any server`)(tt, err, a...)
+				errassert.HintIs("Keep at least one server in the cluster or delete the cluster instead.")(tt, err, a...)
 			},
 			assertLog: log.Empty,
 		},
@@ -16149,7 +16155,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-				require.ErrorContains(tt, err, "still has 1 servers ([one]), remove them from the cluster first")
+				require.ErrorContains(tt, err, "still has 1 servers ([one])")
+				errassert.HintIs("Remove the servers from the cluster first.")(tt, err, a...)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},

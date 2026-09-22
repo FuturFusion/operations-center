@@ -1532,6 +1532,7 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 
 	if len(servers) <= len(removedServerNames) {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall, "Cluster %q has %d servers, removing %d of them would leave the cluster without any server", name, len(servers), len(removedServerNames)).
+			WithHintf("Keep at least one server in the cluster or delete the cluster instead.").
 			WithDetail("cluster", name)
 	}
 
@@ -1618,6 +1619,7 @@ func (s *clusterService) removeServerEndpoint(ctx context.Context, clusterName s
 	}
 
 	return provisioning.Server{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "None of the remaining servers of cluster %q is reachable to perform the removal", clusterName).
+		WithHintf("Make sure at least one server, which stays in the cluster, is reachable.").
 		WithDetail("cluster", clusterName).
 		WithCause(errors.Join(errs...))
 }
@@ -1626,13 +1628,15 @@ func (s *clusterService) removeServerEndpoint(ctx context.Context, clusterName s
 // cluster without losing resources. With force set, the findings are reported
 // but do not block the removal.
 func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, removedServers []provisioning.Server, removedServerNames []string, incusClient provisioning.InstanceServer, force bool) error {
-	rejectOrWarn := func(reason api.ErrorReason, server string, format string, a ...any) error {
+	rejectOrWarn := func(reason api.ErrorReason, server string, hint string, format string, a ...any) error {
 		if force {
 			slog.WarnContext(ctx, "Forceful server removal ignores blocking condition", slog.String("cluster", name), slog.String("condition", fmt.Sprintf(format, a...)))
 			return nil
 		}
 
-		err := domain.NewErrorf(domain.ErrOperationNotPermitted, reason, format, a...).WithDetail("cluster", name)
+		err := domain.NewErrorf(domain.ErrOperationNotPermitted, reason, format, a...).
+			WithHintf("%s", hint).
+			WithDetail("cluster", name)
 		if server != "" {
 			err = err.WithDetail("server", server)
 		}
@@ -1652,7 +1656,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 
 	for _, removedServer := range removedServers {
 		if ptr.From(removedServer.VersionData.InMaintenance) != api.InMaintenanceEvacuated {
-			err = rejectOrWarn(api.ErrorReasonServerNotEvacuated, removedServer.Name, "Server %q must be evacuated before it can be removed from cluster %q", removedServer.Name, name)
+			err = rejectOrWarn(api.ErrorReasonServerNotEvacuated, removedServer.Name,
+				"Evacuate the server first or use the force option.",
+				"Server %q can not be removed from cluster %q, it is not evacuated", removedServer.Name, name)
 			if err != nil {
 				return err
 			}
@@ -1677,7 +1683,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 			}
 
 			if len(localInstances) > 0 {
-				err = rejectOrWarn(api.ErrorReasonServerHasInstances, removedServer.Name, "Server %q still has instances (%s), move or delete them before removing it from cluster %q", removedServer.Name, strings.Join(localInstances, ", "), name)
+				err = rejectOrWarn(api.ErrorReasonServerHasInstances, removedServer.Name,
+					"Move or delete the instances first or use the force option.",
+					"Server %q can not be removed from cluster %q, it still has instances (%s)", removedServer.Name, name, strings.Join(localInstances, ", "))
 				if err != nil {
 					return err
 				}
@@ -1698,7 +1706,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 			}
 
 			if len(localStorageVolumes) > 0 {
-				err = rejectOrWarn(api.ErrorReasonServerHasCustomVolumes, removedServer.Name, "Server %q still has custom storage volumes (%s), move or delete them before removing it from cluster %q", removedServer.Name, strings.Join(localStorageVolumes, ", "), name)
+				err = rejectOrWarn(api.ErrorReasonServerHasCustomVolumes, removedServer.Name,
+					"Move or delete the custom storage volumes first or use the force option.",
+					"Server %q can not be removed from cluster %q, it still has custom storage volumes (%s)", removedServer.Name, name, strings.Join(localStorageVolumes, ", "))
 				if err != nil {
 					return err
 				}
@@ -1739,7 +1749,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 		if len(lostImages) > 0 {
 			slices.Sort(lostImages)
 
-			err = rejectOrWarn(api.ErrorReasonImagesOnlyOnRemovedServers, "", "The images (%s) are only present on the servers being removed from cluster %q, copy them to a remaining server first", strings.Join(lostImages, ", "), name)
+			err = rejectOrWarn(api.ErrorReasonImagesOnlyOnRemovedServers, "",
+				"Copy the images to a server, which stays in the cluster, or use the force option.",
+				"The images (%s) are only present on the servers being removed from cluster %q", strings.Join(lostImages, ", "), name)
 			if err != nil {
 				return err
 			}
@@ -2263,7 +2275,8 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 		}
 
 		if len(servers) > 0 {
-			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q still has %d servers (%v), remove them from the cluster first", name, len(servers), servers)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q still has %d servers (%v)", name, len(servers), servers).
+				WithHintf("Remove the servers from the cluster first.")
 		}
 
 		err = s.repo.DeleteByName(ctx, name)
