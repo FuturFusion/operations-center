@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -64,9 +65,15 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 	assertWebsocketEventsInventoryUpdate(ctx, t, clusterName)
 
 	t.Log("Start some small VMs for the cluster to have some minimal workload.")
+	instanceNames := make([]string, 0, len(names))
 	for i := range names {
-		mustRun(t, `incus launch --vm images:alpine/edge %s:mini-alpine-%d -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, i)
+		instanceNames = append(instanceNames, fmt.Sprintf("mini-alpine-%d", i))
+		mustRun(t, `incus launch --vm images:alpine/edge %s:%s -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, instanceNames[i])
 	}
+
+	// The workload is migrated between the servers during the rolling update, so
+	// it has to be migratable before the update is triggered.
+	assertWorkloadRunning(ctx, t, "Update cluster - pre update workload", clusterName, instanceNames)
 
 	t.Cleanup(prodChannelCleanup(t))
 
@@ -158,6 +165,8 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 
 	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) | join(",")'`, cpuArch, clusterName)
 	require.Emptyf(t, resp.OutputTrimmed(), "Update cluster: servers still need an update or a reboot: %s", resp.OutputTrimmed())
+
+	assertWorkloadRunning(ctx, t, "Update cluster - post update workload", clusterName, instanceNames)
 
 	t.Log("Update cluster - update completed")
 }

@@ -315,6 +315,21 @@ For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR` to a truthy value.
 
+### Migratable workload
+
+A rolling reboot and a rolling update migrate the workload of a server away and
+back again. An instance, whose status is `Running`, is not necessarily migratable
+yet: the wrapper, which fetches the incus agent binary, mounts the 9p share of
+the agent in the guest, and for as long as it is mounted, QEMU refuses to migrate
+the instance with `Migration is disabled when VirtFS export path ... is mounted
+in the guest using mount_tag 'agent'`.
+
+The wrapper unmounts the share before it execs the agent, and the agent only
+answers afterwards, so `assertWorkloadRunning` waits for `incus exec` to succeed
+for every instance of the workload before the run is triggered. The share is
+mounted again whenever the agent restarts, so this narrows the window rather than
+closing it.
+
 ### Fake BMC
 
 The BMC support of Operations Center is tested against

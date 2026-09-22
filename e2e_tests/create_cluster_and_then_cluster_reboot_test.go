@@ -118,13 +118,11 @@ func createClusterAndThenClusterReboot(ctx context.Context, t *testing.T, tmpDir
 	t.Log("Reboot cluster - rolling reboot completed")
 }
 
+const workloadAgentTimeout = 3 * time.Minute
+
 // assertWorkloadRunning verifies, that all the given instances of the cluster are
-// up and running.
-//
-// The instances are migrated between the servers of the cluster during a rolling
-// reboot, so the state of the workload is not asserted immediately but the
-// workload is given some time to settle.
-func assertWorkloadRunning(ctx context.Context, t *testing.T, phase string, clusterName string, instanceNames []string) {
+// up and running and that their incus agent answers.
+func assertWorkloadRunning(ctx context.Context, t *testing.T, phase string, clusterName string, instanceNames []string) { //nolint:unparam
 	t.Helper()
 
 	stop := timeTrack(t, phase)
@@ -138,14 +136,37 @@ func assertWorkloadRunning(ctx context.Context, t *testing.T, phase string, clus
 	require.NoError(t, err, "%s: failed to get the state of the instances %v", phase, instanceNames)
 
 	if !ok {
-		resp := run(t, `incus list %s: -f json | jq -c '[ .[] | { name: .name, status: .status, location: .location } ]'`, clusterName)
-		t.Logf("%s: instances of cluster %q: %s", phase, clusterName, resp.OutputTrimmed())
-
-		resp = run(t, `../bin/operations-center.linux.%s warning list`, cpuArch)
-		t.Logf("%s: warnings:\n%s", phase, resp.Output())
-
-		printServerList(t)
+		logWorkloadState(t, phase, clusterName)
 
 		t.Fatalf("%s: not all of the instances %v are running", phase, instanceNames)
 	}
+
+	for _, instanceName := range instanceNames {
+		ok, err := waitForSuccessWithTimeout(
+			ctx, t, fmt.Sprintf("%s: incus agent of %q", phase, instanceName),
+			`incus exec %s:%s -- true`,
+			workloadAgentTimeout, clusterName, instanceName,
+		)
+		require.NoError(t, err, "%s: failed to reach the incus agent of the instance %q", phase, instanceName)
+
+		if !ok {
+			logWorkloadState(t, phase, clusterName)
+
+			t.Fatalf("%s: the incus agent of the instance %q does not answer", phase, instanceName)
+		}
+	}
+}
+
+// logWorkloadState collects, what is worth knowing about a workload, which did
+// not reach the expected state.
+func logWorkloadState(t *testing.T, phase string, clusterName string) {
+	t.Helper()
+
+	resp := run(t, `incus list %s: -f json | jq -c '[ .[] | { name: .name, status: .status, location: .location } ]'`, clusterName)
+	t.Logf("%s: instances of cluster %q: %s", phase, clusterName, resp.OutputTrimmed())
+
+	resp = run(t, `../bin/operations-center.linux.%s warning list`, cpuArch)
+	t.Logf("%s: warnings:\n%s", phase, resp.Output())
+
+	printServerList(t)
 }
