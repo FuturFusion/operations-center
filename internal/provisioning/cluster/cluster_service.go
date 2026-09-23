@@ -2946,7 +2946,12 @@ func (s *clusterService) awaitRollingUpdateStep(server provisioning.Server, step
 
 	if retrigger == nil {
 		return func(ctx context.Context) error {
-			return fmt.Errorf("Server %q (%s) did not complete %s within %s: %w", server.Name, server.ConnectionURL, step, step.Timeout(), domain.ErrTerminal)
+			return domain.NewErrorf(domain.ErrTerminal, "", "Server %q did not complete %s within %s", server.Name, step, step.Timeout()).
+				WithHintf("Resolve the reported problem on server %q and start the update again.", server.Name).
+				WithDetail("server", server.Name).
+				WithDetail("connection_url", server.ConnectionURL).
+				WithDetail("step", string(step)).
+				WithDetail("timeout", step.Timeout().String())
 		}
 	}
 

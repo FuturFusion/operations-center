@@ -52,7 +52,7 @@ func (s clusterTemplateService) GetAllNames(ctx context.Context) ([]string, erro
 
 func (s clusterTemplateService) GetByName(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster template name cannot be empty")
 	}
 
 	return s.repo.GetByName(ctx, name)
@@ -69,7 +69,7 @@ func (s clusterTemplateService) Update(ctx context.Context, newClusterTemplate p
 
 func (s clusterTemplateService) Rename(ctx context.Context, oldName string, newName string) error {
 	if oldName == "" {
-		return fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster template name cannot be empty")
 	}
 
 	if newName == "" {
@@ -81,7 +81,7 @@ func (s clusterTemplateService) Rename(ctx context.Context, oldName string, newN
 
 func (s clusterTemplateService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster template name cannot be empty")
 	}
 
 	err := s.repo.DeleteByName(ctx, name)
@@ -94,7 +94,7 @@ func (s clusterTemplateService) DeleteByName(ctx context.Context, name string) e
 
 func (s clusterTemplateService) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, _ error) {
 	if name == "" {
-		return nil, nil, fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster template name cannot be empty")
 	}
 
 	clusterTemplate, err := s.GetByName(ctx, name)
