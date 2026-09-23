@@ -2,7 +2,6 @@ package redfish
 
 import (
 	"encoding/json"
-	"fmt"
 	"maps"
 	"net/http"
 	"net/url"
@@ -117,7 +116,9 @@ func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameter
 			}
 
 			if len(parameter.AllowableValues) > 0 && !slices.Contains(parameter.AllowableValues, string(transferProtocolType)) {
-				return fmt.Errorf("BMC does not support transfer protocol %q for virtual media, supported protocols are: %s: %w", transferProtocolType, strings.Join(parameter.AllowableValues, ", "), domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The BMC does not support transfer protocol %q for virtual media, it supports: %s", transferProtocolType, strings.Join(parameter.AllowableValues, ", ")).
+					WithDetail("transfer_protocol", string(transferProtocolType)).
+					WithDetail("supported_transfer_protocols", strings.Join(parameter.AllowableValues, ", "))
 			}
 
 			params.TransferProtocolType = new(transferProtocolType)
@@ -442,7 +443,9 @@ func checkMediaTypeSupported(virtualMedia virtualMediaSlot, virtualMediaID strin
 		supported = append(supported, string(mediaType))
 	}
 
-	return fmt.Errorf("Virtual media %q does not accept the media, it supports %s: %w", virtualMediaID, strings.Join(supported, ", "), domain.ErrOperationNotPermitted)
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Virtual media %q does not accept the media, it supports %s", virtualMediaID, strings.Join(supported, ", ")).
+		WithDetail("virtual_media", virtualMediaID).
+		WithDetail("supported_media_types", strings.Join(supported, ", "))
 }
 
 // mediaTypesForURL returns the virtual media types able to hold the image the

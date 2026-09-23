@@ -5922,7 +5922,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 			},
 
 			wantRequests: []mockRequest{},
-			assertErr:    errassert.Contains(`BMC does not support transfer protocol "HTTP" for virtual media, supported protocols are: NFS, CIFS`),
+			assertErr:    errassert.Contains(`The BMC does not support transfer protocol "HTTP" for virtual media, it supports: NFS, CIFS`),
 		},
 		{
 			name:           "error - media type not supported by the slot",
@@ -5957,7 +5957,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 			systemVMBody:       mediaSystemVMCollectionBody,
 			systemVMMemberBody: mediaSystemVMFreeBody,
 
-			assertErr: errassert.Contains("not found"),
+			assertErr: errassert.Contains("The BMC reports no virtual media device"),
 		},
 		{
 			name:           "no-op - the same image is already attached",
@@ -6381,7 +6381,7 @@ func TestRedfish_DetachMedia(t *testing.T) {
 			systemVMBody:       mediaSystemVMCollectionBody,
 			systemVMMemberBody: mediaSystemVMInsertedBody,
 
-			assertErr: errassert.Contains("not found"),
+			assertErr: errassert.Contains("The BMC reports no virtual media device"),
 		},
 		{
 			name:           "error - eject action failed",

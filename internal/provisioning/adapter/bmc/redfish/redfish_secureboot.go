@@ -38,7 +38,7 @@ var secureBootDatabaseNames = []string{
 
 func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
 	if r.env == nil {
-		return false, fmt.Errorf("Applying the secure boot certificates is not supported, no source for the certificates is configured: %w", domain.ErrOperationNotPermitted)
+		return false, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Applying the secure boot certificates is not supported, no source for the certificates is configured")
 	}
 
 	incusOSCertificates, err := r.env.GetSecureBootCertificates(ctx)
@@ -69,7 +69,8 @@ func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisi
 	}
 
 	if systemSecureBoot == nil {
-		return false, fmt.Errorf("Applying the secure boot certificates is not supported, the BMC does not expose secure boot for system %q: %w", system.ODataID, domain.ErrOperationNotPermitted)
+		return false, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Applying the secure boot certificates is not supported, the BMC does not expose secure boot for system %q", system.ODataID).
+			WithDetail("system", system.ODataID)
 	}
 
 	secureBootDatabases, err := systemSecureBoot.SecureBootDatabases()
@@ -79,7 +80,8 @@ func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisi
 
 	databases := secureBootDatabasesByName(secureBootDatabases)
 	if len(databases) == 0 {
-		return false, fmt.Errorf("Applying the secure boot certificates is not supported, the BMC provides %s for system %q: %w", describeSecureBootDatabases(secureBootDatabases), system.ODataID, domain.ErrOperationNotPermitted)
+		return false, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Applying the secure boot certificates is not supported, the BMC provides %s for system %q", describeSecureBootDatabases(secureBootDatabases), system.ODataID).
+			WithDetail("system", system.ODataID)
 	}
 
 	enrolled := false
@@ -133,7 +135,7 @@ func secureBootCertificatesByDatabase(incusOSCertificates incusosapi.InternalSec
 	}
 
 	if total == 0 {
-		return nil, fmt.Errorf("Applying the secure boot certificates is not possible, IncusOS did not provide any certificates: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Applying the secure boot certificates is not possible, IncusOS did not provide any certificates")
 	}
 
 	return certificates, nil
