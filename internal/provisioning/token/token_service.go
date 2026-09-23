@@ -109,18 +109,26 @@ func (s *tokenService) Consume(ctx context.Context, id uuid.UUID) (channel strin
 		token, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf("Consume token: %w", domain.ErrNotAuthorized)
+				// The cause is not attached, it is a domain.ErrNotFound itself,
+				// which would reclassify the error as not found.
+				return domain.NewErrorf(domain.ErrNotAuthorized, "", "The token is not valid").
+					WithHintf("Request a new token.")
 			}
 
 			return fmt.Errorf("Consume token: %w", err)
 		}
 
 		if token.UsesRemaining < 1 {
-			return fmt.Errorf("Token exhausted: %w", domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The token has no uses remaining").
+				WithHintf("Request a new token.").
+				WithDetail("token", id.String())
 		}
 
 		if time.Now().After(token.ExpireAt) {
-			return fmt.Errorf("Token expired: %w", domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The token expired at %s", token.ExpireAt.Format(time.RFC3339)).
+				WithHintf("Request a new token.").
+				WithDetail("token", id.String()).
+				WithDetail("expire_at", token.ExpireAt.Format(time.RFC3339))
 		}
 
 		token.UsesRemaining--
@@ -206,11 +214,15 @@ func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imag
 	image, ok := s.images[imageUUID]
 	s.imagesMu.Unlock()
 	if !ok {
-		return nil, "", fmt.Errorf("Failed to find image configuration for uuid %q: %w", imageUUID.String(), domain.ErrNotFound)
+		return nil, "", domain.NewErrorf(domain.ErrNotFound, "", "Image configuration %q not found", imageUUID.String()).
+			WithHintf("The image configuration expires five minutes after it was created, request the image again.").
+			WithDetail("image", imageUUID.String())
 	}
 
 	if image.TokenID != id {
-		return nil, "", fmt.Errorf("Image configuration %q does not match token id %q: %w", imageUUID.String(), id.String(), domain.ErrConstraintViolation)
+		return nil, "", domain.NewErrorf(domain.ErrConstraintViolation, "", "Image configuration %q does not belong to token %q", imageUUID.String(), id.String()).
+			WithDetail("image", imageUUID.String()).
+			WithDetail("token", id.String())
 	}
 
 	_, err := s.repo.GetByUUID(ctx, image.TokenID)
@@ -456,7 +468,9 @@ func (s *tokenService) publicTokenSeedForImage(ctx context.Context, id uuid.UUID
 	}
 
 	if !tokenSeed.Public {
-		return nil, fmt.Errorf("Token seed %q is not public, so its pre-seeded image is not served under an address of its own: %w", name, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q is not public, so its pre-seeded image is not served under an address of its own", name).
+			WithHintf("Mark the token seed as public to serve its image without authorization.").
+			WithDetail("token_seed", name)
 	}
 
 	return tokenSeed, nil
@@ -528,7 +542,9 @@ func (s *tokenService) resolvePreSeedImage(ctx context.Context, imageType api.Im
 	}
 
 	if len(updates) == 0 {
-		return uuid.Nil, "", seeds, fmt.Errorf("Failed to get updates: No ready updates found in channel %q: %w", channel, domain.ErrNotFound)
+		return uuid.Nil, "", seeds, domain.NewErrorf(domain.ErrNotFound, "", "Channel %q contains no update which is ready", channel).
+			WithHintf("Wait for an update of the channel to become ready or assign a ready update to the channel.").
+			WithDetail("channel", channel)
 	}
 
 	// Update service does return the updates ordered by version in descending order.
@@ -552,7 +568,10 @@ func (s *tokenService) resolvePreSeedImage(ctx context.Context, imageType api.Im
 	}
 
 	if filename == "" {
-		return uuid.Nil, "", seeds, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q: %w", imageType, architecture, latestUpdate.UUID.String(), domain.ErrNotFound)
+		return uuid.Nil, "", seeds, domain.NewErrorf(domain.ErrNotFound, "", "Update %q provides no image of type %q for architecture %q", latestUpdate.UUID.String(), imageType, architecture).
+			WithDetail("update", latestUpdate.UUID.String()).
+			WithDetail("image_type", string(imageType)).
+			WithDetail("architecture", string(architecture))
 	}
 
 	// Apply defaults to seeds.
