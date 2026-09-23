@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -334,6 +335,14 @@ func (s updateService) Update(ctx context.Context, update provisioning.Update) e
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
 		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewErrorf(domain.ErrNotFound, "", "Update %q can not be assigned to the channels %v, at least one of them does not exist", update.UUID.String(), update.Channels).
+					WithHintf("Create the channel first or assign the update to an existing channel.").
+					WithDetail("update", update.UUID.String()).
+					WithDetail("channels", strings.Join(update.Channels, ", ")).
+					WithCause(err)
+			}
+
 			return fmt.Errorf("Failed to assign channels %v to update %q: %w", update.Channels, update.UUID.String(), err)
 		}
 
@@ -484,7 +493,9 @@ func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uu
 	}
 
 	if !foundCurrent {
-		return api.UpdateChangelog{}, fmt.Errorf("Current UUID not found: %w", domain.ErrNotFound)
+		return api.UpdateChangelog{}, domain.NewErrorf(domain.ErrNotFound, "", "Channel %q does not contain update %q", channelName, currentUUID.String()).
+			WithDetail("channel", channelName).
+			WithDetail("update", currentUUID.String())
 	}
 
 	changelog, err := s.GetChangelog(ctx, currentUUID, priorUUID, architecture)
@@ -526,7 +537,9 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	}
 
 	if !found {
-		return nil, 0, fmt.Errorf("Requested file %q is not part of update %q: %w", filename, id.String(), domain.ErrNotFound)
+		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Update %q does not contain the file %q", id.String(), filename).
+			WithDetail("update", id.String()).
+			WithDetail("file", filename)
 	}
 
 	return s.filesRepo.Get(ctx, *update, filename)
@@ -806,20 +819,26 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 	return []expr.Option{
 		expr.Function("applies_to_architecture", func(params ...any) (any, error) {
 			if len(params) < 2 {
-				return nil, fmt.Errorf("Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>..., where <expected_architecture> is required at least once, got %d argument", len(params))
+				return nil, domain.NewErrorf(domain.ErrInvalidArgument, "", "'applies_to_architecture' expects <architecture> <expected_architecture>..., with at least one <expected_architecture>, but got %d argument(s)", len(params)).
+					WithDetail("function", "applies_to_architecture").
+					WithDetail("argument_count", strconv.Itoa(len(params)))
 			}
 
 			// Validate the arguments.
 			arch, ok := params[0].(string)
 			if !ok {
-				return nil, fmt.Errorf("Invalid first argument type to 'applies_to_architecture', expected string, got: %T", params[0])
+				return nil, domain.NewErrorf(domain.ErrInvalidArgument, "", "The first argument of 'applies_to_architecture' has to be a string, but is a %T", params[0]).
+					WithDetail("function", "applies_to_architecture").
+					WithDetail("argument", "1")
 			}
 
 			wantArchs := make([]string, 0, len(params)-1)
 			for i, param := range params[1:] {
 				wantArch, ok := param.(string)
 				if !ok {
-					return nil, fmt.Errorf("Invalid %d argument type to 'applies_to_architecture', expected string, got: %T", i+2, param)
+					return nil, domain.NewErrorf(domain.ErrInvalidArgument, "", "Argument %d of 'applies_to_architecture' has to be a string, but is a %T", i+2, param).
+						WithDetail("function", "applies_to_architecture").
+						WithDetail("argument", strconv.Itoa(i+2))
 				}
 
 				wantArchs = append(wantArchs, wantArch)
@@ -1065,11 +1084,15 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []p
 	}
 
 	if ui.TotalSpaceBytes < 1 {
+		//domain-errors:internal Programmer error, the files repository reports nonsense.
 		return fmt.Errorf("Files repository reported an invalid total space: %d", ui.TotalSpaceBytes)
 	}
 
 	if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
-		return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+		return domain.NewErrorf(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage, "Not enough space available in the files repository, %d bytes are required, %d bytes are available and 10%% of the total space is kept free after the download", requiredSpaceTotal, ui.AvailableSpaceBytes).
+			WithHintf("Free space in the files repository, e.g. by removing updates which are no longer needed.").
+			WithDetail("required_bytes", strconv.Itoa(requiredSpaceTotal)).
+			WithDetail("available_bytes", strconv.FormatUint(ui.AvailableSpaceBytes, 10))
 	}
 
 	return nil
@@ -1103,7 +1126,11 @@ func (s updateService) downloadFile(ctx context.Context, update provisioning.Upd
 	if updateFile.Sha256 != "" {
 		checksum := hex.EncodeToString(h.Sum(nil))
 		if updateFile.Sha256 != checksum {
-			return fmt.Errorf("Invalid update, file sha256 mismatch for file %q, manifest: %s, actual: %s", updateFile.Filename, updateFile.Sha256, checksum)
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "File %q of the update does not match the checksum the manifest declares for it", updateFile.Filename).
+				WithHintf("The download is corrupt or the origin is inconsistent, try again and check the origin, if it keeps failing.").
+				WithDetail("file", updateFile.Filename).
+				WithDetail("expected_sha256", updateFile.Sha256).
+				WithDetail("actual_sha256", checksum)
 		}
 	}
 

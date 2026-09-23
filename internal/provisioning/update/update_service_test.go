@@ -66,7 +66,7 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 			filterExpression: `applies_to_architecture(architecture)`, // too few arguments
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>..., where <expected_architecture> is required at least once, got 1 argument`)
+				require.ErrorContains(tt, err, `'applies_to_architecture' expects <architecture> <expected_architecture>..., with at least one <expected_architecture>, but got 1 argument(s)`)
 			},
 		},
 		{
@@ -74,7 +74,7 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 			filterExpression: `applies_to_architecture(0, "aarch64")`, // invalid: 0 is not a string
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid first argument type to 'applies_to_architecture', expected string, got: int`)
+				require.ErrorContains(tt, err, `The first argument of 'applies_to_architecture' has to be a string, but is a int`)
 			},
 		},
 		{
@@ -82,7 +82,7 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 			filterExpression: `applies_to_architecture(architecture, 0)`, // invalid: 0 is not a string
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid 2 argument type to 'applies_to_architecture', expected string, got: int`)
+				require.ErrorContains(tt, err, `Argument 2 of 'applies_to_architecture' has to be a string, but is a int`)
 			},
 		},
 	}
@@ -1823,7 +1823,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				Files: provisioning.UpdateFiles{}, // foo.bar not included
 			},
 
-			assertErr: errassert.NotFoundErrorContains(`Requested file "foo.bar" is not part of update`),
+			assertErr: errassert.NotFoundErrorContains(`does not contain the file "foo.bar"`),
 			wantBody:  []byte{},
 		},
 		{
@@ -2685,7 +2685,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Not enough space available in files repository")
+				require.ErrorContains(tt, err, "Not enough space available in the files repository")
 			},
 		},
 		{
@@ -2785,7 +2785,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Not enough space available in files repository")
+				require.ErrorContains(tt, err, "Not enough space available in the files repository")
 			},
 		},
 		{
@@ -2978,7 +2978,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Invalid update, file sha256 mismatch for file")
+				require.ErrorContains(tt, err, "does not match the checksum the manifest declares for it")
 			},
 		},
 		{
