@@ -275,6 +275,29 @@ func TestMedia_Generate(t *testing.T) {
 	}
 }
 
+func TestMedia_GenerateEnrollsThePlatformKeyUpdateAsItIs(t *testing.T) {
+	skipWithoutTools(t)
+
+	dir := t.TempDir()
+	media := securebootmedia.New(dir)
+
+	certificates := testCertificates(t)
+	certificates.PKUpdate = []byte("a signed platform key update")
+
+	id, err := media.Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	require.NoError(t, err)
+
+	filename := filepath.Join(dir, id+".iso")
+
+	require.Equal(t, certificates.PKUpdate, readFromESP(t, filename, isoBlockSize, "loader/keys/auto/PK.auth"),
+		"The platform key has to be enrolled from the update as it is, signature included")
+
+	require.NotEqual(t, certificates.PKUpdate, readFromESP(t, filename, isoBlockSize, "loader/keys/auto/KEK.auth"),
+		"Every other key database is still built and signed here")
+
+	assertHoldsFiles(t, filename, isoBlockSize)
+}
+
 func TestMedia_GenerateIsReproducible(t *testing.T) {
 	skipWithoutTools(t)
 
@@ -558,6 +581,26 @@ func bootLoaderDirWith(t *testing.T, body string) string {
 
 // assertHoldsFiles checks, that the EFI system partition holds what makes
 // systemd-boot enroll the key databases.
+// readFromESP returns the contents of one file of the EFI system partition of an
+// image.
+func readFromESP(t *testing.T, filename string, blockSize int, path string) []byte {
+	t.Helper()
+
+	body, err := os.ReadFile(filename)
+	require.NoError(t, err)
+
+	offset := espOffset(t, body, blockSize)
+	extracted := filepath.Join(t.TempDir(), "extracted")
+
+	output, err := exec.Command("mcopy", "-i", fmt.Sprintf("%s@@%d", filename, offset), "::/"+path, extracted).CombinedOutput() //nolint:noctx
+	require.NoError(t, err, "The file %q has to be readable from the EFI system partition: %s", path, string(output))
+
+	content, err := os.ReadFile(extracted)
+	require.NoError(t, err)
+
+	return content
+}
+
 func assertHoldsFiles(t *testing.T, filename string, blockSize int) {
 	t.Helper()
 

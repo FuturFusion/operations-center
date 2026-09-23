@@ -94,16 +94,16 @@ func mediaFingerprint(imageType api.ImageType, architecture images.UpdateFileArc
 		parts = append(parts, certificatesOf(certificates, database)...)
 	}
 
+	// The platform key is enrolled from the update rather than the certificate,
+	// so a change of the update has to address another image.
+	parts = append(parts, string(certificates.PKUpdate))
+
 	for _, part := range parts {
 		_, _ = sum.Write([]byte(part + "\x00"))
 	}
 
 	return hex.EncodeToString(sum.Sum(nil))
 }
-
-// generatorVersion is bumped whenever the generated image changes, so that a
-// cached image of an older version is not served anymore.
-const generatorVersion = 1
 
 func certificatesOf(certificates provisioning.SecureBootCertificates, database string) []string {
 	switch database {
@@ -158,6 +158,18 @@ func (m *Media) buildESP(ctx context.Context, dir string, loader bootLoader, cer
 	}
 
 	for _, database := range secureBootDatabases {
+		// The platform key is enrolled from the update IncusOS ships. Rebuilding
+		// it here would sign it with the throw away key, which firmware, that
+		// requires the platform key to be self signed, rejects.
+		if database == secureBootDatabasePK && len(certificates.PKUpdate) > 0 {
+			err = writeKeyDatabaseUpdate(root, database, certificates.PKUpdate)
+			if err != nil {
+				return "", err
+			}
+
+			continue
+		}
+
 		err = m.writeKeyDatabase(ctx, dir, root, database, certificatesOf(certificates, database), signingCert, signingKey)
 		if err != nil {
 			return "", err
@@ -191,6 +203,19 @@ func (m *Media) copyBootLoader(root string, loader bootLoader) error {
 	err = os.WriteFile(target, body, 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to install the boot loader into the secure boot enrollment media: %w", err)
+	}
+
+	return nil
+}
+
+// writeKeyDatabaseUpdate installs an already signed update of a key database,
+// the way the signer produced it, so its signature stays intact.
+func writeKeyDatabaseUpdate(root string, database string, update []byte) error {
+	authFile := filepath.Join(root, "loader", "keys", "auto", database+".auth")
+
+	err := os.WriteFile(authFile, update, 0o600)
+	if err != nil {
+		return fmt.Errorf("Failed to write the update of the secure boot key database %q: %w", database, err)
 	}
 
 	return nil
@@ -263,11 +288,6 @@ func (m *Media) writeKeyDatabase(ctx context.Context, dir string, root string, d
 
 // signingKeyPair writes the throw away key the key database updates are signed
 // with and returns the paths of the certificate and the key.
-//
-// The signature is never verified: the enrollment only happens while the server
-// is in secure boot setup mode, where the firmware accepts an update without
-// checking it, and the certificate ending up enrolled is the one inside the
-// signature list, never the one signing it.
 func (m *Media) signingKeyPair(dir string) (string, string, error) {
 	key, err := m.newSigningKey()
 	if err != nil {
