@@ -37,10 +37,13 @@ func (e redfishError) Unwrap() []error {
 	return []error{e.err}
 }
 
-// RetryableWrapper returns an error wrapper, which marks the errors worth
-// retrying as retryable: everything domain.RetryableWrapper covers, plus a BMC
-// answering a request with a server side error or asking to slow down.
-func RetryableWrapper() func(error) error {
+// ErrorWrapper returns an error wrapper, which classifies the errors, that are
+// answered by issuing the request again rather than by giving up on it: a BMC,
+// that turned the request down because the server is not settled yet, and the
+// errors worth retrying, which is everything domain.RetryableWrapper covers,
+// plus a BMC answering a request with a server side error or asking to slow
+// down.
+func ErrorWrapper() func(error) error {
 	wrapDomainError := domain.RetryableWrapper()
 
 	return func(err error) error {
@@ -53,6 +56,10 @@ func RetryableWrapper() func(error) error {
 		collected := collectionErrorFrom(err, nil)
 		if collected != nil {
 			classified = collected
+		}
+
+		if isNotSettledRedfishError(classified) {
+			return domain.NewNotSettledErr(err)
 		}
 
 		if isRetryableRedfishError(classified) {
@@ -76,6 +83,19 @@ func isRetryableRedfishError(err error) bool {
 	var redfishErr *schemas.Error
 
 	return errors.As(err, &redfishErr) && isRetryableStatus(redfishErr.HTTPReturnedStatusCode)
+}
+
+// isNotSettledRedfishError reports whether the BMC turned the request down
+// because the server is not in a state to accept it yet, e.g. because it is
+// running through its power on self test. It is a request issued too early,
+// which the server accepts once it has settled.
+func isNotSettledRedfishError(err error) bool {
+	var collectionErr collectionError
+	if errors.As(err, &collectionErr) {
+		return slices.ContainsFunc(collectionErr.failures, isNotSettledRedfishError)
+	}
+
+	return redfishErrorHasMessageID(err, "UnableToModifyDuringSystemPOST", "ResourceInStandby")
 }
 
 func isRetryableStatus(statusCode int) bool {

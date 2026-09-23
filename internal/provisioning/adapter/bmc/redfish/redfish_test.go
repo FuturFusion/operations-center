@@ -4191,7 +4191,7 @@ func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
 
 	require.ErrorContains(t, err, "/redfish/v1/Systems/1: BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation.", "The Redfish error response the BMC reported for the system is rendered")
 
-	require.True(t, domain.IsRetryableError(redfish.RetryableWrapper()(err)), "A BMC which is temporarily unable to serve the system makes the request worth repeating")
+	require.True(t, domain.IsRetryableError(redfish.ErrorWrapper()(err)), "A BMC which is temporarily unable to serve the system makes the request worth repeating")
 }
 
 func TestRedfish_BIOSAttribute(t *testing.T) {

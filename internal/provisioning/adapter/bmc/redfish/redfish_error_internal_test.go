@@ -101,6 +101,10 @@ const serviceUnavailableBody = `{"error":{"@Message.ExtendedInfo":[{"Message":"i
 
 const serviceUnavailableMessage = "BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.; Base.1.12.ServiceTemporarilyUnavailable: The service is temporarily unavailable.  Retry in 30 seconds. (severity: Critical) Resolution: Wait for the indicated retry duration and retry the operation."
 
+// inPostBody is how an iLO 5 turns a boot source override down, while the
+// server it belongs to is running through its power on self test.
+const inPostBody = `{"error":{"@Message.ExtendedInfo":[{"MessageId":"iLO.2.25.UnableToModifyDuringSystemPOST","Resolution":"After the computer system is either fully booted or powered off, retry the operation."}],"code":"iLO.0.10.ExtendedInfo","message":"See @Message.ExtendedInfo for more information."}}`
+
 func newCollectionError(failures map[string]error) error {
 	collectionErr := schemas.NewCollectionError()
 	maps.Copy(collectionErr.Failures, failures)
@@ -145,13 +149,31 @@ func TestWrapRedfishError_collectionWithoutRedfishError(t *testing.T) {
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF, "An item error which is not a Redfish error response stays reachable as well")
 }
 
-func TestRetryableWrapper(t *testing.T) {
+func TestErrorWrapper(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
 
-		wantRetryable bool
+		wantRetryable  bool
+		wantNotSettled bool
 	}{
+		{
+			name:           "the server is running through its POST",
+			err:            schemas.ConstructError(http.StatusBadRequest, []byte(inPostBody)),
+			wantNotSettled: true,
+		},
+		{
+			name: "the server is running through its POST, for a collection item",
+			err: fmt.Errorf("Failed to get BMC systems: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusBadRequest, []byte(inPostBody)),
+			})),
+			wantNotSettled: true,
+		},
+		{
+			name:           "the resource is in standby",
+			err:            schemas.ConstructError(http.StatusConflict, []byte(`{"error":{"code":"Base.1.12.ResourceInStandby","message":"The request could not be performed because the resource is in standby."}}`)),
+			wantNotSettled: true,
+		},
 		{
 			name: "nil",
 			err:  nil,
@@ -213,16 +235,17 @@ func TestRetryableWrapper(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := RetryableWrapper()(tc.err)
+			err := ErrorWrapper()(tc.err)
 
 			require.Equal(t, tc.wantRetryable, domain.IsRetryableError(err))
+			require.Equal(t, tc.wantNotSettled, domain.IsNotSettledError(err))
 
 			switch {
 			case tc.err == nil:
 				require.NoError(t, err)
 
-			case tc.wantRetryable:
-				require.EqualError(t, errors.Unwrap(err), tc.err.Error(), "Marking the error as retryable leaves the error reported to the caller untouched")
+			case tc.wantRetryable, tc.wantNotSettled:
+				require.EqualError(t, errors.Unwrap(err), tc.err.Error(), "Classifying the error leaves the error reported to the caller untouched")
 
 			default:
 				require.Equal(t, tc.err, err)
