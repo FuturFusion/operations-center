@@ -6,8 +6,6 @@
     - manufacturer: "Lenovo"
   priority: 2000
   attributes:
-    SecureBootConfiguration_SecureBootStatus: "Enabled"
-    SecureBootConfiguration_SecureBootMode: "UserMode"
     SecureBootConfiguration_SecureBootPolicy: "CustomPolicy"
   secure_boot:
     db:

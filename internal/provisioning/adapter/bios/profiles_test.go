@@ -157,8 +157,6 @@ func TestCatalog_builtinProfiles(t *testing.T) {
 			want: &provisioning.BIOSProfileResolution{
 				Profiles: []string{"lenovo"},
 				Attributes: map[string]any{
-					"SecureBootConfiguration_SecureBootStatus": "Enabled",
-					"SecureBootConfiguration_SecureBootMode":   "UserMode",
 					"SecureBootConfiguration_SecureBootPolicy": "CustomPolicy",
 				},
 				DeferredAttributes: map[string]any{},
@@ -190,7 +188,6 @@ func TestCatalog_builtinProfiles(t *testing.T) {
 				Profiles: []string{"hp", "hp-with-amd"},
 				Attributes: map[string]any{
 					"NumaGroupSizeOpt": "Clustered",
-					"SecureBootStatus": "Enabled",
 				},
 				DeferredAttributes: map[string]any{},
 				SecureBoot:         vendorSecureBoot(),

@@ -5,8 +5,6 @@
   match:
     - manufacturer: "HPE"
   priority: 3000
-  attributes:
-    SecureBootStatus: "Enabled"
   secure_boot:
     db:
       certificates:
