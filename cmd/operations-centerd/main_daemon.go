@@ -32,6 +32,7 @@ type env interface {
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
+	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
 }
 
 type cmdDaemon struct {
