@@ -1483,7 +1483,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
-				require.ErrorContains(tt, err, `Failed to delete version "20260514" from incus image "almalinux:10:amd64:cloud"`)
+				require.ErrorContains(tt, err, `has no version "20260514"`)
 			},
 		},
 		{

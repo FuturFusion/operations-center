@@ -69,7 +69,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
 
 	default:
-		return "", fmt.Errorf(`First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q: %w`, part.FormName(), part.FileName(), domain.ErrOperationNotPermitted)
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q`, part.FormName(), part.FileName()).
+			WithHintf(`Send "request_json" or "incus.tar.xz" as the first part of the request.`).
+			WithDetail("form_name", part.FormName()).
+			WithDetail("file_name", part.FileName())
 	}
 
 	if err != nil {
@@ -127,7 +130,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	_, ok := img.Versions[versionIdentifier]
 	if ok {
-		return "", fmt.Errorf("Version %q already exists for incus image %q: %w", versionIdentifier, name, domain.ErrOperationNotPermitted)
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Version %q already exists for incus image %q", versionIdentifier, name).
+			WithHintf("Delete the existing version first or add the image under a different version.").
+			WithDetail("image", name).
+			WithDetail("version", versionIdentifier)
 	}
 
 	incusImageVersion := api.IncusImageVersion{
@@ -328,7 +334,8 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to find metadata.yaml in incus.tar.xz: %w`, domain.ErrConstraintViolation)
+			return incusapi.ImageMetadata{}, nil, domain.NewErrorf(domain.ErrConstraintViolation, "", `The uploaded "incus.tar.xz" does not contain "metadata.yaml"`).
+				WithHintf(`Upload an "incus.tar.xz" which contains "metadata.yaml".`)
 		}
 
 		if err != nil {
@@ -511,7 +518,9 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 
 		_, ok := img.Versions[versionIdentifier]
 		if !ok {
-			return fmt.Errorf("Failed to delete version %q from incus image %q: %w", versionIdentifier, name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q has no version %q", name, versionIdentifier).
+				WithDetail("image", name).
+				WithDetail("version", versionIdentifier)
 		}
 
 		delete(img.Versions, versionIdentifier)
