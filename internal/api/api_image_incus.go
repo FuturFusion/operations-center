@@ -412,20 +412,23 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	  - application/json
 //	parameters:
 //	  - in: formData
-//	    name: json_request
+//	    name: request_json
 //	    description: >
 //	      The fields of the request, as a JSON object of the IncusImagePost
 //	      definition. In order to allow stream processing of the request, the
-//	      order of the fields matters: json_request has to be sent first. If it
-//	      is omitted, the first file is required to be incus.tar.xz. Sending
-//	      json_request together with a file called incus.tar.xz is an error.
+//	      order of the fields matters: request_json has to be sent first. If it
+//	      is omitted, the first part is required to be the metadata tarball of
+//	      the image, which is recognized by its content and is stored as
+//	      incus.tar.xz, independent of the name it is uploaded with.
 //	    type: string
 //	  - in: formData
 //	    name: fileNN
 //	    description: >
-//	      A single request may carry multiple files. The form field names are
-//	      prefixed with "file", followed by an incrementing number, e.g. file00,
-//	      file01. The "filename" parameter carries the file name.
+//	      A single request may carry multiple files. Except for request_json,
+//	      the form field names are irrelevant, the CLI prefixes them with
+//	      "file", followed by an incrementing number, e.g. file00, file01. The
+//	      type of every image file is detected from its content, the file name
+//	      is ignored.
 //	    type: file
 //	responses:
 //	  "200":
