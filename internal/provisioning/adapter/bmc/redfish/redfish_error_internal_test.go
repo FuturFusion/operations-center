@@ -340,3 +340,55 @@ func TestRedactAuthorization(t *testing.T) {
 
 	require.Equal(t, want, redactAuthorization(dump))
 }
+
+func TestIsApplyTimeRejected(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+
+		want bool
+	}{
+		{
+			name: "annotation and its member reported unknown",
+			body: `{"error":{"code":"Base.1.8.GeneralError","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","Message":"The property @Redfish.SettingsApplyTime is not in the list of valid properties for the resource."},{"MessageId":"Base.1.8.PropertyUnknown","Message":"The property ApplyTime is not in the list of valid properties for the resource."}]}}`,
+
+			want: true,
+		},
+		{
+			name: "annotation named by message argument",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","MessageArgs":["@Redfish.SettingsApplyTime"]}]}}`,
+
+			want: true,
+		},
+		{
+			name: "member named by related property",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","RelatedProperties":["#/ApplyTime"]}]}}`,
+
+			want: true,
+		},
+		{
+			name: "different property ending in ApplyTime",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","MessageArgs":["MaintenanceWindowApplyTime"]}]}}`,
+
+			want: false,
+		},
+		{
+			name: "rejected bios attribute value",
+			body: `{"error":{"code":"Base.1.5.PropertyValueNotInList","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.PropertyValueNotInList","MessageArgs":["auto","CbsDfCmnAcpiSratL3Numa"]}]}}`,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := schemas.ConstructError(400, []byte(tc.body))
+
+			require.Equal(t, tc.want, isApplyTimeRejected(err))
+		})
+	}
+}
+
+func TestIsApplyTimeRejected_nonRedfishError(t *testing.T) {
+	require.False(t, isApplyTimeRejected(errors.New("connection refused")))
+}

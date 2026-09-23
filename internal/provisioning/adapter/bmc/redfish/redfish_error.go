@@ -300,6 +300,13 @@ func isPropertyRejected(err error, property string) bool {
 		redfishErrorMentions(err, property)
 }
 
+// isApplyTimeRejected reports whether the BMC turned the request down because it
+// does not know the settings apply time annotation, although it declared the
+// apply time as supported on the resource.
+func isApplyTimeRejected(err error) bool {
+	return isPropertyRejected(err, "@Redfish.SettingsApplyTime") || isPropertyRejected(err, "ApplyTime")
+}
+
 func isValueRejected(err error, property string, value string) bool {
 	return redfishErrorHasMessageID(err, "PropertyValueNotInList", "PropertyValueNotSupported", "PropertyValueTypeError", "PropertyValueError", "PropertyValueOutOfRange", "PropertyValueConflict", "PropertyNotWritable", "GeneralError") &&
 		(redfishErrorMentions(err, property) || redfishErrorMentions(err, value))

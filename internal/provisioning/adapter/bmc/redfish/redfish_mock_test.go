@@ -70,8 +70,9 @@ type mockRedfishServer struct {
 	biosPatchStatusCode          int
 	biosPatchBody                string
 	biosPatchTaskMonitorLocation string
+	biosPatch                    mockResponses
 
-	gotBiosPatchBody *[]byte
+	gotBiosPatchBodies *[][]byte
 
 	systemPatchStatusCode int
 
@@ -369,7 +370,7 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) ht
 			w.WriteHeader(statusCode)
 
 		case "/redfish/v1/Systems/1/Bios":
-			handleBios(w, r, cfg)
+			handleBios(w, r, &cfg)
 
 		case "/redfish/v1/Systems/1/SecureBoot":
 			w.WriteHeader(cfg.secureBootStatusCode)
@@ -452,7 +453,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request, cfg *mockRedfishServer
 	}
 }
 
-func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+func handleBios(w http.ResponseWriter, r *http.Request, cfg *mockRedfishServer) {
 	switch r.Method {
 	case http.MethodGet:
 		w.WriteHeader(cfg.biosStatusCode)
@@ -461,8 +462,14 @@ func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
 	case http.MethodPatch:
 		body, _ := io.ReadAll(r.Body)
 
-		if cfg.gotBiosPatchBody != nil {
-			*cfg.gotBiosPatchBody = body
+		if cfg.gotBiosPatchBodies != nil {
+			*cfg.gotBiosPatchBodies = append(*cfg.gotBiosPatchBodies, body)
+		}
+
+		if cfg.biosPatchStatusCode == 0 {
+			cfg.biosPatch.serve(w)
+
+			return
 		}
 
 		if cfg.biosPatchTaskMonitorLocation != "" {

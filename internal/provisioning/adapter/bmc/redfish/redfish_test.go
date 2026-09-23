@@ -3859,6 +3859,31 @@ const biosPatchErrorBodyPropertyValueNotInList = `{
   }
 }`
 
+// A Lenovo XCC declares OnReset among the supported apply times of its BIOS
+// resource, but does not know the annotation asking for it.
+const biosPatchErrorBodyApplyTimeUnknown = `{
+  "error": {
+    "code": "Base.1.8.GeneralError",
+    "message": "A general error has occurred. See ExtendedInfo for more information.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.8.PropertyUnknown",
+        "Message": "The property @Redfish.SettingsApplyTime is not in the list of valid properties for the resource.",
+        "MessageArgs": ["@Redfish.SettingsApplyTime"],
+        "Resolution": "Remove the unknown property from the request body and resubmit the request if the operation failed.",
+        "Severity": "Warning"
+      },
+      {
+        "MessageId": "Base.1.8.PropertyUnknown",
+        "Message": "The property ApplyTime is not in the list of valid properties for the resource.",
+        "MessageArgs": ["ApplyTime"],
+        "Resolution": "Remove the unknown property from the request body and resubmit the request if the operation failed.",
+        "Severity": "Warning"
+      }
+    ]
+  }
+}`
+
 // Message is optional in Redfish, a BMC might only report the message registry
 // identifier of the extended info.
 const biosPatchErrorBodyWithoutMessage = `{
@@ -4400,10 +4425,11 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 		biosPatchStatusCode          int
 		biosPatchBody                string
 		biosPatchTaskMonitorLocation string
+		biosPatch                    mockResponses
 		extraRoutes                  map[string]mockRedfishRoute
 
 		attributes         map[string]any
-		wantPatchBody      string
+		wantPatchBodies    []string
 		wantTaskMonitor    *provisioning.BMCTaskMonitor
 		wantErrContains    string
 		wantErrNotContains string
@@ -4421,9 +4447,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBody,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBody,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody},
+			assertErr:       require.NoError,
 		},
 		{
 			name: "success - task monitor returned",
@@ -4438,8 +4464,8 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosPatchStatusCode:          http.StatusAccepted,
 			biosPatchTaskMonitorLocation: "/redfish/v1/TaskMonitor/1",
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBody,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody},
 			wantTaskMonitor: &provisioning.BMCTaskMonitor{
 				URI: "/redfish/v1/TaskMonitor/1",
 			},
@@ -4458,10 +4484,10 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosPatchStatusCode:   http.StatusOK,
 
 			attributes: map[string]any{"SecureBoot": "Enabled"},
-			wantPatchBody: `{
+			wantPatchBodies: []string{`{
   "Attributes": { "SecureBoot": "Enabled" },
   "@Redfish.SettingsApplyTime": { "ApplyTime": "OnReset" }
-}`,
+}`},
 			assertErr: require.NoError,
 		},
 		{
@@ -4476,9 +4502,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBodyApplyTimeNotDeclared,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
 		},
 		{
 			name: "success - apply time explicitly not supported, falls back to UpdateBiosAttributes",
@@ -4492,9 +4518,90 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBodyApplyTimeNotSupported,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
+		},
+		{
+			name: "success - apply time declared but annotation rejected, retried without it",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusOK},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
+		},
+		{
+			name: "success - annotation rejected, the retry returns a task monitor",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusAccepted},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - annotation rejected and the retry fails too",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusBadRequest},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown, biosPatchErrorBodyPropertyValueNotInList},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       errassert.ValidationError,
+			wantErrContains: "The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.",
+		},
+		{
+			name: "error - apply time not declared, the rejection is not retried",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyApplyTimeNotDeclared,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusOK},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.Error,
 		},
 		{
 			name:                  "error - failed to connect to BMC",
@@ -4663,7 +4770,7 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotPatchBody []byte
+			var gotPatchBodies [][]byte
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:        tc.serviceRootStatusCode,
@@ -4676,8 +4783,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 				biosPatchStatusCode:          tc.biosPatchStatusCode,
 				biosPatchBody:                tc.biosPatchBody,
 				biosPatchTaskMonitorLocation: tc.biosPatchTaskMonitorLocation,
+				biosPatch:                    tc.biosPatch,
 				extraRoutes:                  tc.extraRoutes,
-				gotBiosPatchBody:             &gotPatchBody,
+				gotBiosPatchBodies:           &gotPatchBodies,
 			}, nil)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -4686,8 +4794,12 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
 
-			if tc.wantPatchBody != "" {
-				require.JSONEq(t, tc.wantPatchBody, string(gotPatchBody))
+			if len(tc.wantPatchBodies) > 0 {
+				require.Len(t, gotPatchBodies, len(tc.wantPatchBodies), "BMC received exactly the expected BIOS patches")
+
+				for i, wantPatchBody := range tc.wantPatchBodies {
+					require.JSONEq(t, wantPatchBody, string(gotPatchBodies[i]), "BIOS patch %d", i)
+				}
 			}
 
 			if tc.wantErrContains != "" {
