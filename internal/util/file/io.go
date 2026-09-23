@@ -22,3 +22,21 @@ func SafeCopy(dst io.Writer, src io.Reader) (int64, error) {
 		}
 	}
 }
+
+// NewReadCloser returns an io.ReadCloser, which reads from r and closes c.
+func NewReadCloser(r io.Reader, c io.Closer) io.ReadCloser {
+	return &readCloser{r: r, c: c}
+}
+
+type readCloser struct {
+	r io.Reader
+	c io.Closer
+}
+
+func (r *readCloser) Read(p []byte) (int, error) {
+	return r.r.Read(p)
+}
+
+func (r *readCloser) Close() error {
+	return r.c.Close()
+}
