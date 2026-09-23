@@ -7712,3 +7712,79 @@ func testSecureBootCertificatePEM(t *testing.T, file string) string {
 
 	return string(pemCertificate)
 }
+
+func TestRedfish_EnableSecureBoot(t *testing.T) {
+	secureBootBodyWithEnable := func(enabled bool) string {
+		return fmt.Sprintf(`{
+  "@odata.id": "/redfish/v1/Systems/1/SecureBoot",
+  "Id": "SecureBoot",
+  "SecureBootEnable": %t,
+  "SecureBootMode": "SetupMode"
+}`, enabled)
+	}
+
+	tests := []struct {
+		name string
+
+		secureBootEnable bool
+
+		wantEnabled  bool
+		wantRequests []mockRequest
+	}{
+		{
+			// Secure boot is switched on only once the certificates are
+			// enrolled, since a server in the setup mode has nothing to enforce.
+			name: "success - secure boot is switched on",
+
+			secureBootEnable: false,
+
+			wantEnabled: true,
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/SecureBoot",
+					body:   `{"SecureBootEnable": true}`,
+				},
+			},
+		},
+		{
+			name: "success - secure boot is on already",
+
+			secureBootEnable: true,
+
+			wantEnabled:  false,
+			wantRequests: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotRequests []mockRequest
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           resetSystemsBody,
+				systemStatusCode:      http.StatusOK,
+				systemBody:            secureBootSystemBody,
+				secureBootStatusCode:  http.StatusOK,
+				secureBootBody:        secureBootBodyWithEnable(tc.secureBootEnable),
+			}, &gotRequests)
+
+			client := redfish.New()
+
+			enabled, err := client.EnableSecureBoot(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+			require.NoError(t, err)
+			require.Equal(t, tc.wantEnabled, enabled)
+
+			require.Len(t, gotRequests, len(tc.wantRequests))
+
+			for i, want := range tc.wantRequests {
+				require.Equal(t, want.method, gotRequests[i].method, "request %d", i)
+				require.Equal(t, want.path, gotRequests[i].path, "request %d", i)
+				require.JSONEq(t, want.body, gotRequests[i].body, "request %d, only the one writable property may be sent", i)
+			}
+		})
+	}
+}

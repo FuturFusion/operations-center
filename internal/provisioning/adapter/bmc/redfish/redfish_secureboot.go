@@ -186,6 +186,53 @@ func (r redfish) ResetSecureBootKeys(ctx context.Context, server provisioning.Se
 	return false, nil, errors.Join(errs...)
 }
 
+// EnableSecureBoot switches secure boot on and reports, whether that changed
+// anything.
+//
+// Secure boot can not be switched on while the server is in the secure boot
+// setup mode with no certificates enrolled, so this is only done once the
+// enrollment is through. The setting takes effect on the next boot.
+func (r redfish) EnableSecureBoot(ctx context.Context, server provisioning.Server) (bool, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return false, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return false, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	systemSecureBoot, err := system.SecureBoot()
+	if err != nil {
+		return false, fmt.Errorf("Failed to get secure boot information: %w", wrapRedfishError(err))
+	}
+
+	if systemSecureBoot == nil {
+		return false, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Enabling secure boot is not supported, the BMC does not expose secure boot for system %q", system.ODataID).
+			WithDetail("system", system.ODataID)
+	}
+
+	if systemSecureBoot.SecureBootEnable {
+		slog.InfoContext(ctx, "Secure boot is enabled already, leaving it untouched", slog.String("secure_boot", systemSecureBoot.ODataID))
+
+		return false, nil
+	}
+
+	systemSecureBoot.SecureBootEnable = true
+
+	err = systemSecureBoot.Update()
+	if err != nil {
+		return false, fmt.Errorf("Failed to enable secure boot of %q: %w", systemSecureBoot.ODataID, wrapRedfishError(err))
+	}
+
+	slog.InfoContext(ctx, "Secure boot enabled", slog.String("secure_boot", systemSecureBoot.ODataID))
+
+	return true, nil
+}
+
 // secureBootSupportsResetKeys reports, whether the BMC published the reset keys
 // action.
 func secureBootSupportsResetKeys(systemSecureBoot *schemas.SecureBoot) bool {
