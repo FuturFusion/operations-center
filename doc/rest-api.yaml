@@ -1361,6 +1361,43 @@ definitions:
             YAML, which gracefully handle numbers and bools.
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
+    ErrorMetadata:
+        properties:
+            details:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Details contains the dynamic values of the error message in machine
+                    readable form.
+                example:
+                    server: server01
+                type: object
+                x-go-name: Details
+            hint:
+                description: |-
+                    Hint tells the user how to resolve the error, if the error is known to be
+                    resolvable by the user.
+                example: Remove the server from the cluster first
+                type: string
+                x-go-name: Hint
+            reason:
+                $ref: '#/definitions/ErrorReason'
+            request_id:
+                description: |-
+                    RequestID is the ID of the request, which caused the error. It allows to
+                    find the corresponding records in the log of the server.
+                example: 550e8400-e29b-41d4-a716-446655440000
+                type: string
+                x-go-name: RequestID
+        title: ErrorMetadata is reported in the metadata of an error response.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ErrorReason:
+        description: |-
+            ErrorReason is a stable, machine readable identifier for the cause of an
+            error, which allows clients to react to it.
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     HardwareData:
         properties:
             cpu:
@@ -13877,15 +13914,19 @@ responses:
         description: Bad Request
         schema:
             properties:
-                status:
-                    example: bad request
+                error:
+                    description: Error is the message for the user.
+                    example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
                     type: string
-                    x-go-name: Status
-                status_code:
+                    x-go-name: Error
+                error_code:
+                    description: Code is the HTTP status code of the response.
                     example: 400
                     format: int64
                     type: integer
-                    x-go-name: StatusCode
+                    x-go-name: Code
+                metadata:
+                    $ref: '#/definitions/ErrorMetadata'
                 type:
                     example: error
                     type: string
@@ -14085,15 +14126,19 @@ responses:
         description: Forbidden
         schema:
             properties:
-                status:
-                    example: bad request
+                error:
+                    description: Error is the message for the user.
+                    example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
                     type: string
-                    x-go-name: Status
-                status_code:
+                    x-go-name: Error
+                error_code:
+                    description: Code is the HTTP status code of the response.
                     example: 400
                     format: int64
                     type: integer
-                    x-go-name: StatusCode
+                    x-go-name: Code
+                metadata:
+                    $ref: '#/definitions/ErrorMetadata'
                 type:
                     example: error
                     type: string
@@ -14275,15 +14320,19 @@ responses:
         description: Internal Server Error
         schema:
             properties:
-                status:
-                    example: bad request
+                error:
+                    description: Error is the message for the user.
+                    example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
                     type: string
-                    x-go-name: Status
-                status_code:
+                    x-go-name: Error
+                error_code:
+                    description: Code is the HTTP status code of the response.
                     example: 400
                     format: int64
                     type: integer
-                    x-go-name: StatusCode
+                    x-go-name: Code
+                metadata:
+                    $ref: '#/definitions/ErrorMetadata'
                 type:
                     example: error
                     type: string
@@ -14660,15 +14709,19 @@ responses:
         description: Not found
         schema:
             properties:
-                status:
-                    example: bad request
+                error:
+                    description: Error is the message for the user.
+                    example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
                     type: string
-                    x-go-name: Status
-                status_code:
+                    x-go-name: Error
+                error_code:
+                    description: Code is the HTTP status code of the response.
                     example: 400
                     format: int64
                     type: integer
-                    x-go-name: StatusCode
+                    x-go-name: Code
+                metadata:
+                    $ref: '#/definitions/ErrorMetadata'
                 type:
                     example: error
                     type: string
@@ -14678,15 +14731,19 @@ responses:
         description: Precondition Failed
         schema:
             properties:
-                status:
-                    example: bad request
+                error:
+                    description: Error is the message for the user.
+                    example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
                     type: string
-                    x-go-name: Status
-                status_code:
+                    x-go-name: Error
+                error_code:
+                    description: Code is the HTTP status code of the response.
                     example: 400
                     format: int64
                     type: integer
-                    x-go-name: StatusCode
+                    x-go-name: Code
+                metadata:
+                    $ref: '#/definitions/ErrorMetadata'
                 type:
                     example: error
                     type: string

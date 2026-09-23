@@ -17,18 +17,11 @@ var componentServerScriptletPort = logger.RegisterComponent("provisioning.server
 
 // ServerScriptletPortWithSlog implements provisioning.ServerScriptletPort that is instrumented with slog logger.
 type ServerScriptletPortWithSlog struct {
-	_base                 provisioning.ServerScriptletPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ServerScriptletPort
+	_component logger.Component
 }
 
 type ServerScriptletPortWithSlogOption func(s *ServerScriptletPortWithSlog)
-
-func ServerScriptletPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerScriptletPortWithSlogOption {
-	return func(_base *ServerScriptletPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ServerScriptletPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func ServerScriptletPortWithSlogWithComponent(component logger.Component) Server
 // NewServerScriptletPortWithSlog instruments an implementation of the provisioning.ServerScriptletPort with simple logging.
 func NewServerScriptletPortWithSlog(base provisioning.ServerScriptletPort, opts ...ServerScriptletPortWithSlogOption) ServerScriptletPortWithSlog {
 	this := ServerScriptletPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentServerScriptletPort,
+		_base:      base,
+		_component: componentServerScriptletPort,
 	}
 
 	for _, opt := range opts {
@@ -77,11 +69,7 @@ func (_d ServerScriptletPortWithSlog) ServerRegistrationRun(ctx context.Context,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ServerRegistrationRun returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ServerRegistrationRun returned an error")
-			}
+			log.DebugContext(ctx, "<= method ServerRegistrationRun returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ServerRegistrationRun finished")
 		}

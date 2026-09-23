@@ -18,18 +18,11 @@ var componentServerClientPort = logger.RegisterComponent("provisioning.server_cl
 
 // ServerClientPortWithSlog implements provisioning.ServerClientPort that is instrumented with slog logger.
 type ServerClientPortWithSlog struct {
-	_base                 provisioning.ServerClientPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ServerClientPort
+	_component logger.Component
 }
 
 type ServerClientPortWithSlogOption func(s *ServerClientPortWithSlog)
-
-func ServerClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerClientPortWithSlogOption {
-	return func(_base *ServerClientPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ServerClientPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ServerClientPortWithSlogWithComponent(component logger.Component) ServerCli
 // NewServerClientPortWithSlog instruments an implementation of the provisioning.ServerClientPort with simple logging.
 func NewServerClientPortWithSlog(base provisioning.ServerClientPort, opts ...ServerClientPortWithSlogOption) ServerClientPortWithSlog {
 	this := ServerClientPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentServerClientPort,
+		_base:      base,
+		_component: componentServerClientPort,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddApplication finished")
 		}
@@ -115,11 +103,7 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Evacuate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Evacuate returned an error")
-			}
+			log.DebugContext(ctx, "<= method Evacuate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Evacuate finished")
 		}
@@ -151,11 +135,7 @@ func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkConfig finished")
 		}
@@ -187,11 +167,7 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSData returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSData returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSData returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSData finished")
 		}
@@ -223,11 +199,7 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProviderConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProviderConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProviderConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProviderConfig finished")
 		}
@@ -259,11 +231,7 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetResources returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetResources returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetResources returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetResources finished")
 		}
@@ -295,11 +263,7 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetServerType returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetServerType returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetServerType returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetServerType finished")
 		}
@@ -331,11 +295,7 @@ func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageConfig finished")
 		}
@@ -367,11 +327,7 @@ func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSystemKernel returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSystemKernel returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSystemKernel returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSystemKernel finished")
 		}
@@ -403,11 +359,7 @@ func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSystemLogging returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSystemLogging returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSystemLogging returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSystemLogging finished")
 		}
@@ -439,11 +391,7 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetUpdateConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetUpdateConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetUpdateConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetUpdateConfig finished")
 		}
@@ -475,11 +423,7 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetVersionData returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetVersionData returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetVersionData returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetVersionData finished")
 		}
@@ -510,11 +454,7 @@ func (_d ServerClientPortWithSlog) IsReady(ctx context.Context, server provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method IsReady returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method IsReady returned an error")
-			}
+			log.DebugContext(ctx, "<= method IsReady returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method IsReady finished")
 		}
@@ -545,11 +485,7 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Ping returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Ping returned an error")
-			}
+			log.DebugContext(ctx, "<= method Ping returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Ping finished")
 		}
@@ -580,11 +516,7 @@ func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisio
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Poweroff returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Poweroff returned an error")
-			}
+			log.DebugContext(ctx, "<= method Poweroff returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Poweroff finished")
 		}
@@ -615,11 +547,7 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Reboot returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Reboot returned an error")
-			}
+			log.DebugContext(ctx, "<= method Reboot returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Reboot finished")
 		}
@@ -651,11 +579,7 @@ func (_d ServerClientPortWithSlog) RestartApplication(ctx context.Context, serve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RestartApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RestartApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method RestartApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RestartApplication finished")
 		}
@@ -688,11 +612,7 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Restore returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Restore returned an error")
-			}
+			log.DebugContext(ctx, "<= method Restore returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Restore finished")
 		}
@@ -726,11 +646,7 @@ func (_d ServerClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpo
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SystemFactoryReset returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SystemFactoryReset returned an error")
-			}
+			log.DebugContext(ctx, "<= method SystemFactoryReset returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SystemFactoryReset finished")
 		}
@@ -762,11 +678,7 @@ func (_d ServerClientPortWithSlog) UpdateApplication(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateApplication finished")
 		}
@@ -797,11 +709,7 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
 		}
@@ -832,11 +740,7 @@ func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisio
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateOS returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateOS returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateOS returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateOS finished")
 		}
@@ -868,11 +772,7 @@ func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, ser
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateProviderConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateProviderConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateProviderConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateProviderConfig finished")
 		}
@@ -903,11 +803,7 @@ func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, serv
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateStorageConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateStorageConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateStorageConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateStorageConfig finished")
 		}
@@ -939,11 +835,7 @@ func (_d ServerClientPortWithSlog) UpdateSystemKernel(ctx context.Context, serve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystemKernel returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
 		}
@@ -975,11 +867,7 @@ func (_d ServerClientPortWithSlog) UpdateSystemLogging(ctx context.Context, serv
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystemLogging returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystemLogging returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystemLogging returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystemLogging finished")
 		}
@@ -1011,11 +899,7 @@ func (_d ServerClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, serve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateUpdateConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateUpdateConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateUpdateConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateUpdateConfig finished")
 		}

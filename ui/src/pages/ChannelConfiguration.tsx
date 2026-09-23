@@ -4,6 +4,7 @@ import { fetchChannel, updateChannel } from "api/channel";
 import ChannelForm from "components/ChannelForm";
 import { useNotification } from "context/notificationContext";
 import { Channel } from "types/channel";
+import { errorMessage } from "util/response";
 
 const ChannelConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -18,7 +19,7 @@ const ChannelConfiguration = () => {
           navigate(`/ui/provisioning/channels/${name}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during channel update: ${e}`);

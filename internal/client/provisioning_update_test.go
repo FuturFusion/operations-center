@@ -544,7 +544,7 @@ func Test_UpdateUpdate(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
-				require.ErrorContains(tt, err, "Failed to assign channels [unknown]")
+				require.ErrorContains(tt, err, "can not be assigned to the channels [unknown]")
 			},
 			assertFunc: noop,
 		},

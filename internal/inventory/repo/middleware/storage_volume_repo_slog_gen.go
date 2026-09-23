@@ -19,18 +19,11 @@ var componentStorageVolumeRepo = logger.RegisterComponent("inventory.storage_vol
 
 // StorageVolumeRepoWithSlog implements inventory.StorageVolumeRepo that is instrumented with slog logger.
 type StorageVolumeRepoWithSlog struct {
-	_base                 inventory.StorageVolumeRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.StorageVolumeRepo
+	_component logger.Component
 }
 
 type StorageVolumeRepoWithSlogOption func(s *StorageVolumeRepoWithSlog)
-
-func StorageVolumeRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageVolumeRepoWithSlogOption {
-	return func(_base *StorageVolumeRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // StorageVolumeRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func StorageVolumeRepoWithSlogWithComponent(component logger.Component) StorageV
 // NewStorageVolumeRepoWithSlog instruments an implementation of the inventory.StorageVolumeRepo with simple logging.
 func NewStorageVolumeRepoWithSlog(base inventory.StorageVolumeRepo, opts ...StorageVolumeRepoWithSlogOption) StorageVolumeRepoWithSlog {
 	this := StorageVolumeRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentStorageVolumeRepo,
+		_base:      base,
+		_component: componentStorageVolumeRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume in
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -115,11 +103,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -150,11 +134,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
 		}
@@ -186,11 +166,7 @@ func (_d StorageVolumeRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -222,11 +198,7 @@ func (_d StorageVolumeRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -258,11 +230,7 @@ func (_d StorageVolumeRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -294,11 +262,7 @@ func (_d StorageVolumeRepoWithSlog) UpdateByUUID(ctx context.Context, storageVol
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}

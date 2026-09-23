@@ -58,7 +58,7 @@ func (s *incusSourceService) GetAllNames(ctx context.Context) ([]string, error) 
 
 func (s *incusSourceService) GetByName(ctx context.Context, name string) (*IncusImageSource, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Image source name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Image source name cannot be empty")
 	}
 
 	source, err := s.repo.GetByName(ctx, name)
@@ -80,7 +80,7 @@ func (s *incusSourceService) Update(ctx context.Context, newSource IncusImageSou
 
 func (s *incusSourceService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Image source name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Image source name cannot be empty")
 	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {

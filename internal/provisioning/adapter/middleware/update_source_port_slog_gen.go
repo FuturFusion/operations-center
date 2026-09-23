@@ -18,18 +18,11 @@ var componentUpdateSourcePort = logger.RegisterComponent("provisioning.update_so
 
 // UpdateSourcePortWithSlog implements provisioning.UpdateSourcePort that is instrumented with slog logger.
 type UpdateSourcePortWithSlog struct {
-	_base                 provisioning.UpdateSourcePort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.UpdateSourcePort
+	_component logger.Component
 }
 
 type UpdateSourcePortWithSlogOption func(s *UpdateSourcePortWithSlog)
-
-func UpdateSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateSourcePortWithSlogOption {
-	return func(_base *UpdateSourcePortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // UpdateSourcePortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func UpdateSourcePortWithSlogWithComponent(component logger.Component) UpdateSou
 // NewUpdateSourcePortWithSlog instruments an implementation of the provisioning.UpdateSourcePort with simple logging.
 func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, opts ...UpdateSourcePortWithSlogOption) UpdateSourcePortWithSlog {
 	this := UpdateSourcePortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentUpdateSourcePort,
+		_base:      base,
+		_component: componentUpdateSourcePort,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetLatest returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetLatest returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetLatest returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetLatest finished")
 		}
@@ -117,11 +105,7 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetUpdateFileByFilenameUnverified returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetUpdateFileByFilenameUnverified returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetUpdateFileByFilenameUnverified returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetUpdateFileByFilenameUnverified finished")
 		}

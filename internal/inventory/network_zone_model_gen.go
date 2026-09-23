@@ -26,6 +26,7 @@ func (w IncusNetworkZoneWrapper) Value() (driver.Value, error) {
 
 func (w *IncusNetworkZoneWrapper) Scan(value interface{}) error {
 	if value == nil {
+		//domain-errors:internal Programmer error, the column is not nullable.
 		return fmt.Errorf("null is not a valid network_zone")
 	}
 
@@ -35,6 +36,7 @@ func (w *IncusNetworkZoneWrapper) Scan(value interface{}) error {
 	case []byte:
 		return json.Unmarshal(v, &w.NetworkZone)
 	default:
+		//domain-errors:internal Programmer error, the driver returned a type the wrapper does not read.
 		return fmt.Errorf("type %T is not supported for network_zone", value)
 	}
 }

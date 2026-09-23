@@ -4,6 +4,7 @@ import { fetchImageSource, updateImageSource } from "api/image_incus_source";
 import ImageSourceForm from "components/ImageSourceForm";
 import { useNotification } from "context/notificationContext";
 import { ImageSource } from "types/image_incus_source";
+import { errorMessage } from "util/response";
 
 const ImageSourceConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -20,7 +21,7 @@ const ImageSourceConfiguration = () => {
           navigate(`/ui/images/sources/${name}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source update: ${e}`);

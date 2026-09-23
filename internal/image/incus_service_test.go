@@ -1483,7 +1483,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
-				require.ErrorContains(tt, err, `Failed to delete version "20260514" from incus image "almalinux:10:amd64:cloud"`)
+				require.ErrorContains(tt, err, `has no version "20260514"`)
 			},
 		},
 		{
@@ -2241,7 +2241,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 			filesRepoUsageInformation: usageInfoGiB(10, 0), // total disk space invalid.
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Not enough space available in files repository")
+				require.ErrorContains(tt, err, "Not enough space available in the files repository")
 			},
 		},
 		{
@@ -2475,7 +2475,8 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 			simplestreamsGetFileRC:    io.NopCloser(bytes.NewBufferString(`dummy`)),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Image file sha256 mismatch for image "alpine:edge:amd64:cloud", version "20260101", file "root.tar.xz" from source "linuxcontainers.org": manifest: 0000000000000000000000000000000000000000000000000000000000000000, actual: b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259`)
+				require.ErrorIs(tt, err, domain.ErrConstraintViolation)
+				require.ErrorContains(tt, err, `File "root.tar.xz" of image "alpine:edge:amd64:cloud", version "20260101" does not match the checksum the source "linuxcontainers.org" declares for it`)
 			},
 		},
 		{

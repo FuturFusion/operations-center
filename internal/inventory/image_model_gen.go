@@ -26,6 +26,7 @@ func (w IncusImageWrapper) Value() (driver.Value, error) {
 
 func (w *IncusImageWrapper) Scan(value interface{}) error {
 	if value == nil {
+		//domain-errors:internal Programmer error, the column is not nullable.
 		return fmt.Errorf("null is not a valid image")
 	}
 
@@ -35,6 +36,7 @@ func (w *IncusImageWrapper) Scan(value interface{}) error {
 	case []byte:
 		return json.Unmarshal(v, &w.Image)
 	default:
+		//domain-errors:internal Programmer error, the driver returned a type the wrapper does not read.
 		return fmt.Errorf("type %T is not supported for image", value)
 	}
 }

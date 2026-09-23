@@ -13,6 +13,7 @@ import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ImageSourceConfiguration from "pages/ImageSourceConfiguration";
 import ImageSourceOverview from "pages/ImageSourceOverview";
+import { errorMessage } from "util/response";
 
 const ImageSourceDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -60,7 +61,7 @@ const ImageSourceDetail = () => {
           queryClient.invalidateQueries({ queryKey: ["incus-images"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source refresh: ${e}`);
@@ -76,7 +77,7 @@ const ImageSourceDetail = () => {
           navigate("/ui/images-view/sources");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image source deletion: ${e}`);

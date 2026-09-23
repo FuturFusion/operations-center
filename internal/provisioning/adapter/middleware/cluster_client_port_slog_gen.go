@@ -22,18 +22,11 @@ var componentClusterClientPort = logger.RegisterComponent("provisioning.cluster_
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
 type ClusterClientPortWithSlog struct {
-	_base                 provisioning.ClusterClientPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterClientPort
+	_component logger.Component
 }
 
 type ClusterClientPortWithSlogOption func(s *ClusterClientPortWithSlog)
-
-func ClusterClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterClientPortWithSlogOption {
-	return func(_base *ClusterClientPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterClientPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -47,9 +40,8 @@ func ClusterClientPortWithSlogWithComponent(component logger.Component) ClusterC
 // NewClusterClientPortWithSlog instruments an implementation of the provisioning.ClusterClientPort with simple logging.
 func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, opts ...ClusterClientPortWithSlogOption) ClusterClientPortWithSlog {
 	this := ClusterClientPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterClientPort,
+		_base:      base,
+		_component: componentClusterClientPort,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method EnableCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method EnableCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method EnableCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method EnableCluster finished")
 		}
@@ -120,11 +108,7 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterJoinToken returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterJoinToken returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterJoinToken returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterJoinToken finished")
 		}
@@ -156,11 +140,7 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterNodeNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterNodeNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterNodeNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterNodeNames finished")
 		}
@@ -192,11 +172,7 @@ func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkConfig finished")
 		}
@@ -228,11 +204,7 @@ func (_d ClusterClientPortWithSlog) GetNodeSpecificConfigKeys(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNodeSpecificConfigKeys returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNodeSpecificConfigKeys returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNodeSpecificConfigKeys returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNodeSpecificConfigKeys finished")
 		}
@@ -264,11 +236,7 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSData returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSData returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSData returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSData finished")
 		}
@@ -300,11 +268,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceCeph(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceCeph returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceCeph returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceCeph returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceCeph finished")
 		}
@@ -336,11 +300,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, serve
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceISCSI returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceISCSI returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceISCSI returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceISCSI finished")
 		}
@@ -372,11 +332,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceLVM(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceLVM returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceLVM returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceLVM returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceLVM finished")
 		}
@@ -408,11 +364,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceLinstor(ctx context.Context, ser
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceLinstor returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceLinstor returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceLinstor returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceLinstor finished")
 		}
@@ -444,11 +396,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceMultipath returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceMultipath returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceMultipath returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceMultipath finished")
 		}
@@ -480,11 +428,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceNVME returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceNVME returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceNVME returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceNVME finished")
 		}
@@ -516,11 +460,7 @@ func (_d ClusterClientPortWithSlog) GetOSServiceOVN(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSServiceOVN returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSServiceOVN returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetOSServiceOVN returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetOSServiceOVN finished")
 		}
@@ -552,11 +492,7 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetRemoteCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetRemoteCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetRemoteCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetRemoteCertificate finished")
 		}
@@ -588,11 +524,7 @@ func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageConfig finished")
 		}
@@ -624,11 +556,7 @@ func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method IncusClient returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method IncusClient returned an error")
-			}
+			log.DebugContext(ctx, "<= method IncusClient returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method IncusClient finished")
 		}
@@ -663,11 +591,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method JoinCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method JoinCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method JoinCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method JoinCluster finished")
 		}
@@ -698,11 +622,7 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Ping returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Ping returned an error")
-			}
+			log.DebugContext(ctx, "<= method Ping returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Ping finished")
 		}
@@ -734,11 +654,7 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SetServerConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SetServerConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method SetServerConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SetServerConfig finished")
 		}
@@ -771,11 +687,7 @@ func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SubscribeLifecycleEvents returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SubscribeLifecycleEvents returned an error")
-			}
+			log.DebugContext(ctx, "<= method SubscribeLifecycleEvents returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SubscribeLifecycleEvents finished")
 		}
@@ -809,11 +721,7 @@ func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SystemFactoryReset returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SystemFactoryReset returned an error")
-			}
+			log.DebugContext(ctx, "<= method SystemFactoryReset returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SystemFactoryReset finished")
 		}
@@ -846,11 +754,7 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateClusterCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateClusterCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateClusterCertificate finished")
 		}
@@ -881,11 +785,7 @@ func (_d ClusterClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, ser
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
 		}
@@ -918,11 +818,7 @@ func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateOSService returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateOSService returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateOSService finished")
 		}
@@ -954,11 +850,7 @@ func (_d ClusterClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, serv
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateUpdateConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateUpdateConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateUpdateConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateUpdateConfig finished")
 		}

@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -190,7 +190,8 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 	}
 
 	if !cacheIDRegexp.MatchString(cacheID) || !cacheIDRegexp.MatchString(fingerprintID) {
-		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
+		return nil, provisioning.SeedImageInfo{}, domain.NewErrorf(domain.ErrNotFound, "", "No seed image %q is available", fingerprintID).
+			WithDetail("fingerprint", fingerprintID)
 	}
 
 	for {
@@ -205,7 +206,8 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 
 		wait := f.cache.generating(true, cacheID, fingerprintID)
 		if wait == nil {
-			return nil, provisioning.SeedImageInfo{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
+			return nil, provisioning.SeedImageInfo{}, domain.NewErrorf(domain.ErrNotFound, "", "No seed image %q is available", fingerprintID).
+				WithDetail("fingerprint", fingerprintID)
 		}
 
 		select {
@@ -535,7 +537,10 @@ func (c *imageCache) checkFreeSpace(requiredSize int64) error {
 	}
 
 	if (float64(usage.AvailableSpaceBytes)-float64(requiredSize))/float64(usage.TotalSpaceBytes) < cacheFreeSpaceRatio {
-		return api.StatusErrorf(http.StatusInsufficientStorage, "Not enough space available to cache the seeded image, require: %d, available: %d, required headroom: %.0f%%", requiredSize, usage.AvailableSpaceBytes, cacheFreeSpaceRatio*100)
+		return domain.NewErrorf(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage, "Not enough space available to cache the seeded image, %d bytes are required, %d bytes are available and %.0f%% of the total space is kept free", requiredSize, usage.AvailableSpaceBytes, cacheFreeSpaceRatio*100).
+			WithHintf("Free space on the file system holding the seed image cache.").
+			WithDetail("required_bytes", strconv.FormatInt(requiredSize, 10)).
+			WithDetail("available_bytes", strconv.FormatUint(usage.AvailableSpaceBytes, 10))
 	}
 
 	return nil

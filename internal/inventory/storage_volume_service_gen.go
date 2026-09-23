@@ -245,6 +245,7 @@ func (s storageVolumeService) ResyncByName(ctx context.Context, clusterName stri
 		err = s.handleUpdateEvent(ctx, clusterName, event)
 
 	default:
+		//domain-errors:internal Programmer error, a lifecycle operation was added without a case.
 		err = fmt.Errorf("Invalid lifecycle operation %q", event.Operation)
 	}
 

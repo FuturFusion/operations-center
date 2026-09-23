@@ -810,7 +810,8 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server update state for "server" (https://server:8443) is undefined`)
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, `The rolling update can not continue, server "server" is in a state it does not recognise`)
 			},
 		},
 
@@ -951,7 +952,8 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server" is updating while a cluster wide rolling reboot cycle is ongoing`)
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, `The rolling reboot is blocked, server "server" is updating while a cluster wide reboot cycle is ongoing`)
 			},
 		},
 		{
@@ -1033,7 +1035,8 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Rolling update blocked, server "server" (https://server:8443) is in unknown state`)
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, `The rolling update is blocked, server "server" is in a state it does not recognise`)
 			},
 		},
 		{
@@ -1078,7 +1081,8 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server2" is updating while a cluster wide rolling reboot cycle is ongoing`)
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, `The rolling reboot is blocked, server "server2" is updating while a cluster wide reboot cycle is ongoing`)
 			},
 		},
 		{
@@ -1134,7 +1138,8 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Rolling update blocked, out of order update for server "server2" (https://server2:8443) is ongoing, state in maintenance, restore pending`)
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, `The rolling update is blocked, server "server2" is being updated out of turn, state in maintenance, restore pending`)
 			},
 		},
 		{

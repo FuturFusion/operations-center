@@ -19,18 +19,11 @@ var componentNetworkLoadBalancerRepo = logger.RegisterComponent("inventory.netwo
 
 // NetworkLoadBalancerRepoWithSlog implements inventory.NetworkLoadBalancerRepo that is instrumented with slog logger.
 type NetworkLoadBalancerRepoWithSlog struct {
-	_base                 inventory.NetworkLoadBalancerRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkLoadBalancerRepo
+	_component logger.Component
 }
 
 type NetworkLoadBalancerRepoWithSlogOption func(s *NetworkLoadBalancerRepoWithSlog)
-
-func NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkLoadBalancerRepoWithSlogOption {
-	return func(_base *NetworkLoadBalancerRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkLoadBalancerRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func NetworkLoadBalancerRepoWithSlogWithComponent(component logger.Component) Ne
 // NewNetworkLoadBalancerRepoWithSlog instruments an implementation of the inventory.NetworkLoadBalancerRepo with simple logging.
 func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, opts ...NetworkLoadBalancerRepoWithSlogOption) NetworkLoadBalancerRepoWithSlog {
 	this := NetworkLoadBalancerRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkLoadBalancerRepo,
+		_base:      base,
+		_component: componentNetworkLoadBalancerRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -115,11 +103,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id u
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -150,11 +134,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
 		}
@@ -186,11 +166,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -222,11 +198,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -258,11 +230,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -294,11 +262,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) UpdateByUUID(ctx context.Context, netw
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}

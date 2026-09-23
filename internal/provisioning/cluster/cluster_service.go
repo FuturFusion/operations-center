@@ -240,7 +240,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		}
 
 		if exists {
-			return fmt.Errorf("Cluster with name %q already exists: %w", newCluster.Name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster with name %q already exists", newCluster.Name)
 		}
 
 		// Validate all listed servers are already known and do have configuration
@@ -254,19 +254,19 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 			}
 
 			if server.Cluster != nil {
-				return fmt.Errorf("Server %q is already part of cluster %q: %w", serverName, *server.Cluster, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is already part of cluster %q", serverName, *server.Cluster)
 			}
 
 			if server.Status != api.ServerStatusReady {
-				return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not in ready state and can therefore not be used for clustering", serverName)
 			}
 
 			if newCluster.Channel != server.Channel {
-				return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, newCluster.Channel, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q update channel %q does not match channel requested for cluster %q", server.Name, server.Channel, newCluster.Channel)
 			}
 
 			if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) != api.NotInMaintenance {
-				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v)", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String())
 			}
 
 			hasIncus := false
@@ -280,7 +280,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 			}
 
 			if !hasIncus {
-				return fmt.Errorf("Server %q does not have application Incus: %w", server.Name, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q does not have application Incus", server.Name)
 			}
 
 			servers = append(servers, *server)
@@ -289,14 +289,14 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		bootstrapIncusVersion := incusVersions[0]
 		for _, incusVersion := range incusVersions {
 			if bootstrapIncusVersion != incusVersion {
-				return fmt.Errorf("Incus version is not the same on all servers, found %q and %q: %w", bootstrapIncusVersion, incusVersion, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Incus version is not the same on all servers, found %q and %q", bootstrapIncusVersion, incusVersion)
 			}
 		}
 
 		bootstrapIncusApplicationName := incusApplicationNames[0]
 		for _, incusApplicationName := range incusApplicationNames {
 			if bootstrapIncusApplicationName != incusApplicationName {
-				return fmt.Errorf("Incus application is not the same on all servers, found %q and %q: %w", bootstrapIncusApplicationName, incusApplicationName, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Incus application is not the same on all servers, found %q and %q", bootstrapIncusApplicationName, incusApplicationName)
 			}
 		}
 
@@ -317,7 +317,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	// Verify, that all the servers that are clustered have the expected server type.
 	for _, server := range servers {
 		if server.Type != newCluster.ServerType {
-			return newCluster, fmt.Errorf("Server %q has type %q but %q was expected: %w", server.Name, server.Type, newCluster.ServerType, domain.ErrOperationNotPermitted)
+			return newCluster, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
 		}
 	}
 
@@ -338,7 +338,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		for service, configAny := range newCluster.ServicesConfig {
 			cfg, ok := configAny.(map[string]any)
 			if !ok {
-				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: config is not an object", service, server.Name)
+				return newCluster, domain.NewValidationErrf("Invalid configuration for OS service %q of server %q, the configuration is not an object", service, server.Name)
 			}
 
 			// LVM system_id is controlled by Operations Center and not the user.
@@ -348,12 +348,12 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 				enabledAny := cfg["enabled"]
 				enabled, ok := enabledAny.(bool)
 				if !ok {
-					return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: "enabled" is not a bool`, server.Name)
+					return newCluster, domain.NewValidationErrf(`Invalid configuration for OS service "lvm" of server %q, "enabled" is not a bool`, server.Name)
 				}
 
 				if enabled {
 					if server.ID > 2000 {
-						return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
+						return newCluster, domain.NewErrorf(domain.ErrOperationNotPermitted, "", `The OS service "lvm" can not be enabled on server %q, it is only supported for servers with an internal ID of up to 2000`, server.Name)
 					}
 
 					cfg["system_id"] = server.ID
@@ -465,7 +465,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 			}
 
 			if server.Cluster != nil {
-				return fmt.Errorf("Server %q was not part of a cluster, but is now part of %q: %w", server.Name, *server.Cluster, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q was not part of a cluster, but is now part of %q", server.Name, *server.Cluster)
 			}
 		}
 
@@ -563,6 +563,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 				// After polling the server, we expect the cluster certificate to be empty.
 				// If this is not the case, we hit an other issue and we fail.
 				if ptr.From(updatedServers[0].ClusterCertificate) != "" {
+					//domain-errors:internal Violated invariant, nothing the user can do about it.
 					return newCluster, fmt.Errorf("Cluster certificate is not nil after polling the server, but we expected a publicly valid certificate")
 				}
 
@@ -665,7 +666,7 @@ func determineClusterRoleAddress(server provisioning.Server) (string, error) {
 	if ip == nil {
 		ip = server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 		if ip == nil {
-			return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "cluster" role`)
+			return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `Server %q does not have an IP address on a network interface with the role "cluster" or "management"`, server.Name)
 		}
 	}
 
@@ -779,7 +780,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	}
 
 	if len(serverNames) == 0 {
-		return fmt.Errorf("Empty list of servers provided to join the cluster: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Empty list of servers provided to join the cluster")
 	}
 
 	// Make sure, the "to be added" servers are known and do have a configuration
@@ -792,19 +793,19 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		}
 
 		if server.Cluster != nil {
-			return fmt.Errorf("Server %q is already part of cluster %q: %w", serverName, *server.Cluster, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is already part of cluster %q", serverName, *server.Cluster)
 		}
 
 		if server.Status != api.ServerStatusReady {
-			return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not in ready state and can therefore not be used for clustering", serverName)
 		}
 
 		if cluster.Channel != server.Channel {
-			return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, cluster.Channel, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q update channel %q does not match channel requested for cluster %q", server.Name, server.Channel, cluster.Channel)
 		}
 
 		if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) != api.NotInMaintenance {
-			return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v)", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String())
 		}
 
 		hasIncus := false
@@ -816,7 +817,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		}
 
 		if !hasIncus {
-			return fmt.Errorf("Server %q does not have application Incus: %w", server.Name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q does not have application Incus", server.Name)
 		}
 
 		additionalServers = append(additionalServers, *server)
@@ -830,7 +831,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	}
 
 	if len(currentClusterServers) == 0 {
-		return fmt.Errorf("Cluster %q does not have any servers, which could be used as source for the join: %w", name, domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q does not have any servers, which could be used as source for the join", name)
 	}
 
 	servicesConfigReverter := revert.New()
@@ -850,7 +851,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	}
 
 	if !isConsistent {
-		return fmt.Errorf("Failed to add servers (%s) due to configuration inconsistencies: %s: %w", strings.Join(serverNames, ","), reason, domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Failed to add servers (%s) due to configuration inconsistencies: %s", strings.Join(serverNames, ","), reason)
 	}
 
 	clusterEndpoint := currentClusterServers[0]
@@ -930,7 +931,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 			}
 
 			if currentServer.Cluster != nil {
-				return fmt.Errorf("Server %q was not part of a cluster, but is now part of %q: %w", server.Name, *server.Cluster, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q was not part of a cluster, but is now part of %q", server.Name, *server.Cluster)
 			}
 		}
 
@@ -1050,7 +1051,7 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 	if lvmConfig.Config.Enabled {
 		for _, server := range targetServers {
 			if server.ID > 2000 {
-				return fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000: %w`, server.Name, domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", `Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
 			}
 		}
 	}
@@ -1192,7 +1193,7 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 
 func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) (isConsistent bool, inconsistencyReason string, _ error) {
 	if len(servers) == 0 {
-		return false, "", fmt.Errorf("Unable to check clustering server consistency for empty servers list: %w", domain.ErrOperationNotPermitted)
+		return false, "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Unable to check clustering server consistency for empty servers list")
 	}
 
 	if len(servers) == 1 {
@@ -1530,7 +1531,9 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 	}
 
 	if len(servers) <= len(removedServerNames) {
-		return fmt.Errorf("Cluster %q does not have enough servers for server removal, current cluster size is %d, number of servers to be removed: %d: %w", name, len(servers), len(removedServerNames), domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonClusterTooSmall, "Cluster %q has %d servers, removing %d of them would leave the cluster without any server", name, len(servers), len(removedServerNames)).
+			WithHintf("Keep at least one server in the cluster or delete the cluster instead.").
+			WithDetail("cluster", name)
 	}
 
 	removedServers := make([]provisioning.Server, 0, len(removedServerNames))
@@ -1540,14 +1543,16 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 		})
 
 		if idx < 0 {
-			return fmt.Errorf("Server removal failed, server %q is not part of the cluster %q: %w", removedServerName, name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, api.ErrorReasonServerNotClusterMember, "Server %q is not a member of cluster %q", removedServerName, name).
+				WithDetail("server", removedServerName).
+				WithDetail("cluster", name)
 		}
 
 		removedServers = append(removedServers, servers[idx].Clone())
 	}
 
 	// Find endpoint to talk to, must not be one of the servers, that get removed from the cluster.
-	endpoint, err := s.removeServerEndpoint(ctx, servers, removedServerNames)
+	endpoint, err := s.removeServerEndpoint(ctx, name, servers, removedServerNames)
 	if err != nil {
 		return err
 	}
@@ -1583,7 +1588,7 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 
 // removeServerEndpoint returns a reachable member of the cluster, which is not
 // one of the servers, that get removed from the cluster.
-func (s *clusterService) removeServerEndpoint(ctx context.Context, servers provisioning.Servers, removedServerNames []string) (provisioning.Server, error) {
+func (s *clusterService) removeServerEndpoint(ctx context.Context, clusterName string, servers provisioning.Servers, removedServerNames []string) (provisioning.Server, error) {
 	// The servers, which are reported ready, are tried first.
 	ready := make([]provisioning.Server, 0, len(servers))
 	rest := make([]provisioning.Server, 0, len(servers))
@@ -1603,7 +1608,7 @@ func (s *clusterService) removeServerEndpoint(ctx context.Context, servers provi
 
 	candidates := slices.Concat(ready, rest)
 
-	errs := make([]error, 0, len(candidates)+1)
+	errs := make([]error, 0, len(candidates))
 	for _, candidate := range candidates {
 		err := s.client.Ping(ctx, candidate)
 		if err == nil {
@@ -1613,22 +1618,30 @@ func (s *clusterService) removeServerEndpoint(ctx context.Context, servers provi
 		errs = append(errs, fmt.Errorf("Server %q: %w", candidate.Name, err))
 	}
 
-	errs = append(errs, domain.ErrOperationNotPermitted)
-
-	return provisioning.Server{}, fmt.Errorf("Server removal failed, no reachable server left in cluster to perform the removal: %w", errors.Join(errs...))
+	return provisioning.Server{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "None of the remaining servers of cluster %q is reachable to perform the removal", clusterName).
+		WithHintf("Make sure at least one server, which stays in the cluster, is reachable.").
+		WithDetail("cluster", clusterName).
+		WithCause(errors.Join(errs...))
 }
 
 // removeServerPreCheck verifies, that the servers can be removed from the
 // cluster without losing resources. With force set, the findings are reported
 // but do not block the removal.
 func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, removedServers []provisioning.Server, removedServerNames []string, incusClient provisioning.InstanceServer, force bool) error {
-	rejectOrWarn := func(format string, a ...any) error {
+	rejectOrWarn := func(reason api.ErrorReason, server string, hint string, format string, a ...any) error {
 		if force {
 			slog.WarnContext(ctx, "Forceful server removal ignores blocking condition", slog.String("cluster", name), slog.String("condition", fmt.Sprintf(format, a...)))
 			return nil
 		}
 
-		return fmt.Errorf("Server removal failed, %s: %w", fmt.Sprintf(format, a...), domain.ErrOperationNotPermitted)
+		err := domain.NewErrorf(domain.ErrOperationNotPermitted, reason, format, a...).
+			WithHintf("%s", hint).
+			WithDetail("cluster", name)
+		if server != "" {
+			err = err.WithDetail("server", server)
+		}
+
+		return err
 	}
 
 	// Make sure, our inventory information is up to date.
@@ -1643,7 +1656,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 
 	for _, removedServer := range removedServers {
 		if ptr.From(removedServer.VersionData.InMaintenance) != api.InMaintenanceEvacuated {
-			err = rejectOrWarn("server %q is not in state evacuated", removedServer.Name)
+			err = rejectOrWarn(api.ErrorReasonServerNotEvacuated, removedServer.Name,
+				"Evacuate the server first or use the force option.",
+				"Server %q can not be removed from cluster %q, it is not evacuated", removedServer.Name, name)
 			if err != nil {
 				return err
 			}
@@ -1668,7 +1683,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 			}
 
 			if len(localInstances) > 0 {
-				err = rejectOrWarn("server %q still has instances (%v)", removedServer.Name, localInstances)
+				err = rejectOrWarn(api.ErrorReasonServerHasInstances, removedServer.Name,
+					"Move or delete the instances first or use the force option.",
+					"Server %q can not be removed from cluster %q, it still has instances (%s)", removedServer.Name, name, strings.Join(localInstances, ", "))
 				if err != nil {
 					return err
 				}
@@ -1689,7 +1706,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 			}
 
 			if len(localStorageVolumes) > 0 {
-				err = rejectOrWarn("server %q still has custom volumes (%v)", removedServer.Name, localStorageVolumes)
+				err = rejectOrWarn(api.ErrorReasonServerHasCustomVolumes, removedServer.Name,
+					"Move or delete the custom storage volumes first or use the force option.",
+					"Server %q can not be removed from cluster %q, it still has custom storage volumes (%s)", removedServer.Name, name, strings.Join(localStorageVolumes, ", "))
 				if err != nil {
 					return err
 				}
@@ -1730,7 +1749,9 @@ func (s *clusterService) removeServerPreCheck(ctx context.Context, name string, 
 		if len(lostImages) > 0 {
 			slices.Sort(lostImages)
 
-			err = rejectOrWarn("the following images are only present on the server(s) being removed (%v)", lostImages)
+			err = rejectOrWarn(api.ErrorReasonImagesOnlyOnRemovedServers, "",
+				"Copy the images to a server, which stays in the cluster, or use the force option.",
+				"The images (%s) are only present on the servers being removed from cluster %q", strings.Join(lostImages, ", "), name)
 			if err != nil {
 				return err
 			}
@@ -2034,7 +2055,7 @@ func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter provi
 
 func (s *clusterService) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	var cluster *provisioning.Cluster
@@ -2042,6 +2063,12 @@ func (s *clusterService) GetByName(ctx context.Context, name string) (*provision
 		var err error
 		cluster, err = s.repo.GetByName(ctx, name)
 		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewErrorf(domain.ErrNotFound, "", "Cluster %q not found", name).
+					WithDetail("cluster", name).
+					WithCause(err)
+			}
+
 			return fmt.Errorf("Failed to get cluster %q by name: %w", name, err)
 		}
 
@@ -2177,7 +2204,7 @@ func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Clu
 
 func (s *clusterService) Rename(ctx context.Context, oldName string, newName string) error {
 	if oldName == "" {
-		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	if newName == "" {
@@ -2202,7 +2229,7 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 
 func (s *clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
 	if name == "" {
-		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	// forceful delete
@@ -2234,10 +2261,10 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 			api.ClusterStatusPending:
 			// delete is fine
 		case api.ClusterStatusReady:
-			return fmt.Errorf("Delete for cluster in state %q: %w", cluster.Status.String(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q can not be deleted while it is in state %q", name, cluster.Status.String())
 
 		default:
-			return fmt.Errorf("Delete for cluster with invalid state: %w", domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q can not be deleted, its state is invalid", name)
 		}
 
 		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, provisioning.ServerFilter{
@@ -2248,7 +2275,8 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 		}
 
 		if len(servers) > 0 {
-			return fmt.Errorf("Delete for cluster with %d linked servers (%v): %w", len(servers), servers, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q still has %d servers (%v)", name, len(servers), servers).
+				WithHintf("Remove the servers from the cluster first.")
 		}
 
 		err = s.repo.DeleteByName(ctx, name)
@@ -2274,7 +2302,7 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 
 func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
 	if name == "" {
-		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
@@ -2285,7 +2313,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	}
 
 	if len(servers) == 0 {
-		return fmt.Errorf("Cluster not found")
+		return domain.NewErrorf(domain.ErrNotFound, "", "Cluster %q does not have any servers", name)
 	}
 
 	for _, server := range servers {
@@ -2405,10 +2433,11 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 		err = s.ResyncInventoryByName(ctx, cluster.Name)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("Failed to resync inventory: %w", err))
-			s.warning.Emit(ctx, warning.NewWarning(
+			s.warning.Emit(ctx, warning.NewWarningFromError(
 				api.WarningTypeClusterInventoryResyncFailed,
 				scope,
-				err.Error(),
+				err,
+				"",
 			))
 			continue
 		}
@@ -2425,7 +2454,7 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 
 func (s *clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	// We iterate a map, so the order is random. But this should not be an issue
@@ -2470,7 +2499,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 		}
 
 		if cluster.IsUpdateInProgress() {
-			return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q already has an operation in progress", name)
 		}
 
 		if (len(cluster.UpdateStatus.NeedsUpdate) == 0) && (len(cluster.UpdateStatus.NeedsReboot) == 0) {
@@ -2626,7 +2655,7 @@ func (s *clusterService) LaunchClusterReboot(ctx context.Context, name string) e
 	}
 
 	if cluster.IsUpdateInProgress() {
-		return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q already has an operation in progress", name)
 	}
 
 	// Refresh all status information for all servers.
@@ -2668,7 +2697,7 @@ func (s *clusterService) LaunchClusterReboot(ctx context.Context, name string) e
 		}
 
 		if cluster.IsUpdateInProgress() {
-			return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q already has an operation in progress", name)
 		}
 
 		cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
@@ -2755,14 +2784,15 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 				if !domain.IsRetryableError(err) {
 					s.warning.Emit(
 						ctx,
-						warning.NewWarning(
+						warning.NewWarningFromError(
 							api.WarningTypeClusterRollingUpdateNextAction,
 							api.WarningScope{
 								Scope:      "poll_servers",
 								EntityType: "cluster",
 								Entity:     cluster.Name,
 							},
-							fmt.Sprintf("Rolling cluster update blocked, failed to refresh server state information: %v", err),
+							err,
+							"Rolling cluster update blocked, failed to refresh server state information",
 						),
 					)
 
@@ -2775,7 +2805,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 				Cluster: &cluster.Name,
 			})
 			if err == nil && len(servers) == 0 {
-				return fmt.Errorf("Failed to get server details for cluster %q: %w", cluster.Name, domain.ErrNotFound)
+				return domain.NewErrorf(domain.ErrNotFound, "", "Failed to get server details for cluster %q", cluster.Name)
 			}
 
 			if err != nil {
@@ -2916,7 +2946,12 @@ func (s *clusterService) awaitRollingUpdateStep(server provisioning.Server, step
 
 	if retrigger == nil {
 		return func(ctx context.Context) error {
-			return fmt.Errorf("Server %q (%s) did not complete %s within %s: %w", server.Name, server.ConnectionURL, step, step.Timeout(), domain.ErrTerminal)
+			return domain.NewErrorf(domain.ErrTerminal, "", "Server %q did not complete %s within %s", server.Name, step, step.Timeout()).
+				WithHintf("Resolve the reported problem on server %q and start the update again.", server.Name).
+				WithDetail("server", server.Name).
+				WithDetail("connection_url", server.ConnectionURL).
+				WithDetail("step", string(step)).
+				WithDetail("timeout", step.Timeout().String())
 		}
 	}
 
@@ -2954,13 +2989,21 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 		switch serverUpdateState {
 		case api.ServerUpdateStateUndefined:
 			if nextAction == nil {
-				return fmt.Errorf("Server update state for %q (%s) is undefined", server.Name, server.ConnectionURL)
+				return domain.NewErrorf(domain.ErrTerminal, "", "The rolling update can not continue, server %q is in a state it does not recognise", server.Name).
+					WithHintf("Check the state of server %q and start the update again.", server.Name).
+					WithDetail("server", server.Name).
+					WithDetail("connection_url", server.ConnectionURL)
 			}
 
-			return fmt.Errorf("Rolling update blocked, server %q (%s) is in unknown state", server.Name, server.ConnectionURL)
+			return domain.NewErrorf(domain.ErrTerminal, "", "The rolling update is blocked, server %q is in a state it does not recognise", server.Name).
+				WithHintf("Check the state of server %q and start the update again.", server.Name).
+				WithDetail("server", server.Name).
+				WithDetail("connection_url", server.ConnectionURL)
 
 		case api.ServerUpdateStateUpdating:
-			return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
+			return domain.NewErrorf(domain.ErrTerminal, "", "The rolling reboot is blocked, server %q is updating while a cluster wide reboot cycle is ongoing", server.Name).
+				WithHintf("Wait for the update of server %q to finish and start the reboot again.", server.Name).
+				WithDetail("server", server.Name)
 		}
 
 		definition := rollingUpdateStates[serverUpdateState]
@@ -2976,7 +3019,11 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				continue
 			}
 
-			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, serverUpdateState)
+			return domain.NewErrorf(domain.ErrTerminal, "", "The rolling update is blocked, server %q is being updated out of turn, state %v", server.Name, serverUpdateState).
+				WithHintf("Wait for the update of server %q to finish and start the update again.", server.Name).
+				WithDetail("server", server.Name).
+				WithDetail("connection_url", server.ConnectionURL).
+				WithDetail("state", fmt.Sprintf("%v", serverUpdateState))
 		}
 
 		if keptEvacuated && definition.keptEvacuated == rollingUpdateKeptEvacuatedDone {
@@ -3002,6 +3049,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			nextAction = s.rollingUpdateSettle(cluster, server)
 
 		default:
+			//domain-errors:internal Programmer error, a state was added to the table without a kind.
 			return fmt.Errorf("Server update state %q for %q (%s) is not supported", serverUpdateState, server.Name, server.ConnectionURL)
 		}
 	}
@@ -3026,10 +3074,11 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			if domain.IsRetryableError(err) {
 				s.warning.Emit(
 					ctx,
-					warning.NewWarning(
+					warning.NewWarningFromError(
 						api.WarningTypeClusterRollingUpdateNextAction,
 						scope,
-						fmt.Sprintf("Rolling cluster update next action: %v", err),
+						err,
+						"Rolling cluster update next action",
 					),
 				)
 				return nil
@@ -3038,7 +3087,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			if errors.Is(err, domain.ErrTerminal) {
 				inProgressStatus := cluster.UpdateStatus.InProgressStatus
 				inProgressStatus.InProgress = api.ClusterUpdateInProgressError
-				inProgressStatus.Error = err.Error()
+				inProgressStatus.Error = domain.UserMessage(err)
 
 				updateErr := s.updateInProgressStatus(ctx, cluster.Name, inProgressStatus)
 				if updateErr != nil {
@@ -3392,7 +3441,7 @@ func (s *clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName 
 		}
 
 		if slices.Contains(iscsiConfig.Config.Targets, target) {
-			return fmt.Errorf("Service iscsi target %q (%s:%d) already defined on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service iscsi target %q (%s:%d) already defined on server %q (%s)", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL())
 		}
 
 		iscsiConfigs[server.Name] = iscsiConfig
@@ -3452,7 +3501,7 @@ func (s *clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNa
 		}
 
 		if !slices.Contains(iscsiConfig.Config.Targets, target) {
-			return fmt.Errorf("Service iscsi target %q (%s:%d) does not exist on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service iscsi target %q (%s:%d) does not exist on server %q (%s)", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL())
 		}
 
 		iscsiConfigs[server.Name] = iscsiConfig
@@ -3514,7 +3563,7 @@ func (s *clusterService) AddStorageTargetMultipath(ctx context.Context, clusterN
 		}
 
 		if slices.Contains(multipathConfig.Config.WWNs, target) {
-			return fmt.Errorf("Service multipath target %q already defined on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service multipath target %q already defined on server %q (%s)", target, server.Name, server.GetConnectionURL())
 		}
 
 		multipathConfigs[server.Name] = multipathConfig
@@ -3574,7 +3623,7 @@ func (s *clusterService) RemoveStorageTargetMultipath(ctx context.Context, clust
 		}
 
 		if !slices.Contains(multipathConfig.Config.WWNs, target) {
-			return fmt.Errorf("Service multipath target %q does not exist on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service multipath target %q does not exist on server %q (%s)", target, server.Name, server.GetConnectionURL())
 		}
 
 		multipathConfigs[server.Name] = multipathConfig
@@ -3636,7 +3685,7 @@ func (s *clusterService) AddStorageTargetNVME(ctx context.Context, clusterName s
 		}
 
 		if slices.Contains(nvmeConfig.Config.Targets, target) {
-			return fmt.Errorf("Service nvme transport %q (%s:%d) already defined on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service nvme transport %q (%s:%d) already defined on server %q (%s)", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL())
 		}
 
 		nvmeConfigs[server.Name] = nvmeConfig
@@ -3696,7 +3745,7 @@ func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterNam
 		}
 
 		if !slices.Contains(nvmeConfig.Config.Targets, target) {
-			return fmt.Errorf("Service nvme transport %q (%s:%d) does not exist on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Service nvme transport %q (%s:%d) does not exist on server %q (%s)", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL())
 		}
 
 		nvmeConfigs[server.Name] = nvmeConfig
@@ -3743,7 +3792,7 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 	}
 
 	if cluster.Status != api.ClusterStatusReady {
-		return nil, fmt.Errorf("Cluster %q is not ready: %w", clusterName, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q is not ready", clusterName)
 	}
 
 	// Update the current server states in the DB, serves as a connection test at the same time.
@@ -3762,7 +3811,7 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 	}
 
 	if len(servers) == 0 {
-		return nil, fmt.Errorf("Cluster %q does not have any servers: %w", clusterName, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster %q does not have any servers", clusterName)
 	}
 
 	// Ensure all servers are in ready state and online.
@@ -3772,7 +3821,7 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 			server.VersionData.InMaintenance != nil &&
 			*server.VersionData.InMaintenance == api.NotInMaintenance
 		if !isReady {
-			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
+			return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q)", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, server.VersionData.InMaintenance.String())
 		}
 	}
 
@@ -3860,10 +3909,11 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 
 				s.warning.Emit(
 					ctx,
-					warning.NewWarning(
+					warning.NewWarningFromError(
 						api.WarningTypeUnreachable,
 						scope,
-						fmt.Sprintf("Failed to re-establish event stream: %v", err),
+						err,
+						"Failed to re-establish event stream",
 					),
 				)
 
@@ -3898,10 +3948,11 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 					if err != nil {
 						s.warning.Emit(
 							ctx,
-							warning.NewWarning(
+							warning.NewWarningFromError(
 								api.WarningTypeClusterInventoryResyncFailed,
 								scope,
-								fmt.Sprintf("Failed to resync %q: %v", string(event.ResourceType), err),
+								err,
+								"Failed to resync %q", string(event.ResourceType),
 							),
 						)
 					} else {
@@ -3983,7 +4034,7 @@ func (s *clusterService) GetEndpoint(ctx context.Context, name string) (provisio
 
 func (s *clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
 	if clusterName == "" {
-		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	return s.localartifact.GetClusterArtifactAll(ctx, clusterName)
@@ -3991,7 +4042,7 @@ func (s *clusterService) GetClusterArtifactAll(ctx context.Context, clusterName 
 
 func (s *clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
 	if clusterName == "" {
-		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	return s.localartifact.GetClusterArtifactAllNames(ctx, clusterName)
@@ -3999,11 +4050,11 @@ func (s *clusterService) GetClusterArtifactAllNames(ctx context.Context, cluster
 
 func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
 	if clusterName == "" {
-		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster name cannot be empty")
 	}
 
 	if artifactName == "" {
-		return nil, fmt.Errorf("Cluster artifact name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster artifact name cannot be empty")
 	}
 
 	return s.localartifact.GetClusterArtifactByName(ctx, clusterName, artifactName)
@@ -4011,7 +4062,7 @@ func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterNa
 
 func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*provisioning.ClusterArtifactFile, error) {
 	if filename == "" {
-		return nil, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Filename cannot be empty")
 	}
 
 	artifact, err := s.GetClusterArtifactByName(ctx, clusterName, artifactName)
@@ -4025,7 +4076,7 @@ func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clust
 		}
 	}
 
-	return nil, fmt.Errorf("File %q not found in artifact %q for cluster %q: %w", filename, artifactName, clusterName, domain.ErrNotFound)
+	return nil, domain.NewErrorf(domain.ErrNotFound, "", "File %q not found in artifact %q for cluster %q", filename, artifactName, clusterName)
 }
 
 func (s *clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {

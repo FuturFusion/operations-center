@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,7 +69,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
 
 	default:
-		return "", fmt.Errorf(`First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q: %w`, part.FormName(), part.FileName(), domain.ErrOperationNotPermitted)
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q`, part.FormName(), part.FileName()).
+			WithHintf(`Send "request_json" or "incus.tar.xz" as the first part of the request.`).
+			WithDetail("form_name", part.FormName()).
+			WithDetail("file_name", part.FileName())
 	}
 
 	if err != nil {
@@ -126,7 +130,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	_, ok := img.Versions[versionIdentifier]
 	if ok {
-		return "", fmt.Errorf("Version %q already exists for incus image %q: %w", versionIdentifier, name, domain.ErrOperationNotPermitted)
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Version %q already exists for incus image %q", versionIdentifier, name).
+			WithHintf("Delete the existing version first or add the image under a different version.").
+			WithDetail("image", name).
+			WithDetail("version", versionIdentifier)
 	}
 
 	incusImageVersion := api.IncusImageVersion{
@@ -327,7 +334,8 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to find metadata.yaml in incus.tar.xz: %w`, domain.ErrConstraintViolation)
+			return incusapi.ImageMetadata{}, nil, domain.NewErrorf(domain.ErrConstraintViolation, "", `The uploaded "incus.tar.xz" does not contain "metadata.yaml"`).
+				WithHintf(`Upload an "incus.tar.xz" which contains "metadata.yaml".`)
 		}
 
 		if err != nil {
@@ -510,7 +518,9 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 
 		_, ok := img.Versions[versionIdentifier]
 		if !ok {
-			return fmt.Errorf("Failed to delete version %q from incus image %q: %w", versionIdentifier, name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q has no version %q", name, versionIdentifier).
+				WithDetail("image", name).
+				WithDetail("version", versionIdentifier)
 		}
 
 		delete(img.Versions, versionIdentifier)
@@ -813,11 +823,15 @@ func (s *imageIncusService) isSpaceAvailable(ctx context.Context, downloadImage 
 	}
 
 	if ui.TotalSpaceBytes < 1 {
+		//domain-errors:internal Programmer error, the files repository reports nonsense.
 		return fmt.Errorf("Files repository reported an invalid total space: %d", ui.TotalSpaceBytes)
 	}
 
 	if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
-		return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+		return domain.NewErrorf(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage, "Not enough space available in the files repository, %d bytes are required, %d bytes are available and 10%% of the total space is kept free after the download", requiredSpaceTotal, ui.AvailableSpaceBytes).
+			WithHintf("Free space in the files repository, e.g. by removing images which are no longer needed.").
+			WithDetail("required_bytes", strconv.FormatInt(requiredSpaceTotal, 10)).
+			WithDetail("available_bytes", strconv.FormatUint(ui.AvailableSpaceBytes, 10))
 	}
 
 	return nil
@@ -859,7 +873,14 @@ func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem)
 	if item.file.HashSha256 != "" {
 		checksum := hex.EncodeToString(h.Sum(nil))
 		if item.file.HashSha256 != checksum {
-			return fmt.Errorf("Image file sha256 mismatch for image %q, version %q, file %q from source %q: manifest: %s, actual: %s", item.image.Name, item.versionIdentifier, item.filename, item.source.Name, item.file.HashSha256, checksum)
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "File %q of image %q, version %q does not match the checksum the source %q declares for it", item.filename, item.image.Name, item.versionIdentifier, item.source.Name).
+				WithHintf("The download is corrupt or the source is inconsistent, try again and check the source, if it keeps failing.").
+				WithDetail("image", item.image.Name).
+				WithDetail("version", item.versionIdentifier).
+				WithDetail("file", item.filename).
+				WithDetail("source", item.source.Name).
+				WithDetail("expected_sha256", item.file.HashSha256).
+				WithDetail("actual_sha256", checksum)
 		}
 	}
 

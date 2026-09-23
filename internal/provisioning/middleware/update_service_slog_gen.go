@@ -23,18 +23,11 @@ var componentUpdateService = logger.RegisterComponent("provisioning.update_servi
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
 type UpdateServiceWithSlog struct {
-	_base                 provisioning.UpdateService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.UpdateService
+	_component logger.Component
 }
 
 type UpdateServiceWithSlogOption func(s *UpdateServiceWithSlog)
-
-func UpdateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateServiceWithSlogOption {
-	return func(_base *UpdateServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // UpdateServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -48,9 +41,8 @@ func UpdateServiceWithSlogWithComponent(component logger.Component) UpdateServic
 // NewUpdateServiceWithSlog instruments an implementation of the provisioning.UpdateService with simple logging.
 func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
 	this := UpdateServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentUpdateService,
+		_base:      base,
+		_component: componentUpdateService,
 	}
 
 	for _, opt := range opts {
@@ -82,11 +74,7 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CleanupAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CleanupAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method CleanupAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CleanupAll finished")
 		}
@@ -118,11 +106,7 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method CreateFromArchive returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method CreateFromArchive returned an error")
-			}
+			log.DebugContext(ctx, "<= method CreateFromArchive returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method CreateFromArchive finished")
 		}
@@ -153,11 +137,7 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -188,11 +168,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDs returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDs returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDs returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDs finished")
 		}
@@ -224,11 +200,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -260,11 +232,7 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -296,11 +264,7 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -334,11 +298,7 @@ func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetChangelog returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetChangelog returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetChangelog returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetChangelog finished")
 		}
@@ -373,11 +333,7 @@ func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetChangelogByChannel returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetChangelogByChannel returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetChangelogByChannel returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetChangelogByChannel finished")
 		}
@@ -409,11 +365,7 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetUpdateAllFiles returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetUpdateAllFiles returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetUpdateAllFiles returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetUpdateAllFiles finished")
 		}
@@ -447,11 +399,7 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetUpdateFileByFilename returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetUpdateFileByFilename returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetUpdateFileByFilename returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetUpdateFileByFilename finished")
 		}
@@ -483,11 +431,7 @@ func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName finished")
 		}
@@ -517,11 +461,7 @@ func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Prune returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Prune returned an error")
-			}
+			log.DebugContext(ctx, "<= method Prune returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Prune finished")
 		}
@@ -551,11 +491,7 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Refresh returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Refresh returned an error")
-			}
+			log.DebugContext(ctx, "<= method Refresh returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Refresh finished")
 		}
@@ -603,11 +539,7 @@ func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}

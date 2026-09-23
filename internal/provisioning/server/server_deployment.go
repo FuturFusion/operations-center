@@ -502,7 +502,7 @@ func (s *serverService) deploymentStepContext(ctx context.Context, name string, 
 // DeployByName triggers the automated deployment of IncusOS on a server.
 func (s *serverService) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	err := request.Validate()
@@ -511,7 +511,8 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 	}
 
 	if config.GetNetwork().OperationsCenterAddress == "" {
-		return fmt.Errorf("Operations Center address is not configured, the BMC would not be able to fetch the installation media: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Operations Center address is not configured, so the BMC would not be able to fetch the installation media").
+			WithHintf(`Configure "network.operations_center_address" first.`)
 	}
 
 	// Collect the BMC data before anything is checked against it.
@@ -521,7 +522,9 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 	}
 
 	if !server.BMCConfig.HasBMC() {
-		return fmt.Errorf("Server %q has no BMC configured: %w", name, domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has no BMC configured", name).
+			WithHintf("Configure the BMC of the server first, a deployment is driven through it.").
+			WithDetail("server", name)
 	}
 
 	err = s.resyncBMCData(ctx, *server)
@@ -538,15 +541,22 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		}
 
 		if server.Status != api.ServerStatusUnregistered {
-			return fmt.Errorf("Server %q is in status %q, only an unregistered server can be deployed: %w", name, server.Status, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is in status %q, only an unregistered server can be deployed", name, server.Status).
+				WithDetail("server", name).
+				WithDetail("status", string(server.Status))
 		}
 
 		if !server.BMCConfig.HasBMC() {
-			return fmt.Errorf("Server %q has no BMC configured: %w", name, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has no BMC configured", name).
+				WithHintf("Configure the BMC of the server first, a deployment is driven through it.").
+				WithDetail("server", name)
 		}
 
 		if server.StatusInternal.Deployment.IsActive() {
-			return fmt.Errorf("Server %q is already being deployed (%s): %w", name, server.StatusInternal.Deployment.State, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is already being deployed (%s)", name, server.StatusInternal.Deployment.State).
+				WithHintf("Wait for the deployment to finish or cancel it first.").
+				WithDetail("server", name).
+				WithDetail("deployment_state", string(server.StatusInternal.Deployment.State))
 		}
 
 		token, err := s.tokenSvc.GetByUUID(ctx, request.TokenUUID)
@@ -555,11 +565,17 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		}
 
 		if token.UsesRemaining < 1 {
-			return fmt.Errorf("Token %q has no uses remaining: %w", request.TokenUUID, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token %q has no uses remaining", request.TokenUUID).
+				WithHintf("Use a token with uses remaining or create a new one.").
+				WithDetail("token", request.TokenUUID.String())
 		}
 
 		if token.ExpireAt.Before(s.now().Add(config.ServerDeploymentTimeout)) {
-			return fmt.Errorf("Token %q expires at %s, which does not cover the deployment timeout of %s, so the server would not be able to register: %w", request.TokenUUID, token.ExpireAt.Format(time.RFC3339), config.ServerDeploymentTimeout, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token %q expires at %s, which does not cover the deployment timeout of %s, so the server would not be able to register", request.TokenUUID, token.ExpireAt.Format(time.RFC3339), config.ServerDeploymentTimeout).
+				WithHintf("Extend the expiry of the token or use a token, which outlives the deployment timeout.").
+				WithDetail("token", request.TokenUUID.String()).
+				WithDetail("expire_at", token.ExpireAt.Format(time.RFC3339)).
+				WithDetail("deployment_timeout", config.ServerDeploymentTimeout.String())
 		}
 
 		seed, err := s.tokenSvc.GetTokenSeedByName(ctx, request.TokenUUID, request.Seed)
@@ -568,12 +584,16 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		}
 
 		if !seed.Public {
-			return fmt.Errorf("Token seed %q must be public to be used as installation media via the BMC: %w", request.Seed, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q must be public to be used as installation media via the BMC", request.Seed).
+				WithHintf("Mark the token seed as public, the BMC fetches the image without authorization.").
+				WithDetail("token_seed", request.Seed)
 		}
 
 		forceReboot := seed.Seeds.Install.ForceReboot
 		if !forceReboot && !request.Force {
-			return fmt.Errorf(`Token seed %q does not set "force_reboot", so the server does not reboot on its own when the installation is done. Re-run with force to rely on the read progress of the installation media alone: %w`, request.Seed, domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", `Token seed %q does not set "force_reboot", so the server does not reboot on its own when the installation is done`, request.Seed).
+				WithHintf(`Set "force_reboot" on the token seed or use the force option to rely on the read progress of the installation media alone.`).
+				WithDetail("token_seed", request.Seed)
 		}
 
 		if request.Channel != "" {
@@ -591,14 +611,21 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		} else {
 			media, ok := server.BMCData.VirtualMedia[request.VirtualMediaID]
 			if !ok {
-				return fmt.Errorf("Server %q has no virtual media device %q, the BMC reports %s: %w", name, request.VirtualMediaID, describeVirtualMedia(server.BMCData), domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has no virtual media device %q, the BMC reports %s", name, request.VirtualMediaID, describeVirtualMedia(server.BMCData)).
+					WithHintf("Use one of the virtual media devices the BMC reports or leave the device unset to let Operations Center pick one.").
+					WithDetail("server", name).
+					WithDetail("virtual_media", request.VirtualMediaID)
 			}
 
 			if !virtualMediaSupportsImageType(media, request.ImageType) {
-				return fmt.Errorf(
-					"Virtual media device %q of server %q does not accept a %q image, it supports %s: %w",
-					request.VirtualMediaID, name, request.ImageType, strings.Join(media.MediaTypes, ", "), domain.ErrOperationNotPermitted,
-				)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "",
+					"Virtual media device %q of server %q does not accept a %q image, it supports %s",
+					request.VirtualMediaID, name, request.ImageType, strings.Join(media.MediaTypes, ", "),
+				).
+					WithHintf("Use a virtual media device which accepts the image type or deploy a different image type.").
+					WithDetail("server", name).
+					WithDetail("virtual_media", request.VirtualMediaID).
+					WithDetail("image_type", string(request.ImageType))
 			}
 		}
 
@@ -612,7 +639,9 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		}
 
 		if resolution == nil {
-			return fmt.Errorf("No BIOS profile matches server %q: %w", name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, "", "No BIOS profile matches server %q", name).
+				WithHintf("Add a BIOS profile which matches the server.").
+				WithDetail("server", name)
 		}
 
 		now := s.now()
@@ -666,7 +695,7 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 // stopped right away and the server is left untouched instead.
 func (s *serverService) CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
 	var cancelledServer provisioning.Server
@@ -679,7 +708,8 @@ func (s *serverService) CancelDeploymentByName(ctx context.Context, name string,
 
 		deployment := server.StatusInternal.Deployment
 		if !deployment.IsActive() {
-			return fmt.Errorf("Server %q has no deployment in progress: %w", name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, "", "Server %q has no deployment in progress", name).
+				WithDetail("server", name)
 		}
 
 		if deployment.CancelRequested {
@@ -854,12 +884,18 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 	}
 
 	if !deployment.CancelRequested && now.Sub(deployment.StartedAt) > config.ServerDeploymentTimeout {
-		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment did not complete within %s", config.ServerDeploymentTimeout))
+		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment did not complete within %s", config.ServerDeploymentTimeout).
+			WithHintf("Check the server and the BMC, then start the deployment again.").
+			WithDetail("server", name).
+			WithDetail("timeout", config.ServerDeploymentTimeout.String()))
 	}
 
 	definition, ok := deploymentStates[deployment.State]
 	if !ok {
-		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment is in the unknown state %q", deployment.State))
+		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment is in the state %q, which Operations Center does not know how to continue from", deployment.State).
+			WithHintf("Start the deployment again.").
+			WithDetail("server", name).
+			WithDetail("deployment_state", string(deployment.State)))
 	}
 
 	switch definition.kind {
@@ -948,7 +984,11 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.updateDeployment(ctx, server.Name, mutate)
 	}
 
-	timeoutErr := fmt.Errorf("Deployment state %q did not complete within %s", deployment.State, definition.timeout)
+	timeoutErr := domain.NewErrorf(domain.ErrTerminal, "", "The deployment step %q did not complete within %s", deployment.State, definition.timeout).
+		WithHintf("Check the server and the BMC, then start the deployment again.").
+		WithDetail("server", server.Name).
+		WithDetail("deployment_state", string(deployment.State)).
+		WithDetail("timeout", definition.timeout.String())
 
 	if definition.fallback == "" {
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
@@ -958,11 +998,11 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
-	log.WarnContext(ctx, "Deployment wait timed out, falling back to the trigger", slog.String("fallback", definition.fallback.String()))
+	log.WarnContext(ctx, "Deployment wait timed out, falling back to the trigger", logger.Err(timeoutErr), slog.String("fallback", definition.fallback.String()))
 
 	return true, s.updateDeployment(ctx, server.Name, func(deployment *provisioning.ServerDeployment) {
 		deployment.Retries++
-		deployment.LastError = timeoutErr.Error()
+		deployment.LastError = domain.UserMessage(timeoutErr)
 		deployment.FallBackTo(now, definition.fallback)
 	})
 }
@@ -1069,6 +1109,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, err
 	}
 
+	//domain-errors:internal Programmer error, the state table and the state disagree.
 	return nil, fmt.Errorf("Deployment state %q is not an action", deployment.State)
 }
 
@@ -1369,6 +1410,7 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 		return serverHasRegistered(server), nil, nil
 	}
 
+	//domain-errors:internal Programmer error, the state table and the state disagree.
 	return false, nil, fmt.Errorf("Deployment state %q is not a wait", deployment.State)
 }
 
@@ -1421,6 +1463,7 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
 		return false, nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
@@ -1789,7 +1832,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 
 		return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
 			deployment.FallbackAttempts++
-			deployment.LastError = stepErr.Error()
+			deployment.LastError = domain.UserMessage(stepErr)
 			deployment.LastAttemptAt = s.now()
 			deployment.FallBackTo(s.now(), retryFrom.state)
 		})
@@ -1803,7 +1846,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 
 	return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
 		deployment.Retries++
-		deployment.LastError = stepErr.Error()
+		deployment.LastError = domain.UserMessage(stepErr)
 		deployment.LastAttemptAt = s.now()
 	})
 }
@@ -1815,10 +1858,13 @@ func (s *serverService) failDeployment(ctx context.Context, name string, stepErr
 	slog.ErrorContext(ctx, "Deployment failed", slog.String("name", name), logger.Err(stepErr))
 
 	return s.updateDeployment(ctx, name, func(deployment *provisioning.ServerDeployment) {
-		deployment.LastError = stepErr.Error()
+		// The message is recorded twice on purpose: before the transition, so
+		// the history entry of the failing state carries it, and after it, since
+		// entering a state resets the error.
+		deployment.LastError = domain.UserMessage(stepErr)
 		deployment.FailedState = deployment.State
 		deployment.EnterState(s.now(), api.ServerDeploymentStateFailed)
-		deployment.LastError = stepErr.Error()
+		deployment.LastError = domain.UserMessage(stepErr)
 	})
 }
 
@@ -1832,7 +1878,8 @@ func (s *serverService) updateDeployment(ctx context.Context, name string, mutat
 		}
 
 		if server.StatusInternal.Deployment == nil {
-			return fmt.Errorf("Server %q has no deployment: %w", name, domain.ErrNotFound)
+			return domain.NewErrorf(domain.ErrNotFound, "", "Server %q has no deployment", name).
+				WithDetail("server", name)
 		}
 
 		mutate(server.StatusInternal.Deployment)
@@ -1907,10 +1954,13 @@ func virtualMediaUploads(media api.BMCVirtualMedia) bool {
 }
 
 func deploymentUploadedMediaError(name string, virtualMediaID string) error {
-	return fmt.Errorf(
-		`Virtual media device %q of server %q uploads the installation media instead of streaming it, so its read progress can not tell, when the installation is done. Use a token seed, that sets "force_reboot", or a virtual media device, that streams: %w`,
-		virtualMediaID, name, domain.ErrOperationNotPermitted,
-	)
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "",
+		`Virtual media device %q of server %q uploads the installation media instead of streaming it, so its read progress can not tell, when the installation is done`,
+		virtualMediaID, name,
+	).
+		WithHintf(`Use a token seed, which sets "force_reboot", or a virtual media device, which streams.`).
+		WithDetail("server", name).
+		WithDetail("virtual_media", virtualMediaID)
 }
 
 // virtualMediaAdvertisesImageType reports, whether a virtual media device says
@@ -1943,7 +1993,8 @@ func virtualMediaSupportsImageType(media api.BMCVirtualMedia, imageType api.Imag
 // tell the installation by, needs a device, that streams it.
 func selectVirtualMediaID(data api.BMCData, imageType api.ImageType, requireStreaming bool) (string, error) {
 	if len(data.VirtualMedia) == 0 {
-		return "", fmt.Errorf("The BMC reports no virtual media device: %w", domain.ErrNotFound)
+		return "", domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no virtual media device").
+			WithHintf("The server cannot be deployed through a BMC without a virtual media device.")
 	}
 
 	ids := virtualMediaIDsByPreference(data)
@@ -1964,10 +2015,12 @@ func selectVirtualMediaID(data api.BMCData, imageType api.ImageType, requireStre
 		return id, nil
 	}
 
-	return "", fmt.Errorf(
-		"No virtual media device of the BMC accepts a %q image, it reports %s: %w",
-		imageType, describeVirtualMediaTypes(data), domain.ErrOperationNotPermitted,
-	)
+	return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "",
+		"No virtual media device of the BMC accepts a %q image, it reports %s",
+		imageType, describeVirtualMediaTypes(data),
+	).
+		WithHintf("Deploy an image type one of the virtual media devices accepts.").
+		WithDetail("image_type", string(imageType))
 }
 
 // selectVirtualMediaIDFrom picks the device holding an image of the given type

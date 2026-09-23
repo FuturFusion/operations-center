@@ -19,18 +19,11 @@ var componentImageIncusFileRepo = logger.RegisterComponent("image.image_incus_fi
 
 // ImageIncusFileRepoWithSlog implements image.ImageIncusFileRepo that is instrumented with slog logger.
 type ImageIncusFileRepoWithSlog struct {
-	_base                 image.ImageIncusFileRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      image.ImageIncusFileRepo
+	_component logger.Component
 }
 
 type ImageIncusFileRepoWithSlogOption func(s *ImageIncusFileRepoWithSlog)
-
-func ImageIncusFileRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageIncusFileRepoWithSlogOption {
-	return func(_base *ImageIncusFileRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ImageIncusFileRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func ImageIncusFileRepoWithSlogWithComponent(component logger.Component) ImageIn
 // NewImageIncusFileRepoWithSlog instruments an implementation of the image.ImageIncusFileRepo with simple logging.
 func NewImageIncusFileRepoWithSlog(base image.ImageIncusFileRepo, opts ...ImageIncusFileRepoWithSlogOption) ImageIncusFileRepoWithSlog {
 	this := ImageIncusFileRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentImageIncusFileRepo,
+		_base:      base,
+		_component: componentImageIncusFileRepo,
 	}
 
 	for _, opt := range opts {
@@ -79,11 +71,7 @@ func (_d ImageIncusFileRepoWithSlog) Delete(ctx context.Context, img *image.Incu
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Delete returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Delete returned an error")
-			}
+			log.DebugContext(ctx, "<= method Delete returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Delete finished")
 		}
@@ -115,11 +103,7 @@ func (_d ImageIncusFileRepoWithSlog) DeleteVersion(ctx context.Context, img *ima
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteVersion returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteVersion returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteVersion returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteVersion finished")
 		}
@@ -152,11 +136,7 @@ func (_d ImageIncusFileRepoWithSlog) DeleteVersionFile(ctx context.Context, img 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteVersionFile returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteVersionFile returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteVersionFile returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteVersionFile finished")
 		}
@@ -190,11 +170,7 @@ func (_d ImageIncusFileRepoWithSlog) Exists(ctx context.Context, img *image.Incu
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Exists returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Exists returned an error")
-			}
+			log.DebugContext(ctx, "<= method Exists returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Exists finished")
 		}
@@ -229,11 +205,7 @@ func (_d ImageIncusFileRepoWithSlog) Get(ctx context.Context, img *image.IncusIm
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Get returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Get returned an error")
-			}
+			log.DebugContext(ctx, "<= method Get returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Get finished")
 		}
@@ -270,11 +242,7 @@ func (_d ImageIncusFileRepoWithSlog) Put(ctx context.Context, img *image.IncusIm
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Put returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Put returned an error")
-			}
+			log.DebugContext(ctx, "<= method Put returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Put finished")
 		}
@@ -305,11 +273,7 @@ func (_d ImageIncusFileRepoWithSlog) UsageInformation(ctx context.Context) (usag
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UsageInformation returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UsageInformation returned an error")
-			}
+			log.DebugContext(ctx, "<= method UsageInformation returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UsageInformation finished")
 		}

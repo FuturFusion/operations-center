@@ -20,18 +20,11 @@ var componentImageServerClient = logger.RegisterComponent("inventory.image_serve
 
 // ImageServerClientWithSlog implements inventory.ImageServerClient that is instrumented with slog logger.
 type ImageServerClientWithSlog struct {
-	_base                 inventory.ImageServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ImageServerClient
+	_component logger.Component
 }
 
 type ImageServerClientWithSlogOption func(s *ImageServerClientWithSlog)
-
-func ImageServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageServerClientWithSlogOption {
-	return func(_base *ImageServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ImageServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func ImageServerClientWithSlogWithComponent(component logger.Component) ImageSer
 // NewImageServerClientWithSlog instruments an implementation of the inventory.ImageServerClient with simple logging.
 func NewImageServerClientWithSlog(base inventory.ImageServerClient, opts ...ImageServerClientWithSlogOption) ImageServerClientWithSlog {
 	this := ImageServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentImageServerClient,
+		_base:      base,
+		_component: componentImageServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetImageByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetImageByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetImageByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetImageByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint prov
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetImages returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetImages returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetImages returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetImages finished")
 		}

@@ -20,18 +20,11 @@ var componentNetworkLoadBalancerServerClient = logger.RegisterComponent("invento
 
 // NetworkLoadBalancerServerClientWithSlog implements inventory.NetworkLoadBalancerServerClient that is instrumented with slog logger.
 type NetworkLoadBalancerServerClientWithSlog struct {
-	_base                 inventory.NetworkLoadBalancerServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkLoadBalancerServerClient
+	_component logger.Component
 }
 
 type NetworkLoadBalancerServerClientWithSlogOption func(s *NetworkLoadBalancerServerClientWithSlog)
-
-func NetworkLoadBalancerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkLoadBalancerServerClientWithSlogOption {
-	return func(_base *NetworkLoadBalancerServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkLoadBalancerServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkLoadBalancerServerClientWithSlogWithComponent(component logger.Compo
 // NewNetworkLoadBalancerServerClientWithSlog instruments an implementation of the inventory.NetworkLoadBalancerServerClient with simple logging.
 func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, opts ...NetworkLoadBalancerServerClientWithSlogOption) NetworkLoadBalancerServerClientWithSlog {
 	this := NetworkLoadBalancerServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkLoadBalancerServerClient,
+		_base:      base,
+		_component: componentNetworkLoadBalancerServerClient,
 	}
 
 	for _, opt := range opts {
@@ -84,11 +76,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkLoadBalancerByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName finished")
 		}
@@ -122,11 +110,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkLoadBalancers returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkLoadBalancers returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkLoadBalancers returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancers finished")
 		}

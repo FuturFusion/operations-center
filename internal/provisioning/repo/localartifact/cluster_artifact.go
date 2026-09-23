@@ -82,11 +82,11 @@ func (c clusterArtifact) registerUpdateSignalHandler() {
 
 func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error) {
 	if in.Cluster == "" {
-		return 0, fmt.Errorf("Failed to create cluster artifact from path, cluster name can not be empty: %w", domain.ErrConstraintViolation)
+		return 0, domain.NewErrorf(domain.ErrConstraintViolation, "", "Cluster name cannot be empty")
 	}
 
 	if in.Name == "" {
-		return 0, fmt.Errorf("Failed to create cluster artifact from path, artifact name can not be empty: %w", domain.ErrConstraintViolation)
+		return 0, domain.NewErrorf(domain.ErrConstraintViolation, "", "Cluster artifact name cannot be empty")
 	}
 
 	if !file.PathExists(path) {

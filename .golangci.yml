@@ -191,6 +191,11 @@ linters:
         text: comment-spacing
       - linters:
           - revive
+        # domain-errors expects to find its directives of the form //domain-errors: on the line above the call they apply to.
+        source: '^\s*//domain-errors:(ignore|internal) '
+        text: comment-spacing
+      - linters:
+          - revive
         paths:
           - internal/authn/tls
           - internal/maps
@@ -207,6 +212,7 @@ linters:
         path: ^e2e_tests/
         source: 'mustRun'
     paths:
+      - ^ui/node_modules/
       - third_party$
       - builtin$
       - examples$
@@ -229,6 +235,7 @@ formatters:
   exclusions:
     generated: lax
     paths:
+      - ^ui/node_modules/
       - third_party$
       - builtin$
       - examples$

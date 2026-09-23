@@ -152,7 +152,7 @@ func (c ClusterEndpoint) GetCertificate() string {
 
 func (c ClusterEndpoint) GetServerName() (string, error) {
 	if len(c) == 0 {
-		return "", fmt.Errorf("Failed to get server name, cluster does not have any servers")
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The cluster does not have any servers")
 	}
 
 	return c[0].GetServerName()

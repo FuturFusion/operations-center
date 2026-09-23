@@ -484,7 +484,7 @@ func TestTokenService_Consume(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Token exhausted")
+				require.ErrorContains(tt, err, "no uses remaining")
 			},
 		},
 		{
@@ -501,7 +501,7 @@ func TestTokenService_Consume(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Token expired")
+				require.ErrorContains(tt, err, "expired at")
 			},
 		},
 		{
@@ -1129,7 +1129,8 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to get updates: No ready updates found in channel "stable"`)
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(tt, err, `Channel "stable" contains no update which is ready`)
 			},
 			wantImageCount: 1,
 		},
@@ -1181,7 +1182,8 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to find image file of type "iso" for architecture "x86_64" in latest update "10101010-1010-1010-1010-101010101010"`)
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(tt, err, `Update "10101010-1010-1010-1010-101010101010" provides no image of type "iso" for architecture "x86_64"`)
 			},
 			wantImageCount: 1,
 		},
@@ -1930,7 +1932,8 @@ func TestTokenService_GetCompressedTokenImageFromTokenSeed(t *testing.T) {
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to get updates: No ready updates found in channel "stable"`)
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(tt, err, `Channel "stable" contains no update which is ready`)
 			},
 			wantChannel: "stable", // default value
 		},
@@ -1961,7 +1964,7 @@ func TestTokenService_GetCompressedTokenImageFromTokenSeed(t *testing.T) {
 			},
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
-			assertErr:   errassert.NotFoundErrorContains(`Failed to find image file of type "iso" for architecture "x86_64" in latest update "00219aa8-ae44-4306-927e-728a2f780836"`),
+			assertErr:   errassert.NotFoundErrorContains(`Update "00219aa8-ae44-4306-927e-728a2f780836" provides no image of type "iso" for architecture "x86_64"`),
 			wantChannel: "stable", // default value
 		},
 		{
@@ -2205,7 +2208,7 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 			architectureArg:                  images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
-			assertErr: errassert.NotFoundErrorContains(`Failed to get updates: No ready updates found in channel "stable"`),
+			assertErr: errassert.NotFoundErrorContains(`Channel "stable" contains no update which is ready`),
 		},
 		{
 			name:                          "error - updateSvc.GetUpdateAllFiles",
@@ -2221,7 +2224,7 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 			architectureArg:                       images.UpdateFileArchitecture64BitX86,
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
-			assertErr: errassert.NotFoundErrorContains(`Failed to find image file of type "iso" for architecture "x86_64" in latest update`),
+			assertErr: errassert.NotFoundErrorContains(`provides no image of type "iso" for architecture "x86_64"`),
 		},
 		{
 			name:                       "error - client.GetSecurityConfig",

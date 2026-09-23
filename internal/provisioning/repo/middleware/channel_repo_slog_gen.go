@@ -17,18 +17,11 @@ var componentChannelRepo = logger.RegisterComponent("provisioning.channel_repo")
 
 // ChannelRepoWithSlog implements provisioning.ChannelRepo that is instrumented with slog logger.
 type ChannelRepoWithSlog struct {
-	_base                 provisioning.ChannelRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ChannelRepo
+	_component logger.Component
 }
 
 type ChannelRepoWithSlogOption func(s *ChannelRepoWithSlog)
-
-func ChannelRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ChannelRepoWithSlogOption {
-	return func(_base *ChannelRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ChannelRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func ChannelRepoWithSlogWithComponent(component logger.Component) ChannelRepoWit
 // NewChannelRepoWithSlog instruments an implementation of the provisioning.ChannelRepo with simple logging.
 func NewChannelRepoWithSlog(base provisioning.ChannelRepo, opts ...ChannelRepoWithSlogOption) ChannelRepoWithSlog {
 	this := ChannelRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentChannelRepo,
+		_base:      base,
+		_component: componentChannelRepo,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -113,11 +101,7 @@ func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -148,11 +132,7 @@ func (_d ChannelRepoWithSlog) GetAll(ctx context.Context) (channels provisioning
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -183,11 +163,7 @@ func (_d ChannelRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -219,11 +195,7 @@ func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (chann
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -254,11 +226,7 @@ func (_d ChannelRepoWithSlog) Update(ctx context.Context, newChannel provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}

@@ -15,7 +15,7 @@ export const fetchChannels = (): Promise<Channel[]> => {
 export const fetchChannel = (name: string): Promise<Channel> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/channels/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -24,7 +24,7 @@ export const fetchChannel = (name: string): Promise<Channel> => {
 export const fetchChannelChangelog = (name: string): Promise<Changelog[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/channels/${name}/changelog`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

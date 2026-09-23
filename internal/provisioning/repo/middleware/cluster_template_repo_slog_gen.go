@@ -17,18 +17,11 @@ var componentClusterTemplateRepo = logger.RegisterComponent("provisioning.cluste
 
 // ClusterTemplateRepoWithSlog implements provisioning.ClusterTemplateRepo that is instrumented with slog logger.
 type ClusterTemplateRepoWithSlog struct {
-	_base                 provisioning.ClusterTemplateRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterTemplateRepo
+	_component logger.Component
 }
 
 type ClusterTemplateRepoWithSlogOption func(s *ClusterTemplateRepoWithSlog)
-
-func ClusterTemplateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterTemplateRepoWithSlogOption {
-	return func(_base *ClusterTemplateRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterTemplateRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func ClusterTemplateRepoWithSlogWithComponent(component logger.Component) Cluste
 // NewClusterTemplateRepoWithSlog instruments an implementation of the provisioning.ClusterTemplateRepo with simple logging.
 func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, opts ...ClusterTemplateRepoWithSlogOption) ClusterTemplateRepoWithSlog {
 	this := ClusterTemplateRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterTemplateRepo,
+		_base:      base,
+		_component: componentClusterTemplateRepo,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplat
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -113,11 +101,7 @@ func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -148,11 +132,7 @@ func (_d ClusterTemplateRepoWithSlog) GetAll(ctx context.Context) (clusterTempla
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -183,11 +163,7 @@ func (_d ClusterTemplateRepoWithSlog) GetAllNames(ctx context.Context) (strings 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -219,11 +195,7 @@ func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -255,11 +227,7 @@ func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Rename returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Rename returned an error")
-			}
+			log.DebugContext(ctx, "<= method Rename returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Rename finished")
 		}
@@ -290,11 +258,7 @@ func (_d ClusterTemplateRepoWithSlog) Update(ctx context.Context, clusterTemplat
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}

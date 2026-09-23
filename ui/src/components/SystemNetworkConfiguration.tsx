@@ -3,6 +3,7 @@ import { fetchSystemNetwork, updateSystemNetwork } from "api/settings";
 import SystemNetworkForm from "components/SystemNetworkForm";
 import { useNotification } from "context/notificationContext";
 import { SystemNetwork } from "types/settings";
+import { errorMessage } from "util/response";
 
 const SystemNetworkConfiguration = () => {
   const { notify } = useNotification();
@@ -14,7 +15,7 @@ const SystemNetworkConfiguration = () => {
           notify.success(`Network settings updated`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during network settings update: ${e}`);

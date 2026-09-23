@@ -193,7 +193,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		var status api.ServerStatus
 		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
 		if err != nil {
-			return response.SmartError(fmt.Errorf("Invalid status"))
+			return response.SmartError(domain.NewValidationErrf("Invalid value %q for query parameter %q", r.URL.Query().Get("status"), "status"))
 		}
 
 		filter.Status = &status

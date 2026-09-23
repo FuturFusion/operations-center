@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -310,7 +311,8 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 			multipartReader: multipartReaderIncusTarXZ(t, "invalid", "architecture: amd64"),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to find metadata.yaml in incus.tar.xz")
+				require.ErrorIs(tt, err, domain.ErrConstraintViolation)
+				require.ErrorContains(tt, err, "metadata.yaml")
 			},
 		},
 		{

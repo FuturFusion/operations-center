@@ -10,6 +10,7 @@ import { useNotification } from "context/notificationContext";
 import IncusImageOverview from "pages/IncusImageOverview";
 import IncusImageConfiguration from "pages/IncusImageConfiguration";
 import IncusImageVersions from "pages/IncusImageVersions";
+import { errorMessage } from "util/response";
 
 const IncusImageDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -44,7 +45,7 @@ const IncusImageDetail = () => {
           navigate("/ui/images-view");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image deletion: ${e}`);

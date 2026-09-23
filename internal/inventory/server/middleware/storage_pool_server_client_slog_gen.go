@@ -20,18 +20,11 @@ var componentStoragePoolServerClient = logger.RegisterComponent("inventory.stora
 
 // StoragePoolServerClientWithSlog implements inventory.StoragePoolServerClient that is instrumented with slog logger.
 type StoragePoolServerClientWithSlog struct {
-	_base                 inventory.StoragePoolServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.StoragePoolServerClient
+	_component logger.Component
 }
 
 type StoragePoolServerClientWithSlogOption func(s *StoragePoolServerClientWithSlog)
-
-func StoragePoolServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StoragePoolServerClientWithSlogOption {
-	return func(_base *StoragePoolServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // StoragePoolServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func StoragePoolServerClientWithSlogWithComponent(component logger.Component) St
 // NewStoragePoolServerClientWithSlog instruments an implementation of the inventory.StoragePoolServerClient with simple logging.
 func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, opts ...StoragePoolServerClientWithSlogOption) StoragePoolServerClientWithSlog {
 	this := StoragePoolServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentStoragePoolServerClient,
+		_base:      base,
+		_component: componentStoragePoolServerClient,
 	}
 
 	for _, opt := range opts {
@@ -82,11 +74,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStoragePoolByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStoragePoolByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStoragePoolByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStoragePoolByName finished")
 		}
@@ -118,11 +106,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, e
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStoragePools returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStoragePools returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStoragePools returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStoragePools finished")
 		}

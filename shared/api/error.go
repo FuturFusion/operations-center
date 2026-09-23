@@ -99,3 +99,64 @@ func AsNotIncusOSError(err error) error {
 
 	return err
 }
+
+// RequestIDHeader is the HTTP header, which carries the ID of a request. The ID
+// is reported in the log records of the request and in the metadata of error
+// responses, which allows to correlate an error reported to the user with the
+// log.
+const RequestIDHeader = "X-Request-Id"
+
+// ErrorReason is a stable, machine readable identifier for the cause of an
+// error, which allows clients to react to it.
+type ErrorReason string
+
+// Generic error reasons, which are derived from the kind of an error.
+const (
+	ErrorReasonInternal              ErrorReason = "internal"
+	ErrorReasonInvalidArgument       ErrorReason = "invalid_argument"
+	ErrorReasonNotFound              ErrorReason = "not_found"
+	ErrorReasonConstraintViolation   ErrorReason = "constraint_violation"
+	ErrorReasonOperationNotPermitted ErrorReason = "operation_not_permitted"
+	ErrorReasonUnauthenticated       ErrorReason = "unauthenticated"
+	ErrorReasonForbidden             ErrorReason = "forbidden"
+	ErrorReasonPreconditionFailed    ErrorReason = "precondition_failed"
+	ErrorReasonNotImplemented        ErrorReason = "not_implemented"
+	ErrorReasonUnavailable           ErrorReason = "unavailable"
+	ErrorReasonUpstream              ErrorReason = "upstream"
+	ErrorReasonInsufficientStorage   ErrorReason = "insufficient_storage"
+)
+
+// Specific error reasons, which identify a concrete error condition.
+const (
+	ErrorReasonClusterTooSmall            ErrorReason = "cluster_too_small"
+	ErrorReasonImagesOnlyOnRemovedServers ErrorReason = "images_only_on_removed_servers"
+	ErrorReasonServerHasCustomVolumes     ErrorReason = "server_has_custom_volumes"
+	ErrorReasonServerHasInstances         ErrorReason = "server_has_instances"
+	ErrorReasonServerIsClusterMember      ErrorReason = "server_is_cluster_member"
+	ErrorReasonServerNotClusterMember     ErrorReason = "server_not_cluster_member"
+	ErrorReasonServerNotEvacuated         ErrorReason = "server_not_evacuated"
+)
+
+// ErrorMetadata is reported in the metadata of an error response.
+//
+// swagger:model
+type ErrorMetadata struct {
+	// Reason is a stable, machine readable identifier for the cause of the error.
+	// Example: not_found
+	Reason ErrorReason `json:"reason" yaml:"reason"`
+
+	// Hint tells the user how to resolve the error, if the error is known to be
+	// resolvable by the user.
+	// Example: Remove the server from the cluster first.
+	Hint string `json:"hint,omitempty" yaml:"hint,omitempty"`
+
+	// Details contains the dynamic values of the error message in machine
+	// readable form.
+	// Example: {"server": "server01"}
+	Details map[string]string `json:"details,omitempty" yaml:"details,omitempty"`
+
+	// RequestID is the ID of the request, which caused the error. It allows to
+	// find the corresponding records in the log of the server.
+	// Example: 550e8400-e29b-41d4-a716-446655440000
+	RequestID string `json:"request_id,omitempty" yaml:"request_id,omitempty"`
+}

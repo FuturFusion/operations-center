@@ -14,7 +14,7 @@ export const fetchTokens = (): Promise<Token[]> => {
 export const fetchToken = (uuid: string): Promise<Token> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -23,7 +23,7 @@ export const fetchToken = (uuid: string): Promise<Token> => {
 export const fetchTokenProviderConfig = (uuid: string): Promise<YamlValue> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/provider-config`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -80,7 +80,7 @@ export const fetchTokenSeed = (
 ): Promise<TokenSeed> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/seeds/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -140,7 +140,7 @@ export const tokenImageURL = (
       method: "POST",
       body: body,
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

@@ -20,18 +20,11 @@ var componentNetworkServerClient = logger.RegisterComponent("inventory.network_s
 
 // NetworkServerClientWithSlog implements inventory.NetworkServerClient that is instrumented with slog logger.
 type NetworkServerClientWithSlog struct {
-	_base                 inventory.NetworkServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkServerClient
+	_component logger.Component
 }
 
 type NetworkServerClientWithSlogOption func(s *NetworkServerClientWithSlog)
-
-func NetworkServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkServerClientWithSlogOption {
-	return func(_base *NetworkServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkServerClientWithSlogWithComponent(component logger.Component) Networ
 // NewNetworkServerClientWithSlog instruments an implementation of the inventory.NetworkServerClient with simple logging.
 func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, opts ...NetworkServerClientWithSlogOption) NetworkServerClientWithSlog {
 	this := NetworkServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkServerClient,
+		_base:      base,
+		_component: componentNetworkServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, endpoint 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworks returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworks returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworks returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworks finished")
 		}

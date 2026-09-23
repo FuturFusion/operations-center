@@ -17,18 +17,11 @@ var componentAuther = logger.RegisterComponent("security.authn")
 
 // AutherWithSlog implements authn.Auther that is instrumented with slog logger.
 type AutherWithSlog struct {
-	_base                 authn.Auther
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      authn.Auther
+	_component logger.Component
 }
 
 type AutherWithSlogOption func(s *AutherWithSlog)
-
-func AutherWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) AutherWithSlogOption {
-	return func(_base *AutherWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // AutherWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func AutherWithSlogWithComponent(component logger.Component) AutherWithSlogOptio
 // NewAutherWithSlog instruments an implementation of the authn.Auther with simple logging.
 func NewAutherWithSlog(base authn.Auther, opts ...AutherWithSlogOption) AutherWithSlog {
 	this := AutherWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentAuther,
+		_base:      base,
+		_component: componentAuther,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d AutherWithSlog) Auth(w http.ResponseWriter, r *http.Request) (trusted b
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Auth returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Auth returned an error")
-			}
+			log.DebugContext(ctx, "<= method Auth returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Auth finished")
 		}

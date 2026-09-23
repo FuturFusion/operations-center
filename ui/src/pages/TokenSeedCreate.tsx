@@ -3,6 +3,7 @@ import { useNotification } from "context/notificationContext";
 import { createTokenSeed } from "api/token";
 import TokenSeedForm from "components/TokenSeedForm";
 import { TokenSeed } from "types/token";
+import { errorMessage } from "util/response";
 
 const TokenSeedCreate = () => {
   const { notify } = useNotification();
@@ -17,7 +18,7 @@ const TokenSeedCreate = () => {
           navigate(`/ui/provisioning/tokens/${uuid}/seeds`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token seed creation: ${e}`);

@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -41,7 +42,7 @@ func Test_systemHandler_certificateGet(t *testing.T) {
 			systemServiceGetCertificateErr: boom.Error,
 
 			wantStatus:              http.StatusInternalServerError,
-			wantResponseBodyContain: "boom!",
+			wantResponseBodyContain: response.InternalErrorMessage,
 		},
 	}
 
@@ -120,7 +121,7 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 			systemServiceUpdateCertificateErr: boom.Error,
 
 			wantStatus:              http.StatusInternalServerError,
-			wantResponseBodyContain: "boom!",
+			wantResponseBodyContain: response.InternalErrorMessage,
 		},
 	}
 

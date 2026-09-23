@@ -20,18 +20,11 @@ var componentNetworkACLServerClient = logger.RegisterComponent("inventory.networ
 
 // NetworkACLServerClientWithSlog implements inventory.NetworkACLServerClient that is instrumented with slog logger.
 type NetworkACLServerClientWithSlog struct {
-	_base                 inventory.NetworkACLServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkACLServerClient
+	_component logger.Component
 }
 
 type NetworkACLServerClientWithSlogOption func(s *NetworkACLServerClientWithSlog)
-
-func NetworkACLServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkACLServerClientWithSlogOption {
-	return func(_base *NetworkACLServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkACLServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkACLServerClientWithSlogWithComponent(component logger.Component) Net
 // NewNetworkACLServerClientWithSlog instruments an implementation of the inventory.NetworkACLServerClient with simple logging.
 func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, opts ...NetworkACLServerClientWithSlogOption) NetworkACLServerClientWithSlog {
 	this := NetworkACLServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkACLServerClient,
+		_base:      base,
+		_component: componentNetworkACLServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkACLByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkACLByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkACLByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkACLByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, end
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkACLs returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkACLs returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkACLs returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkACLs finished")
 		}

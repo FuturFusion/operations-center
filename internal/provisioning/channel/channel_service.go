@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"sort"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -71,7 +72,7 @@ func (s *channelService) GetAllNames(ctx context.Context) ([]string, error) {
 
 func (s *channelService) GetByName(ctx context.Context, name string) (*provisioning.Channel, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Channel name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel name cannot be empty")
 	}
 
 	return s.repo.GetByName(ctx, name)
@@ -88,7 +89,7 @@ func (s *channelService) Update(ctx context.Context, newChannel provisioning.Cha
 
 func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Channel name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel name cannot be empty")
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -98,7 +99,10 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if len(updates) > 0 {
-			return fmt.Errorf("Delete of channel not supported, if in use by any update: %w", domain.ErrOperationNotPermitted)
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is assigned to %d updates and can not be deleted", name, len(updates)).
+				WithHintf("Assign the updates to another channel first.").
+				WithDetail("channel", name).
+				WithDetail("update_count", strconv.Itoa(len(updates)))
 		}
 
 		servers, err := s.serverSvc.GetAll(ctx)
@@ -108,7 +112,10 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 
 		for _, server := range servers {
 			if name == server.VersionData.UpdateChannel {
-				return fmt.Errorf("Delete of channel not supported, if in use by any server: %w", domain.ErrOperationNotPermitted)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is used by server %q and can not be deleted", name, server.Name).
+					WithHintf("Move the server to another update channel first.").
+					WithDetail("channel", name).
+					WithDetail("server", server.Name)
 			}
 		}
 
@@ -152,7 +159,9 @@ func (s channelService) GetChangelogByName(ctx context.Context, name string, arc
 	}
 
 	if len(updates) == 0 {
-		return nil, fmt.Errorf("Channel %q does not contain any updates: %w", name, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q does not contain any updates, so it has no changelog", name).
+			WithHintf("Assign an update to the channel first.").
+			WithDetail("channel", name)
 	}
 
 	if len(updates) == 1 {

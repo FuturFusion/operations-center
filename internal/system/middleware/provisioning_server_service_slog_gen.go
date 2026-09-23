@@ -18,18 +18,11 @@ var componentProvisioningServerService = logger.RegisterComponent("system.provis
 
 // ProvisioningServerServiceWithSlog implements system.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
-	_base                 system.ProvisioningServerService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      system.ProvisioningServerService
+	_component logger.Component
 }
 
 type ProvisioningServerServiceWithSlogOption func(s *ProvisioningServerServiceWithSlog)
-
-func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProvisioningServerServiceWithSlogOption {
-	return func(_base *ProvisioningServerServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProvisioningServerServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func ProvisioningServerServiceWithSlogWithComponent(component logger.Component) 
 // NewProvisioningServerServiceWithSlog instruments an implementation of the system.ProvisioningServerService with simple logging.
 func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProvisioningServerService,
+		_base:      base,
+		_component: componentProvisioningServerService,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -114,11 +102,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -150,11 +134,7 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSystemProvider returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSystemProvider returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSystemProvider returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSystemProvider finished")
 		}
@@ -186,11 +166,7 @@ func (_d ProvisioningServerServiceWithSlog) RestartApplication(ctx context.Conte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RestartApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RestartApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method RestartApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RestartApplication finished")
 		}
@@ -222,11 +198,7 @@ func (_d ProvisioningServerServiceWithSlog) UpdateSystemProvider(ctx context.Con
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystemProvider returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystemProvider returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystemProvider returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystemProvider finished")
 		}

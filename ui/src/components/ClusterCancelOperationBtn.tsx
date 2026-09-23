@@ -6,6 +6,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
 import { useQueryClient } from "@tanstack/react-query";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -33,7 +34,7 @@ const ClusterCancelOperationBtn: FC<Props> = ({ cluster, recommended }) => {
           queryClient.invalidateQueries({ queryKey: ["clusters"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

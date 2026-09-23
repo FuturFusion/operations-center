@@ -10,6 +10,7 @@ import { Cluster } from "types/cluster";
 import { useQueryClient } from "@tanstack/react-query";
 import { Form } from "react-bootstrap";
 import { ServerType } from "util/server";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -64,7 +65,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
           queryClient.invalidateQueries({ queryKey: ["clusters"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

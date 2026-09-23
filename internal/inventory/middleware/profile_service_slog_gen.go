@@ -20,18 +20,11 @@ var componentProfileService = logger.RegisterComponent("inventory.profile_servic
 
 // ProfileServiceWithSlog implements inventory.ProfileService that is instrumented with slog logger.
 type ProfileServiceWithSlog struct {
-	_base                 inventory.ProfileService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ProfileService
+	_component logger.Component
 }
 
 type ProfileServiceWithSlogOption func(s *ProfileServiceWithSlog)
-
-func ProfileServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProfileServiceWithSlogOption {
-	return func(_base *ProfileServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProfileServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func ProfileServiceWithSlogWithComponent(component logger.Component) ProfileServ
 // NewProfileServiceWithSlog instruments an implementation of the inventory.ProfileService with simple logging.
 func NewProfileServiceWithSlog(base inventory.ProfileService, opts ...ProfileServiceWithSlogOption) ProfileServiceWithSlog {
 	this := ProfileServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProfileService,
+		_base:      base,
+		_component: componentProfileService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d ProfileServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -117,11 +105,7 @@ func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -153,11 +137,7 @@ func (_d ProfileServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -189,11 +169,7 @@ func (_d ProfileServiceWithSlog) ResyncByName(ctx context.Context, clusterName s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByName finished")
 		}
@@ -224,11 +200,7 @@ func (_d ProfileServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByUUID finished")
 		}
@@ -259,11 +231,7 @@ func (_d ProfileServiceWithSlog) SyncCluster(ctx context.Context, cluster string
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method SyncCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SyncCluster finished")
 		}

@@ -13,6 +13,7 @@ import ServerUpdateBtn from "components/ServerUpdateBtn";
 import { useNotification } from "context/notificationContext";
 import type { Server } from "types/server";
 import { ServerAction, ServerStatus, ServerType } from "util/server";
+import { errorMessage } from "util/response";
 
 interface Props {
   server: Server;
@@ -53,7 +54,7 @@ const ServerActions: FC<Props> = ({ server }) => {
           queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during server sync: ${e}`);

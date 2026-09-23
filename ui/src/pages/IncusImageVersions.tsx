@@ -10,6 +10,7 @@ import ModalWindow from "components/ModalWindow";
 import UploadIncusImageBtn from "components/UploadIncusImageBtn";
 import { useNotification } from "context/notificationContext";
 import { bytesToHumanReadable } from "util/util";
+import { errorMessage } from "util/response";
 
 const IncusImageVersions = () => {
   const { name } = useParams() as { name: string };
@@ -45,7 +46,7 @@ const IncusImageVersions = () => {
           queryClient.invalidateQueries({ queryKey: ["incus-images"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during version deletion: ${e}`);

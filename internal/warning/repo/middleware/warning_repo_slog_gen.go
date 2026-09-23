@@ -20,18 +20,11 @@ var componentWarningRepo = logger.RegisterComponent("warning.warning_repo")
 
 // WarningRepoWithSlog implements warning.WarningRepo that is instrumented with slog logger.
 type WarningRepoWithSlog struct {
-	_base                 warning.WarningRepo
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      warning.WarningRepo
+	_component logger.Component
 }
 
 type WarningRepoWithSlogOption func(s *WarningRepoWithSlog)
-
-func WarningRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) WarningRepoWithSlogOption {
-	return func(_base *WarningRepoWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // WarningRepoWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func WarningRepoWithSlogWithComponent(component logger.Component) WarningRepoWit
 // NewWarningRepoWithSlog instruments an implementation of the warning.WarningRepo with simple logging.
 func NewWarningRepoWithSlog(base warning.WarningRepo, opts ...WarningRepoWithSlogOption) WarningRepoWithSlog {
 	this := WarningRepoWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentWarningRepo,
+		_base:      base,
+		_component: componentWarningRepo,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d WarningRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -115,11 +103,7 @@ func (_d WarningRepoWithSlog) GetAll(ctx context.Context) (warnings warning.Warn
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -152,11 +136,7 @@ func (_d WarningRepoWithSlog) GetByScopeAndType(ctx context.Context, scope api.W
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByScopeAndType returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByScopeAndType returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByScopeAndType returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByScopeAndType finished")
 		}
@@ -188,11 +168,7 @@ func (_d WarningRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (warn
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -224,11 +200,7 @@ func (_d WarningRepoWithSlog) Update(ctx context.Context, id uuid.UUID, w warnin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}
@@ -260,11 +232,7 @@ func (_d WarningRepoWithSlog) Upsert(ctx context.Context, w warning.Warning) (n 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Upsert returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Upsert returned an error")
-			}
+			log.DebugContext(ctx, "<= method Upsert returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Upsert finished")
 		}

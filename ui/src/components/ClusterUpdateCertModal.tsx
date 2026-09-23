@@ -6,6 +6,7 @@ import ClusterCertForm from "components/ClusterCertForm";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Cluster, ClusterCertFormValues } from "types/cluster";
+import { errorMessage } from "util/response";
 
 interface Props {
   cluster: Cluster;
@@ -30,7 +31,7 @@ const ClusterUpdateCertModal: FC<Props> = ({ cluster, show, handleClose }) => {
             notify.success(`Cluster ${name} certificate updated`);
             return;
           }
-          notify.error(response.error);
+          notify.error(errorMessage(response));
         })
         .catch((e) => {
           notify.error(`Error during token update: ${e}`);

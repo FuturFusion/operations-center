@@ -3,7 +3,6 @@ package sqlite
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -19,7 +18,7 @@ func MapErr(err error) error {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
 			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return fmt.Errorf("%w: %v", domain.ErrConstraintViolation, err)
+				return domain.NewErrorf(domain.ErrConstraintViolation, "", "The database rejected the change, because it violates a constraint").WithCause(err)
 			}
 		}
 

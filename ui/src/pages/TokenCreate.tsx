@@ -4,6 +4,7 @@ import { createToken } from "api/token";
 import Breadcrumbs from "components/Breadcrumbs";
 import TokenForm from "components/TokenForm";
 import { TokenFormValues } from "types/token";
+import { errorMessage } from "util/response";
 
 const TokenCreate = () => {
   const { notify } = useNotification();
@@ -17,7 +18,7 @@ const TokenCreate = () => {
           navigate("/ui/provisioning/servers-view/tokens");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token creation: ${e}`);

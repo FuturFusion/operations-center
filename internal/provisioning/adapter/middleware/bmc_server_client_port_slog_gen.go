@@ -18,18 +18,11 @@ var componentBMCServerClientPort = logger.RegisterComponent("provisioning.bmc_se
 
 // BMCServerClientPortWithSlog implements provisioning.BMCServerClientPort that is instrumented with slog logger.
 type BMCServerClientPortWithSlog struct {
-	_base                 provisioning.BMCServerClientPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.BMCServerClientPort
+	_component logger.Component
 }
 
 type BMCServerClientPortWithSlogOption func(s *BMCServerClientPortWithSlog)
-
-func BMCServerClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) BMCServerClientPortWithSlogOption {
-	return func(_base *BMCServerClientPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // BMCServerClientPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -43,9 +36,8 @@ func BMCServerClientPortWithSlogWithComponent(component logger.Component) BMCSer
 // NewBMCServerClientPortWithSlog instruments an implementation of the provisioning.BMCServerClientPort with simple logging.
 func NewBMCServerClientPortWithSlog(base provisioning.BMCServerClientPort, opts ...BMCServerClientPortWithSlogOption) BMCServerClientPortWithSlog {
 	this := BMCServerClientPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentBMCServerClientPort,
+		_base:      base,
+		_component: componentBMCServerClientPort,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ApplyBIOSAttributes returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ApplyBIOSAttributes returned an error")
-			}
+			log.DebugContext(ctx, "<= method ApplyBIOSAttributes returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ApplyBIOSAttributes finished")
 		}
@@ -117,11 +105,7 @@ func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Co
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ApplySecureBootCertificates returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ApplySecureBootCertificates returned an error")
-			}
+			log.DebugContext(ctx, "<= method ApplySecureBootCertificates returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ApplySecureBootCertificates finished")
 		}
@@ -156,11 +140,7 @@ func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AttachMedia returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AttachMedia returned an error")
-			}
+			log.DebugContext(ctx, "<= method AttachMedia returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AttachMedia finished")
 		}
@@ -193,11 +173,7 @@ func (_d BMCServerClientPortWithSlog) BIOSAttribute(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method BIOSAttribute returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method BIOSAttribute returned an error")
-			}
+			log.DebugContext(ctx, "<= method BIOSAttribute returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method BIOSAttribute finished")
 		}
@@ -229,11 +205,7 @@ func (_d BMCServerClientPortWithSlog) BIOSAttributes(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method BIOSAttributes returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method BIOSAttributes returned an error")
-			}
+			log.DebugContext(ctx, "<= method BIOSAttributes returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method BIOSAttributes finished")
 		}
@@ -265,11 +237,7 @@ func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ConnectionTest returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ConnectionTest returned an error")
-			}
+			log.DebugContext(ctx, "<= method ConnectionTest returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ConnectionTest finished")
 		}
@@ -302,11 +270,7 @@ func (_d BMCServerClientPortWithSlog) DetachMedia(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DetachMedia returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DetachMedia returned an error")
-			}
+			log.DebugContext(ctx, "<= method DetachMedia returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DetachMedia finished")
 		}
@@ -341,11 +305,7 @@ func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Dump returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Dump returned an error")
-			}
+			log.DebugContext(ctx, "<= method Dump returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Dump finished")
 		}
@@ -377,11 +337,7 @@ func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provis
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetData returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetData returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetData returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetData finished")
 		}
@@ -414,11 +370,7 @@ func (_d BMCServerClientPortWithSlog) LogEntriesBySource(ctx context.Context, se
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method LogEntriesBySource returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method LogEntriesBySource returned an error")
-			}
+			log.DebugContext(ctx, "<= method LogEntriesBySource returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method LogEntriesBySource finished")
 		}
@@ -450,11 +402,7 @@ func (_d BMCServerClientPortWithSlog) LogSources(ctx context.Context, server pro
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method LogSources returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method LogSources returned an error")
-			}
+			log.DebugContext(ctx, "<= method LogSources returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method LogSources finished")
 		}
@@ -487,11 +435,7 @@ func (_d BMCServerClientPortWithSlog) ServerPowerOff(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ServerPowerOff returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ServerPowerOff returned an error")
-			}
+			log.DebugContext(ctx, "<= method ServerPowerOff returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ServerPowerOff finished")
 		}
@@ -524,11 +468,7 @@ func (_d BMCServerClientPortWithSlog) ServerPowerOn(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ServerPowerOn returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ServerPowerOn returned an error")
-			}
+			log.DebugContext(ctx, "<= method ServerPowerOn returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ServerPowerOn finished")
 		}
@@ -561,11 +501,7 @@ func (_d BMCServerClientPortWithSlog) ServerRestart(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ServerRestart returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ServerRestart returned an error")
-			}
+			log.DebugContext(ctx, "<= method ServerRestart returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ServerRestart finished")
 		}
@@ -597,11 +533,7 @@ func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Con
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ServerSetLocationIndicator returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ServerSetLocationIndicator returned an error")
-			}
+			log.DebugContext(ctx, "<= method ServerSetLocationIndicator returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ServerSetLocationIndicator finished")
 		}
@@ -634,11 +566,7 @@ func (_d BMCServerClientPortWithSlog) TaskState(ctx context.Context, server prov
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method TaskState returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method TaskState returned an error")
-			}
+			log.DebugContext(ctx, "<= method TaskState returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method TaskState finished")
 		}
@@ -670,11 +598,7 @@ func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method WaitForTask returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method WaitForTask returned an error")
-			}
+			log.DebugContext(ctx, "<= method WaitForTask returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method WaitForTask finished")
 		}

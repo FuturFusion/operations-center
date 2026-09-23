@@ -377,7 +377,7 @@ func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {
 	}
 
 	if len(chassis) == 0 {
-		return nil, fmt.Errorf("No BMC chassis found: %w", domain.ErrNotFound)
+		return nil, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no chassis")
 	}
 
 	sort.Slice(chassis, func(i, j int) bool { return chassis[i].ID < chassis[j].ID })
@@ -392,7 +392,7 @@ func getFirstManager(client *gofish.APIClient) (*schemas.Manager, error) {
 	}
 
 	if len(managers) == 0 {
-		return nil, fmt.Errorf("No BMC managers found: %w", domain.ErrNotFound)
+		return nil, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no manager")
 	}
 
 	sort.Slice(managers, func(i, j int) bool { return managers[i].ID < managers[j].ID })
@@ -407,7 +407,7 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	}
 
 	if len(systems) == 0 {
-		return nil, fmt.Errorf("No BMC systems found: %w", domain.ErrNotFound)
+		return nil, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no system")
 	}
 
 	sort.Slice(systems, func(i, j int) bool { return systems[i].ID < systems[j].ID })
@@ -747,7 +747,7 @@ func (r redfish) ServerSetLocationIndicator(ctx context.Context, server provisio
 		system.IndicatorLED = indicatorLED // nolint: staticcheck // ignore deprecated property warning.
 
 	default:
-		return fmt.Errorf("The BMC does not support the location indicator LED: %w", domain.ErrOperationNotPermitted)
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The BMC does not support the location indicator LED")
 	}
 
 	// Update only performs a request, if the desired state differs from the
@@ -969,7 +969,8 @@ func (r redfish) BIOSAttribute(ctx context.Context, server provisioning.Server, 
 
 	value, ok := bios.Attributes[attributeName]
 	if !ok {
-		return api.BIOSAttribute{}, fmt.Errorf("BIOS attribute %q not found: %w", attributeName, domain.ErrNotFound)
+		return api.BIOSAttribute{}, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no BIOS attribute %q", attributeName).
+			WithDetail("bios_attribute", attributeName)
 	}
 
 	registry, err := getBIOSAttributeRegistry(client, bios.AttributeRegistry)
@@ -1068,7 +1069,8 @@ type virtualMediaSlot struct {
 func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot, error) {
 	service, redfishID, ok := strings.Cut(id, ":")
 	if !ok || service == "" || redfishID == "" {
-		return virtualMediaSlot{}, fmt.Errorf("Invalid virtual media ID %q, expected format %q (e.g. %q): %w", id, "<service>:<id>", "system:1", domain.ErrOperationNotPermitted)
+		return virtualMediaSlot{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Invalid virtual media ID %q, expected format %q (e.g. %q)", id, "<service>:<id>", "system:1").
+			WithDetail("virtual_media", id)
 	}
 
 	var virtualMedias []*schemas.VirtualMedia
@@ -1086,7 +1088,9 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot,
 		virtualMediaReturner, err = getFirstManager(client)
 
 	default:
-		return virtualMediaSlot{}, fmt.Errorf("Unknown virtual media service %q in ID %q, expected %q or %q: %w", service, id, "system", "manager", domain.ErrOperationNotPermitted)
+		return virtualMediaSlot{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Unknown virtual media service %q in ID %q, expected %q or %q", service, id, "system", "manager").
+			WithDetail("virtual_media", id).
+			WithDetail("virtual_media_service", service)
 	}
 
 	if err != nil {
@@ -1104,7 +1108,8 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot,
 		}
 	}
 
-	return virtualMediaSlot{}, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
+	return virtualMediaSlot{}, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no virtual media device %q", id).
+		WithDetail("virtual_media", id)
 }
 
 func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
@@ -1122,7 +1127,9 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 
 	alreadyAttached := virtualMediaHasMedia(virtualMedia)
 	if alreadyAttached && virtualMedia.Image != mediaURL {
-		return nil, fmt.Errorf("Virtual media %q already has media attached, detach the media first: %w", virtualMediaID, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Virtual media %q already has media attached", virtualMediaID).
+			WithHintf("Detach the media first.").
+			WithDetail("virtual_media", virtualMediaID)
 	}
 
 	err = checkMediaTypeSupported(virtualMedia, virtualMediaID, mediaURL)

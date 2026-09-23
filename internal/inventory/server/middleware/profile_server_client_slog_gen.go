@@ -20,18 +20,11 @@ var componentProfileServerClient = logger.RegisterComponent("inventory.profile_s
 
 // ProfileServerClientWithSlog implements inventory.ProfileServerClient that is instrumented with slog logger.
 type ProfileServerClientWithSlog struct {
-	_base                 inventory.ProfileServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.ProfileServerClient
+	_component logger.Component
 }
 
 type ProfileServerClientWithSlogOption func(s *ProfileServerClientWithSlog)
-
-func ProfileServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProfileServerClientWithSlogOption {
-	return func(_base *ProfileServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ProfileServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func ProfileServerClientWithSlogWithComponent(component logger.Component) Profil
 // NewProfileServerClientWithSlog instruments an implementation of the inventory.ProfileServerClient with simple logging.
 func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, opts ...ProfileServerClientWithSlogOption) ProfileServerClientWithSlog {
 	this := ProfileServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentProfileServerClient,
+		_base:      base,
+		_component: componentProfileServerClient,
 	}
 
 	for _, opt := range opts {
@@ -83,11 +75,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProfileByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProfileByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProfileByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProfileByName finished")
 		}
@@ -119,11 +107,7 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProfiles returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProfiles returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetProfiles returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetProfiles finished")
 		}

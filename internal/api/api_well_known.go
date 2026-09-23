@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -28,7 +28,8 @@ func (w *wellKnownHandler) acmeProvideChallenge(r *http.Request) response.Respon
 	}
 
 	if acmeCfg.Domain == "" {
-		return response.SmartError(errors.New("ACME domain is not configured"))
+		return response.SmartError(domain.NewErrorf(domain.ErrNotFound, "", "ACME is not configured for this server").
+			WithHintf(`Configure "security.acme.domain" to serve ACME challenges.`))
 	}
 
 	httpChallengeAddr := acmeCfg.Address

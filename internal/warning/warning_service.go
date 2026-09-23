@@ -74,14 +74,24 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		return
 	}
 
-	slog.WarnContext(
-		ctx,
-		strings.Join(warning.Messages, "; "), //nolint:sloglint
+	logAttrs := []any{
 		slog.String("uuid", warning.UUID.String()),
 		slog.String("type", string(warning.Type)),
 		slog.String("scope", warning.Scope),
 		slog.String("entity_type", warning.EntityType),
 		slog.String("entity", warning.Entity),
+	}
+
+	// The technical details of the error are only reported in the log, the
+	// warning itself only carries the message for the user.
+	if warning.Cause != nil {
+		logAttrs = append(logAttrs, logger.Err(warning.Cause))
+	}
+
+	slog.WarnContext(
+		ctx,
+		strings.Join(warning.Messages, "; "), //nolint:sloglint
+		logAttrs...,
 	)
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
@@ -92,6 +102,7 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		}
 
 		if len(dbWarnings) > 1 {
+			//domain-errors:internal Violated invariant, nothing the user can do about it.
 			return fmt.Errorf("Invalid warning state for scope %v", scope)
 		}
 

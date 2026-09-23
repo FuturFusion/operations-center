@@ -26,6 +26,7 @@ func (w IncusNetworkWrapper) Value() (driver.Value, error) {
 
 func (w *IncusNetworkWrapper) Scan(value interface{}) error {
 	if value == nil {
+		//domain-errors:internal Programmer error, the column is not nullable.
 		return fmt.Errorf("null is not a valid network")
 	}
 
@@ -35,6 +36,7 @@ func (w *IncusNetworkWrapper) Scan(value interface{}) error {
 	case []byte:
 		return json.Unmarshal(v, &w.Network)
 	default:
+		//domain-errors:internal Programmer error, the driver returned a type the wrapper does not read.
 		return fmt.Errorf("type %T is not supported for network", value)
 	}
 }

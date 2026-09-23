@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -21,6 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -264,9 +264,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		_, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.Error(t, err)
 
-		statusCode, ok := api.StatusErrorMatch(err)
-		require.True(t, ok)
-		require.Equal(t, http.StatusInsufficientStorage, statusCode)
+		errassert.DomainError(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage)(t, err)
 
 		require.Equal(t, int64(1), source.closed.Load())
 		require.NoFileExists(t, flasher.cache.imageFilename(true, testCacheID, fingerprintID(t, flasher, "fingerprint")))

@@ -10,6 +10,7 @@ import { useNotification } from "context/notificationContext";
 import TokenOverview from "pages/TokenOverview";
 import TokenConfiguration from "pages/TokenConfiguration";
 import TokenSeeds from "pages/TokenSeeds";
+import { errorMessage } from "util/response";
 
 const TokenDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -44,7 +45,7 @@ const TokenDetail = () => {
           navigate("/ui/provisioning/servers-view/tokens");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token deletion: ${e}`);

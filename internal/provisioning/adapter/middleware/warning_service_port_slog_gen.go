@@ -19,18 +19,11 @@ var componentWarningServicePort = logger.RegisterComponent("provisioning.warning
 
 // WarningServicePortWithSlog implements provisioning.WarningServicePort that is instrumented with slog logger.
 type WarningServicePortWithSlog struct {
-	_base                 provisioning.WarningServicePort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.WarningServicePort
+	_component logger.Component
 }
 
 type WarningServicePortWithSlogOption func(s *WarningServicePortWithSlog)
-
-func WarningServicePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) WarningServicePortWithSlogOption {
-	return func(_base *WarningServicePortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // WarningServicePortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -44,9 +37,8 @@ func WarningServicePortWithSlogWithComponent(component logger.Component) Warning
 // NewWarningServicePortWithSlog instruments an implementation of the provisioning.WarningServicePort with simple logging.
 func NewWarningServicePortWithSlog(base provisioning.WarningServicePort, opts ...WarningServicePortWithSlogOption) WarningServicePortWithSlog {
 	this := WarningServicePortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentWarningServicePort,
+		_base:      base,
+		_component: componentWarningServicePort,
 	}
 
 	for _, opt := range opts {

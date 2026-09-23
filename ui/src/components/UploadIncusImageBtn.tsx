@@ -9,6 +9,7 @@ import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { IncusImage } from "types/image_incus";
+import { errorMessage } from "util/response";
 
 const architectures = ["amd64", "arm64", "armhf", "riscv64"];
 
@@ -84,7 +85,7 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
           reset();
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setOpInProgress(false);

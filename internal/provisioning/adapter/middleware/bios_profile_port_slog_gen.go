@@ -17,18 +17,11 @@ var componentBIOSProfilePort = logger.RegisterComponent("provisioning.bios_profi
 
 // BIOSProfilePortWithSlog implements provisioning.BIOSProfilePort that is instrumented with slog logger.
 type BIOSProfilePortWithSlog struct {
-	_base                 provisioning.BIOSProfilePort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.BIOSProfilePort
+	_component logger.Component
 }
 
 type BIOSProfilePortWithSlogOption func(s *BIOSProfilePortWithSlog)
-
-func BIOSProfilePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) BIOSProfilePortWithSlogOption {
-	return func(_base *BIOSProfilePortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // BIOSProfilePortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func BIOSProfilePortWithSlogWithComponent(component logger.Component) BIOSProfil
 // NewBIOSProfilePortWithSlog instruments an implementation of the provisioning.BIOSProfilePort with simple logging.
 func NewBIOSProfilePortWithSlog(base provisioning.BIOSProfilePort, opts ...BIOSProfilePortWithSlogOption) BIOSProfilePortWithSlog {
 	this := BIOSProfilePortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentBIOSProfilePort,
+		_base:      base,
+		_component: componentBIOSProfilePort,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d BIOSProfilePortWithSlog) Resolve(ctx context.Context, server provisioni
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Resolve returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Resolve returned an error")
-			}
+			log.DebugContext(ctx, "<= method Resolve returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Resolve finished")
 		}

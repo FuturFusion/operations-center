@@ -1861,7 +1861,7 @@ one
 				},
 			},
 
-			assertErr:           errassert.OperationNotPermittedErrorContains(`Update of channel not allowed for clustered server "one"`),
+			assertErr:           errassert.OperationNotPermittedErrorContains(`The update channel of server "one" is managed by cluster "one"`),
 			assertLog:           log.Empty,
 			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
@@ -3905,8 +3905,9 @@ func TestServerService_DeleteByName(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Failed to delete server, server is part of cluster "one"`)
+				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember)(tt, err, a...)
+				errassert.UserMessageContains(`Server "one" is a member of cluster "one" and can not be deleted`)(tt, err, a...)
+				errassert.HintIs("Remove the server from the cluster first.")(tt, err, a...)
 			},
 		},
 		{
@@ -7227,7 +7228,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operations for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -7443,7 +7444,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operations for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -7637,7 +7638,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operations for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -7965,7 +7966,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operations for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -8300,7 +8301,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operations for server"),
 			assertLog: log.Noop,
 		},
 		{

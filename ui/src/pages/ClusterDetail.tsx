@@ -11,6 +11,7 @@ import { useNotification } from "context/notificationContext";
 import ClusterArtifacts from "pages/ClusterArtifacts";
 import ClusterConfiguration from "pages/ClusterConfiguration";
 import ClusterOverview from "pages/ClusterOverview";
+import { errorMessage } from "util/response";
 
 type DeleteMode = "normal" | "force" | "factory-reset";
 
@@ -43,7 +44,7 @@ const ClusterDetail = () => {
           navigate("/ui/provisioning/clusters-view/clusters");
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         setDeleteInProgress(false);

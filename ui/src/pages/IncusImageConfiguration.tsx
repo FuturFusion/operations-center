@@ -4,6 +4,7 @@ import { fetchIncusImage, updateIncusImage } from "api/image_incus";
 import IncusImageForm from "components/IncusImageForm";
 import { useNotification } from "context/notificationContext";
 import { IncusImageFormValues } from "types/image_incus";
+import { errorMessage } from "util/response";
 
 const IncusImageConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -20,7 +21,7 @@ const IncusImageConfiguration = () => {
           navigate(`/ui/images/incus/${name}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image update: ${e}`);

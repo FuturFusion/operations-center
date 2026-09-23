@@ -6,6 +6,7 @@ import { deleteIncusImage } from "api/image_incus";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { IncusImage } from "types/image_incus";
+import { errorMessage } from "util/response";
 
 interface Props {
   image: IncusImage;
@@ -31,7 +32,7 @@ const IncusImageActions: FC<Props> = ({ image }) => {
           queryClient.invalidateQueries({ queryKey: ["incus-images"] });
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during image deletion: ${e}`);

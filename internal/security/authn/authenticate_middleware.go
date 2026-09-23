@@ -55,6 +55,8 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			for _, auther := range a.authers {
 				trusted, username, protocol, err = auther.Auth(w, r)
 				if err != nil {
+					slog.WarnContext(logCtx, "Authentication failed", logger.Err(err), slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+
 					err = response.Unauthorized(err).Render(w)
 					if err != nil {
 						slog.WarnContext(logCtx, "Render error response failed", logger.Err(err))

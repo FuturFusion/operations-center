@@ -18,7 +18,6 @@ import (
 	incusTLS "github.com/lxc/incus/v7/shared/tls"
 
 	oidcClient "github.com/FuturFusion/operations-center/internal/client/oidc"
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -239,30 +238,51 @@ func processResponse(resp *http.Response) (*api.Response, error) {
 			return nil, fmt.Errorf("Client sent an HTTP request to an HTTPS server")
 		}
 
+		// The response is not an API response, e.g. it has been produced by a
+		// proxy in between, so only the status is available.
 		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("Received an error from the server: %s", resp.Status)
+			return nil, &ServerError{
+				StatusCode: resp.StatusCode,
+				Message:    resp.Status,
+				RequestID:  resp.Header.Get(api.RequestIDHeader),
+			}
 		}
 
 		return nil, fmt.Errorf("Failed to decode server response: %w", err)
 	}
 
 	if response.Code != 0 {
-		if response.Code == http.StatusNotFound {
-			return &response, fmt.Errorf("%w (%s)", domain.ErrNotFound, strings.ReplaceAll(response.Error, ": "+domain.ErrNotFound.Error(), ""))
-		}
-
-		if response.Code == http.StatusUnauthorized {
-			return &response, domain.ErrNotAuthenticated
-		}
-
-		if response.Code == http.StatusForbidden {
-			return &response, domain.ErrNotAuthorized
-		}
-
-		return &response, fmt.Errorf("Received an error from the server: %s", response.Error)
+		return &response, newServerError(resp, response)
 	}
 
 	return &response, nil
+}
+
+// newServerError converts an error response into a ServerError.
+func newServerError(resp *http.Response, response api.Response) error {
+	serverErr := &ServerError{
+		StatusCode: response.Code,
+		Message:    response.Error,
+		RequestID:  resp.Header.Get(api.RequestIDHeader),
+	}
+
+	var metadata api.ErrorMetadata
+
+	err := response.MetadataAsStruct(&metadata)
+	if err != nil {
+		// No metadata, return error as is.
+		return serverErr
+	}
+
+	serverErr.Reason = metadata.Reason
+	serverErr.Hint = metadata.Hint
+	serverErr.Details = metadata.Details
+
+	if metadata.RequestID != "" {
+		serverErr.RequestID = metadata.RequestID
+	}
+
+	return serverErr
 }
 
 func (c OperationsCenterClient) GetBaseAddr() string {

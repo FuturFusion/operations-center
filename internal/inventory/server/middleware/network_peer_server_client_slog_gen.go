@@ -20,18 +20,11 @@ var componentNetworkPeerServerClient = logger.RegisterComponent("inventory.netwo
 
 // NetworkPeerServerClientWithSlog implements inventory.NetworkPeerServerClient that is instrumented with slog logger.
 type NetworkPeerServerClientWithSlog struct {
-	_base                 inventory.NetworkPeerServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.NetworkPeerServerClient
+	_component logger.Component
 }
 
 type NetworkPeerServerClientWithSlogOption func(s *NetworkPeerServerClientWithSlog)
-
-func NetworkPeerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkPeerServerClientWithSlogOption {
-	return func(_base *NetworkPeerServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // NetworkPeerServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func NetworkPeerServerClientWithSlogWithComponent(component logger.Component) Ne
 // NewNetworkPeerServerClientWithSlog instruments an implementation of the inventory.NetworkPeerServerClient with simple logging.
 func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, opts ...NetworkPeerServerClientWithSlogOption) NetworkPeerServerClientWithSlog {
 	this := NetworkPeerServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentNetworkPeerServerClient,
+		_base:      base,
+		_component: componentNetworkPeerServerClient,
 	}
 
 	for _, opt := range opts {
@@ -84,11 +76,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkPeerByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkPeerByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkPeerByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkPeerByName finished")
 		}
@@ -122,11 +110,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, e
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetNetworkPeers returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetNetworkPeers returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetNetworkPeers returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetNetworkPeers finished")
 		}

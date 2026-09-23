@@ -20,18 +20,11 @@ var componentStorageBucketService = logger.RegisterComponent("inventory.storage_
 
 // StorageBucketServiceWithSlog implements inventory.StorageBucketService that is instrumented with slog logger.
 type StorageBucketServiceWithSlog struct {
-	_base                 inventory.StorageBucketService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.StorageBucketService
+	_component logger.Component
 }
 
 type StorageBucketServiceWithSlogOption func(s *StorageBucketServiceWithSlog)
-
-func StorageBucketServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageBucketServiceWithSlogOption {
-	return func(_base *StorageBucketServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // StorageBucketServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func StorageBucketServiceWithSlogWithComponent(component logger.Component) Stora
 // NewStorageBucketServiceWithSlog instruments an implementation of the inventory.StorageBucketService with simple logging.
 func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, opts ...StorageBucketServiceWithSlogOption) StorageBucketServiceWithSlog {
 	this := StorageBucketServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentStorageBucketService,
+		_base:      base,
+		_component: componentStorageBucketService,
 	}
 
 	for _, opt := range opts {
@@ -81,11 +73,7 @@ func (_d StorageBucketServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
@@ -117,11 +105,7 @@ func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -153,11 +137,7 @@ func (_d StorageBucketServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -189,11 +169,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByName(ctx context.Context, cluster
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByName finished")
 		}
@@ -224,11 +200,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncByUUID finished")
 		}
@@ -259,11 +231,7 @@ func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
-			}
+			log.DebugContext(ctx, "<= method SyncCluster returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method SyncCluster finished")
 		}

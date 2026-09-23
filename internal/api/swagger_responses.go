@@ -548,11 +548,16 @@ type swaggerErrorResponseBody struct {
 	// Example: error
 	Type string `json:"type"`
 
-	// Example: bad request
-	Status string `json:"status"`
-
+	// Code is the HTTP status code of the response.
 	// Example: 400
-	StatusCode int `json:"status_code"`
+	Code int `json:"error_code"`
+
+	// Error is the message for the user.
+	// Example: Server "server01" is a member of cluster "one" and can not be deleted, remove it from the cluster first
+	Error string `json:"error"`
+
+	// Metadata carries the reason of the error, its details and the ID of the request.
+	Metadata api.ErrorMetadata `json:"metadata"`
 }
 
 // Bad Request

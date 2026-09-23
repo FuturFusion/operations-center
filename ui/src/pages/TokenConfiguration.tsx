@@ -4,6 +4,7 @@ import { fetchToken, updateToken } from "api/token";
 import TokenForm from "components/TokenForm";
 import { useNotification } from "context/notificationContext";
 import { TokenFormValues } from "types/token";
+import { errorMessage } from "util/response";
 
 const TokenConfiguration = () => {
   const { uuid } = useParams() as { uuid: string };
@@ -18,7 +19,7 @@ const TokenConfiguration = () => {
           navigate(`/ui/provisioning/tokens/${uuid}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during token update: ${e}`);

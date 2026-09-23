@@ -20,18 +20,11 @@ var componentStorageBucketServerClient = logger.RegisterComponent("inventory.sto
 
 // StorageBucketServerClientWithSlog implements inventory.StorageBucketServerClient that is instrumented with slog logger.
 type StorageBucketServerClientWithSlog struct {
-	_base                 inventory.StorageBucketServerClient
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      inventory.StorageBucketServerClient
+	_component logger.Component
 }
 
 type StorageBucketServerClientWithSlogOption func(s *StorageBucketServerClientWithSlog)
-
-func StorageBucketServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageBucketServerClientWithSlogOption {
-	return func(_base *StorageBucketServerClientWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // StorageBucketServerClientWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func StorageBucketServerClientWithSlogWithComponent(component logger.Component) 
 // NewStorageBucketServerClientWithSlog instruments an implementation of the inventory.StorageBucketServerClient with simple logging.
 func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClient, opts ...StorageBucketServerClientWithSlogOption) StorageBucketServerClientWithSlog {
 	this := StorageBucketServerClientWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentStorageBucketServerClient,
+		_base:      base,
+		_component: componentStorageBucketServerClient,
 	}
 
 	for _, opt := range opts {
@@ -84,11 +76,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageBucketByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageBucketByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageBucketByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageBucketByName finished")
 		}
@@ -121,11 +109,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetStorageBuckets returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetStorageBuckets returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetStorageBuckets returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetStorageBuckets finished")
 		}

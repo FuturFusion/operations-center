@@ -17,18 +17,11 @@ var componentTokenClientPort = logger.RegisterComponent("provisioning.token_clie
 
 // TokenClientPortWithSlog implements provisioning.TokenClientPort that is instrumented with slog logger.
 type TokenClientPortWithSlog struct {
-	_base                 provisioning.TokenClientPort
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.TokenClientPort
+	_component logger.Component
 }
 
 type TokenClientPortWithSlogOption func(s *TokenClientPortWithSlog)
-
-func TokenClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) TokenClientPortWithSlogOption {
-	return func(_base *TokenClientPortWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // TokenClientPortWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -42,9 +35,8 @@ func TokenClientPortWithSlogWithComponent(component logger.Component) TokenClien
 // NewTokenClientPortWithSlog instruments an implementation of the provisioning.TokenClientPort with simple logging.
 func NewTokenClientPortWithSlog(base provisioning.TokenClientPort, opts ...TokenClientPortWithSlogOption) TokenClientPortWithSlog {
 	this := TokenClientPortWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentTokenClientPort,
+		_base:      base,
+		_component: componentTokenClientPort,
 	}
 
 	for _, opt := range opts {
@@ -78,11 +70,7 @@ func (_d TokenClientPortWithSlog) GetSecurityConfig(ctx context.Context, server 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetSecurityConfig returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetSecurityConfig returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetSecurityConfig returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetSecurityConfig finished")
 		}

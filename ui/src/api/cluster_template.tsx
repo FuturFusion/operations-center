@@ -16,7 +16,7 @@ export const fetchClusterTemplate = (
 ): Promise<ClusterTemplate> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/cluster-templates/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

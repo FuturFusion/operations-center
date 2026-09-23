@@ -15,7 +15,7 @@ export const fetchUpdates = (): Promise<Update[]> => {
 export const fetchUpdate = (uuid: string): Promise<Update> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/updates/${uuid}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });

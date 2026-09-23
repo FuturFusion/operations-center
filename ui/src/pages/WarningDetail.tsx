@@ -7,6 +7,7 @@ import WarningOverview from "components/WarningOverview";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import { WarningStatus } from "util/warning";
+import { errorMessage } from "util/response";
 
 const WarningDetail = () => {
   const { notify } = useNotification();
@@ -42,7 +43,7 @@ const WarningDetail = () => {
           notify.success(`Warning ${uuid} acknowledged`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error while acknowledging warning: ${e}`);

@@ -166,6 +166,7 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		}
 
 		if len(servers) != 1 {
+			//domain-errors:internal Violated invariant, nothing the user can do about it.
 			return fmt.Errorf("Failed to get operations-center server entry, expected 1 entry, got %d", len(servers))
 		}
 

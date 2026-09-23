@@ -8,6 +8,7 @@ import {
 import ClusterTemplateForm from "components/ClusterTemplateForm";
 import { useNotification } from "context/notificationContext";
 import { ClusterTemplateFormValues } from "types/cluster_template";
+import { errorMessage } from "util/response";
 
 const ClusterTemplateConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -22,7 +23,7 @@ const ClusterTemplateConfiguration = () => {
           navigate(`/ui/provisioning/cluster-templates/${name}/configuration`);
           return;
         }
-        notify.error(response.error);
+        notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during cluster template update: ${e}`);
@@ -40,7 +41,7 @@ const ClusterTemplateConfiguration = () => {
             );
             return;
           }
-          notify.error(response.error);
+          notify.error(errorMessage(response));
         })
         .catch((e) => {
           notify.error(`Error during cluster template rename: ${e}`);

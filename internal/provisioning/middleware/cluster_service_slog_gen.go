@@ -22,18 +22,11 @@ var componentClusterService = logger.RegisterComponent("provisioning.cluster_ser
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
 type ClusterServiceWithSlog struct {
-	_base                 provisioning.ClusterService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      provisioning.ClusterService
+	_component logger.Component
 }
 
 type ClusterServiceWithSlogOption func(s *ClusterServiceWithSlog)
-
-func ClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterServiceWithSlogOption {
-	return func(_base *ClusterServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // ClusterServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -47,9 +40,8 @@ func ClusterServiceWithSlogWithComponent(component logger.Component) ClusterServ
 // NewClusterServiceWithSlog instruments an implementation of the provisioning.ClusterService with simple logging.
 func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...ClusterServiceWithSlogOption) ClusterServiceWithSlog {
 	this := ClusterServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentClusterService,
+		_base:      base,
+		_component: componentClusterService,
 	}
 
 	for _, opt := range opts {
@@ -82,11 +74,7 @@ func (_d ClusterServiceWithSlog) AbortClusterOperation(ctx context.Context, name
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AbortClusterOperation returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AbortClusterOperation returned an error")
-			}
+			log.DebugContext(ctx, "<= method AbortClusterOperation returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AbortClusterOperation finished")
 		}
@@ -118,11 +106,7 @@ func (_d ClusterServiceWithSlog) AddApplication(ctx context.Context, clusterName
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddApplication returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddApplication returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddApplication finished")
 		}
@@ -155,11 +139,7 @@ func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLANTags(ctx context.Cont
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags finished")
 		}
@@ -193,11 +173,7 @@ func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, se
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddServers returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddServers returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddServers returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddServers finished")
 		}
@@ -229,11 +205,7 @@ func (_d ClusterServiceWithSlog) AddStorageTargetISCSI(ctx context.Context, clus
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddStorageTargetISCSI returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddStorageTargetISCSI returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddStorageTargetISCSI returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddStorageTargetISCSI finished")
 		}
@@ -265,11 +237,7 @@ func (_d ClusterServiceWithSlog) AddStorageTargetMultipath(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddStorageTargetMultipath returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddStorageTargetMultipath returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddStorageTargetMultipath returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddStorageTargetMultipath finished")
 		}
@@ -301,11 +269,7 @@ func (_d ClusterServiceWithSlog) AddStorageTargetNVME(ctx context.Context, clust
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddStorageTargetNVME returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddStorageTargetNVME returned an error")
-			}
+			log.DebugContext(ctx, "<= method AddStorageTargetNVME returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method AddStorageTargetNVME finished")
 		}
@@ -336,11 +300,7 @@ func (_d ClusterServiceWithSlog) ClusterUpdateControlLoop(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ClusterUpdateControlLoop returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ClusterUpdateControlLoop returned an error")
-			}
+			log.DebugContext(ctx, "<= method ClusterUpdateControlLoop returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ClusterUpdateControlLoop finished")
 		}
@@ -372,11 +332,7 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
+			log.DebugContext(ctx, "<= method Create returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Create finished")
 		}
@@ -409,11 +365,7 @@ func (_d ClusterServiceWithSlog) DeleteAndFactoryResetByName(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteAndFactoryResetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteAndFactoryResetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteAndFactoryResetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteAndFactoryResetByName finished")
 		}
@@ -445,11 +397,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
@@ -480,11 +428,7 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -515,11 +459,7 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
@@ -551,11 +491,7 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllNamesWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllNamesWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllNamesWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllNamesWithFilter finished")
 		}
@@ -587,11 +523,7 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAllWithFilter returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
@@ -623,11 +555,7 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
@@ -659,11 +587,7 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAll(ctx context.Context, clus
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactAll finished")
 		}
@@ -695,11 +619,7 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAllNames(ctx context.Context,
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactAllNames returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactAllNames returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactAllNames returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactAllNames finished")
 		}
@@ -734,11 +654,7 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactArchiveByName(ctx context.Con
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactArchiveByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName finished")
 		}
@@ -771,11 +687,7 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactByName(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactByName finished")
 		}
@@ -809,11 +721,7 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactFileByName(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetClusterArtifactFileByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetClusterArtifactFileByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetClusterArtifactFileByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetClusterArtifactFileByName finished")
 		}
@@ -845,11 +753,7 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetEndpoint returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetEndpoint returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetEndpoint returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetEndpoint finished")
 		}
@@ -904,11 +808,7 @@ func (_d ClusterServiceWithSlog) LaunchClusterReboot(ctx context.Context, name s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method LaunchClusterReboot returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method LaunchClusterReboot returned an error")
-			}
+			log.DebugContext(ctx, "<= method LaunchClusterReboot returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method LaunchClusterReboot finished")
 		}
@@ -940,11 +840,7 @@ func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name s
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method LaunchClusterUpdate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method LaunchClusterUpdate returned an error")
-			}
+			log.DebugContext(ctx, "<= method LaunchClusterUpdate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method LaunchClusterUpdate finished")
 		}
@@ -977,11 +873,7 @@ func (_d ClusterServiceWithSlog) RemoveServer(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveServer returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveServer returned an error")
-			}
+			log.DebugContext(ctx, "<= method RemoveServer returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RemoveServer finished")
 		}
@@ -1014,11 +906,7 @@ func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLANTags(ctx context.C
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an error")
-			}
+			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags finished")
 		}
@@ -1050,11 +938,7 @@ func (_d ClusterServiceWithSlog) RemoveStorageTargetISCSI(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveStorageTargetISCSI returned an error")
-			}
+			log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI finished")
 		}
@@ -1086,11 +970,7 @@ func (_d ClusterServiceWithSlog) RemoveStorageTargetMultipath(ctx context.Contex
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveStorageTargetMultipath returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveStorageTargetMultipath returned an error")
-			}
+			log.DebugContext(ctx, "<= method RemoveStorageTargetMultipath returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RemoveStorageTargetMultipath finished")
 		}
@@ -1122,11 +1002,7 @@ func (_d ClusterServiceWithSlog) RemoveStorageTargetNVME(ctx context.Context, cl
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveStorageTargetNVME returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveStorageTargetNVME returned an error")
-			}
+			log.DebugContext(ctx, "<= method RemoveStorageTargetNVME returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method RemoveStorageTargetNVME finished")
 		}
@@ -1158,11 +1034,7 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Rename returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Rename returned an error")
-			}
+			log.DebugContext(ctx, "<= method Rename returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Rename finished")
 		}
@@ -1192,11 +1064,7 @@ func (_d ClusterServiceWithSlog) ResyncInventory(ctx context.Context) (err error
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncInventory returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncInventory returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncInventory returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncInventory finished")
 		}
@@ -1227,11 +1095,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ResyncInventoryByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ResyncInventoryByName returned an error")
-			}
+			log.DebugContext(ctx, "<= method ResyncInventoryByName returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method ResyncInventoryByName finished")
 		}
@@ -1278,11 +1142,7 @@ func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method StartLifecycleEventsMonitor returned an error")
-			}
+			log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor finished")
 		}
@@ -1314,11 +1174,7 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Update returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Update returned an error")
-			}
+			log.DebugContext(ctx, "<= method Update returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method Update finished")
 		}
@@ -1351,11 +1207,7 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateCertificate returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateCertificate returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateCertificate returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateCertificate finished")
 		}
@@ -1387,11 +1239,7 @@ func (_d ClusterServiceWithSlog) UpdateSystemKernel(ctx context.Context, cluster
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystemKernel returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
 		}
@@ -1423,11 +1271,7 @@ func (_d ClusterServiceWithSlog) UpdateSystemLogging(ctx context.Context, cluste
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateSystemLogging returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateSystemLogging returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateSystemLogging returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateSystemLogging finished")
 		}

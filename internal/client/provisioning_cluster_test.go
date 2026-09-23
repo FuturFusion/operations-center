@@ -661,7 +661,7 @@ func Test_DeleteCluster(t *testing.T) {
 			tcNameArg: "readyCluster",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Delete for cluster in state "ready"`)
+				require.ErrorContains(tt, err, `Cluster "readyCluster" can not be deleted while it is in state "ready"`)
 			},
 			assertFunc: func(t *testing.T) {
 				t.Helper()
@@ -701,7 +701,7 @@ func Test_DeleteCluster(t *testing.T) {
 			tcNameArg: "clusterWithServers",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "linked servers")
+				require.ErrorContains(tt, err, "still has 1 servers")
 			},
 			assertFunc: func(t *testing.T) {
 				t.Helper()
@@ -926,7 +926,7 @@ func clusterActionRoutes(t *testing.T) []struct {
 			return c.RemoveServerFromCluster(ctx, n, []string{"serverOne"}, false)
 		}, func(tt require.TestingT, err error, a ...any) {
 			// The cluster size is checked before the cluster is looked up.
-			require.ErrorContains(tt, err, "does not have enough servers for server removal")
+			require.ErrorContains(tt, err, "would leave the cluster without any server")
 		}},
 		{"BulkUpdateCluster", func(ctx context.Context, c client.OperationsCenterClient, n string) error {
 			arguments := json.RawMessage(`{}`)

@@ -20,18 +20,11 @@ var componentWarningService = logger.RegisterComponent("warning.warning_service"
 
 // WarningServiceWithSlog implements warning.WarningService that is instrumented with slog logger.
 type WarningServiceWithSlog struct {
-	_base                 warning.WarningService
-	_isInformativeErrFunc func(error) bool
-	_component            logger.Component
+	_base      warning.WarningService
+	_component logger.Component
 }
 
 type WarningServiceWithSlogOption func(s *WarningServiceWithSlog)
-
-func WarningServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) WarningServiceWithSlogOption {
-	return func(_base *WarningServiceWithSlog) {
-		_base._isInformativeErrFunc = isInformativeErrFunc
-	}
-}
 
 // WarningServiceWithSlogWithComponent overrides the component this instance is
 // attributed to. Use it to tell several instances of the same interface apart,
@@ -45,9 +38,8 @@ func WarningServiceWithSlogWithComponent(component logger.Component) WarningServ
 // NewWarningServiceWithSlog instruments an implementation of the warning.WarningService with simple logging.
 func NewWarningServiceWithSlog(base warning.WarningService, opts ...WarningServiceWithSlogOption) WarningServiceWithSlog {
 	this := WarningServiceWithSlog{
-		_base:                 base,
-		_isInformativeErrFunc: func(error) bool { return false },
-		_component:            componentWarningService,
+		_base:      base,
+		_component: componentWarningService,
 	}
 
 	for _, opt := range opts {
@@ -80,11 +72,7 @@ func (_d WarningServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method DeleteByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
@@ -133,11 +121,7 @@ func (_d WarningServiceWithSlog) GetAll(ctx context.Context) (warnings warning.W
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetAll returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetAll returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetAll finished")
 		}
@@ -170,11 +154,7 @@ func (_d WarningServiceWithSlog) GetByScopeAndType(ctx context.Context, scope ap
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByScopeAndType returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByScopeAndType returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByScopeAndType returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByScopeAndType finished")
 		}
@@ -206,11 +186,7 @@ func (_d WarningServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (w
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method GetByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
@@ -262,11 +238,7 @@ func (_d WarningServiceWithSlog) UpdateStatusByUUID(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method UpdateStatusByUUID returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method UpdateStatusByUUID returned an error")
-			}
+			log.DebugContext(ctx, "<= method UpdateStatusByUUID returned an error")
 		} else {
 			log.DebugContext(ctx, "<= method UpdateStatusByUUID finished")
 		}

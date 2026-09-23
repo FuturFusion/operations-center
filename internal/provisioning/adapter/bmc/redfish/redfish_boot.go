@@ -2,7 +2,6 @@ package redfish
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -65,7 +64,8 @@ func bootableMediaTypes(system *schemas.ComputerSystem, mediaTypes []schemas.Vir
 	}
 
 	if len(bootSourcesForMediaTypes(mediaTypes)) == 0 {
-		return nil, fmt.Errorf("Virtual media %q does not report a media type the server knows how to boot from: %w", virtualMediaID, domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Virtual media %q does not report a media type the server knows how to boot from", virtualMediaID).
+			WithDetail("virtual_media", virtualMediaID)
 	}
 
 	targets := make([]string, 0, len(allowedTargets))
@@ -73,7 +73,9 @@ func bootableMediaTypes(system *schemas.ComputerSystem, mediaTypes []schemas.Vir
 		targets = append(targets, string(target))
 	}
 
-	return nil, fmt.Errorf("Server cannot be set to boot from virtual media %q, it boots from: %s: %w", virtualMediaID, strings.Join(targets, ", "), domain.ErrOperationNotPermitted)
+	return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server cannot be set to boot from virtual media %q, it boots from: %s", virtualMediaID, strings.Join(targets, ", ")).
+		WithDetail("virtual_media", virtualMediaID).
+		WithDetail("boot_targets", strings.Join(targets, ", "))
 }
 
 // preferredBootSourceOverrideEnabled lists the ways of overriding the boot
@@ -131,7 +133,8 @@ func bootSourceOverrideEnabledCandidates(system *schemas.ComputerSystem) ([]sche
 			values = append(values, string(value))
 		}
 
-		return nil, fmt.Errorf("BMC offers neither a one-time nor a continuous boot device override, it offers: %s: %w", strings.Join(values, ", "), domain.ErrOperationNotPermitted)
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The BMC offers neither a one-time nor a continuous boot device override, it offers: %s", strings.Join(values, ", ")).
+			WithDetail("boot_source_override", strings.Join(values, ", "))
 	}
 
 	return candidates, nil

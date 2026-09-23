@@ -30,14 +30,24 @@ func (s *serverService) claimRollingUpdateStep(server *provisioning.Server, step
 	retries := step.Retries()
 	if serverUpdate.Step == step {
 		if serverUpdate.Retries >= retries {
-			return fmt.Errorf("Failed to %s server %q in %d attempts, firstErr: %s, lastErr: %s: %w", step, server.Name, retries, serverUpdate.FirstError, serverUpdate.LastError, domain.ErrTerminal)
+			return domain.NewErrorf(domain.ErrTerminal, "", "Failed to %s server %q in %d attempts: %s", step, server.Name, retries, serverUpdate.FirstError).
+				WithHintf("Resolve the reported problem on server %q and start the update again.", server.Name).
+				WithDetail("server", server.Name).
+				WithDetail("step", string(step)).
+				WithDetail("first_error", serverUpdate.FirstError).
+				WithDetail("last_error", serverUpdate.LastError)
 		}
 
 		// A failed attempt is not retried immediately. The condition, which made
 		// it fail, is often transient but needs longer to clear than the control
 		// loop needs to pick the server up again.
 		if serverUpdate.RetryBackoffRemaining(now, s.rollingUpdateStepRetryBackoff) > 0 {
-			return domain.NewRetryableErr(fmt.Errorf("Step %q for server %q backs off for %s after a failed attempt, lastErr: %s", step, server.Name, s.rollingUpdateStepRetryBackoff, serverUpdate.LastError))
+			return domain.NewRetryableErr(
+				domain.NewErrorf(nil, "", "Step %q for server %q backs off for %s after a failed attempt: %s", step, server.Name, s.rollingUpdateStepRetryBackoff, serverUpdate.LastError).
+					WithDetail("server", server.Name).
+					WithDetail("step", string(step)).
+					WithDetail("last_error", serverUpdate.LastError),
+			)
 		}
 	}
 
