@@ -18,7 +18,7 @@ const (
 	imageSourceURL  = "https://images.linuxcontainers.org"
 
 	// flagsImageOS is the operating system of the image, which is uploaded
-	// without an incus.tar.xz, so that Operations Center has to generate the
+	// without a metadata tarball, so that Operations Center has to generate the
 	// metadata itself.
 	flagsImageOS                 = "e2etest"
 	flagsImageRelease            = "1"
@@ -31,7 +31,7 @@ const (
 // ocIncusImagesRemoteLaunchInstance exercises the Incus image and the Incus
 // image source handling of Operations Center end to end:
 //
-//   - Upload of image versions, both with an incus.tar.xz and with the metadata
+//   - Upload of image versions, both with a metadata tarball and with the metadata
 //     provided through flags.
 //   - The image CRUD commands (list, show, edit, file, remove-version, remove).
 //   - Syncing images from an image source and pruning them again, when they
@@ -74,7 +74,7 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(ctx context.Context,
 		require.NoError(t, err)
 
 		alpineVersion := mustDownloadAlpineImageFiles(t, imagesDir, map[string]string{
-			"incus.tar.xz":    "incus.tar.xz",
+			"incus.tar.xz":    "alpine-vm",
 			"rootfs.squashfs": "rootfs.squashfs",
 			"disk.qcow2":      "alpine-vm.root",
 		})
@@ -152,7 +152,7 @@ func prepareServerAsOCImagesClient(ctx context.Context, t *testing.T, tmpDir str
 }
 
 // assertIncusImageAdd uploads an image version, for which the metadata is
-// provided through an incus.tar.xz, and returns the name of the image.
+// provided through a metadata tarball, and returns the name of the image.
 func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string {
 	t.Helper()
 
@@ -166,14 +166,14 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	name := fmt.Sprintf("alpinelinux:edge:%s:default", cpuArch)
 
 	t.Log("Add images to operations-center")
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs %[2]s/alpine-vm.root`, 5*time.Minute, cpuArch, imagesDir)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/alpine-vm %[2]s/rootfs.squashfs %[2]s/alpine-vm.root`, 5*time.Minute, cpuArch, imagesDir)
 
 	resp := mustRun(t, `../bin/operations-center.linux.%s image incus list`, cpuArch)
 	fmt.Println(resp.Output())
 
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 1'`, cpuArch, name)
 
-	// The metadata is derived from incus.tar.xz, not from flags.
+	// The metadata is derived from the metadata tarball, not from flags.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and (.versions | has("%[4]s"))'`, cpuArch, name, cpuArch, version)
 	// The files are stored under their canonical names, not under the names
 	// they have been uploaded with.
@@ -186,9 +186,24 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	// calculated on upload.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | (.combined_squashfs_sha256 | length) == 64 and (.["combined_disk-kvm-img_sha256"] | length) == 64'`, cpuArch, name, version)
 
-	// Adding the same version a second time is rejected.
+	// The name of the metadata tarball does not matter, the one Incus itself
+	// uses has to keep working as well.
+	metadataTarball, err := os.ReadFile(filepath.Join(imagesDir, "alpine-vm"))
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(imagesDir, "incus.tar.xz"), metadataTarball, 0o600)
+	require.NoError(t, err)
+
+	// Adding the same version a second time is rejected. The version is only
+	// known after the metadata tarball has been read, so this also asserts,
+	// that the metadata tarball is accepted.
 	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs`, cpuArch, imagesDir)
 	require.False(t, resp.Success(), "expect adding an existing image version to fail")
+
+	// An image file in the place of the metadata tarball is rejected.
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/rootfs.squashfs %[2]s/alpine-vm`, cpuArch, imagesDir)
+	require.False(t, resp.Success(), "expect adding an image file as metadata tarball to fail")
+	require.Contains(t, resp.Output(), "is not a metadata tarball")
 
 	return name
 }
@@ -238,7 +253,7 @@ func assertIncusImageCRUD(t *testing.T, tmpDir string, imagesDir string, downloa
 }
 
 // assertIncusImageAddFromFlags uploads an image version without an
-// incus.tar.xz, which makes Operations Center generate the metadata tarball
+// metadata tarball, which makes Operations Center generate the metadata tarball
 // itself, and returns the name of the image.
 func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir string) string {
 	t.Helper()
@@ -262,7 +277,7 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "%[3]s" and .release == "%[4]s" and .arch == "%[5]s" and .variant == "%[6]s"'`, cpuArch, name, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .ftype == "squashfs" and .sha256 == "%[4]s" and .size == %[5]d'`, cpuArch, name, flagsImageVersion, payloadSHA, flagsImageSize)
 
-	// The generated incus.tar.xz has to be a complete xz archive containing a
+	// The generated metadata tarball has to be a complete xz archive containing a
 	// metadata.yaml, otherwise the image is unusable for Incus.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | .ftype == "incus.tar.xz" and .size > 0 and (.sha256 | length) == 64'`, cpuArch, name, flagsImageVersion)
 
@@ -271,7 +286,7 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	mustRun(t, `tar -tJf %s | grep -q '^metadata.yaml$'`, metadataFile)
 	mustRun(t, `tar -xJf %s -O metadata.yaml | grep -q 'serial: "%s"'`, metadataFile, flagsImageVersion)
 
-	// Without an incus.tar.xz all the metadata flags are required.
+	// Without a metadata tarball all the metadata flags are required.
 	resp := run(t, `../bin/operations-center.linux.%s image incus add %s`, cpuArch, payload)
 	require.False(t, resp.Success(), "expect add without metadata to fail")
 	require.Contains(t, resp.Output(), "Either provide the image attributes")
