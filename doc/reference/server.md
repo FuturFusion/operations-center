@@ -32,8 +32,9 @@ Operations Center then configures the BIOS of the server from the BIOS profiles
 matching it, enrolls the secure boot certificates of IncusOS, attaches the
 installation media generated from the token seed and boots it, and watches the
 server until it has registered itself. The progress is followed with
-`operations-center provisioning server deploy-status <name>` and a running
-deployment is stopped with
+`operations-center provisioning server deploy-status <name>`, which with
+`--wait` keeps reporting the states the deployment enters until it is done, and
+a running deployment is stopped with
 `operations-center provisioning server deploy-cancel <name>`, which ejects the
 installation media and powers the server off. Add `--skip-cleanup` to stop the
 deployment without that clean up, leaving the server untouched.
