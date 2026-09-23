@@ -443,7 +443,7 @@ func Test_DeleteChannel(t *testing.T) {
 			tcNameArg: "in-use",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "if in use by any update")
+				require.ErrorContains(tt, err, `Channel "in-use" is assigned to 1 updates and can not be deleted`)
 			},
 			assertFunc: noop,
 		},
