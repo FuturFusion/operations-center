@@ -67,15 +67,16 @@ const (
 // Each of them has to stay well within the timeout of the state observing it,
 // while the two, that have to outlast a deadline of the deployment, exceed it.
 const (
-	worldBootDuration        = 30 * time.Second
-	worldBIOSApplyDelay      = 30 * time.Second
-	worldFirmwareRebootDelay = config.ServerDeploymentSettleDelay + time.Minute
-	worldInstallDuration     = config.ServerDeploymentMinInstallDuration + 2*time.Minute
-	worldEarlyRebootDelay    = 4 * time.Minute
-	worldMediaReadDuration   = 5 * time.Minute
-	worldRegistrationDelay   = 2 * time.Minute
-	worldEjectDelay          = 30 * time.Second
-	worldMediaSize           = 4 * config.ServerDeploymentMediaMinBytesRead
+	worldBootDuration           = 30 * time.Second
+	worldBIOSApplyDelay         = 30 * time.Second
+	worldFirmwareRebootDelay    = config.ServerDeploymentSettleDelay + time.Minute
+	worldInstallDuration        = config.ServerDeploymentMinInstallDuration + 2*time.Minute
+	worldEarlyRebootDelay       = 4 * time.Minute
+	worldMediaReadDuration      = 5 * time.Minute
+	worldRegistrationDelay      = 2 * time.Minute
+	worldEjectDelay             = 30 * time.Second
+	worldMediaSize              = 4 * config.ServerDeploymentMediaMinBytesRead
+	worldIgnorePowerOffDuration = config.ServerDeploymentStepTimeout + time.Minute
 )
 
 const (
@@ -171,35 +172,40 @@ type bmcWorld struct {
 	detachedIDs []string
 
 	// The knobs, that let a row model a BMC or a server behaving differently.
-	dropsMediaOnBoot    bool
-	installDuration     time.Duration
-	postDuration        time.Duration
-	bootGeneration      int
-	bootsMediaAgain     bool
-	ignorePowerOffs     int
-	biosApplyDrops      int
-	secureBootEnrolls   bool
-	noSecureBootMode    bool
-	noSecureBootReset   bool
-	noBootProgress      bool
-	noLastResetTime     bool
-	uploadTransfer      bool
-	installViaMediaRead bool
-	cachesMedia         bool
-	mediaEjectDelay     time.Duration
-	mediaFromOtherHost  bool
-	registers           bool
-	registrationDelay   time.Duration
-	getDataFails        bool
-	unavailableParts    map[api.BMCDataPart]string
-	forgetsBIOSTask     bool
-	slowSecureBootReset bool
-	rebootsEarly        bool
-	haltsAfterInstall   bool
-	awaitingPowerOn     bool
-	powerOffErrs        queue.Errs
-	attachMediaErrs     queue.Errs
-	ejectDelay          time.Duration
+	dropsMediaOnBoot              bool
+	installDuration               time.Duration
+	postDuration                  time.Duration
+	bootGeneration                int
+	bootsMediaAgain               bool
+	ignorePowerOffFor             time.Duration
+	ignoredPowerOffsSince         time.Time
+	biosApplyDrops                int
+	secureBootEnrolls             bool
+	relapsesAfterSecureBootReset  bool
+	biosSecureBootStatusAttribute string
+	biosSecureBootStatusStuck     bool
+	noSecureBootMode              bool
+	noSecureBootReset             bool
+	noBootProgress                bool
+	noLastResetTime               bool
+	uploadTransfer                bool
+	installViaMediaRead           bool
+	cachesMedia                   bool
+	mediaEjectDelay               time.Duration
+	mediaFromOtherHost            bool
+	registers                     bool
+	registrationDelay             time.Duration
+	getDataFails                  bool
+	unavailableParts              map[api.BMCDataPart]string
+	forgetsBIOSTask               bool
+	slowSecureBootReset           bool
+	rebootsEarly                  bool
+	haltsAfterInstall             bool
+	awaitingPowerOn               bool
+	powerOffErrs                  queue.Errs
+	attachMediaErrs               queue.Errs
+	enableSecureBootErrs          queue.Errs
+	ejectDelay                    time.Duration
 }
 
 func newBMCWorld(t *testing.T, clock *testClock, opts ...func(*bmcWorld)) *bmcWorld {
@@ -615,14 +621,32 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 
 			// A BMC accepting the request without the server ever going down is
 			// what a wait state has to survive.
-			if world.ignorePowerOffs > 0 {
-				world.ignorePowerOffs--
+			if world.ignorePowerOffFor > 0 {
+				if world.ignoredPowerOffsSince.IsZero() {
+					world.ignoredPowerOffsSince = world.clock.Now()
+				}
 
-				return monitor(world), nil
+				if world.clock.Now().Before(world.ignoredPowerOffsSince.Add(world.ignorePowerOffFor)) {
+					return monitor(world), nil
+				}
 			}
 
 			world.powerOn = false
 			world.bootProgress = api.BMCBootProgress{}
+
+			if world.relapsesAfterSecureBootReset && world.secureBootMode == worldSecureBootModeSetup {
+				world.relapsesAfterSecureBootReset = false
+
+				world.schedule(worldBootDuration, "firmware brings the server back up to pick the cleared key databases up", func(ctx context.Context, w *bmcWorld) error {
+					w.mu.Lock()
+					defer w.mu.Unlock()
+
+					w.powerOn = true
+					w.bootNow()
+
+					return nil
+				})
+			}
 
 			return monitor(world), nil
 		},

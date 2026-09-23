@@ -1240,9 +1240,17 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 	case api.ServerDeploymentStatePowerOffBIOS, api.ServerDeploymentStatePowerOffBIOSDeferred,
 		api.ServerDeploymentStatePowerOffSecureBoot, api.ServerDeploymentStatePowerOffSecureBootSettled,
 		api.ServerDeploymentStatePowerOffSecureBootReset, api.ServerDeploymentStatePowerOffSecureBootMedia:
-		_, err := s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
+		powerOffState := deployment.State
 
-		return nil, err
+		_, err := s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return func(deployment *provisioning.ServerDeployment) {
+			deployment.LastPowerOffState = powerOffState
+			deployment.PoweredOffSince = time.Time{}
+		}, nil
 
 	case api.ServerDeploymentStateApplyBIOS, api.ServerDeploymentStateApplyBIOSDeferred:
 		taskMonitor, err := s.applyBIOSAttributesByName(ctx, server.Name, deploymentBIOSAttributes(deployment), false)
@@ -1570,17 +1578,22 @@ type deploymentBMCCondition struct {
 // bmcWaitConditions holds the wait conditions, that are a plain predicate over
 // the BMC data of the server.
 var bmcWaitConditions = map[api.ServerDeploymentState]deploymentBMCCondition{
-	api.ServerDeploymentStateWaitPowerOffBIOS:              deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffBIOSDeferred:      deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffSecureBoot:        deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitCancel:                    deploymentCancelSettled,
-	api.ServerDeploymentStateWaitPowerOffSecureBootReset:   deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitPowerOffSecureBootMedia:   deploymentPowerIsOff,
-	api.ServerDeploymentStateWaitSecureBootSetupMode:       isDeploymentInSecureBootSetupMode,
-	api.ServerDeploymentStateWaitSecureBootMediaAttached:   isDeploymentSecureBootMediaHoldingImage,
-	api.ServerDeploymentStateWaitMediaCleared:              deploymentNoMediaInserted,
-	api.ServerDeploymentStateWaitMediaDetached:             deploymentMediaEjected,
+	api.ServerDeploymentStateWaitCancel:                  deploymentCancelSettled,
+	api.ServerDeploymentStateWaitSecureBootSetupMode:     isDeploymentInSecureBootSetupMode,
+	api.ServerDeploymentStateWaitSecureBootMediaAttached: isDeploymentSecureBootMediaHoldingImage,
+	api.ServerDeploymentStateWaitMediaCleared:            deploymentNoMediaInserted,
+	api.ServerDeploymentStateWaitMediaDetached:           deploymentMediaEjected,
+}
+
+// deploymentPowerOffWaits are the waits, that are only passed once the power off
+// preceding them has settled, see checkDeploymentPoweredOff.
+var deploymentPowerOffWaits = []api.ServerDeploymentState{
+	api.ServerDeploymentStateWaitPowerOffBIOS,
+	api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+	api.ServerDeploymentStateWaitPowerOffSecureBoot,
+	api.ServerDeploymentStateWaitPowerOffSecureBootReset,
+	api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
+	api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
 }
 
 var deploymentPowerIsOff = deploymentBMCCondition{
@@ -1666,6 +1679,10 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 		return condition.met(deployment, current.BMCData), nil, nil
 	}
 
+	if slices.Contains(deploymentPowerOffWaits, deployment.State) {
+		return s.checkDeploymentPoweredOff(ctx, log, server)
+	}
+
 	switch deployment.State {
 	case api.ServerDeploymentStateWaitMediaAttached:
 		return s.checkDeploymentMediaAttached(ctx, server)
@@ -1694,6 +1711,53 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 
 	//domain-errors:internal Programmer error, the state table and the state disagree.
 	return false, nil, fmt.Errorf("Deployment state %q is not a wait", deployment.State)
+}
+
+// checkDeploymentPoweredOff tells, whether the server has settled at powered
+// off. A single observation does not establish it: firmware, that resets the
+// server on its own to pick up what has been staged for it, has the BMC report
+// the power state off in the trough of that reset, and the server is back in
+// its power on self test moments later, where it accepts neither a boot source
+// override nor a modification of its UEFI key databases. A server, that is
+// found powered on, has the power cut again.
+func (s *serverService) checkDeploymentPoweredOff(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+	deployment := server.StatusInternal.Deployment
+
+	current, err := s.deploymentBMCData(ctx, server, deploymentPowerIsOff.requires)
+	if err != nil {
+		return false, nil, err
+	}
+
+	now := s.now()
+
+	if !deploymentPowerIsOff.met(deployment, current.BMCData) {
+		if !deployment.PoweredOffSince.IsZero() {
+			log.WarnContext(ctx, "Server is powered on again after it had been reported powered off, cutting the power again", slog.String("power_state", current.BMCData.ServerPowerState))
+		}
+
+		// Cutting the power is idempotent, so it is simply issued again, no
+		// matter whether the server never went off or came back up.
+		_, err = s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if deployment.PoweredOffSince.IsZero() {
+			return false, nil, nil
+		}
+
+		return false, func(deployment *provisioning.ServerDeployment) {
+			deployment.PoweredOffSince = time.Time{}
+		}, nil
+	}
+
+	if deployment.PoweredOffSince.IsZero() {
+		return false, func(deployment *provisioning.ServerDeployment) {
+			deployment.PoweredOffSince = now
+		}, nil
+	}
+
+	return now.Sub(deployment.PoweredOffSince) >= config.ServerDeploymentPowerOffSettleDelay, nil, nil
 }
 
 func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
@@ -2194,6 +2258,19 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 	deployment := server.StatusInternal.Deployment
 	if !deployment.IsActive() {
 		return nil
+	}
+
+	// A BMC, that turned the request down because the server is not settled,
+	// contradicts the power off, that the deployment took to have come through,
+	// so the deployment goes back to it rather than issuing the request against
+	// a server, that is running through its power on self test. Where no power
+	// off has been performed yet, the request is simply issued again.
+	if domain.IsNotSettledError(stepErr) {
+		if deployment.LastPowerOffState != "" {
+			stepErr = deploymentRetryFromError{state: deployment.LastPowerOffState, err: stepErr}
+		} else {
+			stepErr = domain.NewRetryableErr(stepErr)
+		}
 	}
 
 	// A step, that routes the deployment back to an earlier state, gets its own

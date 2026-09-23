@@ -199,6 +199,18 @@ type ServerDeployment struct {
 	// an earlier state, instead of being retried in place.
 	FallbackAttempts int `json:"fallback_attempts"`
 
+	// PoweredOffSince records, since when the BMC reports the server powered off
+	// in the power off wait the deployment is in. A single observation does not
+	// establish a settled power off, since firmware, that resets the server on
+	// its own, has the BMC report the power state off in the trough of that
+	// reset.
+	PoweredOffSince time.Time `json:"powered_off_since"`
+
+	// LastPowerOffState names the power off, that put the server into the state
+	// the steps following it rely on, so a BMC, that turns a request down
+	// because the server is not settled, sends the deployment back to it.
+	LastPowerOffState api.ServerDeploymentState `json:"last_power_off_state"`
+
 	// MediaBytesRead holds how much of the installation media of size MediaSize
 	// the BMC had read when the deployment looked last, counting every byte once,
 	// no matter how often it was requested, or -1, if no progress is available.
