@@ -66,22 +66,23 @@ const uploadIncusImage = (body: FormData): Promise<APIResponse<null>> => {
   });
 };
 
-// Upload a complete set of image files including incus.tar.xz. The server reads
-// the metadata from incus.tar.xz, which therefore has to be the first part.
+// Upload the metadata tarball together with the image files. The server reads
+// the metadata from the first part, which therefore has to be the metadata
+// tarball. Its name does not matter, it is recognized by its content.
 export const uploadIncusImageFull = (
+  metadataFile: File,
   files: File[],
 ): Promise<APIResponse<null>> => {
   const body = new FormData();
-  const incusTarXZ = files.filter((file) => file.name == "incus.tar.xz");
-  const others = files.filter((file) => file.name != "incus.tar.xz");
-  [...incusTarXZ, ...others].forEach((file) => body.append(file.name, file));
+  body.append(metadataFile.name, metadataFile);
+  files.forEach((file) => body.append(file.name, file));
 
   return uploadIncusImage(body);
 };
 
 // Upload image files together with the metadata. The server generates the
-// incus.tar.xz from the provided metadata, which therefore has to be the first
-// part.
+// metadata tarball from the provided metadata, which therefore has to be the
+// first part.
 export const uploadIncusImageWithMetadata = (
   metadata: IncusImageMetadata,
   files: File[],
