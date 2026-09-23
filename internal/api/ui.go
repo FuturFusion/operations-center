@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -24,9 +26,27 @@ func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
 	return fsFile, err
 }
 
-func registerUIHandlers(router Router, usrShareDir string) {
-	uiDir := uiHTTPDir{http.Dir(filepath.Join(usrShareDir, uiPathSegment))}
-	fileServer := http.FileServer(uiDir)
+// registerUIHandlers registers the handlers serving the web UI.
+//
+// If embeddedUI is not nil, the web UI is served from the provided file system,
+// which is expected to be rooted at the directory holding index.html.
+// Otherwise, the web UI is served from the "ui" directory below usrShareDir.
+func registerUIHandlers(ctx context.Context, router Router, embeddedUI fs.FS, usrShareDir string) {
+	var uiFS http.FileSystem
+
+	if embeddedUI != nil {
+		slog.InfoContext(ctx, "Serving embedded web UI")
+
+		uiFS = http.FS(embeddedUI)
+	} else {
+		uiPath := filepath.Join(usrShareDir, uiPathSegment)
+
+		slog.InfoContext(ctx, "Serving web UI from directory", slog.String("path", uiPath))
+
+		uiFS = http.Dir(uiPath)
+	}
+
+	fileServer := http.FileServer(uiHTTPDir{uiFS})
 
 	router.Handle("GET /"+uiPathSegment+"/", http.StripPrefix("/"+uiPathSegment+"/", fileServer))
 	router.HandleFunc("GET /"+uiPathSegment, func(w http.ResponseWriter, r *http.Request) {
