@@ -2,7 +2,6 @@ package entities
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/mattn/go-sqlite3"
@@ -19,7 +18,7 @@ func warningMapErr(err error, entity string) error {
 	entityName := strings.ReplaceAll(entity, "_", " ")
 
 	if errors.Is(err, ErrNotFound) {
-		return fmt.Errorf("%s not found: %w", entityName, domain.ErrNotFound)
+		return domain.NewErrorf(domain.ErrNotFound, "", "%s not found", entityName).WithCause(err)
 	}
 
 	if errors.Is(err, ErrConflict) {
