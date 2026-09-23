@@ -1799,8 +1799,9 @@ definitions:
                 x-go-name: CombinedSha256SquashFs
             ftype:
                 description: |-
-                    FileType holds the file type. This defaults to the file name like
-                    incus.tar.xz. Special file types are "squashfs" and "disk-kvm.img".
+                    FileType holds the file type, which is derived from the content of the
+                    file. Supported file types are "incus.tar.xz", "root.tar.xz", "squashfs"
+                    and "disk-kvm.img".
                 type: string
                 x-go-name: FileType
             path:
