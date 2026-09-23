@@ -25,6 +25,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
@@ -176,10 +177,29 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 			return "", fmt.Errorf("Add version failed to get multipart item: %w", err)
 		}
 
-		hash256 := sha256.New()
-		partReader := file.NewTeeReadCloser(part, hash256)
+		if part.FileName() == "incus.tar.xz" {
+			return "", fmt.Errorf(`The file "incus.tar.xz" is required to be the first part of the multipart request: %w`, domain.ErrOperationNotPermitted)
+		}
 
-		commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, part.FileName(), partReader)
+		// detectErr keeps err the named return value, which the deferred cancel functions report through.
+		filename, ftype, content, detectErr := versionItemFromPart(part)
+		if detectErr != nil {
+			return "", fmt.Errorf("Failed to detect the type of file %q for image %q, version %q: %w", part.FileName(), name, versionIdentifier, detectErr)
+		}
+
+		_, ok := incusImageVersion.Items[filename]
+		if ok {
+			return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Image %q, version %q already has a %q file", name, versionIdentifier, filename).
+				WithHintf("Send every image file only once.").
+				WithDetail("image", name).
+				WithDetail("version", versionIdentifier).
+				WithDetail("file_name", filename)
+		}
+
+		hash256 := sha256.New()
+		partReader := file.NewTeeReadCloser(content, hash256)
+
+		commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, filename, partReader)
 		defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
 			cancelErr := cancel()
 			if cancelErr != nil {
@@ -187,28 +207,19 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 			}
 		}()
 		if putErr != nil {
-			return "", fmt.Errorf("Failed to put file %q for image %q, version %q: %w", part.FileName(), name, versionIdentifier, putErr)
+			return "", fmt.Errorf("Failed to put file %q for image %q, version %q: %w", filename, name, versionIdentifier, putErr)
 		}
 
 		err = commit()
 		if err != nil {
-			return "", fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", part.FileName(), name, versionIdentifier, err)
+			return "", fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", filename, name, versionIdentifier, err)
 		}
 
-		ftype := part.FileName()
-		switch part.FileName() {
-		case "root.squashfs":
-			ftype = "squashfs"
-
-		case "disk.qcow2":
-			ftype = "disk-kvm.img"
-		}
-
-		incusImageVersion.Items[part.FileName()] = api.IncusImageVersionItem{
+		incusImageVersion.Items[filename] = api.IncusImageVersionItem{
 			FileType:   ftype,
 			Size:       size,
 			HashSha256: hex.EncodeToString(hash256.Sum(nil)),
-			Path:       filepath.Join("images", img.Path(), versionIdentifier, part.FileName()),
+			Path:       filepath.Join("images", img.Path(), versionIdentifier, filename),
 		}
 	}
 
@@ -356,11 +367,33 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 	}
 }
 
+// versionItemFromPart determines the canonical file name and the simplestreams
+// file type of an image version item from the content of the given part.
+func versionItemFromPart(part *multipart.Part) (filename string, fileType string, _ io.ReadCloser, err error) {
+	extension, content, err := archive.DetectType(part)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("Failed to read content: %w", err)
+	}
+
+	switch extension {
+	case ".squashfs":
+		return "root.squashfs", "squashfs", file.NewReadCloser(content, part), nil
+
+	case ".qcow2":
+		return "disk.qcow2", "disk-kvm.img", file.NewReadCloser(content, part), nil
+
+	case ".tar.xz":
+		return "root.tar.xz", "root.tar.xz", file.NewReadCloser(content, part), nil
+	}
+
+	return "", "", nil, domain.NewValidationErrf("Unsupported image file %q, expected a squashfs image, a qcow2 disk or an xz compressed tarball", part.FileName())
+}
+
 func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *IncusImage, versionIdentifier string, incusImageVersion *api.IncusImageVersion) error {
 	incusTarXZ := incusImageVersion.Items["incus.tar.xz"]
 
-	for fileName := range incusImageVersion.Items {
-		if !slices.Contains([]string{"root.tar.xz", "root.squashfs", "disk.qcow2"}, fileName) {
+	for fileName, item := range incusImageVersion.Items {
+		if !slices.Contains([]string{"root.tar.xz", "squashfs", "disk-kvm.img"}, item.FileType) {
 			continue
 		}
 
@@ -386,14 +419,14 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 			return fmt.Errorf("Failed to read file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
 
-		switch fileName {
+		switch item.FileType {
 		case "root.tar.xz":
 			incusTarXZ.CombinedSha256RootXz = hex.EncodeToString(hash256.Sum(nil))
 
-		case "root.squashfs":
+		case "squashfs":
 			incusTarXZ.CombinedSha256SquashFs = hex.EncodeToString(hash256.Sum(nil))
 
-		case "disk.qcow2":
+		case "disk-kvm.img":
 			incusTarXZ.CombinedSha256DiskKvmImg = hex.EncodeToString(hash256.Sum(nil))
 		}
 	}
