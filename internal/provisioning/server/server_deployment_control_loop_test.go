@@ -167,6 +167,8 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				t.Helper()
 
 				require.Zero(t, world.callCount("ApplySecureBootCertificates"))
+				require.Zero(t, world.callCount("EnableSecureBoot"), "a deployment, that enrolls no certificates, leaves the state of secure boot to the operator")
+				require.False(t, world.secureBootEnabled)
 			},
 		},
 		{
@@ -185,6 +187,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesSecureBootReset,
 				deploymentStatesSecureBootMedia,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),
@@ -194,6 +197,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				t.Helper()
 
 				require.Zero(t, world.callCount("ApplySecureBootCertificates"), "the enrollment media replaces the enrollment through the BMC")
+				require.True(t, world.secureBootEnabled, "secure boot is switched on once the certificates are enrolled")
 				require.Equal(t, 1, world.callCount("ResetSecureBootKeys"), "the key databases are cleared to reach the setup mode")
 				require.Equal(t, 1, world.callCount("GenerateSecureBootMedia"))
 				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment takes the server back out of the setup mode")
@@ -219,6 +223,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
 				deploymentStatesSecureBootMedia,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),
@@ -297,6 +302,41 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			},
 		},
 		{
+			name:        "success - the BMC rejects enabling secure boot while the server is in its POST",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.enableSecureBootErrs = queue.Errs{domain.NewNotSettledErr(boom.Error)} },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateEnableSecureBoot},
+				deploymentStatesSecureBootMedia[4:],
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:           api.ServerStatusPending,
+			wantStatusDetail:     api.ServerStatusDetailPendingRegistering,
+			wantFallbackAttempts: 1,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.True(t, world.secureBootEnabled, "secure boot is switched on once the server has settled")
+			},
+		},
+		{
 			name:        "failure - the BMC keeps rejecting the enrollment media while the server is in its POST",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),
@@ -360,6 +400,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesSecureBootReset,
 				deploymentStatesSecureBootMedia,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),
@@ -386,6 +427,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesSecureBootReset,
 				deploymentStatesSecureBootMedia,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),
@@ -438,6 +480,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesSecureBootOff,
 				deploymentStatesSecureBoot,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),

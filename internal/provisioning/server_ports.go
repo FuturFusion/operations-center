@@ -148,4 +148,5 @@ type BMCServerClientPort interface {
 	DetachMedia(ctx context.Context, server Server, virtualMediaID string) (*BMCTaskMonitor, error)
 	ApplySecureBootCertificates(ctx context.Context, server Server, secureBoot api.BIOSSecureBoot) (bool, error)
 	ResetSecureBootKeys(ctx context.Context, server Server) (bool, *BMCTaskMonitor, error)
+	EnableSecureBoot(ctx context.Context, server Server) (bool, error)
 }

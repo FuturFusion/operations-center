@@ -262,9 +262,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitMediaCleared: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
-		next:     api.ServerDeploymentStatePowerOnSecureBoot,
+		next:     api.ServerDeploymentStateEnableSecureBoot,
 		fallback: api.ServerDeploymentStateClearMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+	},
+	api.ServerDeploymentStateEnableSecureBoot: {
+		kind:   deploymentStateKindAction,
+		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:   api.ServerDeploymentStatePowerOnSecureBoot,
 	},
 	api.ServerDeploymentStatePowerOnSecureBoot: {
 		kind:   deploymentStateKindAction,
@@ -436,6 +441,16 @@ func deploymentNextState(deployment *provisioning.ServerDeployment, next api.Ser
 			}
 
 			next = deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset].next
+
+		case api.ServerDeploymentStateEnableSecureBoot:
+			// Secure boot is only switched on for a server, whose certificates
+			// this deployment enrolled. Where they were enrolled by an operator
+			// beforehand, so is the state of secure boot itself.
+			if !deployment.Request.SkipSecureBootCertificates {
+				return next
+			}
+
+			next = deploymentStates[api.ServerDeploymentStateEnableSecureBoot].next
 
 		case api.ServerDeploymentStatePowerOnSecureBoot:
 			if deployment.SecureBootPending {
@@ -1305,6 +1320,9 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 	case api.ServerDeploymentStateAttachSecureBootMedia:
 		return s.attachDeploymentSecureBootMedia(ctx, log, server)
 
+	case api.ServerDeploymentStateEnableSecureBoot:
+		return s.enableDeploymentSecureBoot(ctx, server)
+
 	case api.ServerDeploymentStateClearMedia:
 		return nil, s.detachAllDeploymentMedia(ctx, server)
 
@@ -1384,6 +1402,37 @@ func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log
 		deployment.SecureBootMediaURL = attached.imageURL
 		deployment.SecureBootMediaID = attached.fingerprintID
 		deployment.SecureBootEnrollSnapshot = provisioning.ServerDeploymentBMCSnapshot{}
+	}, nil
+}
+
+// enableDeploymentSecureBoot switches secure boot on, once the certificates are
+// enrolled.
+//
+// It is done here rather than in the BIOS passes, because a server in the secure
+// boot setup mode with no certificates enrolled has nothing to enforce and
+// refuses to have secure boot switched on. The setting takes effect on the next
+// boot, which is the one the deployment performs right after to let the firmware
+// pick the certificates up.
+func (s *serverService) enableDeploymentSecureBoot(ctx context.Context, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
+		return nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	enabled, err := client.EnableSecureBoot(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to enable secure boot of server %q via BMC: %w", server.Name, err)
+	}
+
+	if !enabled {
+		return nil, nil
+	}
+
+	return func(deployment *provisioning.ServerDeployment) {
+		// The server has to boot for the firmware to pick the setting up, which
+		// is what the states after this one do anyway.
+		deployment.SecureBootPending = true
 	}, nil
 }
 

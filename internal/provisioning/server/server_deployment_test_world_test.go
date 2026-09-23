@@ -147,6 +147,7 @@ type bmcWorld struct {
 
 	secureBootPending bool
 
+	secureBootEnabled      bool
 	secureBootMode         string
 	secureBootResetPending bool
 
@@ -802,6 +803,26 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 			return world.secureBootEnrolls, nil
 		},
 
+		EnableSecureBootFunc: func(ctx context.Context, server provisioning.Server) (bool, error) {
+			world.mu.Lock()
+			defer world.mu.Unlock()
+
+			world.calls["EnableSecureBoot"]++
+
+			err := world.enableSecureBootErrs.PopOrNil(t)
+			if err != nil {
+				return false, err
+			}
+
+			if world.secureBootEnabled {
+				return false, nil
+			}
+
+			world.secureBootEnabled = true
+
+			return true, nil
+		},
+
 		ResetSecureBootKeysFunc: func(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
 			world.mu.Lock()
 			defer world.mu.Unlock()
@@ -1305,6 +1326,7 @@ var (
 	}
 
 	deploymentStatesSecureBootSettle = []api.ServerDeploymentState{
+		api.ServerDeploymentStateEnableSecureBoot,
 		api.ServerDeploymentStatePowerOnSecureBoot,
 		api.ServerDeploymentStateWaitSecureBootSettled,
 		api.ServerDeploymentStatePowerOffSecureBootSettled,

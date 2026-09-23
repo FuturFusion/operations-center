@@ -1318,6 +1318,9 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 		TaskStateFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
 			return api.BMCTaskStateUnknown, boom.Error
 		},
+		EnableSecureBootFunc: func(ctx context.Context, server provisioning.Server) (bool, error) {
+			return false, boom.Error
+		},
 	}
 
 	tokenSvc := &svcMock.TokenServiceMock{
