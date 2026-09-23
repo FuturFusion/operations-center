@@ -62,18 +62,14 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		return "", fmt.Errorf("Add version failed to get first multipart item: %w", err)
 	}
 
-	switch {
-	case part.FormName() == "request_json":
+	switch part.FormName() {
+	case "request_json":
 		imageMetadata, incusTarXZ, err = metadataFromRequestJSON(ctx, part)
 
-	case part.FileName() == "incus.tar.xz":
-		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
-
 	default:
-		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q`, part.FormName(), part.FileName()).
-			WithHintf(`Send "request_json" or "incus.tar.xz" as the first part of the request.`).
-			WithDetail("form_name", part.FormName()).
-			WithDetail("file_name", part.FileName())
+		// Any other first part is required to be the metadata tarball, which is
+		// recognized by its content, not by its name.
+		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
 	}
 
 	if err != nil {
@@ -157,7 +153,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	err = commit()
 	if err != nil {
-		return "", fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", part.FileName(), name, versionIdentifier, err)
+		return "", fmt.Errorf(`Add version failed to complete file put for "incus.tar.xz" of image %q, version %q: %w`, name, versionIdentifier, err)
 	}
 
 	incusImageVersion.Items["incus.tar.xz"] = api.IncusImageVersionItem{
@@ -178,7 +174,8 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		}
 
 		if part.FileName() == "incus.tar.xz" {
-			return "", fmt.Errorf(`The file "incus.tar.xz" is required to be the first part of the multipart request: %w`, domain.ErrOperationNotPermitted)
+			return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The metadata tarball is required to be the first part of the multipart request").
+				WithHintf("Send the metadata tarball as the first part of the request.")
 		}
 
 		// detectErr keeps err the named return value, which the deferred cancel functions report through.
@@ -329,28 +326,49 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 	return imageMetadata, buf.Bytes(), nil
 }
 
+// metadataFromIncusTarXZ reads the metadata of an image from the metadata
+// tarball in the given part. The metadata tarball is identified by its content,
+// the name it has been uploaded with is only used for error reporting.
 func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
 	const incusTarXZSizeLimit = 64 * 1024
-	r := io.LimitReader(part, incusTarXZSizeLimit)
-	buf := &bytes.Buffer{}
-	r = io.TeeReader(r, buf)
 
-	xzReader, err := xz.NewReader(ctx, r)
-	if err != nil {
-		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to create xz reader for "incus.tar.xz": %w`, err)
+	name := part.FileName()
+	if name == "" {
+		name = part.FormName()
 	}
+
+	// The metadata tarball is small and is stored verbatim, so it is read into
+	// memory completely before it is decompressed. Reading one byte beyond the
+	// limit detects content, which is too large to be a metadata tarball.
+	incusTarXZ, err = io.ReadAll(io.LimitReader(part, incusTarXZSizeLimit+1))
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to read the metadata tarball %q: %w", name, err)
+	}
+
+	if len(incusTarXZ) > incusTarXZSizeLimit {
+		return incusapi.ImageMetadata{}, nil, domain.NewValidationErrf("The first part of the multipart request %q is not a valid metadata tarball, it exceeds the size limit of %d bytes", name, incusTarXZSizeLimit)
+	}
+
+	xzReader, err := xz.NewReader(ctx, bytes.NewReader(incusTarXZ))
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create xz reader for the metadata tarball %q: %w", name, err)
+	}
+
+	defer func() {
+		_ = xzReader.Close()
+	}()
 
 	tr := tar.NewReader(xzReader)
 
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			return incusapi.ImageMetadata{}, nil, domain.NewErrorf(domain.ErrConstraintViolation, "", `The uploaded "incus.tar.xz" does not contain "metadata.yaml"`).
-				WithHintf(`Upload an "incus.tar.xz" which contains "metadata.yaml".`)
+			return incusapi.ImageMetadata{}, nil, domain.NewErrorf(domain.ErrInvalidArgument, "", `The first part of the multipart request %q is not a valid metadata tarball, it does not contain a "metadata.yaml"`, name).
+				WithHintf(`Send a metadata tarball, which contains a "metadata.yaml".`)
 		}
 
 		if err != nil {
-			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to read "incus.tar.xz": %w`, err)
+			return incusapi.ImageMetadata{}, nil, domain.NewValidationErrf(`The first part of the multipart request %q is not a valid metadata tarball, expected an xz compressed tarball containing a "metadata.yaml": %v`, name, err)
 		}
 
 		if hdr.Name != "metadata.yaml" {
@@ -360,10 +378,10 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 		var imageMetadata incusapi.ImageMetadata
 		err = yaml.NewDecoder(tr).Decode(&imageMetadata)
 		if err != nil {
-			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to decode "metadata.yaml": %w`, err)
+			return incusapi.ImageMetadata{}, nil, domain.NewValidationErrf(`Failed to decode the "metadata.yaml" of the metadata tarball %q: %v`, name, err)
 		}
 
-		return imageMetadata, buf.Bytes(), nil
+		return imageMetadata, incusTarXZ, nil
 	}
 }
 

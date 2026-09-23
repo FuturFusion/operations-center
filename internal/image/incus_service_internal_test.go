@@ -3,14 +3,15 @@ package image
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/textproto"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -310,26 +311,25 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 			name:            "error - not metadata.yaml",
 			multipartReader: multipartReaderIncusTarXZ(t, "invalid", "architecture: amd64"),
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrConstraintViolation)
-				require.ErrorContains(tt, err, "metadata.yaml")
-			},
+			assertErr: errassert.ValidationErrorContains(`The first part of the multipart request "almalinux-10" is not a valid metadata tarball, it does not contain a "metadata.yaml"`),
 		},
 		{
 			name:            "error - invalid XZ compression",
-			multipartReader: multipartReaderNotXZ(t),
+			multipartReader: multipartReaderRawPart(t, "rootfs.squashfs", []byte("invalid")),
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to read "incus.tar.xz"`)
-			},
+			assertErr: errassert.ValidationErrorContains(`The first part of the multipart request "rootfs.squashfs" is not a valid metadata tarball`),
+		},
+		{
+			name:            "error - exceeds size limit",
+			multipartReader: multipartReaderRawPart(t, "disk.qcow2", bytes.Repeat([]byte("x"), 64*1024+1)),
+
+			assertErr: errassert.ValidationErrorContains("it exceeds the size limit of 65536 bytes"),
 		},
 		{
 			name:            "error - invalid metadata body",
 			multipartReader: multipartReaderIncusTarXZ(t, "metadata.yaml", "{"),
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to decode "metadata.yaml"`)
-			},
+			assertErr: errassert.ValidationErrorContains(`Failed to decode the "metadata.yaml" of the metadata tarball "almalinux-10"`),
 		},
 	}
 
@@ -355,10 +355,9 @@ func multipartReaderIncusTarXZ(t *testing.T, metadataFilename string, metadataBo
 
 	writer := multipart.NewWriter(&body)
 
-	// incus.tar.xz
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="incus.tar.xz"`)
+		`form-data; name="file"; filename="almalinux-10"`)
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err := writer.CreatePart(header)
@@ -390,23 +389,22 @@ func multipartReaderIncusTarXZ(t *testing.T, metadataFilename string, metadataBo
 	return multipart.NewReader(&body, writer.Boundary())
 }
 
-func multipartReaderNotXZ(t *testing.T) *multipart.Reader {
+func multipartReaderRawPart(t *testing.T, filename string, content []byte) *multipart.Reader {
 	t.Helper()
 
 	var body bytes.Buffer
 
 	writer := multipart.NewWriter(&body)
 
-	// incus.tar.xz
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="incus.tar.xz"`)
+		fmt.Sprintf(`form-data; name="file"; filename=%q`, filename))
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err := writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = part.Write([]byte("invalid")) // invalid
+	_, err = part.Write(content)
 	require.NoError(t, err)
 
 	err = writer.Close()

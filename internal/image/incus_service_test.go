@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/textproto"
@@ -290,13 +291,10 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: errassert.ValidationErrorContains(`Unsupported image file "rootfs.img"`),
 		},
 		{
-			name:               "error - multipart reader without metadata file",
+			name:               "error - first part is not a metadata tarball",
 			multipartReaderArg: multipartReaderWithoutMetadataFile(t),
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name "file", filename "root.tar.xz"`)
-			},
+			assertErr: errassert.ValidationErrorContains(`The first part of the multipart request "root.tar.xz" is not a valid metadata tarball`),
 		},
 		{
 			name:               "error - failed to read metadata",
@@ -922,13 +920,12 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 	}
 }
 
-func writeIncusTarXZPart(t *testing.T, writer *multipart.Writer) {
+func writeMetadataTarballPart(t *testing.T, writer *multipart.Writer, filename string) {
 	t.Helper()
 
-	// incus.tar.xz
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="incus.tar.xz"`)
+		fmt.Sprintf(`form-data; name="file"; filename=%q`, filename))
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err := writer.CreatePart(header)
@@ -975,7 +972,7 @@ func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
 
 	writer := multipart.NewWriter(&body)
 
-	writeIncusTarXZPart(t, writer)
+	writeMetadataTarballPart(t, writer, "almalinux-10")
 
 	// root.tar.xz
 	header := textproto.MIMEHeader{}
@@ -1073,7 +1070,7 @@ func multipartReaderWithUnsupportedFile(t *testing.T) *multipart.Reader {
 
 	writer := multipart.NewWriter(&body)
 
-	writeIncusTarXZPart(t, writer)
+	writeMetadataTarballPart(t, writer, "incus.tar.xz")
 
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
@@ -1124,7 +1121,7 @@ func multipartReaderWithInvalid2ndPart(t *testing.T) *multipart.Reader {
 
 	writer := multipart.NewWriter(&body)
 
-	writeIncusTarXZPart(t, writer)
+	writeMetadataTarballPart(t, writer, "incus.tar.xz")
 
 	// append invalid multipart content
 	_, err := body.WriteString(strings.Join([]string{
