@@ -29,6 +29,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //			GetSecureBootCertificatesFunc: func(ctx context.Context) (api.InternalSecureBootCertificates, error) {
 //				panic("mock out the GetSecureBootCertificates method")
 //			},
+//			GetSecureBootPlatformKeyUpdateFunc: func(ctx context.Context) ([]byte, error) {
+//				panic("mock out the GetSecureBootPlatformKeyUpdate method")
+//			},
 //			GetTokenFunc: func(ctx context.Context) (string, error) {
 //				panic("mock out the GetToken method")
 //			},
@@ -66,6 +69,9 @@ type EnvironmentMock struct {
 	// GetSecureBootCertificatesFunc mocks the GetSecureBootCertificates method.
 	GetSecureBootCertificatesFunc func(ctx context.Context) (api.InternalSecureBootCertificates, error)
 
+	// GetSecureBootPlatformKeyUpdateFunc mocks the GetSecureBootPlatformKeyUpdate method.
+	GetSecureBootPlatformKeyUpdateFunc func(ctx context.Context) ([]byte, error)
+
 	// GetTokenFunc mocks the GetToken method.
 	GetTokenFunc func(ctx context.Context) (string, error)
 
@@ -100,6 +106,11 @@ type EnvironmentMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetSecureBootPlatformKeyUpdate holds details about calls to the GetSecureBootPlatformKeyUpdate method.
+		GetSecureBootPlatformKeyUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetToken holds details about calls to the GetToken method.
 		GetToken []struct {
 			// Ctx is the ctx argument value.
@@ -127,16 +138,17 @@ type EnvironmentMock struct {
 		VarDir []struct {
 		}
 	}
-	lockCacheDir                  sync.RWMutex
-	lockGetSecureBootCertificates sync.RWMutex
-	lockGetToken                  sync.RWMutex
-	lockGetUnixSocket             sync.RWMutex
-	lockIsIncusOS                 sync.RWMutex
-	lockLogDir                    sync.RWMutex
-	lockRunDir                    sync.RWMutex
-	lockUserConfigDir             sync.RWMutex
-	lockUsrShareDir               sync.RWMutex
-	lockVarDir                    sync.RWMutex
+	lockCacheDir                       sync.RWMutex
+	lockGetSecureBootCertificates      sync.RWMutex
+	lockGetSecureBootPlatformKeyUpdate sync.RWMutex
+	lockGetToken                       sync.RWMutex
+	lockGetUnixSocket                  sync.RWMutex
+	lockIsIncusOS                      sync.RWMutex
+	lockLogDir                         sync.RWMutex
+	lockRunDir                         sync.RWMutex
+	lockUserConfigDir                  sync.RWMutex
+	lockUsrShareDir                    sync.RWMutex
+	lockVarDir                         sync.RWMutex
 }
 
 // CacheDir calls CacheDirFunc.
@@ -195,6 +207,38 @@ func (mock *EnvironmentMock) GetSecureBootCertificatesCalls() []struct {
 	mock.lockGetSecureBootCertificates.RLock()
 	calls = mock.calls.GetSecureBootCertificates
 	mock.lockGetSecureBootCertificates.RUnlock()
+	return calls
+}
+
+// GetSecureBootPlatformKeyUpdate calls GetSecureBootPlatformKeyUpdateFunc.
+func (mock *EnvironmentMock) GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error) {
+	if mock.GetSecureBootPlatformKeyUpdateFunc == nil {
+		panic("EnvironmentMock.GetSecureBootPlatformKeyUpdateFunc: method is nil but Environment.GetSecureBootPlatformKeyUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetSecureBootPlatformKeyUpdate.Lock()
+	mock.calls.GetSecureBootPlatformKeyUpdate = append(mock.calls.GetSecureBootPlatformKeyUpdate, callInfo)
+	mock.lockGetSecureBootPlatformKeyUpdate.Unlock()
+	return mock.GetSecureBootPlatformKeyUpdateFunc(ctx)
+}
+
+// GetSecureBootPlatformKeyUpdateCalls gets all the calls that were made to GetSecureBootPlatformKeyUpdate.
+// Check the length with:
+//
+//	len(mockedEnvironment.GetSecureBootPlatformKeyUpdateCalls())
+func (mock *EnvironmentMock) GetSecureBootPlatformKeyUpdateCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetSecureBootPlatformKeyUpdate.RLock()
+	calls = mock.calls.GetSecureBootPlatformKeyUpdate
+	mock.lockGetSecureBootPlatformKeyUpdate.RUnlock()
 	return calls
 }
 
