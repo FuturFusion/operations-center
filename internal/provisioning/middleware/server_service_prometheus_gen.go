@@ -209,6 +209,20 @@ func (_d ServerServiceWithPrometheus) BMCRefreshByName(ctx context.Context, name
 	return _d.base.BMCRefreshByName(ctx, name)
 }
 
+// BMCResetSecureBootKeysByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCResetSecureBootKeysByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCResetSecureBootKeysByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCResetSecureBootKeysByName(ctx, name)
+}
+
 // BMCServerPowerOffByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCServerPowerOffByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()

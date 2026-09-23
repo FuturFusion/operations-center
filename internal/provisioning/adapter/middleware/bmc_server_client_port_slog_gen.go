@@ -313,6 +313,38 @@ func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provision
 	return _d._base.Dump(ctx, server, additionalEndpoints, skipPredefined, trace)
 }
 
+// EnableSecureBoot implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) EnableSecureBoot(ctx context.Context, server provisioning.Server) (b bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling EnableSecureBoot")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("b", b),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method EnableSecureBoot returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method EnableSecureBoot finished")
+		}
+	}()
+	return _d._base.EnableSecureBoot(ctx, server)
+}
+
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -408,6 +440,39 @@ func (_d BMCServerClientPortWithSlog) LogSources(ctx context.Context, server pro
 		}
 	}()
 	return _d._base.LogSources(ctx, server)
+}
+
+// ResetSecureBootKeys implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (b bool, bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResetSecureBootKeys")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("b", b),
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ResetSecureBootKeys returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ResetSecureBootKeys finished")
+		}
+	}()
+	return _d._base.ResetSecureBootKeys(ctx, server)
 }
 
 // ServerPowerOff implements provisioning.BMCServerClientPort.
