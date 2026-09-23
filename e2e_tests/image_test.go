@@ -20,11 +20,12 @@ const (
 	// flagsImageOS is the operating system of the image, which is uploaded
 	// without an incus.tar.xz, so that Operations Center has to generate the
 	// metadata itself.
-	flagsImageOS      = "e2etest"
-	flagsImageRelease = "1"
-	flagsImageVariant = "default"
-	flagsImageVersion = "20260303"
-	flagsImageSize    = 256 * 1024
+	flagsImageOS                 = "e2etest"
+	flagsImageRelease            = "1"
+	flagsImageVariant            = "default"
+	flagsImageVersion            = "20260303"
+	flagsImageSize               = 256 * 1024
+	flagsImageUnsupportedVersion = "20260304"
 )
 
 // ocIncusImagesRemoteLaunchInstance exercises the Incus image and the Incus
@@ -72,7 +73,11 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(ctx context.Context,
 		err = os.MkdirAll(downloadDir, 0o700)
 		require.NoError(t, err)
 
-		alpineVersion := mustDownloadAlpineImageFiles(t, imagesDir, "incus.tar.xz", "rootfs.squashfs", "disk.qcow2")
+		alpineVersion := mustDownloadAlpineImageFiles(t, imagesDir, map[string]string{
+			"incus.tar.xz":    "incus.tar.xz",
+			"rootfs.squashfs": "rootfs.squashfs",
+			"disk.qcow2":      "alpine-vm.root",
+		})
 
 		manualName := assertIncusImageAdd(t, imagesDir, alpineVersion)
 		assertIncusImageCRUD(t, tmpDir, imagesDir, downloadDir, manualName, alpineVersion)
@@ -161,7 +166,7 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	name := fmt.Sprintf("alpinelinux:edge:%s:default", cpuArch)
 
 	t.Log("Add images to operations-center")
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/root.squashfs %[2]s/disk.qcow2`, 5*time.Minute, cpuArch, imagesDir)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs %[2]s/alpine-vm.root`, 5*time.Minute, cpuArch, imagesDir)
 
 	resp := mustRun(t, `../bin/operations-center.linux.%s image incus list`, cpuArch)
 	fmt.Println(resp.Output())
@@ -170,9 +175,11 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 
 	// The metadata is derived from incus.tar.xz, not from flags.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and (.versions | has("%[4]s"))'`, cpuArch, name, cpuArch, version)
+	// The files are stored under their canonical names, not under the names
+	// they have been uploaded with.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys | sort == ["disk.qcow2","incus.tar.xz","root.squashfs"]'`, cpuArch, name, version)
 
-	// The file types of the well known file names are recognized.
+	// The file types are detected from the content of the files.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | .["incus.tar.xz"].ftype == "incus.tar.xz" and .["root.squashfs"].ftype == "squashfs" and .["disk.qcow2"].ftype == "disk-kvm.img"'`, cpuArch, name, version)
 
 	// The combined hashes, which Incus derives the image fingerprints from, are
@@ -180,7 +187,7 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | (.combined_squashfs_sha256 | length) == 64 and (.["combined_disk-kvm-img_sha256"] | length) == 64'`, cpuArch, name, version)
 
 	// Adding the same version a second time is rejected.
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/root.squashfs`, cpuArch, imagesDir)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs`, cpuArch, imagesDir)
 	require.False(t, resp.Success(), "expect adding an existing image version to fail")
 
 	return name
@@ -196,9 +203,9 @@ func assertIncusImageCRUD(t *testing.T, tmpDir string, imagesDir string, downloa
 
 	t.Log("Assert operations-center cli image incus")
 
-	uploadedSHA := mustSHA256(t, filepath.Join(imagesDir, "root.squashfs"))
+	uploadedSHA := mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs"))
 
-	// The uploaded file is stored verbatim.
+	// The uploaded file is stored verbatim, only its name is normalized.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .sha256 == "%[4]s" and .size > 0'`, cpuArch, name, version, uploadedSHA)
 
 	// show renders in all the supported formats.
@@ -247,8 +254,8 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	err := os.MkdirAll(payloadDir, 0o700)
 	require.NoError(t, err)
 
-	payload := filepath.Join(payloadDir, "root.squashfs")
-	payloadSHA := mustWriteFileWithContent(t, payload, flagsImageSize)
+	payload := filepath.Join(payloadDir, "rootfs.squashfs")
+	payloadSHA := mustWriteFileWithContent(t, payload, squashfsMagic, flagsImageSize)
 
 	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, time.Minute, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
 
@@ -268,6 +275,16 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	resp := run(t, `../bin/operations-center.linux.%s image incus add %s`, cpuArch, payload)
 	require.False(t, resp.Success(), "expect add without metadata to fail")
 	require.Contains(t, resp.Output(), "Either provide the image attributes")
+
+	// A file, which is not a supported image file, is rejected. A version, which
+	// does not exist yet, is used, so that the upload is not rejected as
+	// duplicate before the file is even read.
+	unsupported := filepath.Join(payloadDir, "unsupported.img")
+	mustWriteFileWithContent(t, unsupported, nil, flagsImageSize)
+
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, cpuArch, unsupported, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageUnsupportedVersion)
+	require.False(t, resp.Success(), "expect add of an unsupported image file to fail")
+	require.Contains(t, resp.Output(), "Unsupported image file")
 
 	// The version has to look like a simplestreams serial.
 	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version notadate`, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
@@ -381,7 +398,7 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 	mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"] | .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and .aliases == "e2e/alpine,e2e/alpine/edge"'`, ocImagesURL, manualName, cpuArch)
 	mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | to_entries | all(.value | (.sha256 | length) == 64 and .size > 0 and (.ftype | length) > 0 and (.path | length) > 0)'`, ocImagesURL, manualName, manualVersion)
 
-	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, manualName, manualVersion, "root.squashfs", mustSHA256(t, filepath.Join(imagesDir, "root.squashfs")))
+	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, manualName, manualVersion, "root.squashfs", mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs")))
 	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, sourceName, sourceVersion, "root.squashfs", "")
 
 	// The endpoints are public, the authenticated image API is not.
@@ -431,6 +448,11 @@ func assertLaunchFromOCImagesRemote(t *testing.T, name string, ocHostname string
 	t.Logf("Start container from a manually uploaded image on %s", name)
 	resp = mustRun(t, `incus exec %s -- incus image list operations-center-images: --format json | jq -r -e '[ .[] | select(.type == "container" and .properties.os == "alpinelinux") | .fingerprint ] | first'`, name)
 	mustRunWithTimeout(t, `incus exec %s -- incus launch operations-center-images:%s a1`, 5*time.Minute, name, resp.OutputTrimmed())
+
+	// The qcow2 of the manually uploaded image is reported as virtual machine,
+	// which requires its file type to be detected from its content, since it has
+	// been uploaded under a non canonical file name.
+	mustRun(t, `incus exec %s -- incus image list operations-center-images: --format json | jq -r -e '[ .[] | select(.type == "virtual-machine" and .properties.os == "alpinelinux") ] | length == 1'`, name)
 
 	t.Logf("Start container from a source synced image on %s", name)
 	resp = mustRun(t, `incus exec %[1]s -- incus image list operations-center-images: --format json | jq -r -e '[ .[] | select(.type == "container" and .properties.release == "%[2]s") | .fingerprint ] | first'`, name, sourceRelease)
