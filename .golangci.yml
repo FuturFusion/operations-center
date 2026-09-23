@@ -210,6 +210,8 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      # Go sources vendored by the dependencies of the web UI.
+      - ^ui/node_modules/
 formatters:
   enable:
     - gci
@@ -230,3 +232,5 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      # Go sources vendored by the dependencies of the web UI.
+      - ^ui/node_modules/
