@@ -424,6 +424,15 @@ History:
 Add `--format yaml` or `--format json` to get the full status for further
 processing.
 
+Add `--wait` to follow the deployment from there to its end, which reports the
+states exactly like `deploy --wait` does, starting with the ones the deployment
+has gone through already. Combined with `--format`, the command stays quiet
+until the deployment is done and then prints its final status.
+
+```shell
+operations-center provisioning server deploy-status <server-name> --wait
+```
+
 While the deployment runs, the server is in status `deploying` with a status
 detail telling what is going on:
 

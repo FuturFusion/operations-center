@@ -3,6 +3,7 @@ package provisioning
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -110,44 +111,61 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	return c.waitForDeployment(cmd, name)
+	deployment, err := waitForDeployment(cmd, c.ocClient, name, cmd.OutOrStdout())
+	if err != nil {
+		return err
+	}
+
+	return deploymentResultError(name, deployment)
 }
 
-func (c *cmdServerDeploy) waitForDeployment(cmd *cobra.Command, name string) error {
+// waitForDeployment polls the deployment of the given server until it reaches a
+// terminal state and returns the deployment in that state. Every state, that is
+// entered, is reported to the given writer, a nil writer silencing the report.
+func waitForDeployment(cmd *cobra.Command, ocClient *client.OperationsCenterClient, name string, progress io.Writer) (api.ServerDeploymentStatus, error) {
 	var reportedUpTo time.Time
 
 	for {
-		deployment, err := getServerDeployment(cmd, c.ocClient, name)
+		deployment, err := getServerDeployment(cmd, ocClient, name)
 		if err != nil {
-			return err
+			return api.ServerDeploymentStatus{}, err
 		}
 
 		var lines []string
 
 		lines, reportedUpTo = deploymentProgressLines(deployment, reportedUpTo)
 
-		for _, line := range lines {
-			fmt.Println(line)
+		if progress != nil {
+			for _, line := range lines {
+				_, _ = fmt.Fprintln(progress, line)
+			}
 		}
 
-		switch deployment.State {
-		case api.ServerDeploymentStateCompleted:
-			return nil
-
-		case api.ServerDeploymentStateFailed:
-			return fmt.Errorf("Deployment of server %q failed in state %q: %s", name, deployment.FailedState, deployment.LastError)
-
-		case api.ServerDeploymentStateCancelled:
-			return fmt.Errorf("Deployment of server %q has been cancelled", name)
+		if deployment.State.IsTerminal() {
+			return deployment, nil
 		}
 
 		select {
 		case <-cmd.Context().Done():
-			return cmd.Context().Err()
+			return api.ServerDeploymentStatus{}, cmd.Context().Err()
 
 		case <-time.After(deployStatusPollInterval):
 		}
 	}
+}
+
+// deploymentResultError reports the outcome of a finished deployment as an error,
+// a deployment, that completed, resulting in no error.
+func deploymentResultError(name string, deployment api.ServerDeploymentStatus) error {
+	switch deployment.State {
+	case api.ServerDeploymentStateFailed:
+		return fmt.Errorf("Deployment of server %q failed in state %q: %s", name, deployment.FailedState, deployment.LastError)
+
+	case api.ServerDeploymentStateCancelled:
+		return fmt.Errorf("Deployment of server %q has been cancelled", name)
+	}
+
+	return nil
 }
 
 // deploymentProgressLines renders the states of a deployment, that have not been
@@ -192,6 +210,7 @@ type cmdServerDeployStatus struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFormat string
+	flagWait   bool
 }
 
 func (c *cmdServerDeployStatus) Command() *cobra.Command {
@@ -202,9 +221,14 @@ func (c *cmdServerDeployStatus) Command() *cobra.Command {
   Show the status of the deployment of a server, including the state it is
   currently in, the BIOS profiles applied to it and the states it has gone
   through.
+
+  Use --wait to follow a running deployment until it is done. Combined
+  with --format, nothing is reported while waiting and the status is shown once
+  the deployment has finished.
 `
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
+	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "Wait for the deployment to complete")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -230,9 +254,29 @@ func (c *cmdServerDeployStatus) validateArgsAndFlags(cmd *cobra.Command, args []
 func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	deployment, err := getServerDeployment(cmd, c.ocClient, name)
+	var (
+		deployment api.ServerDeploymentStatus
+		err        error
+	)
+
+	if c.flagWait {
+		var progress io.Writer
+		if c.flagFormat == "" {
+			progress = cmd.OutOrStdout()
+		}
+
+		deployment, err = waitForDeployment(cmd, c.ocClient, name, progress)
+	} else {
+		deployment, err = getServerDeployment(cmd, c.ocClient, name)
+	}
+
 	if err != nil {
 		return err
+	}
+
+	var resultErr error
+	if c.flagWait {
+		resultErr = deploymentResultError(name, deployment)
 	}
 
 	switch c.flagFormat {
@@ -240,13 +284,27 @@ func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 		enc := json.NewEncoder(cmd.OutOrStdout())
 		enc.SetIndent("", "  ")
 
-		return enc.Encode(deployment)
+		err = enc.Encode(deployment)
+		if err != nil {
+			return err
+		}
+
+		return resultErr
 
 	case "yaml":
 		enc := yaml.NewEncoder(cmd.OutOrStdout())
 		enc.SetIndent(2)
 
-		return enc.Encode(deployment)
+		err = enc.Encode(deployment)
+		if err != nil {
+			return err
+		}
+
+		return resultErr
+	}
+
+	if c.flagWait {
+		return resultErr
 	}
 
 	fmt.Printf("State: %s\n", deployment.State)

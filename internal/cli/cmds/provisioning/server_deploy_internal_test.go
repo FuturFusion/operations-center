@@ -207,3 +207,51 @@ func TestDeploymentProgressLines_reportsEveryStateOnce(t *testing.T) {
 		"2026-08-31T10:03:00Z apply-bios",
 	}, reported)
 }
+
+func TestDeploymentResultError(t *testing.T) {
+	tests := []struct {
+		name       string
+		deployment api.ServerDeploymentStatus
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "a deployment, that completed",
+			deployment: api.ServerDeploymentStatus{
+				State: api.ServerDeploymentStateCompleted,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "a deployment, that failed",
+			deployment: api.ServerDeploymentStatus{
+				State:       api.ServerDeploymentStateFailed,
+				FailedState: api.ServerDeploymentStateApplyBIOS,
+				LastError:   "attribute not supported",
+			},
+
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.EqualError(t, err, `Deployment of server "one" failed in state "apply-bios": attribute not supported`)
+			},
+		},
+		{
+			name: "a deployment, that has been cancelled",
+			deployment: api.ServerDeploymentStatus{
+				State: api.ServerDeploymentStateCancelled,
+			},
+
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.EqualError(t, err, `Deployment of server "one" has been cancelled`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := deploymentResultError("one", tc.deployment)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
