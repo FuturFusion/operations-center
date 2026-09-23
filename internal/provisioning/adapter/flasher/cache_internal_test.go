@@ -93,7 +93,14 @@ func generate(t *testing.T, flasher *Flasher, fingerprint string, content string
 type countingReadCloser struct {
 	io.ReadCloser
 
+	reads  atomic.Int64
 	closed atomic.Int64
+}
+
+func (c *countingReadCloser) Read(p []byte) (int, error) {
+	c.reads.Add(1)
+
+	return c.ReadCloser.Read(p)
 }
 
 func (c *countingReadCloser) Close() error {
@@ -248,6 +255,42 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		// Only the request, which won the race, ever read from its source.
 		require.Equal(t, int64(1), started.Load())
+	})
+
+	t.Run("serves an image, which appeared between the cache miss and the generation being acquired", func(t *testing.T) {
+		flasher := testFlasher(t)
+
+		// The hook runs in exactly the window the request below has to survive:
+		// it has seen a cache miss already, but has not acquired the generation
+		// yet, and in the meantime somebody else generates the very same image.
+		var generated bool
+
+		flasher.cache.beforeAcquire = func() {
+			if generated {
+				return
+			}
+
+			generated = true
+
+			generate(t, flasher, "fingerprint", content)
+		}
+
+		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
+
+		image, info, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		require.NoError(t, err)
+
+		body, err := io.ReadAll(image)
+		require.NoError(t, err)
+		require.NoError(t, image.Close())
+
+		require.Equal(t, content, string(body))
+		require.Equal(t, int64(len(content)), info.Size)
+
+		// The image is served from the file, the source is not consumed, but
+		// still closed.
+		require.Equal(t, int64(0), source.reads.Load())
+		require.Equal(t, int64(1), source.closed.Load())
 	})
 
 	t.Run("refuses to generate the image, if the space does not suffice", func(t *testing.T) {

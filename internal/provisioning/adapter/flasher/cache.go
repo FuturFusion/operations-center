@@ -48,6 +48,11 @@ type imageCache struct {
 	// usage reports the space situation of the filesystem holding the cache.
 	usage func() (file.UsageInformation, error)
 
+	// beforeAcquire is called before the generation of an image is acquired. It
+	// is only set by tests, to drive the window between the cache miss and the
+	// generation being acquired.
+	beforeAcquire func()
+
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
 }
@@ -65,8 +70,9 @@ type cacheEntry struct {
 
 func newImageCache(dir string) *imageCache {
 	cache := &imageCache{
-		dir:     dir,
-		entries: map[string]*cacheEntry{},
+		dir:           dir,
+		entries:       map[string]*cacheEntry{},
+		beforeAcquire: func() {},
 	}
 
 	cache.usage = cache.usageInformation
@@ -156,23 +162,37 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 			continue
 		}
 
-		generateSource := source
-
-		// generate takes ownership of the source and closes it.
-		source = nil
-
-		err = func() error {
+		image, info, err = func() (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 			defer release()
 
-			return f.generate(ctx, public, cacheID, fingerprintID, offset, tarball, generateSource)
+			image, info, err := f.cache.open(public, cacheID, fingerprintID)
+			if err == nil {
+				return image, info, nil
+			}
+
+			if !errors.Is(err, errCacheMiss) {
+				return nil, provisioning.SeedImageInfo{}, err
+			}
+
+			generateSource := source
+
+			// generate takes ownership of the source and closes it.
+			source = nil
+
+			err = f.generate(ctx, public, cacheID, fingerprintID, offset, tarball, generateSource)
+			if err != nil {
+				return nil, provisioning.SeedImageInfo{}, err
+			}
+
+			image, info, err = f.cache.open(public, cacheID, fingerprintID)
+			if err != nil {
+				return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
+			}
+
+			return image, info, nil
 		}()
 		if err != nil {
 			return nil, provisioning.SeedImageInfo{}, err
-		}
-
-		image, info, err = f.cache.open(public, cacheID, fingerprintID)
-		if err != nil {
-			return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
 		}
 
 		return image, info, nil
@@ -194,6 +214,8 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 	}
 
 	for {
+		wait := f.cache.generating(true, cacheID, fingerprintID)
+
 		image, info, err := f.cache.open(true, cacheID, fingerprintID)
 		if err == nil {
 			return image, info, nil
@@ -203,7 +225,6 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 			return nil, provisioning.SeedImageInfo{}, err
 		}
 
-		wait := f.cache.generating(true, cacheID, fingerprintID)
 		if wait == nil {
 			return nil, provisioning.SeedImageInfo{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
 		}
@@ -251,6 +272,8 @@ func (f *Flasher) generate(ctx context.Context, public bool, cacheID string, fin
 // generating the image already, or a function to release the generation with,
 // because the caller has taken it over.
 func (c *imageCache) acquire(public bool, cacheID string, fingerprintID string) (wait <-chan struct{}, release func()) {
+	c.beforeAcquire()
+
 	key := cacheKey(public, cacheID, fingerprintID)
 
 	c.mu.Lock()
