@@ -66,6 +66,40 @@ func IsRetryableError(err error) bool {
 	return errors.As(err, &retryableErr)
 }
 
+// ErrNotSettled is a request, that was turned down because the server was not
+// in a state to accept it yet, e.g. because it is running through its power on
+// self test. Unlike a rejection, it is answered by establishing the state the
+// request needs rather than by giving up on it.
+type ErrNotSettled struct {
+	innerErr error
+}
+
+// NewNotSettledErr wraps the provided error as an ErrNotSettled, if the passed
+// err is none nil. If the passed err is nil, this function does not wrap and
+// returns nil.
+func NewNotSettledErr(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return ErrNotSettled{
+		innerErr: err,
+	}
+}
+
+func (e ErrNotSettled) Error() string {
+	return fmt.Sprintf("Not settled: %v", e.innerErr.Error())
+}
+
+func (e ErrNotSettled) Unwrap() error {
+	return e.innerErr
+}
+
+func IsNotSettledError(err error) bool {
+	var notSettledErr ErrNotSettled
+	return errors.As(err, &notSettledErr)
+}
+
 // Incus client returns connection errors with "Unable to connect to" prefix
 // see: https://github.com/lxc/incus/blob/07852cf61699581d05649eab55b02bc7aff7e68f/shared/tls/tls.go#L19
 // The original error can not be matched other than string comparison.
