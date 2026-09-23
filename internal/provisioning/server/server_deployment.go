@@ -453,7 +453,10 @@ func deploymentNextState(deployment *provisioning.ServerDeployment, next api.Ser
 			next = deploymentStates[api.ServerDeploymentStateEnableSecureBoot].next
 
 		case api.ServerDeploymentStatePowerOnSecureBoot:
-			if deployment.SecureBootPending {
+			// A BIOS attribute, whose verification waits for the enrollment, is
+			// verified while the server settles, so the settle can not be passed
+			// by, even when the enrollment wrote nothing.
+			if deployment.SecureBootPending || len(deployment.BIOSSecureBootPendingAttributes) > 0 {
 				return next
 			}
 
@@ -1496,6 +1499,82 @@ func deploymentBIOSAttributes(deployment *provisioning.ServerDeployment) map[str
 	return deployment.BIOSAttributes
 }
 
+// deploymentEnrollsSecureBootCertificates reports, whether the deployment still
+// enrolls the secure boot certificates, either through the BMC or from an
+// enrollment media.
+func deploymentEnrollsSecureBootCertificates(deployment *provisioning.ServerDeployment) bool {
+	return deployment.Request.SecureBootEnrollmentMedia || !deployment.Request.SkipSecureBootCertificates
+}
+
+// deploymentBIOSSecureBootDeferred reports, whether the verification of the
+// mismatching BIOS attributes has to wait for the secure boot certificates.
+//
+// Only a server, that is in the secure boot setup mode and has its certificates
+// enrolled by this deployment, gets the reprieve: everywhere else an attribute,
+// that does not hold, is an attribute the firmware is never going to accept.
+func (s *serverService) deploymentBIOSSecureBootDeferred(ctx context.Context, server provisioning.Server, mismatchedNames []string) (bool, error) {
+	deployment := server.StatusInternal.Deployment
+
+	if len(mismatchedNames) == 0 || !deploymentEnrollsSecureBootCertificates(deployment) {
+		return false, nil
+	}
+
+	current, err := s.deploymentBMCData(ctx, server, isDeploymentInSecureBootSetupMode.requires)
+	if err != nil {
+		return false, err
+	}
+
+	return isDeploymentInSecureBootSetupMode.met(deployment, current.BMCData), nil
+}
+
+// verifyDeploymentBIOSSecureBootAttributes verifies the BIOS attributes, whose
+// verification has been put off until the secure boot certificates are enrolled.
+func (s *serverService) verifyDeploymentBIOSSecureBootAttributes(ctx context.Context, server provisioning.Server) error {
+	deployment := server.StatusInternal.Deployment
+
+	if len(deployment.BIOSSecureBootPendingAttributes) == 0 {
+		return nil
+	}
+
+	current, err := s.deploymentBIOSAttributesByName(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	applied := maps.Clone(deployment.BIOSAttributes)
+	maps.Copy(applied, deployment.BIOSDeferredAttributes)
+
+	var mismatches []string
+
+	for _, name := range deployment.BIOSSecureBootPendingAttributes {
+		want, ok := applied[name]
+		if !ok {
+			continue
+		}
+
+		biosAttribute, ok := current[name]
+		if !ok {
+			continue
+		}
+
+		if !biosAttributeMatches(biosAttribute, want) {
+			mismatches = append(mismatches, fmt.Sprintf("%q is %q instead of %q", name, fmt.Sprint(biosAttribute.CurrentValue), fmt.Sprint(want)))
+		}
+	}
+
+	if len(mismatches) == 0 {
+		return nil
+	}
+
+	return deploymentFatalError{
+		err: domain.NewErrorf(domain.ErrOperationNotPermitted, "",
+			"BIOS attributes of server %q have not been applied, not even after the secure boot certificates were enrolled, so the firmware does not accept them: %s",
+			server.Name, strings.Join(mismatches, ", "),
+		).
+			WithDetail("server", server.Name),
+	}
+}
+
 func biosAttributeMatches(biosAttribute api.BIOSAttribute, want any) bool {
 	return strings.EqualFold(strings.TrimSpace(fmt.Sprint(want)), strings.TrimSpace(fmt.Sprint(biosAttribute.CurrentValue)))
 }
@@ -1566,7 +1645,10 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 
 	applied := deploymentBIOSAttributes(deployment)
 
-	var mismatches []string
+	var (
+		mismatches      []string
+		mismatchedNames []string
+	)
 
 	for _, name := range slices.Sorted(maps.Keys(applied)) {
 		want := applied[name]
@@ -1579,10 +1661,32 @@ func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log 
 
 		if !biosAttributeMatches(biosAttribute, want) {
 			mismatches = append(mismatches, fmt.Sprintf("%q is %q instead of %q", name, fmt.Sprint(biosAttribute.CurrentValue), fmt.Sprint(want)))
+			mismatchedNames = append(mismatchedNames, name)
 		}
 	}
 
 	if len(mismatches) > 0 {
+		// An attribute reflecting the secure boot state can not hold while the
+		// server is in the secure boot setup mode. Retrying the pass would only
+		// power cycle the server until the deployment gives up, so the
+		// verification is put off until the enrollment has given the attribute a
+		// chance to become true.
+		deferred, err := s.deploymentBIOSSecureBootDeferred(ctx, server, mismatchedNames)
+		if err != nil {
+			return nil, err
+		}
+
+		if deferred {
+			log.WarnContext(
+				ctx, "BIOS attributes have not been applied, verifying them again once the secure boot certificates are enrolled",
+				slog.String("attributes", strings.Join(mismatches, ", ")),
+			)
+
+			return func(deployment *provisioning.ServerDeployment) {
+				deployment.BIOSSecureBootPendingAttributes = mismatchedNames
+			}, nil
+		}
+
 		return nil, deploymentRetryFromError{
 			state: retryFrom,
 			err:   domain.NewRetryableErr(fmt.Errorf("BIOS attributes of server %q have not been applied: %s", server.Name, strings.Join(mismatches, ", "))),
@@ -1975,7 +2079,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 	if deployment.SecureBootSnapshot.HasRebootedSince(current.BMCData) == api.BMCRebootStateRebooted {
 		log.InfoContext(ctx, "Firmware has picked the enrolled secure boot certificates up, the BMC reports a reboot of the server")
 
-		return true, nil, nil
+		return true, nil, s.verifyDeploymentBIOSSecureBootAttributes(ctx, server)
 	}
 
 	if now.Sub(deployment.StateEnteredAt) < config.ServerDeploymentSecureBootSettleDuration {
@@ -1984,7 +2088,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 
 	log.InfoContext(ctx, "Firmware did not reboot after the secure boot certificates were enrolled, continuing with the installation")
 
-	return true, nil, nil
+	return true, nil, s.verifyDeploymentBIOSSecureBootAttributes(ctx, server)
 }
 
 // checkDeploymentSecureBootEnrolled tells, whether the secure boot enrollment

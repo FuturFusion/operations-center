@@ -769,6 +769,87 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
 		},
 		{
+			name:        "success - a BIOS attribute reflecting the secure boot state is verified after the enrollment",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.Attributes["SecureBootStatus"] = "Enabled"
+
+				return resolution
+			}(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.secureBootMode = worldSecureBootModeSetup
+					w.biosSecureBootStatusAttribute = "SecureBootStatus"
+				},
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("verifying them again once the secure boot certificates are enrolled"),
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment takes the server out of the setup mode")
+				require.Equal(t, 2, world.callCount("ApplyBIOSAttributes"), "one apply per BIOS pass, no pass is repeated for an attribute, that only the enrollment can satisfy")
+			},
+		},
+		{
+			name:        "failure - a BIOS attribute does not hold even after the secure boot certificates are enrolled",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.Attributes["SecureBootStatus"] = "Enabled"
+
+				return resolution
+			}(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.secureBootMode = worldSecureBootModeSetup
+					w.biosSecureBootStatusAttribute = "SecureBootStatus"
+					w.biosSecureBootStatusStuck = true
+				},
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				[]api.ServerDeploymentState{
+					api.ServerDeploymentStateEnableSecureBoot,
+					api.ServerDeploymentStatePowerOnSecureBoot,
+					api.ServerDeploymentStateWaitSecureBootSettled,
+					api.ServerDeploymentStateFailed,
+				},
+			),
+			wantStatus:       api.ServerStatusUnregistered,
+			wantStatusDetail: api.ServerStatusDetailUnregisteredDeploymentFailed,
+			wantFailedState:  api.ServerDeploymentStateWaitSecureBootSettled,
+			wantLastError:    "not even after the secure boot certificates were enrolled",
+		},
+		{
 			name:        "failure - the BIOS verification keeps failing",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),

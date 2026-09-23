@@ -750,6 +750,8 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 				world.stagedBIOS = maps.Clone(attributes)
 			}
 
+			delete(world.stagedBIOS, world.biosSecureBootStatusAttribute)
+
 			return monitor(world), nil
 		},
 
@@ -781,11 +783,22 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 
 			world.calls["BIOSAttributes"]++
 
-			biosAttributes := make([]api.BIOSAttribute, 0, len(world.biosAttributes))
-			for _, name := range slices.Sorted(maps.Keys(world.biosAttributes)) {
+			reported := maps.Clone(world.biosAttributes)
+
+			if world.biosSecureBootStatusAttribute != "" {
+				status := "Disabled"
+				if !world.biosSecureBootStatusStuck && world.secureBootMode == worldSecureBootModeUser {
+					status = "Enabled"
+				}
+
+				reported[world.biosSecureBootStatusAttribute] = status
+			}
+
+			biosAttributes := make([]api.BIOSAttribute, 0, len(reported))
+			for _, name := range slices.Sorted(maps.Keys(reported)) {
 				biosAttributes = append(biosAttributes, api.BIOSAttribute{
 					Name:         name,
-					CurrentValue: world.biosAttributes[name],
+					CurrentValue: reported[name],
 					Type:         "String",
 				})
 			}

@@ -156,6 +156,14 @@ type ServerDeployment struct {
 	BIOSPending         bool `json:"bios_pending"`
 	BIOSDeferredPending bool `json:"bios_deferred_pending"`
 
+	// BIOSSecureBootPendingAttributes holds the BIOS attributes, whose
+	// verification has been put off until the secure boot certificates are
+	// enrolled. An attribute reflecting the secure boot state can not hold while
+	// the server is in the secure boot setup mode, which is the state the
+	// enrollment takes the server through, so it is only verified once the
+	// enrollment has given it a chance to become true.
+	BIOSSecureBootPendingAttributes []string `json:"bios_secure_boot_pending_attributes"`
+
 	// SecureBootPending reports, whether the enrollment of the secure boot
 	// certificates has written anything, in which case the firmware has to be
 	// given a boot to pick them up, before the installation is started.
