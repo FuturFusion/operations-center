@@ -100,6 +100,7 @@ import (
 	warningEntities "github.com/FuturFusion/operations-center/internal/warning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/shared/api"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
+	"github.com/FuturFusion/operations-center/ui"
 )
 
 // seedImageCacheDir is the namespace below the cache dir holding the generated
@@ -351,6 +352,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup API routes
 	serveMux, inventorySyncers := d.setupAPIRoutes(
+		ctx,
 		updateSvc,
 		tokenSvc,
 		serverSvc,
@@ -1082,6 +1084,7 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 }
 
 func (d *Daemon) setupAPIRoutes(
+	ctx context.Context,
 	updateSvc provisioning.UpdateService,
 	tokenSvc provisioning.TokenService,
 	serverSvc provisioning.ServerService,
@@ -1126,7 +1129,7 @@ func (d *Daemon) setupAPIRoutes(
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
 
-	registerUIHandlers(router, d.env.UsrShareDir())
+	registerUIHandlers(ctx, router, ui.FS(), d.env.UsrShareDir())
 	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"

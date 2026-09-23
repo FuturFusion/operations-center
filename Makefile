@@ -7,6 +7,19 @@ GOCOVERDIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/coverage_$(EXECUTION_DATETIME)
 EXECUTION_DATETIME=$(shell date +%F-%H-%M-%S)
 SHELL=/bin/bash -o pipefail
 
+# UI=0 disables building the web UI and embedding it into ./bin/operations-centerd.
+# The daemon then serves the web UI from /usr/share/operations-center/ui, as
+# release builds do. Use it on machines without node/yarn available.
+UI ?= 1
+
+ifeq ($(UI),1)
+  BLD_UI_DEP := build-ui-fast
+  BLD_TAGS := -tags uiembed
+else
+  BLD_UI_DEP :=
+  BLD_TAGS :=
+endif
+
 default: build
 
 .PHONY: build
@@ -25,23 +38,35 @@ operations-center:
 
 # bld (build linux development)
 # Build only the Linux AMD64 version, used for development and testing.
+# The freshly built web UI is embedded into operations-centerd, so a daemon
+# injected into IncusOS never pairs with the stale web UI of the target system.
 .PHONY: bld
-bld:
+bld: $(BLD_UI_DEP)
 	mkdir -p ./bin/
-	$(GO) build -o ./bin/operations-centerd ./cmd/operations-centerd
+	$(GO) build $(BLD_TAGS) -o ./bin/operations-centerd ./cmd/operations-centerd
 	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
 
 # bld (build linux development) with coverage instrumentation enabled
 # Build only the Linux AMD64 version, used for development and testing incl. coverage.
 .PHONY: bld-cover
-bld-cover:
+bld-cover: $(BLD_UI_DEP)
 	mkdir -p ./bin/
-	$(GO) build -cover -o ./bin/operations-centerd ./cmd/operations-centerd
+	$(GO) build -cover $(BLD_TAGS) -o ./bin/operations-centerd ./cmd/operations-centerd
 	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -cover -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
 
 .PHONY: build-ui
 build-ui:
 	$(MAKE) -C ui
+
+# Build the web UI without running eslint, prettier and tsc, which keeps the
+# development build loop fast. Linting is covered by "make lint" and CI.
+.PHONY: build-ui-fast
+build-ui-fast:
+	$(MAKE) -C ui UI_BUILD_SCRIPT=build-nolint
+
+.PHONY: clean-ui
+clean-ui:
+	$(MAKE) -C ui clean
 
 .PHONY: build-all-packages
 build-all-packages:
