@@ -275,6 +275,8 @@ func (c *cmdIncusImageAdd) Command() *cobra.Command {
   The required metadata can either be provided through a incus.tar.xz file
   or through the respective flags (e.g. --os). The two variants are mutually
   exclusive, if an incus.tar.xz is present, it takes precedence.
+
+  The type of the image files is detected from their content.
 `
 
 	cmd.Flags().StringVar(&c.flagOS, "os", "", "Operating system name of the image version (required, if no incus.tar.xz is provided)")
