@@ -17,7 +17,6 @@ import (
 	"path"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/schemas"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -50,6 +50,7 @@ type environment interface {
 
 type redfish struct {
 	connectionTestTimeout time.Duration
+	retryDelay            time.Duration
 	env                   environment
 }
 
@@ -75,6 +76,7 @@ func WithSecureBootCertificates(env environment) Option {
 func New(opts ...Option) redfish {
 	r := redfish{
 		connectionTestTimeout: defaultConnectionTestTimeout,
+		retryDelay:            config.BMCRequestRetryDelay,
 	}
 
 	for _, opt := range opts {
@@ -89,7 +91,7 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 		slog.WarnContext(ctx, "Redfish API call inside of a transaction", logger.AddStacktrace())
 	}
 
-	httpClient, err := newBMCHTTPClient(server)
+	httpClient, err := newBMCHTTPClient(server, r.retryDelay)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -123,7 +125,7 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 
 // newBMCHTTPClient returns the HTTP client the Redfish requests of a server are
 // issued with.
-func newBMCHTTPClient(server provisioning.Server) (*http.Client, error) {
+func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration) (*http.Client, error) {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   connectionTimeout,
@@ -141,7 +143,7 @@ func newBMCHTTPClient(server provisioning.Server) (*http.Client, error) {
 	}
 
 	httpClient := &http.Client{
-		Transport: transport,
+		Transport: newRetryTransport(transport, retryDelay),
 	}
 
 	if server.BMCConfig.Certificate != "" {
@@ -269,23 +271,69 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 
 	log := slog.With(slog.String("endpoint", server.BMCConfig.Endpoint))
 
-	// The following data is collected from the BMC on a best effort basis.
-	// Errors are logged as warnings and the affected data is left at its zero value.
-	system, err := getFirstSystem(client)
-	if err != nil {
-		log.WarnContext(ctx, "Failed to get BMC system", logger.Err(err))
-	}
-
-	manager, err := getFirstManager(client)
-	if err != nil {
-		log.WarnContext(ctx, "Failed to get BMC manager", logger.Err(err))
-	}
-
 	bmcData := api.BMCData{
 		BMCProtocol:        "Redfish",
 		BMCProtocolVersion: client.Service.RedfishVersion,
 		BMCVendor:          client.Service.Vendor,
 		LastUpdated:        time.Now(),
+	}
+
+	// The data below is collected from the BMC on a best effort basis: a part,
+	// the BMC does not answer for, is logged as a warning and left at its zero
+	// value. The part is named in Unavailable as well, so a caller deciding on
+	// one of its fields can tell a BMC, that could not be asked, apart from a BMC,
+	// that answered "nothing" -- the zero value alone does not say which it was.
+	markUnavailable := func(part api.BMCDataPart, err error) {
+		log.WarnContext(ctx, "Failed to collect part of the BMC data", slog.String("part", part.String()), logger.Err(err))
+
+		// A BMC, that answered the request and reported nothing, is not a BMC,
+		// that could not be asked: an empty collection is an observation and the
+		// zero value is the right reading of it.
+		if errors.Is(err, domain.ErrNotFound) {
+			return
+		}
+
+		if bmcData.Unavailable == nil {
+			bmcData.Unavailable = map[api.BMCDataPart]string{}
+		}
+
+		bmcData.Unavailable[part] = domain.UserMessage(err)
+	}
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		markUnavailable(api.BMCDataPartSystem, err)
+	}
+
+	manager, err := getFirstManager(client)
+	if err != nil {
+		markUnavailable(api.BMCDataPartManager, err)
+	}
+
+	dependsOn := map[api.BMCDataPart][]api.BMCDataPart{
+		api.BMCDataPartSystem: {
+			api.BMCDataPartProcessor,
+			api.BMCDataPartTrustedModules,
+			api.BMCDataPartBIOSAttributes,
+			api.BMCDataPartVirtualMedia,
+		},
+		api.BMCDataPartManager: {api.BMCDataPartVirtualMedia},
+	}
+
+	for _, source := range []api.BMCDataPart{api.BMCDataPartSystem, api.BMCDataPartManager} {
+		reason, unavailable := bmcData.Unavailable[source]
+		if !unavailable {
+			continue
+		}
+
+		for _, part := range dependsOn[source] {
+			_, alreadyMarked := bmcData.Unavailable[part]
+			if alreadyMarked {
+				continue
+			}
+
+			bmcData.Unavailable[part] = fmt.Sprintf("The %s it is read from could not be collected: %s", source, reason)
+		}
 	}
 
 	if system != nil {
@@ -328,7 +376,7 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 	if system != nil {
 		processor, err := getFirstProcessor(system)
 		if err != nil {
-			log.WarnContext(ctx, "Failed to get first processor of BMC system", logger.Err(err))
+			markUnavailable(api.BMCDataPartProcessor, err)
 		}
 
 		if processor != nil {
@@ -343,7 +391,7 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 
 		hasTPM, err := hasTrustedModule(system)
 		if err != nil {
-			log.WarnContext(ctx, "Failed to get trusted modules of BMC system", logger.Err(err))
+			markUnavailable(api.BMCDataPartTrustedModules, err)
 		}
 
 		bmcData.ServerHasTPM = hasTPM
@@ -352,7 +400,7 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 	if system != nil {
 		bios, err := system.Bios()
 		if err != nil {
-			log.WarnContext(ctx, "Failed to get BIOS of BMC system", logger.Err(err))
+			markUnavailable(api.BMCDataPartBIOSAttributes, wrapRedfishError(err))
 		}
 
 		if bios != nil {
@@ -362,7 +410,7 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 
 	virtualMedia, err := getVirtualMedia(system, manager)
 	if err != nil {
-		log.WarnContext(ctx, "Failed to get virtual media of BMC", logger.Err(err))
+		markUnavailable(api.BMCDataPartVirtualMedia, err)
 	}
 
 	bmcData.VirtualMedia = virtualMedia
@@ -421,10 +469,12 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 func getVirtualMedia(system *schemas.ComputerSystem, manager *schemas.Manager) (map[string]api.BMCVirtualMedia, error) {
 	var result map[string]api.BMCVirtualMedia
 
+	var errs []error
+
 	if system != nil {
 		systemVirtualMedia, err := system.VirtualMedia()
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get virtual media of BMC system: %w", err)
+			errs = append(errs, fmt.Errorf("Failed to get virtual media of BMC system: %w", wrapRedfishError(err)))
 		}
 
 		result = convertVirtualMedia(result, "system", systemVirtualMedia)
@@ -433,13 +483,13 @@ func getVirtualMedia(system *schemas.ComputerSystem, manager *schemas.Manager) (
 	if manager != nil {
 		managerVirtualMedia, err := manager.VirtualMedia()
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get virtual media of BMC manager: %w", err)
+			errs = append(errs, fmt.Errorf("Failed to get virtual media of BMC manager: %w", wrapRedfishError(err)))
 		}
 
 		result = convertVirtualMedia(result, "manager", managerVirtualMedia)
 	}
 
-	return result, nil
+	return result, errors.Join(errs...)
 }
 
 func convertVirtualMedia(result map[string]api.BMCVirtualMedia, service string, virtualMedia []*schemas.VirtualMedia) map[string]api.BMCVirtualMedia {
@@ -680,11 +730,11 @@ func hasTrustedModule(system *schemas.ComputerSystem) (bool, error) {
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {
 	processors, err := system.Processors()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get processors of BMC system: %w", err)
+		return nil, fmt.Errorf("Failed to get processors of BMC system: %w", wrapRedfishError(err))
 	}
 
 	if len(processors) == 0 {
-		return nil, fmt.Errorf("No processors found for the BMC system")
+		return nil, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no processor")
 	}
 
 	sort.Slice(processors, func(i, j int) bool { return processors[i].ID < processors[j].ID })
@@ -790,17 +840,12 @@ func taskState(client *gofish.APIClient, uri string) (api.BMCTaskState, time.Dur
 
 // taskRetryAfter returns the poll interval the BMC asks for.
 func taskRetryAfter(resp *http.Response) time.Duration {
-	ra := resp.Header.Get("Retry-After")
-	if ra == "" {
+	retryAfter, ok := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
+	if !ok {
 		return defaultWaitForTaskRetryAfter
 	}
 
-	secs, err := strconv.Atoi(ra)
-	if err != nil {
-		return defaultWaitForTaskRetryAfter
-	}
-
-	return time.Duration(secs) * time.Second
+	return retryAfter
 }
 
 func (r redfish) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
@@ -836,6 +881,8 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 	defer logout()
 
 	uri := taskMonitor.URI
+	transientPolls := 0
+	pollInterval := defaultWaitForTaskRetryAfter
 
 	for {
 		err := ctx.Err()
@@ -845,7 +892,27 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 
 		state, retryAfter, err := taskState(client, uri)
 		if err != nil {
-			return err
+			if !isRetryableRedfishError(wrapRedfishError(err)) || transientPolls >= config.BMCRequestRetries {
+				return err
+			}
+
+			transientPolls++
+
+			slog.WarnContext(
+				ctx, "The BMC could not be polled for the state of its task, trying again",
+				slog.String("endpoint", server.BMCConfig.Endpoint),
+				slog.String("task_monitor", uri),
+				slog.Int("attempts", transientPolls),
+				logger.Err(err),
+			)
+
+			state, retryAfter = api.BMCTaskStateRunning, pollInterval
+		} else {
+			transientPolls = 0
+
+			if state == api.BMCTaskStateRunning {
+				pollInterval = retryAfter
+			}
 		}
 
 		switch state {
@@ -1098,14 +1165,15 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot,
 	}
 
 	virtualMedias, err = virtualMediaReturner.VirtualMedia()
-	if err != nil {
-		return virtualMediaSlot{}, fmt.Errorf("Failed to get virtual media from BMC system: %w", wrapRedfishError(err))
-	}
 
 	for _, vm := range virtualMedias {
 		if vm.ID == redfishID {
 			return virtualMediaSlot{VirtualMedia: vm, registry: newMessageRegistry(client)}, nil
 		}
+	}
+
+	if err != nil {
+		return virtualMediaSlot{}, fmt.Errorf("Failed to get virtual media from BMC system: %w", wrapRedfishError(err))
 	}
 
 	return virtualMediaSlot{}, domain.NewErrorf(domain.ErrNotFound, "", "The BMC reports no virtual media device %q", id).

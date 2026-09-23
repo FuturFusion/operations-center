@@ -77,6 +77,7 @@ type ExprApiBMCData struct {
 	ServerBootProgress            ExprApiBMCBootProgress            `json:"server_boot_progress" yaml:"server_boot_progress" expr:"server_boot_progress"`
 	VirtualMedia                  map[string]ExprApiBMCVirtualMedia `json:"virtual_media" yaml:"virtual_media" expr:"virtual_media"`
 	LastUpdated                   time.Time                         `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
+	Unavailable                   map[api.BMCDataPart]string        `json:"unavailable,omitempty" yaml:"unavailable,omitempty" expr:"unavailable"`
 }
 
 type ExprApiBMCVirtualMedia struct {
@@ -625,6 +626,7 @@ func ToExprApiBMCData(b api.BMCData) ExprApiBMCData {
 		ServerBootProgress:            ToExprApiBMCBootProgress(b.ServerBootProgress),
 		VirtualMedia:                  mapConvert(b.VirtualMedia, ToExprApiBMCVirtualMedia),
 		LastUpdated:                   b.LastUpdated,
+		Unavailable:                   b.Unavailable,
 	}
 }
 

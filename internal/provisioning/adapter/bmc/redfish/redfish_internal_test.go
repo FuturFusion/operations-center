@@ -37,10 +37,15 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 				},
 			}
 
-			httpClient, err := newBMCHTTPClient(server)
+			httpClient, err := newBMCHTTPClient(server, 0)
 			require.NoError(t, err)
 
-			transport, ok := httpClient.Transport.(*http.Transport)
+			retry, ok := httpClient.Transport.(*retryTransport)
+			require.True(t, ok, "the requests of the client go through the retry")
+			require.Positive(t, retry.attempts)
+			require.Positive(t, retry.delayMax)
+
+			transport, ok := retry.next.(*http.Transport)
 			require.True(t, ok, "the client carries a transport of ours instead of falling back to the default one")
 
 			require.NotNil(t, transport.DialContext)

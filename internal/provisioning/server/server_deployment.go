@@ -499,6 +499,25 @@ func (s *serverService) deploymentStepContext(ctx context.Context, name string, 
 	}
 }
 
+// deploymentRequiresBMCData reports, whether the BMC answered for every part a
+// deployment decides on, before it is started. The error is retryable and
+// carries the reason the BMC gave, so a caller can tell a BMC, that is
+// temporarily unavailable, apart from a server, that genuinely lacks the
+// hardware -- the latter keeps its own, terminal error.
+func deploymentRequiresBMCData(server provisioning.Server, parts ...api.BMCDataPart) error {
+	missing := server.BMCData.Missing(parts...)
+	if len(missing) == 0 {
+		return nil
+	}
+
+	return domain.NewRetryableErr(
+		domain.NewErrorf(nil, "", "The BMC of server %q did not report %s, so the deployment can not be started yet",
+			server.Name, server.BMCData.DescribeMissing(missing...)).
+			WithHintf("Wait for the BMC to answer again and start the deployment afterwards.").
+			WithDetail("server", server.Name),
+	)
+}
+
 // DeployByName triggers the automated deployment of IncusOS on a server.
 func (s *serverService) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error {
 	if name == "" {
@@ -601,6 +620,18 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 			if err != nil {
 				return fmt.Errorf("Failed to get channel %q: %w", request.Channel, err)
 			}
+		}
+
+		// A BMC, that did not report the parts the checks below read, has not
+		// established anything about them. Ask again instead.
+		err = deploymentRequiresBMCData(*server,
+			api.BMCDataPartVirtualMedia,
+			api.BMCDataPartSystem,
+			api.BMCDataPartProcessor,
+			api.BMCDataPartTrustedModules,
+		)
+		if err != nil {
+			return err
 		}
 
 		if request.VirtualMediaID == "" {
@@ -1170,26 +1201,26 @@ func (s *serverService) detachAllDeploymentMedia(ctx context.Context, server pro
 // detachDeploymentMedia ejects the media of every virtual media device, that
 // reports something inserted, and of alsoDetach, if it is set.
 func (s *serverService) detachDeploymentMedia(ctx context.Context, server provisioning.Server, alsoDetach string) error {
-	current, err := s.deploymentBMCData(ctx, server)
-	if err != nil {
-		return err
-	}
+	var ids []string
 
-	ids := make([]string, 0, len(current.BMCData.VirtualMedia)+1)
+	current, dataErr := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartVirtualMedia})
+	if dataErr == nil {
+		ids = make([]string, 0, len(current.BMCData.VirtualMedia)+1)
 
-	for _, id := range slices.Sorted(maps.Keys(current.BMCData.VirtualMedia)) {
-		if !current.BMCData.VirtualMedia[id].Inserted {
-			continue
+		for _, id := range slices.Sorted(maps.Keys(current.BMCData.VirtualMedia)) {
+			if !current.BMCData.VirtualMedia[id].Inserted {
+				continue
+			}
+
+			ids = append(ids, id)
 		}
-
-		ids = append(ids, id)
 	}
 
 	if alsoDetach != "" && !slices.Contains(ids, alsoDetach) {
 		ids = append(ids, alsoDetach)
 	}
 
-	var errs []error
+	errs := []error{dataErr}
 
 	for _, id := range ids {
 		_, err := s.bmcDetachMediaByName(ctx, server.Name, id, false)
@@ -1330,9 +1361,16 @@ func deploymentBIOSPassPending(current map[string]api.BIOSAttribute, attributes 
 	return false
 }
 
+// deploymentBMCCondition is a wait condition, that is nothing but a look at
+// defined parts of the BMC data.
+type deploymentBMCCondition struct {
+	requires []api.BMCDataPart
+	met      func(*provisioning.ServerDeployment, api.BMCData) bool
+}
+
 // bmcWaitConditions holds the wait conditions, that are a plain predicate over
 // the BMC data of the server.
-var bmcWaitConditions = map[api.ServerDeploymentState]func(*provisioning.ServerDeployment, api.BMCData) bool{
+var bmcWaitConditions = map[api.ServerDeploymentState]deploymentBMCCondition{
 	api.ServerDeploymentStateWaitPowerOffBIOS:              deploymentPowerIsOff,
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred:      deploymentPowerIsOff,
 	api.ServerDeploymentStateWaitPowerOffSecureBoot:        deploymentPowerIsOff,
@@ -1342,36 +1380,55 @@ var bmcWaitConditions = map[api.ServerDeploymentState]func(*provisioning.ServerD
 	api.ServerDeploymentStateWaitMediaDetached:             deploymentMediaEjected,
 }
 
-func deploymentPowerIsOff(_ *provisioning.ServerDeployment, data api.BMCData) bool {
-	return data.ServerPowerState == bmcPowerStateOff
+var deploymentPowerIsOff = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartSystem},
+	met: func(_ *provisioning.ServerDeployment, data api.BMCData) bool {
+		return data.ServerPowerState == bmcPowerStateOff
+	},
 }
 
 // deploymentCancelSettled tells, whether the clean up of a cancelled deployment
 // has come through.
-func deploymentCancelSettled(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
-	return deploymentPowerIsOff(deployment, data) && deploymentNoMediaInserted(deployment, data)
+var deploymentCancelSettled = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartSystem, api.BMCDataPartVirtualMedia},
+	met: func(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
+		return deploymentPowerIsOff.met(deployment, data) && deploymentNoMediaInserted.met(deployment, data)
+	},
 }
 
-func deploymentNoMediaInserted(_ *provisioning.ServerDeployment, data api.BMCData) bool {
-	for _, media := range data.VirtualMedia {
-		if media.Inserted {
-			return false
+// deploymentNoMediaInserted tells, whether no virtual media device of the BMC
+// holds anything.
+var deploymentNoMediaInserted = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+	met: func(_ *provisioning.ServerDeployment, data api.BMCData) bool {
+		for _, media := range data.VirtualMedia {
+			if media.Inserted {
+				return false
+			}
 		}
-	}
 
-	return true
+		return true
+	},
 }
 
-func deploymentMediaHoldsImage(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
-	media, ok := data.VirtualMedia[deployment.Request.VirtualMediaID]
+var deploymentMediaHoldsImage = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+	met: func(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
+		media, ok := data.VirtualMedia[deployment.Request.VirtualMediaID]
 
-	return ok && media.Inserted && media.Image == deployment.MediaURL
+		return ok && media.Inserted && media.Image == deployment.MediaURL
+	},
 }
 
-func deploymentMediaEjected(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
-	media, ok := data.VirtualMedia[deployment.Request.VirtualMediaID]
+// deploymentMediaEjected tells, whether the device, the deployment attached its
+// media to, has let go of it.
+var deploymentMediaEjected = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+	met: func(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
+		media, ok := data.VirtualMedia[deployment.Request.VirtualMediaID]
 
-	return !ok || !media.Inserted
+		return !ok || !media.Inserted
+	},
 }
 
 // checkDeploymentWait evaluates the condition of a wait state. Every condition
@@ -1382,12 +1439,12 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 
 	condition, ok := bmcWaitConditions[deployment.State]
 	if ok {
-		current, err := s.deploymentBMCData(ctx, server)
+		current, err := s.deploymentBMCData(ctx, server, condition.requires)
 		if err != nil {
 			return false, nil, err
 		}
 
-		return condition(deployment, current.BMCData), nil, nil
+		return condition.met(deployment, current.BMCData), nil, nil
 	}
 
 	switch deployment.State {
@@ -1417,7 +1474,7 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
-	current, err := s.deploymentBMCData(ctx, server)
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartVirtualMedia})
 	if err != nil {
 		return false, nil, err
 	}
@@ -1427,7 +1484,7 @@ func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server
 		return false, nil, deploymentFatalError{err: deploymentUploadedMediaError(server.Name, deployment.Request.VirtualMediaID)}
 	}
 
-	return deploymentMediaHoldsImage(deployment, current.BMCData), nil, nil
+	return deploymentMediaHoldsImage.met(deployment, current.BMCData), nil, nil
 }
 
 // checkDeploymentRebooted tells, whether the server has come back up after the
@@ -1437,7 +1494,7 @@ func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.L
 		return true, nil, nil
 	}
 
-	current, err := s.deploymentBMCData(ctx, server)
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
 	if err != nil {
 		return false, nil, err
 	}
@@ -1492,7 +1549,7 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 		return false, nil, nil
 	}
 
-	current, err := s.deploymentBMCData(ctx, server)
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
 	if err != nil {
 		return false, nil, err
 	}
@@ -1527,7 +1584,7 @@ func deploymentSettleSnapshot(now time.Time, deployment *provisioning.ServerDepl
 func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
-	current, err := s.deploymentBMCData(ctx, server)
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
 	if err != nil {
 		return false, nil, err
 	}
@@ -1567,7 +1624,7 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 		return true, nil, nil
 	}
 
-	current, err := s.deploymentBMCData(ctx, server)
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
 	if err != nil {
 		return false, nil, err
 	}
@@ -1672,6 +1729,12 @@ func (s *serverService) deploymentMediaProgress(ctx context.Context, server prov
 		return provisioning.SeedImageProgress{}, false
 	}
 
+	// A BMC, that did not report its virtual media devices, leaves open, whether
+	// it uploads the media rather than streaming it.
+	if len(server.BMCData.Missing(api.BMCDataPartVirtualMedia)) > 0 {
+		return provisioning.SeedImageProgress{}, false
+	}
+
 	media, ok := server.BMCData.VirtualMedia[deployment.Request.VirtualMediaID]
 	if ok && virtualMediaUploads(media) {
 		return provisioning.SeedImageProgress{}, false
@@ -1748,18 +1811,32 @@ func deploymentMediaBytesRequired(size int64) int64 {
 }
 
 // deploymentBMCData returns the server with its BMC data refreshed, unless it is
-// fresh enough already.
-func (s *serverService) deploymentBMCData(ctx context.Context, server provisioning.Server) (*provisioning.Server, error) {
-	if !server.BMCData.LastUpdated.IsZero() && s.now().Sub(server.BMCData.LastUpdated) < config.ServerDeploymentControlLoopInterval {
-		return &server, nil
+// fresh enough already, and provided the BMC answered for every part the caller
+// reads.
+func (s *serverService) deploymentBMCData(ctx context.Context, server provisioning.Server, requires []api.BMCDataPart) (*provisioning.Server, error) {
+	current := &server
+
+	if current.BMCData.LastUpdated.IsZero() || s.now().Sub(current.BMCData.LastUpdated) >= config.ServerDeploymentControlLoopInterval {
+		err := s.resyncBMCData(ctx, server)
+		if err != nil {
+			return nil, err
+		}
+
+		current, err = s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	err := s.resyncBMCData(ctx, server)
-	if err != nil {
-		return nil, err
+	missing := current.BMCData.Missing(requires...)
+	if len(missing) > 0 {
+		return nil, domain.NewRetryableErr(fmt.Errorf(
+			"The BMC of server %q did not report %s",
+			server.Name, current.BMCData.DescribeMissing(missing...),
+		))
 	}
 
-	return s.repo.GetByName(ctx, server.Name)
+	return current, nil
 }
 
 // deploymentRebootObserved reports, whether the server can be taken to have

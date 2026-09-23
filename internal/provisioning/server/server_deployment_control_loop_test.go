@@ -1048,3 +1048,124 @@ func TestServerService_DeploymentControlLoopSurvivesAnUnobservableWait(t *testin
 
 	log.Contains("Failed to evaluate the deployment wait condition")(t, w.logBuf)
 }
+
+func TestServerService_DeploymentControlLoopDoesNotClearMediaItCouldNotSee(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+	})
+
+	require.Equal(t, []string{"system:1"}, w.world.mediaInserted(), "the server holds the media of a previous run")
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	server := driveDeployment(t, ctx, w, false, func(t *testing.T, ctx context.Context, svc provisioning.ServerService, server provisioning.Server) {
+		t.Helper()
+
+		// The BMC stops answering for its virtual media devices while it settles
+		// after the BIOS work and is still doing so a few states later, when the
+		// deployment goes to clear the media. A tick advances several states, so
+		// the outage is started from the last wait before that run.
+		if server.StatusInternal.Deployment.State != api.ServerDeploymentStateWaitBIOSAppliedDeferred {
+			return
+		}
+
+		w.world.setPartUnavailable(api.BMCDataPartVirtualMedia, "BMC returned HTTP 503: iDRAC is currently unable to display any information")
+	})
+
+	deployment := server.StatusInternal.Deployment
+
+	states := deploymentStateSequence(server)
+	require.Contains(t, states, api.ServerDeploymentStateClearMedia)
+	require.NotContains(
+		t, states, api.ServerDeploymentStateWaitMediaCleared,
+		"the media was never cleared, so the wait after it must not have been entered",
+	)
+	require.NotContains(
+		t, states, api.ServerDeploymentStateAttachMedia,
+		"the deployment must not attach its media on top of the one it could not clear",
+	)
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
+	require.Contains(t, deployment.LastError, api.BMCDataPartVirtualMedia.String())
+
+	require.Equal(
+		t, []string{"system:1"}, w.world.mediaInserted(),
+		"the media of the previous run is still attached, which is exactly why the deployment stopped",
+	)
+}
+
+func TestServerService_DeploymentControlLoopClearsTheMediaOnceTheBMCAnswersAgain(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+	})
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	unavailable := 0
+
+	server := driveDeployment(t, ctx, w, false, func(t *testing.T, ctx context.Context, svc provisioning.ServerService, server provisioning.Server) {
+		t.Helper()
+
+		// The outage lasts until clearing the media has failed on it once, so the
+		// deployment is known to have stopped rather than passed through.
+		if server.StatusInternal.Deployment.Retries > 0 {
+			w.world.setPartAvailable(api.BMCDataPartVirtualMedia)
+			return
+		}
+
+		if server.StatusInternal.Deployment.State != api.ServerDeploymentStateWaitBIOSAppliedDeferred {
+			return
+		}
+
+		unavailable++
+
+		w.world.setPartUnavailable(api.BMCDataPartVirtualMedia, "BMC returned HTTP 503: iDRAC is currently unable to display any information")
+	})
+
+	require.NotZero(t, unavailable, "the BMC did not report its virtual media devices for a while")
+	require.Equal(t, api.ServerDeploymentStateCompleted, server.StatusInternal.Deployment.State)
+	require.Equal(t, deploymentStatesHappyPath(), deploymentStateSequence(server))
+	require.Empty(t, w.world.mediaInserted(), "the media of the previous run has been ejected after all")
+}
+
+func TestServerService_DeploymentControlLoopDoesNotDetachMediaItCouldNotSee(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+		worldOptions: []func(*bmcWorld){
+			func(world *bmcWorld) { world.mediaEjectDelay = time.Hour },
+		},
+	})
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	server := driveDeployment(t, ctx, w, false, func(t *testing.T, ctx context.Context, svc provisioning.ServerService, server provisioning.Server) {
+		t.Helper()
+
+		if server.StatusInternal.Deployment.State != api.ServerDeploymentStateDetachMedia &&
+			server.StatusInternal.Deployment.State != api.ServerDeploymentStateWaitMediaDetached {
+			return
+		}
+
+		w.world.setPartUnavailable(api.BMCDataPartVirtualMedia, "BMC returned HTTP 503: iDRAC is currently unable to display any information")
+	})
+
+	deployment := server.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
+	require.NotContains(
+		t, deploymentStateSequence(server), api.ServerDeploymentStateWaitReboot,
+		"a media list, that could not be collected, does not establish the media is gone",
+	)
+}

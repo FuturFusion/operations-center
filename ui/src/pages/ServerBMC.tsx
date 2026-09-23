@@ -198,6 +198,10 @@ const ServerBMC = () => {
     };
   });
 
+  // The list is what was last observed when the BMC could not report it, so
+  // saying so keeps a stale list from reading as the state of the server now.
+  const virtualMediaUnavailable = bmcData?.unavailable?.["virtual_media"];
+
   const virtualMediaRows = Object.values(bmcData?.virtual_media ?? {}).map(
     (vm) => {
       return {
@@ -408,6 +412,13 @@ const ServerBMC = () => {
         </div>
       </div>
       <h5 className="mt-4">Virtual media</h5>
+      {virtualMediaUnavailable && (
+        <div className="alert alert-warning py-2" role="alert">
+          The BMC could not report its virtual media devices, so this shows what
+          was last seen rather than what the server has now:{" "}
+          {virtualMediaUnavailable}
+        </div>
+      )}
       <ExtendedDataTable
         headers={[
           "ID",

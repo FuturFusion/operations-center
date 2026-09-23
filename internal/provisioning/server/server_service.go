@@ -2632,6 +2632,12 @@ func (s *serverService) resyncBMCData(ctx context.Context, server provisioning.S
 			return err
 		}
 
+		// A part, the BMC could not report this round, keeps what was observed of
+		// it before and stays named as not collected. The stored data is then at
+		// worst out of date, rather than claiming a server without virtual media,
+		// without a TPM and powered off, none of which the BMC ever said.
+		details = details.CarryOver(server.BMCData)
+
 		details.LastUpdated = s.now()
 		if details.ServerUUID != "" {
 			server.SystemUUID = &details.ServerUUID

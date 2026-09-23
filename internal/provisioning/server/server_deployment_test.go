@@ -700,6 +700,31 @@ func TestServerService_DeployByName(t *testing.T) {
 			assertErr: errassert.NotFoundErrorContains("reports no virtual media device"),
 		},
 		{
+			name:                    "error - the BMC could not report its virtual media devices",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData: func() api.BMCData {
+				data := deploymentTestBMCData()
+				data.Unavailable = map[api.BMCDataPart]string{
+					api.BMCDataPartVirtualMedia: "BMC returned HTTP 503: IDRAC.2.8.SYS518",
+				}
+
+				return data
+			}(),
+			tokenSvcGetByUUID: validToken,
+			tokenSvcGetSeed:   validSeed,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				errassert.RetryableErrorContains(
+					`The BMC of server "one" did not report virtual_media (BMC returned HTTP 503: IDRAC.2.8.SYS518)`,
+				)(tt, err, a...)
+
+				errassert.HintIs("Wait for the BMC to answer again and start the deployment afterwards.")(tt, err, a...)
+			},
+		},
+		{
 			name:                    "error - the requested virtual media device does not exist",
 			nameArg:                 "one",
 			requestArg:              provisioning.ServerDeploymentRequest{TokenUUID: tokenUUID, Seed: "default", ImageType: api.ImageTypeISO, Architecture: images.UpdateFileArchitecture64BitX86, VirtualMediaID: "system:9"},

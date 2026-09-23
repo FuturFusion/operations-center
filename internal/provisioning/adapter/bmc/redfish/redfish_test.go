@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -110,7 +112,7 @@ func TestRedfish_ConnectionTest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.svr.Close()
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 			cert, err := client.ConnectionTest(t.Context(), provisioning.Server{
 				BMCConfig: api.BMCConfig{
@@ -194,13 +196,38 @@ func TestRedfish_ConnectionTest_timeout(t *testing.T) {
 	}
 }
 
+const idracDataSourcesUnavailableBody = `{
+  "error": {
+    "@Message.ExtendedInfo": [
+      {
+        "Message": "iDRAC is currently unable to display any information because data sources are unavailable.",
+        "MessageArgs": [],
+        "MessageId": "IDRAC.2.8.SYS518",
+        "Resolution": "Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.",
+        "Severity": "Informational"
+      },
+      {
+        "Message": "The service is temporarily unavailable.  Retry in 30 seconds.",
+        "MessageArgs": ["30"],
+        "MessageId": "Base.1.12.ServiceTemporarilyUnavailable",
+        "Resolution": "Wait for the indicated retry duration and retry the operation.",
+        "Severity": "Critical"
+      }
+    ],
+    "code": "Base.1.12.GeneralError",
+    "message": "A general error has occurred. See ExtendedInfo for more information"
+  }
+}`
+
 func TestRedfish_GetData(t *testing.T) {
 	tests := []struct {
 		name      string
 		responses mockRedfishServer
 
-		assertErr require.ErrorAssertionFunc
-		want      api.BMCData
+		assertErr               require.ErrorAssertionFunc
+		want                    api.BMCData
+		wantUnavailable         []api.BMCDataPart
+		wantUnavailableContains string
 	}{
 		{
 			name: "success",
@@ -361,6 +388,120 @@ func TestRedfish_GetData(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "success - the BMC is temporarily unavailable for parts of the data",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Manufacturer": "Dell Inc.",
+  "Model": "PowerEdge R770",
+  "PowerState": "On",
+  "Status": { "Health": "OK" },
+  "ProcessorSummary": { "Count": 2 },
+  "TrustedModules": [
+    { "InterfaceType": "TPM2_0", "Status": { "State": "Enabled" } }
+  ],
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
+  "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9"
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1",
+  "Manufacturer": "Intel"
+}`,
+				biosStatusCode: http.StatusServiceUnavailable,
+				biosBody:       idracDataSourcesUnavailableBody,
+
+				systemVirtualMediaStatusCode: http.StatusOK,
+				systemVirtualMediaBody: `{
+  "Members@odata.count": 2,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" },
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/2" }
+  ]
+}`,
+				systemVirtualMediaMemberStatusCode: http.StatusOK,
+				systemVirtualMediaMemberBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/image.iso",
+  "ConnectedVia": "URI",
+  "Status": { "Health": "OK" },
+  "MediaTypes": ["CD", "DVD"]
+}`,
+				systemVirtualMediaMember2StatusCode: http.StatusServiceUnavailable,
+				systemVirtualMediaMember2Body:       idracDataSourcesUnavailableBody,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:                 "Redfish",
+				BMCProtocolVersion:          "1.16.0",
+				BMCVendor:                   "Dell",
+				BMCModel:                    "iDRAC9",
+				ServerManufacturer:          "Dell Inc.",
+				ServerModel:                 "PowerEdge R770",
+				ServerProcessorManufacturer: "Intel",
+				ServerCPUSockets:            2,
+				ServerHasTPM:                true,
+				ServerPowerState:            "On",
+				ServerHealthStatus:          "OK",
+				// The device, that answered, is kept: a device, that could not be
+				// read, says nothing about the ones that could.
+				VirtualMedia: map[string]api.BMCVirtualMedia{
+					"system:1": {
+						ID:           "system:1",
+						Inserted:     true,
+						Image:        "http://example.com/image.iso",
+						ConnectedVia: "URI",
+						Status:       "OK",
+						MediaTypes:   []string{"CD", "DVD"},
+					},
+				},
+			},
+
+			wantUnavailable: []api.BMCDataPart{
+				api.BMCDataPartBIOSAttributes,
+				api.BMCDataPartVirtualMedia,
+			},
+			// The reason is the rendered Redfish error, not the raw response body,
+			// so an operator reads what the BMC actually said.
+			wantUnavailableContains: "BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information",
 		},
 		{
 			name: "success - virtual media only on manager",
@@ -679,7 +820,8 @@ func TestRedfish_GetData(t *testing.T) {
 				biosStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantUnavailable: []api.BMCDataPart{api.BMCDataPartBIOSAttributes},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -732,7 +874,8 @@ func TestRedfish_GetData(t *testing.T) {
 				systemVirtualMediaStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantUnavailable: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -785,7 +928,8 @@ func TestRedfish_GetData(t *testing.T) {
 				managerVirtualMediaStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantUnavailable: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -825,6 +969,14 @@ func TestRedfish_GetData(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantUnavailable: []api.BMCDataPart{
+				api.BMCDataPartSystem,
+				// Everything read off the system goes with it.
+				api.BMCDataPartProcessor,
+				api.BMCDataPartTrustedModules,
+				api.BMCDataPartBIOSAttributes,
+				api.BMCDataPartVirtualMedia,
+			},
 			want: api.BMCData{
 				BMCProtocol:              "Redfish",
 				BMCProtocolVersion:       "1.16.0",
@@ -902,6 +1054,14 @@ func TestRedfish_GetData(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantUnavailable: []api.BMCDataPart{
+				api.BMCDataPartSystem,
+				// Everything read off the system goes with it.
+				api.BMCDataPartProcessor,
+				api.BMCDataPartTrustedModules,
+				api.BMCDataPartBIOSAttributes,
+				api.BMCDataPartVirtualMedia,
+			},
 			want: api.BMCData{
 				BMCProtocol:              "Redfish",
 				BMCProtocolVersion:       "1.16.0",
@@ -932,6 +1092,11 @@ func TestRedfish_GetData(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantUnavailable: []api.BMCDataPart{
+				api.BMCDataPartManager,
+				// The manager half of the virtual media goes with it.
+				api.BMCDataPartVirtualMedia,
+			},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -997,6 +1162,11 @@ func TestRedfish_GetData(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantUnavailable: []api.BMCDataPart{
+				api.BMCDataPartManager,
+				// The manager half of the virtual media goes with it.
+				api.BMCDataPartVirtualMedia,
+			},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -1036,7 +1206,8 @@ func TestRedfish_GetData(t *testing.T) {
 				processorsStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantUnavailable: []api.BMCDataPart{api.BMCDataPartProcessor},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -1127,7 +1298,8 @@ func TestRedfish_GetData(t *testing.T) {
 				processorStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantUnavailable: []api.BMCDataPart{api.BMCDataPartProcessor},
 			want: api.BMCData{
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
@@ -1324,7 +1496,7 @@ func TestRedfish_GetData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 			before := time.Now()
 			details, err := client.GetData(t.Context(), provisioning.Server{
@@ -1341,6 +1513,17 @@ func TestRedfish_GetData(t *testing.T) {
 			}
 
 			details.LastUpdated = time.Time{}
+
+			require.ElementsMatch(t, tc.wantUnavailable, slices.Collect(maps.Keys(details.Unavailable)))
+
+			for _, part := range tc.wantUnavailable {
+				require.Contains(t, details.Unavailable[part], tc.wantUnavailableContains)
+			}
+
+			// The parts, that could not be collected, are asserted above, so the
+			// rest of the data is compared without the reasons, which carry the
+			// rendered Redfish error.
+			details.Unavailable = nil
 			require.Equal(t, tc.want, details)
 		})
 	}
@@ -1440,7 +1623,7 @@ func TestRedfish_GetData_WithTrustedCertificate(t *testing.T) {
 			svr := httptest.NewTLSServer(newMockRedfishHandler(responses, nil))
 			defer svr.Close()
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 			_, err := client.GetData(t.Context(), provisioning.Server{
 				BMCConfig: api.BMCConfig{
@@ -1833,7 +2016,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 				resetLocation:             tc.resetLocation,
 			}, &gotRequests)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.ServerPowerOn(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
 
 			tc.assertErr(t, err)
@@ -2104,7 +2287,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 				resetLocation:             tc.resetLocation,
 			}, &gotRequests)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.ServerPowerOff(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
 
 			tc.assertErr(t, err)
@@ -2345,7 +2528,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 				resetLocation:             tc.resetLocation,
 			}, &gotRequests)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.ServerRestart(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
 
 			tc.assertErr(t, err)
@@ -2509,7 +2692,7 @@ func TestRedfish_ServerSetLocationIndicator(t *testing.T) {
 				gotSystemPatchBody:    &gotPatchBody,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			err := client.ServerSetLocationIndicator(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.active)
 
 			tc.assertErr(t, err)
@@ -2593,6 +2776,45 @@ func TestRedfish_WaitForTask(t *testing.T) {
 			taskMonitorRetryAfter:  "0",
 
 			assertErr: require.NoError,
+		},
+		{
+			name: "success - polls through a transient failure",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode: http.StatusOK,
+			taskMonitorStatusCodes: []int{
+				http.StatusAccepted,
+				http.StatusServiceUnavailable,
+				http.StatusOK,
+			},
+			taskMonitorRetryAfter: "0",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - the BMC stays unable to report the state of the task",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode: http.StatusOK,
+			taskMonitorStatusCodes: []int{
+				http.StatusAccepted,
+				http.StatusServiceUnavailable,
+			},
+			taskMonitorRetryAfter: "0",
+
+			assertErr: require.Error,
 		},
 		{
 			name: "error - failed to connect to BMC",
@@ -2687,7 +2909,7 @@ func TestRedfish_WaitForTask(t *testing.T) {
 				taskMonitorRetryAfter:  tc.taskMonitorRetryAfter,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			err := client.WaitForTask(tc.argCtx(t), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.argTaskMonitor)
 
 			tc.assertErr(t, err)
@@ -2829,7 +3051,7 @@ func TestRedfish_TaskState(t *testing.T) {
 				taskMonitorStatusCodes: tc.taskMonitorStatusCodes,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			state, err := client.TaskState(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.argTaskMonitor)
 
 			tc.assertErr(t, err)
@@ -3150,7 +3372,7 @@ func TestRedfish_LogEntriesBySource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 			events, err := client.LogEntriesBySource(t.Context(), provisioning.Server{
 				BMCConfig: api.BMCConfig{Endpoint: svr.URL},
@@ -3292,7 +3514,7 @@ func TestRedfish_LogSources(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 			logSources, err := client.LogSources(t.Context(), provisioning.Server{
 				BMCConfig: api.BMCConfig{Endpoint: svr.URL},
@@ -3439,7 +3661,7 @@ func TestRedfish_Dump(t *testing.T) {
 
 	svr := newMockRedfishServer(t, responses, nil)
 
-	client := redfish.New()
+	client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 	server := provisioning.Server{
 		BMCConfig: api.BMCConfig{
@@ -3920,7 +4142,7 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 				extraRoutes:           tc.extraRoutes,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			got, err := client.BIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
 
 			tc.assertErr(t, err)
@@ -3938,7 +4160,7 @@ func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
 		systemBody:            `{"error":{"@Message.ExtendedInfo":[{"Message":"iDRAC is currently unable to display any information because data sources are unavailable.","MessageId":"IDRAC.2.8.SYS518","Resolution":"Wait for the data to be available and retry the operation.","Severity":"Informational"}],"code":"Base.1.12.GeneralError","message":"A general error has occurred. See ExtendedInfo for more information"}}`,
 	}, nil)
 
-	client := redfish.New()
+	client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 
 	_, err := client.BIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
 
@@ -4147,7 +4369,7 @@ func TestRedfish_BIOSAttribute(t *testing.T) {
 				extraRoutes:           tc.extraRoutes,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			got, err := client.BIOSAttribute(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.attributeName)
 
 			tc.assertErr(t, err)
@@ -4458,7 +4680,7 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 				gotBiosPatchBody:             &gotPatchBody,
 			}, nil)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.ApplyBIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.attributes)
 
 			tc.assertErr(t, err)
@@ -6081,7 +6303,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				systemPatch:                         tc.systemPatch,
 			}, &gotRequests)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.AttachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID, mediaURL, tc.setBootDevice)
 
 			tc.assertErr(t, err)
@@ -6439,7 +6661,7 @@ func TestRedfish_DetachMedia(t *testing.T) {
 				extraRoutes:                         tc.extraRoutes,
 			}, &gotRequests)
 
-			client := redfish.New()
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 			taskMonitor, err := client.DetachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID)
 
 			tc.assertErr(t, err)
@@ -7167,7 +7389,7 @@ func TestRedfish_ApplySecureBootCertificates_noCertificateSourceConfigured(t *te
 		gotPostedCerts:      &gotPostedCerts,
 	}, nil)
 
-	client := redfish.New()
+	client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
 	_, err := client.ApplySecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, api.BIOSSecureBoot{})
 
 	errassert.OperationNotPermittedError(t, err)

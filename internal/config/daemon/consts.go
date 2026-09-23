@@ -197,6 +197,23 @@ const (
 	// Time granted to collect the data of a BMC.
 	BMCDataRefreshTimeout = 2 * time.Minute
 
+	// Number of times a request, that is safe to replay, is issued again, after
+	// the BMC turned it down with a server side error or asked to slow down.
+	BMCRequestRetries = 3
+
+	// Delay before the first retry of a request, doubling with every further one.
+	BMCRequestRetryDelay = 1 * time.Second
+
+	// Upper bound for a single retry delay, including one the BMC asked for
+	// through "Retry-After". A BMC asking for considerably more is not followed
+	// to the letter.
+	BMCRequestRetryDelayMax = 5 * time.Second
+
+	// Time a single BMC connection may spend waiting for retries in total,
+	// across all of its requests. It keeps a BMC, that turns every sub resource
+	// down, from spending the whole budget of the operation on waiting.
+	BMCRequestRetryBudget = 30 * time.Second
+
 	// Time after the last access, after which a cached seed image is removed.
 	SeedImageCacheTTL = 2 * time.Hour
 
