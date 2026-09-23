@@ -16,10 +16,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +30,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -257,8 +260,9 @@ func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*
 }
 
 // Prune removes the generated media, which has not been accessed within ttl,
-// together with leftovers of interrupted generations.
-func (m *Media) Prune(ctx context.Context, ttl time.Duration) error {
+// together with leftovers of interrupted generations. A media named by inUse is
+// kept however old it is.
+func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) error {
 	dirEntries, err := os.ReadDir(m.dir)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -296,6 +300,10 @@ func (m *Media) Prune(ctx context.Context, ttl time.Duration) error {
 			}
 
 		case isMedia:
+			if slices.Contains(inUse, id) {
+				continue
+			}
+
 			keep, err := m.keep(id, fileInfo.ModTime(), ttl)
 			if err != nil {
 				errs = append(errs, err)
@@ -506,9 +514,15 @@ func (m *Media) keep(id string, modTime time.Time, ttl time.Duration) (bool, err
 }
 
 // touch records, that an image has been used.
+//
+// The modification time of the file is moved along with the in-memory entry, so
+// the last access survives a restart: an entry, that does not, has the image
+// fall back to the time it has been generated at and be pruned right away,
+// however recently a BMC has read it.
 func (m *Media) touch(ctx context.Context, imageType api.ImageType, id string) {
+	now := time.Now()
+
 	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	entry, ok := m.entries[id]
 	if !ok {
@@ -516,7 +530,16 @@ func (m *Media) touch(ctx context.Context, imageType api.ImageType, id string) {
 		m.entries[id] = entry
 	}
 
-	entry.lastAccess = time.Now()
+	entry.lastAccess = now
+
+	m.mu.Unlock()
+
+	// The image is only missing, where it has just been pruned, in which case
+	// there is nothing left to record the access on.
+	err := os.Chtimes(m.filename(imageType, id), now, now)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		slog.WarnContext(ctx, "Failed to record the access to the secure boot enrollment media", slog.String("id", id), logger.Err(err))
+	}
 }
 
 func (m *Media) filename(imageType api.ImageType, id string) string {

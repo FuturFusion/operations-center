@@ -449,10 +449,12 @@ func TestMedia_Prune(t *testing.T) {
 	freshPartial := writeInto(t, dir, "DDDDDDDDDDDD.1.partial", time.Now())
 	foreign := writeInto(t, dir, "unrelated.txt", time.Now().Add(-2*time.Hour))
 	foreignID := writeInto(t, dir, "not an ID.iso", time.Now().Add(-2*time.Hour))
+	attached := writeInto(t, dir, "GGGGGGGGGGGG.iso", time.Now().Add(-2*time.Hour))
 
-	err := media.Prune(t.Context(), time.Hour)
+	err := media.Prune(t.Context(), time.Hour, []string{"GGGGGGGGGGGG"})
 	require.NoError(t, err)
 
+	require.FileExists(t, attached, "An image, that a BMC has attached, has to be kept however old it is")
 	require.NoFileExists(t, stale, "An image, that has not been accessed within the TTL, has to be removed")
 	require.NoFileExists(t, staleRaw, "An image of every type the generator writes has to be pruned")
 	require.NoFileExists(t, stalePartial, "The leftover of an interrupted generation has to be removed")
@@ -463,10 +465,30 @@ func TestMedia_Prune(t *testing.T) {
 	require.FileExists(t, foreignID, "A file, whose name is no media ID, has to be left alone")
 }
 
+func TestMedia_PruneKeepsWhatHasBeenReadAfterARestart(t *testing.T) {
+	skipWithoutTools(t)
 
-	const blockSize = 2048
+	dir := t.TempDir()
+	certificates := testCertificates(t)
 
-	require.Zero(t, len(body)%blockSize, "The image has to consist of whole 2048 byte blocks")
+	id, err := securebootmedia.New(dir).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	require.NoError(t, err)
+
+	filename := filepath.Join(dir, id+".iso")
+
+	stale := time.Now().Add(-2 * time.Hour)
+	require.NoError(t, os.Chtimes(filename, stale, stale))
+
+	image, err := securebootmedia.New(dir).Open(t.Context(), api.ImageTypeISO, id)
+	require.NoError(t, err)
+	require.NoError(t, image.Content.Close())
+
+	err = securebootmedia.New(dir).Prune(t.Context(), time.Hour, nil)
+	require.NoError(t, err)
+
+	require.FileExists(t, filename, "An image, that has been read, has to survive the prune of the generator, that has not generated it")
+}
+
 // isoBlockSize and rawBlockSize are the logical block sizes the media of an
 // image type has to be laid out for: the blocks a CD is read in and the ones a
 // disk is read in.
