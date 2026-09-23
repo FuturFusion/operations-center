@@ -26,6 +26,7 @@ func (w IncusStoragePoolWrapper) Value() (driver.Value, error) {
 
 func (w *IncusStoragePoolWrapper) Scan(value interface{}) error {
 	if value == nil {
+		//domain-errors:internal Programmer error, the column is not nullable.
 		return fmt.Errorf("null is not a valid storage_pool")
 	}
 
@@ -35,6 +36,7 @@ func (w *IncusStoragePoolWrapper) Scan(value interface{}) error {
 	case []byte:
 		return json.Unmarshal(v, &w.StoragePool)
 	default:
+		//domain-errors:internal Programmer error, the driver returned a type the wrapper does not read.
 		return fmt.Errorf("type %T is not supported for storage_pool", value)
 	}
 }

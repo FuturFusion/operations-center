@@ -27,6 +27,7 @@ func (w IncusStorageVolumeFullWrapper) Value() (driver.Value, error) {
 
 func (w *IncusStorageVolumeFullWrapper) Scan(value interface{}) error {
 	if value == nil {
+		//domain-errors:internal Programmer error, the column is not nullable.
 		return fmt.Errorf("null is not a valid StorageVolumeFull")
 	}
 
@@ -36,6 +37,7 @@ func (w *IncusStorageVolumeFullWrapper) Scan(value interface{}) error {
 	case []byte:
 		return json.Unmarshal(v, &w.StorageVolumeFull)
 	default:
+		//domain-errors:internal Programmer error, the driver returned a type the wrapper does not read.
 		return fmt.Errorf("type %T is not supported for StorageVolumeFull", value)
 	}
 }
