@@ -130,8 +130,9 @@ type IncusImageVersionItem struct {
 	// versions metadata ("incus.tar.xz") and the "root.squashfs" image.
 	CombinedSha256SquashFs string `json:"combined_squashfs_sha256,omitempty" yaml:"combined_squashfs_sha256"`
 
-	// FileType holds the file type. This defaults to the file name like
-	// incus.tar.xz. Special file types are "squashfs" and "disk-kvm.img".
+	// FileType holds the file type, which is derived from the content of the
+	// file. Supported file types are "incus.tar.xz", "root.tar.xz", "squashfs"
+	// and "disk-kvm.img".
 	FileType string `json:"ftype" yaml:"ftype"`
 
 	// Path, relative to the repositories root folder, where the particular

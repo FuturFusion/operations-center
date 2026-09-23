@@ -18,7 +18,7 @@ fi
 #     slice fields with a string example.
 #   * IncusImagePost cannot be referenced from an operation. POST /1.0/images/incus
 #     is a multipart upload, and a Swagger 2.0 formData parameter cannot carry a
-#     schema, so the json_request parameter names the definition in its
+#     schema, so the request_json parameter names the definition in its
 #     description instead.
 #   * SystemProviderConfig is embedded into TokenProviderConfig. go-swagger
 #     inlines the embedded fields into the parent and still emits the definition,

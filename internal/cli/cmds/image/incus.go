@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
@@ -256,8 +256,6 @@ func (c *cmdIncusImageShow) run(cmd *cobra.Command, args []string) error {
 type cmdIncusImageAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	hasIncusTarXZPos bool
-
 	flagOS           string
 	flagRelease      string
 	flagArchitecture string
@@ -267,26 +265,38 @@ type cmdIncusImageAdd struct {
 
 func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "add <file> [<file> ...]"
+	cmd.Use = "add <metadata tarball> <file> [<file> ...]"
 	cmd.Short = "Add an Incus image version"
 	cmd.Long = `Description:
   Add an Incus image version.
 
-  The required metadata can either be provided through a incus.tar.xz file
-  or through the respective flags (e.g. --os). The two variants are mutually
-  exclusive, if an incus.tar.xz is present, it takes precedence.
+  The required metadata is either provided through a metadata tarball, which
+  is the first positional argument, or through the respective flags (e.g.
+  --os). The two variants are mutually exclusive, if any of --os, --arch or
+  --image-version is set, all the required flags have to be set and every
+  positional argument is an image file.
+
+  The metadata tarball is the file, "incus image export" writes as <target>,
+  Incus itself names it incus.tar.xz. Its name does not matter, it is
+  recognized by its content.
+
+  The type of the image files is detected from their content.
 `
 
-	cmd.Flags().StringVar(&c.flagOS, "os", "", "Operating system name of the image version (required, if no incus.tar.xz is provided)")
+	cmd.Flags().StringVar(&c.flagOS, "os", "", "Operating system name of the image version (required, if no metadata tarball is provided)")
 	cmd.Flags().StringVar(&c.flagRelease, "release", "current", "Release identifier of the image version")
-	cmd.Flags().StringVar(&c.flagArchitecture, "arch", "", "Architecture of the image version (required, if no incus.tar.xz is provided)")
+	cmd.Flags().StringVar(&c.flagArchitecture, "arch", "", "Architecture of the image version (required, if no metadata tarball is provided)")
 	cmd.Flags().StringVar(&c.flagVariant, "variant", "default", "Variant of the image version")
-	cmd.Flags().StringVar(&c.flagVersion, "image-version", "", "Version of the image (required, if no incus.tar.xz is provided)")
+	cmd.Flags().StringVar(&c.flagVersion, "image-version", "", "Version of the image (required, if no metadata tarball is provided)")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
 
 	return cmd
+}
+
+func (c *cmdIncusImageAdd) hasMetadataFlags() bool {
+	return c.flagOS != "" || c.flagArchitecture != "" || c.flagVersion != ""
 }
 
 func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
@@ -296,36 +306,48 @@ func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []strin
 		return err
 	}
 
-	for _, arg := range args {
-		if filepath.Base(arg) == "incus.tar.xz" {
-			c.hasIncusTarXZPos = true
-			break
+	if !c.hasMetadataFlags() {
+		// The first argument is the metadata tarball, so at least one image
+		// file has to follow it.
+		if len(args) < 2 {
+			return fmt.Errorf("Either provide the image attributes through a metadata tarball followed by at least one image file or pass all the required flags")
 		}
+
+		return nil
 	}
 
-	minFiles := 1
-	if c.hasIncusTarXZPos {
-		minFiles = 2
+	if c.flagOS == "" || c.flagRelease == "" || c.flagArchitecture == "" || c.flagVariant == "" || c.flagVersion == "" {
+		return fmt.Errorf("Either provide the image attributes through a metadata tarball or pass all the required flags")
 	}
 
-	if len(args) < minFiles {
-		return fmt.Errorf("No image file provided")
+	err = image.ValidateIncusImageArchitecture(c.flagArchitecture)
+	if err != nil {
+		return err
 	}
 
-	if !c.hasIncusTarXZPos {
-		if c.flagOS == "" || c.flagRelease == "" || c.flagArchitecture == "" || c.flagVariant == "" || c.flagVersion == "" {
-			return fmt.Errorf("Either provide the image attributes through a incus.tar.xz file or pass all the required flags")
-		}
+	err = image.ValidateIncusImageVersion(c.flagVersion)
+	if err != nil {
+		return err
+	}
 
-		err = image.ValidateIncusImageArchitecture(c.flagArchitecture)
-		if err != nil {
-			return err
-		}
+	return nil
+}
 
-		err = image.ValidateIncusImageVersion(c.flagVersion)
-		if err != nil {
-			return err
-		}
+func (c *cmdIncusImageAdd) assertMetadataTarball(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	extension, _, err := archive.DetectType(f)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", filename, err)
+	}
+
+	if extension != ".tar.xz" {
+		return fmt.Errorf("The first argument %q is not a metadata tarball, expected an xz compressed tarball containing a metadata.yaml", filename)
 	}
 
 	return nil
@@ -334,20 +356,7 @@ func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []strin
 func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
 	var mr client.ContentTypeReadCloser
 
-	if c.hasIncusTarXZPos {
-		// Make sure, incus.tar.xz is the first file.
-		files := make([]string, 1, len(args))
-		for _, arg := range args {
-			if filepath.Base(arg) == "incus.tar.xz" {
-				files[0] = arg
-				continue
-			}
-
-			files = append(files, arg)
-		}
-
-		mr = multipartstreamer.New(files...)
-	} else {
+	if c.hasMetadataFlags() {
 		metadata := api.IncusImagePost{
 			OperatingSystem: c.flagOS,
 			Release:         c.flagRelease,
@@ -364,6 +373,15 @@ func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
 		mr = multipartstreamer.NewWithFields(map[string]string{
 			"request_json": string(requestJSON),
 		}, args...)
+	} else {
+		// The metadata tarball is the first argument and therefore becomes the
+		// first part of the multipart request.
+		err = c.assertMetadataTarball(args[0])
+		if err != nil {
+			return err
+		}
+
+		mr = multipartstreamer.New(args...)
 	}
 
 	defer func() {

@@ -1045,13 +1045,13 @@ func operationsCenterIPAddress(t *testing.T) string {
 	return address
 }
 
-// mustDownloadAlpineImageFiles downloads the given files of the most recent
-// alpine edge image for the CPU architecture under test into targetDir and
-// returns the version identifier of the downloaded image.
+// mustDownloadAlpineImageFiles downloads the most recent alpine edge image for
+// the CPU architecture under test into targetDir and returns the version
+// identifier of the downloaded image.
 //
-// "rootfs.squashfs" is stored as "root.squashfs", which is the file name
-// expected by Operations Center.
-func mustDownloadAlpineImageFiles(t *testing.T, targetDir string, filenames ...string) string {
+// files maps the name of a file at the image server to the name it is stored
+// under in targetDir.
+func mustDownloadAlpineImageFiles(t *testing.T, targetDir string, files map[string]string) string {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -1064,12 +1064,7 @@ func mustDownloadAlpineImageFiles(t *testing.T, targetDir string, filenames ...s
 	version := resp.OutputTrimmed()
 	require.NotEmpty(t, version, "Failed to determine the current alpine edge image version")
 
-	for _, filename := range filenames {
-		targetFilename := filename
-		if filename == "rootfs.squashfs" {
-			targetFilename = "root.squashfs"
-		}
-
+	for filename, targetFilename := range files {
 		mustRunWithTimeout(t, `curl -sfL "https://images.linuxcontainers.org/images/alpine/edge/%[1]s/default/%[2]s/%[3]s" -o %[4]s`, 5*time.Minute, cpuArch, version, filename, filepath.Join(targetDir, targetFilename))
 	}
 
@@ -1086,15 +1081,23 @@ func mustSHA256(t *testing.T, filename string) string {
 	return fmt.Sprintf("%x", sha256.Sum256(body))
 }
 
-// mustWriteFileWithContent writes a file of the given size with deterministic
-// content and returns its hex encoded sha256 checksum.
+// squashfsMagic are the magic bytes, by which Operations Center recognizes a
+// squashfs image.
+var squashfsMagic = []byte("hsqs")
+
+// mustWriteFileWithContent writes a file of the given size, which starts with
+// the given magic bytes followed by deterministic content, and returns its hex
+// encoded sha256 checksum.
 //
-// The content is only used as payload of an image version, Operations Center
-// does not interpret it.
-func mustWriteFileWithContent(t *testing.T, filename string, size int) string {
+// Operations Center detects the type of an image file from the magic bytes at
+// its beginning, the remaining content is only used as payload and is not
+// interpreted.
+func mustWriteFileWithContent(t *testing.T, filename string, magic []byte, size int) string {
 	t.Helper()
 
 	content := make([]byte, 0, size+sha256.Size)
+	content = append(content, magic...)
+
 	for i := 0; len(content) < size; i++ {
 		sum := sha256.Sum256(fmt.Appendf(nil, "%s/%d", filepath.Base(filename), i))
 		content = append(content, sum[:]...)

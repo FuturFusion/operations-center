@@ -30,26 +30,32 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
   );
   const [variant, setVariant] = useState(image?.variant ?? "");
   const [version, setVersion] = useState("");
+  const [metadataFile, setMetadataFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const queryClient = useQueryClient();
   const { notify } = useNotification();
 
-  const hasIncusTarXZ = files.some((file) => file.name == "incus.tar.xz");
-  const fullValid = files.length > 0 && hasIncusTarXZ;
+  const fullValid = metadataFile != null && files.length > 0;
   const metadataValid =
     os != "" &&
     release != "" &&
     architecture != "" &&
     variant != "" &&
     version != "" &&
-    files.length > 0 &&
-    !hasIncusTarXZ;
+    files.length > 0;
   const isValid = mode == "full" ? fullValid : metadataValid;
 
   const reset = () => {
     setShowModal(false);
     setVersion("");
+    setMetadataFile(null);
     setFiles([]);
+  };
+
+  const handleMetadataFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setMetadataFile(event.target.files?.[0] ?? null);
   };
 
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +64,11 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
 
   const doUpload = () => {
     if (mode == "full") {
-      return uploadIncusImageFull(files);
+      if (metadataFile == null) {
+        return Promise.reject(new Error("No metadata tarball selected"));
+      }
+
+      return uploadIncusImageFull(metadataFile, files);
     }
 
     return uploadIncusImageWithMetadata(
@@ -125,7 +135,7 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
               type="radio"
               name="mode"
               id="mode-full"
-              label="Upload complete image files (including incus.tar.xz)"
+              label="Upload metadata tarball and image files"
               checked={mode == "full"}
               onChange={() => setMode("full")}
             />
@@ -189,13 +199,24 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
               />
             </Form.Group>
           )}
+          {mode == "full" && (
+            <Form.Group className="mb-3" controlId="metadataFile">
+              <Form.Label>Metadata tarball</Form.Label>
+              <Form.Control type="file" onChange={handleMetadataFileChange} />
+              <Form.Text muted>
+                The metadata tarball of the image, e.g. incus.tar.xz or the file
+                written by &quot;incus image export&quot;. The name does not
+                matter, the file is recognized by its content.
+              </Form.Text>
+            </Form.Group>
+          )}
           <Form.Group className="mb-3" controlId="files">
-            <Form.Label>Files</Form.Label>
+            <Form.Label>Image files</Form.Label>
             <Form.Control type="file" multiple onChange={handleFilesChange} />
             <Form.Text muted>
               {mode == "full"
-                ? "Image files including incus.tar.xz, e.g. incus.tar.xz, root.tar.xz, root.squashfs, disk.qcow2."
-                : "Image files only, e.g. root.tar.xz, root.squashfs, disk.qcow2. The incus.tar.xz is generated from the metadata."}
+                ? "The image files, e.g. root.tar.xz, root.squashfs, disk.qcow2. Their type is detected from their content, the names do not matter."
+                : "The image files, e.g. root.tar.xz, root.squashfs, disk.qcow2. The metadata tarball is generated from the metadata above."}
             </Form.Text>
           </Form.Group>
         </Form>

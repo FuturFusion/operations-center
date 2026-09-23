@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/textproto"
@@ -48,7 +49,9 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		filesRepoGet       []queue.Item[fileRepoGetValue]
 		repoUpdateErr      error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr        require.ErrorAssertionFunc
+		wantPutFilenames []string
+		wantItemFileType map[string]string
 	}{
 		{
 			name:               "success - with metadata from incus.tar.xz",
@@ -126,7 +129,14 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:        require.NoError,
+			wantPutFilenames: []string{"incus.tar.xz", "root.tar.xz", "root.squashfs", "disk.qcow2"},
+			wantItemFileType: map[string]string{
+				"incus.tar.xz":  "incus.tar.xz",
+				"root.tar.xz":   "root.tar.xz",
+				"root.squashfs": "squashfs",
+				"disk.qcow2":    "disk-kvm.img",
+			},
 		},
 		{
 			name:               "success - new incus image with metadata from incus.tar.xz",
@@ -247,7 +257,12 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:        require.NoError,
+			wantPutFilenames: []string{"incus.tar.xz", "disk.qcow2"},
+			wantItemFileType: map[string]string{
+				"incus.tar.xz": "incus.tar.xz",
+				"disk.qcow2":   "disk-kvm.img",
+			},
 		},
 		{
 			name:               "error - invalid multipart reader",
@@ -256,13 +271,30 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name:               "error - multipart reader without metadata file",
+			name:               "error - unsupported image file",
+			multipartReaderArg: multipartReaderWithUnsupportedFile(t),
+			repoGetByName: []queue.Item[*image.IncusImage]{
+				{
+					Value: &image.IncusImage{
+						Name:            "almalinux:10:amd64:cloud",
+						OperatingSystem: "almalinux",
+						Release:         "10",
+						Architecture:    "amd64",
+						Variant:         "cloud",
+					},
+				},
+			},
+			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Unsupported image file "rootfs.img"`),
+		},
+		{
+			name:               "error - first part is not a metadata tarball",
 			multipartReaderArg: multipartReaderWithoutMetadataFile(t),
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name "file", filename "root.tar.xz"`)
-			},
+			assertErr: errassert.ValidationErrorContains(`The first part of the multipart request "root.tar.xz" is not a valid metadata tarball`),
 		},
 		{
 			name:               "error - failed to read metadata",
@@ -819,6 +851,9 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			var gotPutFilenames []string
+			gotItemFileType := map[string]string{}
+
 			repo := &mock.ImageIncusRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
 					return queue.Pop(t, &tc.repoGetByName)
@@ -828,7 +863,12 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, newIncusImage image.IncusImage) error {
 					// TODO: ensure correct values for size and sha256 hashes
-					// t.Log(newIncusImage)
+					for _, version := range newIncusImage.Versions {
+						for filename, item := range version.Items {
+							gotItemFileType[filename] = item.FileType
+						}
+					}
+
 					return tc.repoUpdateErr
 				},
 			}
@@ -837,6 +877,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				PutFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
 					size, err := io.ReadAll(content)
 					require.NoError(t, err)
+
+					gotPutFilenames = append(gotPutFilenames, filename)
 
 					value, err := queue.Pop(t, &tc.filesRepoPut)
 
@@ -866,21 +908,24 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			require.Empty(t, tc.repoGetByName)
 			require.Empty(t, tc.filesRepoPut)
 			require.Empty(t, tc.filesRepoGet)
+
+			if tc.wantPutFilenames != nil {
+				require.Equal(t, tc.wantPutFilenames, gotPutFilenames)
+			}
+
+			if tc.wantItemFileType != nil {
+				require.Equal(t, tc.wantItemFileType, gotItemFileType)
+			}
 		})
 	}
 }
 
-func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
+func writeMetadataTarballPart(t *testing.T, writer *multipart.Writer, filename string) {
 	t.Helper()
 
-	var body bytes.Buffer
-
-	writer := multipart.NewWriter(&body)
-
-	// incus.tar.xz
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="incus.tar.xz"`)
+		fmt.Sprintf(`form-data; name="file"; filename=%q`, filename))
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err := writer.CreatePart(header)
@@ -918,47 +963,67 @@ func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
 
 	_, err = part.Write(buf.Bytes())
 	require.NoError(t, err)
+}
+
+func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	writer := multipart.NewWriter(&body)
+
+	writeMetadataTarballPart(t, writer, "almalinux-10")
 
 	// root.tar.xz
-	header = textproto.MIMEHeader{}
+	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="root.tar.xz"`)
+		`form-data; name="file"; filename="almalinux-10.tar.xz"`)
 	header.Set("Content-Type", "application/octet-stream")
 
-	part, err = writer.CreatePart(header)
+	part, err := writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = io.WriteString(part, "root tar xz")
+	_, err = part.Write(imageFileContent(tarXZMagic))
 	require.NoError(t, err)
 
 	// root.squashfs
 	header = textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="root.squashfs"`)
+		`form-data; name="file"; filename="rootfs.squashfs"`)
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err = writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = io.WriteString(part, "squashfs")
+	_, err = part.Write(imageFileContent(squashfsMagic))
 	require.NoError(t, err)
 
 	// disk.qcow2
 	header = textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="disk.qcow2"`)
+		`form-data; name="file"; filename="almalinux-10.root"`)
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err = writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = io.WriteString(part, "disk qcow2")
+	_, err = part.Write(imageFileContent(qcow2Magic))
 	require.NoError(t, err)
 
 	err = writer.Close()
 	require.NoError(t, err)
 
 	return multipart.NewReader(&body, writer.Boundary())
+}
+
+var (
+	squashfsMagic = []byte{'h', 's', 'q', 's'}
+	qcow2Magic    = []byte{'Q', 'F', 'I', 0xfb}
+	tarXZMagic    = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
+)
+
+func imageFileContent(magic []byte) []byte {
+	return append(append([]byte{}, magic...), bytes.Repeat([]byte("payload "), 64)...)
 }
 
 func validMultipartReaderWithRequestJSON(t *testing.T, requestJSON string) *multipart.Reader {
@@ -983,13 +1048,39 @@ func validMultipartReaderWithRequestJSON(t *testing.T, requestJSON string) *mult
 	// disk.qcow2
 	header = textproto.MIMEHeader{}
 	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="disk.qcow2"`)
+		`form-data; name="file"; filename="almalinux.root"`)
 	header.Set("Content-Type", "application/octet-stream")
 
 	part, err = writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = io.WriteString(part, "disk qcow2")
+	_, err = part.Write(imageFileContent(qcow2Magic))
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	return multipart.NewReader(&body, writer.Boundary())
+}
+
+func multipartReaderWithUnsupportedFile(t *testing.T) *multipart.Reader {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	writer := multipart.NewWriter(&body)
+
+	writeMetadataTarballPart(t, writer, "incus.tar.xz")
+
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="file"; filename="rootfs.img"`)
+	header.Set("Content-Type", "application/octet-stream")
+
+	part, err := writer.CreatePart(header)
+	require.NoError(t, err)
+
+	_, err = io.WriteString(part, "this is not a supported image file")
 	require.NoError(t, err)
 
 	err = writer.Close()
@@ -1030,50 +1121,10 @@ func multipartReaderWithInvalid2ndPart(t *testing.T) *multipart.Reader {
 
 	writer := multipart.NewWriter(&body)
 
-	// incus.tar.xz
-	header := textproto.MIMEHeader{}
-	header.Set("Content-Disposition",
-		`form-data; name="file"; filename="incus.tar.xz"`)
-	header.Set("Content-Type", "application/octet-stream")
-
-	part, err := writer.CreatePart(header)
-	require.NoError(t, err)
-
-	metadata := incusapi.ImageMetadata{
-		Properties: map[string]string{
-			"os":           "almalinux",
-			"release":      "10",
-			"architecture": "amd64",
-			"variant":      "cloud",
-			"serial":       "20260515",
-			"description":  "almalinux 10 (cloud) (amd64)",
-		},
-	}
-	metadataBody, err := yaml.Marshal(metadata)
-	require.NoError(t, err)
-
-	buf := bytes.NewBuffer(nil)
-	xzw, err := xz.NewWriter(t.Context(), buf)
-	require.NoError(t, err)
-	tw := tar.NewWriter(xzw)
-	err = tw.WriteHeader(&tar.Header{
-		Name: "metadata.yaml",
-		Size: int64(len(metadataBody)),
-		Mode: 0o600,
-	})
-	require.NoError(t, err)
-	_, err = tw.Write(metadataBody)
-	require.NoError(t, err)
-	err = tw.Close()
-	require.NoError(t, err)
-	err = xzw.Close()
-	require.NoError(t, err)
-
-	_, err = part.Write(buf.Bytes())
-	require.NoError(t, err)
+	writeMetadataTarballPart(t, writer, "incus.tar.xz")
 
 	// append invalid multipart content
-	_, err = body.WriteString(strings.Join([]string{
+	_, err := body.WriteString(strings.Join([]string{
 		"",
 		"--" + writer.Boundary(),
 		"Invalid Header Without Colon", // malformed header
