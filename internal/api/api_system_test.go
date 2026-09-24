@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -261,4 +262,126 @@ func TestSystemCleanCachePost(t *testing.T) {
 	require.Empty(t, entries)
 
 	require.FileExists(t, filepath.Join(cacheDir, "acme", "accounts", "key.pem"))
+}
+
+// Test POST /1.0/system/:backup and POST /1.0/system/:restore.
+func TestSystemBackupRestore(t *testing.T) {
+	// Setup daemon
+	varDir := t.TempDir()
+	cacheDir := t.TempDir()
+
+	ctx := context.Background()
+
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(varDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return varDir
+		},
+		CacheDirFunc: func() string {
+			return cacheDir
+		},
+		UsrShareDirFunc: func() string {
+			return varDir
+		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
+	}
+
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
+	err := config.UpdateNetwork(ctx, system.NetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:17445",
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":17445",
+	})
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(varDir, config.ConfigFilename), []byte("settings:\n  log_level: WARN\n"), 0o600)
+	require.NoError(t, err)
+
+	err = incustls.FindOrGenCert(filepath.Join(varDir, config.ClientCertificateFilename), filepath.Join(varDir, config.ClientKeyFilename), true, false)
+	require.NoError(t, err)
+
+	d := api.NewDaemon(ctx, env)
+
+	err = d.Start(ctx)
+	require.NoError(t, err)
+
+	socketClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", filepath.Join(varDir, "unix.socket"))
+			},
+		},
+	}
+
+	// Create backup.
+	req, err := http.NewRequest(http.MethodPost, "http://unix/1.0/system/:backup", nil)
+	require.NoError(t, err)
+
+	resp, err := socketClient.Do(req)
+	require.NoError(t, err)
+
+	backup, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	// Change the state after the backup.
+	err = os.WriteFile(filepath.Join(varDir, config.ConfigFilename), []byte("settings:\n  log_level: DEBUG\n"), 0o600)
+	require.NoError(t, err)
+
+	// A broken backup is rejected without restart.
+	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/:restore", bytes.NewBufferString("not a backup"))
+	require.NoError(t, err)
+
+	resp, err = socketClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// Restore the backup.
+	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/:restore", bytes.NewReader(backup))
+	require.NoError(t, err)
+
+	resp, err = socketClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	select {
+	case <-d.RestartRequested():
+	case <-time.After(time.Second):
+		t.Fatal("Restart has not been requested")
+	}
+
+	err = d.Stop(ctx)
+	require.NoError(t, err)
+
+	// Restart with the restored state.
+	err = systemLocalfs.NewBackup(varDir).ApplyRestore()
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(varDir, config.ConfigFilename))
+	require.NoError(t, err)
+	require.Contains(t, string(content), "WARN")
+
+	d = api.NewDaemon(ctx, env)
+
+	err = d.Start(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = d.Stop(context.Background())
+		require.NoError(t, err)
+	})
+
+	require.False(t, systemLocalfs.NewBackup(varDir).IsRestoreApplied())
 }
