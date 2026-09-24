@@ -177,11 +177,9 @@ func (s updateService) Prune(ctx context.Context) error {
 	var fileRepoErrs []error
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		updates, err := s.repo.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-			Status: new(api.UpdateStatusPending),
-		})
+		updates, err := s.repo.GetAll(ctx)
 		if err != nil {
-			return fmt.Errorf("Failed to get all pending updates during prune: %w", err)
+			return fmt.Errorf("Failed to get all updates during prune: %w", err)
 		}
 
 		for _, update := range updates {

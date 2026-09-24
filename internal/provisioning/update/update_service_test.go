@@ -290,18 +290,18 @@ func TestUpdateService_Prune(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                    string
-		repoGetAllWithFilter    provisioning.Updates
-		repoGetAllWithFilterErr error
-		filesRepoGet            []queue.Item[fileDetail]
-		filesRepoDelete         queue.Errs
-		repoDeleteByUUID        queue.Errs
+		name             string
+		repoGetAll       provisioning.Updates
+		repoGetAllErr    error
+		filesRepoGet     []queue.Item[fileDetail]
+		filesRepoDelete  queue.Errs
+		repoDeleteByUUID queue.Errs
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuidgen.FromPattern(t, "1"),
 					Status: api.UpdateStatusPending,
@@ -342,14 +342,14 @@ func TestUpdateService_Prune(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                    "error - repo.GetAll",
-			repoGetAllWithFilterErr: boom.Error,
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - filesRepo.Delete",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
 					Status: api.UpdateStatusPending,
@@ -367,7 +367,7 @@ func TestUpdateService_Prune(t *testing.T) {
 		},
 		{
 			name: "error - repo.DeleteByID",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
 					Status: api.UpdateStatusPending,
@@ -389,8 +389,8 @@ func TestUpdateService_Prune(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
 				},
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 					return tc.repoDeleteByUUID.PopOrNil(t)
