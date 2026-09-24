@@ -11,6 +11,7 @@ type server
     define viewer: [user] or user
     define authenticated: [user:*]
     define can_create: admin
+    define can_debug: admin
     define can_delete: admin
     define can_edit: operator
     define can_view: viewer
