@@ -50,6 +50,10 @@ func isLogLevelsChanged(oldCfg, newCfg config) bool {
 	return !maps.Equal(oldCfg.Settings.LogLevels, newCfg.Settings.LogLevels)
 }
 
+func isPprofEnabledChanged(oldCfg, newCfg config) bool {
+	return oldCfg.Settings.PprofEnabled != newCfg.Settings.PprofEnabled
+}
+
 func isSettingsChanged(oldCfg, newCfg config) bool {
 	return !reflect.DeepEqual(oldCfg.Settings.SettingsPut, newCfg.Settings.SettingsPut)
 }
