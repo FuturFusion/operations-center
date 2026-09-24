@@ -562,7 +562,7 @@ arrive, and capped at a bounded number of ranges. Reaching the cap coalesces the
 two neighbors separated by the smallest gap, which over counts rather than under
 counts, since under counting would leave the deployment waiting for a read, that
 has already happened. `media_bytes_read` of the deployment status reports that
-amount, alongside `media_size` for the image it is read from.
+amount.
 
 **The progress is dropped when the media is attached, when the deployment cleans
 up and when it is canceled**, so that neither a retry nor a later deployment
