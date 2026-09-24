@@ -46,6 +46,7 @@ export interface SystemSettings {
   log_level: string;
   log_levels: Record<string, string>;
   server_registration_scriptlet: string;
+  pprof_enabled: boolean;
 }
 
 export interface SystemCertificate {
