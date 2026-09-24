@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/lxc/incus-os/incus-osd/cli"
 	"github.com/spf13/cobra"
@@ -42,6 +43,13 @@ func (c *CmdAdmin) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(adminSQLCmd.Command())
+
+	// debug
+	adminDebugCmd := cmdAdminDebug{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(adminDebugCmd.Command())
 
 	return cmd
 }
@@ -207,4 +215,140 @@ func (c *cmdAdminSQL) sqlPrintSelectResult(cmd *cobra.Command, result dump.SQLRe
 	}
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, result.Columns, data, result)
+}
+
+type cmdAdminDebug struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdAdminDebug) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "debug"
+	cmd.Short = "Debug Operations Center"
+	cmd.Long = `Description:
+  Debug Operations Center
+`
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	// pprof
+	adminDebugPprofCmd := cmdAdminDebugPprof{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(adminDebugPprofCmd.Command())
+
+	return cmd
+}
+
+type cmdAdminDebugPprof struct {
+	ocClient *client.OperationsCenterClient
+
+	flagSeconds int
+	flagDebug   int
+	flagOutput  string
+}
+
+func (c *cmdAdminDebugPprof) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "pprof <profile>"
+	cmd.Short = "Download a pprof profile"
+	cmd.Long = `Description:
+  Download a pprof profile
+
+  Supported profiles are allocs, block, cmdline, goroutine, heap, mutex,
+  profile (CPU), threadcreate and trace. The pprof endpoints need to be enabled
+  with the "pprof_enabled" system setting.
+
+  For the profile and trace profiles, --seconds sets the capture duration, for
+  the other profiles it returns the delta over the given duration.
+
+  The profile is written to <profile>.pprof by default, a --debug level above
+  0 returns a text representation, which is written to stdout by default. The
+  profile and trace captures are only available in the binary format.
+
+  The downloaded profile can be analyzed with "go tool pprof <file>" or, for a
+  trace, "go tool trace <file>".
+`
+
+	cmd.Flags().IntVar(&c.flagSeconds, "seconds", 0, "Duration in seconds for profile, trace and delta profiles")
+	cmd.Flags().IntVar(&c.flagDebug, "debug", 0, "Text output level, 0 for the binary format")
+	cmd.Flags().StringVarP(&c.flagOutput, "output", "o", "", `Output file, "-" for stdout`)
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdAdminDebugPprof) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	// The profile and trace captures are only available in binary format.
+	if c.flagDebug > 0 && (args[0] == "profile" || args[0] == "trace") {
+		return fmt.Errorf("Flag --debug is not supported for %q", args[0])
+	}
+
+	return nil
+}
+
+func (c *cmdAdminDebugPprof) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	query := url.Values{}
+	if c.flagSeconds > 0 {
+		query.Set("seconds", strconv.Itoa(c.flagSeconds))
+	}
+
+	if c.flagDebug > 0 {
+		query.Set("debug", strconv.Itoa(c.flagDebug))
+	}
+
+	output := c.flagOutput
+	if output == "" {
+		output = name + ".pprof"
+
+		if c.flagDebug > 0 || name == "cmdline" {
+			output = "-"
+		}
+	}
+
+	profile, err := c.ocClient.GetPprof(cmd.Context(), name, query)
+	if err != nil {
+		return err
+	}
+
+	defer profile.Close()
+
+	if output == "-" {
+		_, err = io.Copy(cmd.OutOrStdout(), profile)
+		return err
+	}
+
+	targetFile, err := os.OpenFile(output, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+
+	_, err = io.Copy(targetFile, profile)
+	if err != nil {
+		return err
+	}
+
+	err = targetFile.Close()
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Profile written to %q\n", output)
+
+	return nil
 }
