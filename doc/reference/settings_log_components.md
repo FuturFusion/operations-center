@@ -115,6 +115,9 @@ provisioning:
 - `provisioning.cluster_template_repo`
 - `provisioning.cluster_template_service`
 - `provisioning.flasher_port`
+- `provisioning.secure_boot_certificate_catalog_port`
+- `provisioning.secure_boot_certificate_source_port`
+- `provisioning.secure_boot_media_port`
 - `provisioning.seed_image_progress_port`
 - `provisioning.server_client_port`
 - `provisioning.server_repo`

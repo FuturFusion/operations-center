@@ -4,6 +4,13 @@ import (
 	"maps"
 )
 
+// Names of the UEFI secure boot key databases.
+const (
+	SecureBootDatabaseKEK = "KEK"
+	SecureBootDatabaseDB  = "db"
+	SecureBootDatabaseDBX = "dbx"
+)
+
 // BIOSSecureBootDatabase holds the secure boot certificates and signatures of a
 // single secure boot database, that are allowed to stay during the
 // initialization of a server.

@@ -648,6 +648,117 @@ func Test_deploymentSettleSnapshot(t *testing.T) {
 	}
 }
 
+func Test_checkDeploymentPoweredOff(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{
+		IsIncusOSFunc: func() bool { return false },
+	}, nil)
+
+	tests := []struct {
+		name            string
+		powerState      string
+		poweredOffSince time.Time
+
+		wantMet             bool
+		wantPoweredOffSince time.Time
+		wantPowerOffs       int
+	}{
+		{
+			name:       "the server is still powered on",
+			powerState: bmcPowerStateOn,
+
+			wantPowerOffs: 1,
+		},
+		{
+			name:            "the server is powered on again after it had been reported powered off",
+			powerState:      bmcPowerStateOn,
+			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
+
+			wantPowerOffs: 1,
+		},
+		{
+			name:       "the server is reported powered off for the first time",
+			powerState: bmcPowerStateOff,
+
+			wantPoweredOffSince: deploymentTestNow,
+		},
+		{
+			name:            "the power off has not settled yet",
+			powerState:      bmcPowerStateOff,
+			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
+
+			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
+		},
+		{
+			name:            "the power off has settled",
+			powerState:      bmcPowerStateOff,
+			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
+
+			wantMet:             true,
+			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusDeploying,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local:8443",
+					Username: "admin",
+					Password: "secret",
+				},
+				// The BMC data is fresh, so the wait works off the record
+				// instead of asking the BMC again.
+				BMCData: api.BMCData{ServerPowerState: tc.powerState, LastUpdated: deploymentTestNow},
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State:           api.ServerDeploymentStateWaitPowerOffSecureBootReset,
+						StateEnteredAt:  deploymentTestNow,
+						PoweredOffSince: tc.poweredOffSince,
+					},
+				},
+			}
+
+			powerOffs := 0
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+					powerOffs++
+
+					require.True(t, force, "the deployment cuts the power instead of asking for a graceful shutdown")
+
+					return nil, nil
+				},
+			}
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &server, nil
+				},
+			}
+
+			serverSvc := New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				WithNow(func() time.Time { return deploymentTestNow }),
+				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			met, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantMet, met)
+			require.Equal(t, tc.wantPowerOffs, powerOffs, "a server, that is not down, has the power cut again")
+
+			deployment := *server.StatusInternal.Deployment
+			if mutate != nil {
+				mutate(&deployment)
+			}
+
+			require.Equal(t, tc.wantPoweredOffSince, deployment.PoweredOffSince)
+		})
+	}
+}
+
 func Test_bmcWaitConditions(t *testing.T) {
 	deployment := provisioning.ServerDeployment{
 		Request:  provisioning.ServerDeploymentRequest{VirtualMediaID: "system:1"},
@@ -661,13 +772,6 @@ func Test_bmcWaitConditions(t *testing.T) {
 
 		want bool
 	}{
-		{
-			name:  "power is off",
-			state: api.ServerDeploymentStateWaitPowerOffBIOS,
-			data:  api.BMCData{ServerPowerState: bmcPowerStateOff},
-
-			want: true,
-		},
 		{
 			name:  "power is still on",
 			state: api.ServerDeploymentStateWaitCancel,
@@ -1082,6 +1186,11 @@ func Test_deploymentStates(t *testing.T) {
 			require.NotEqual(t, state, definition.next, "state %q leads to itself", state)
 			require.Contains(t, deploymentStates, definition.next, "state %q leads to the unknown state %q", state, definition.next)
 
+			for _, branch := range definition.branches {
+				require.NotEqual(t, state, branch, "state %q branches to itself", state)
+				require.Contains(t, deploymentStates, branch, "state %q branches to the unknown state %q", state, branch)
+			}
+
 			if definition.kind == deploymentStateKindAction {
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
@@ -1136,6 +1245,10 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 
 		if definition.fallback != "" {
 			walk(definition.fallback)
+		}
+
+		for _, branch := range definition.branches {
+			walk(branch)
 		}
 	}
 
@@ -1204,6 +1317,9 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 		},
 		TaskStateFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
 			return api.BMCTaskStateUnknown, boom.Error
+		},
+		EnableSecureBootFunc: func(ctx context.Context, server provisioning.Server) (bool, error) {
+			return false, boom.Error
 		},
 	}
 

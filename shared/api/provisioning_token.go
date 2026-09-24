@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -96,6 +97,18 @@ func (i *ImageType) UnmarshalText(text []byte) error {
 
 func (i ImageType) FileExt() string {
 	return imageTypes[i].fileExt
+}
+
+// ImageTypeForFileExt returns the image type a file extension addresses, e.g.
+// ".iso". The extension is matched case insensitively.
+func ImageTypeForFileExt(fileExt string) (ImageType, bool) {
+	for imageType, properties := range imageTypes {
+		if strings.EqualFold(properties.fileExt, fileExt) {
+			return imageType, true
+		}
+	}
+
+	return "", false
 }
 
 func (i ImageType) UpdateFileType() images.UpdateFileType {

@@ -167,7 +167,303 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				t.Helper()
 
 				require.Zero(t, world.callCount("ApplySecureBootCertificates"))
+				require.Zero(t, world.callCount("EnableSecureBoot"), "a deployment, that enrolls no certificates, leaves the state of secure boot to the operator")
+				require.False(t, world.secureBootEnabled)
 			},
+		},
+		{
+			name:        "success - the secure boot certificates are enrolled from an enrollment media",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Zero(t, world.callCount("ApplySecureBootCertificates"), "the enrollment media replaces the enrollment through the BMC")
+				require.True(t, world.secureBootEnabled, "secure boot is switched on once the certificates are enrolled")
+				require.Equal(t, 1, world.callCount("ResetSecureBootKeys"), "the key databases are cleared to reach the setup mode")
+				require.Equal(t, 1, world.callCount("GenerateSecureBootMedia"))
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment takes the server back out of the setup mode")
+				require.Empty(t, world.mediaInserted(), "the clean up ejects the installation media")
+			},
+		},
+		{
+			name:        "success - the enrollment media is booted on a server, that is in setup mode already",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.secureBootMode = worldSecureBootModeSetup },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment takes the server out of the setup mode")
+			},
+		},
+		{
+			name:        "success - the firmware brings the server back up after the power has been cut",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.relapsesAfterSecureBootReset = true },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("Server is powered on again after it had been reported powered off"),
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the wait cuts the power again instead of taking the trough of the firmware reset for a settled power off, so the enrollment media is attached to a server, that is down")
+			},
+		},
+		{
+			name:        "success - the BMC rejects the enrollment media while the server is in its POST",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.attachMediaErrs = queue.Errs{domain.NewNotSettledErr(boom.Error)} },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateAttachSecureBootMedia},
+				deploymentStatesSecureBootReset[4:],
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:           api.ServerStatusPending,
+			wantStatusDetail:     api.ServerStatusDetailPendingRegistering,
+			wantFallbackAttempts: 1,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment media is attached once the server has settled")
+			},
+		},
+		{
+			name:        "success - the BMC rejects enabling secure boot while the server is in its POST",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.enableSecureBootErrs = queue.Errs{domain.NewNotSettledErr(boom.Error)} },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateEnableSecureBoot},
+				deploymentStatesSecureBootMedia[4:],
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:           api.ServerStatusPending,
+			wantStatusDetail:     api.ServerStatusDetailPendingRegistering,
+			wantFallbackAttempts: 1,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.True(t, world.secureBootEnabled, "secure boot is switched on once the server has settled")
+			},
+		},
+		{
+			name:        "failure - the BMC keeps rejecting the enrollment media while the server is in its POST",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.attachMediaErrs = queue.Errs{
+						domain.NewNotSettledErr(boom.Error),
+						domain.NewNotSettledErr(boom.Error),
+						domain.NewNotSettledErr(boom.Error),
+						domain.NewNotSettledErr(boom.Error),
+					}
+				},
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateAttachSecureBootMedia},
+				deploymentStatesSecureBootReset[4:],
+				[]api.ServerDeploymentState{api.ServerDeploymentStateAttachSecureBootMedia},
+				deploymentStatesSecureBootReset[4:],
+				[]api.ServerDeploymentState{api.ServerDeploymentStateAttachSecureBootMedia},
+				deploymentStatesSecureBootReset[4:],
+				[]api.ServerDeploymentState{
+					api.ServerDeploymentStateAttachSecureBootMedia,
+					api.ServerDeploymentStateFailed,
+				},
+			),
+			wantStatus:           api.ServerStatusUnregistered,
+			wantStatusDetail:     api.ServerStatusDetailUnregisteredDeploymentFailed,
+			wantFailedState:      api.ServerDeploymentStateAttachSecureBootMedia,
+			wantFallbackAttempts: config.ServerDeploymentStepRetries,
+			wantLastError:        boom.Error.Error(),
+		},
+		{
+			name:        "success - an allow listed signature is reported as lost with the enrollment media",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.SecureBoot.DBX = api.BIOSSecureBootDatabase{
+					Signatures: map[string]bool{"a-revoked-hash": true},
+				}
+
+				return resolution
+			}(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("the enrollment media can only enroll certificates, so it is lost"),
+		},
+		{
+			name:        "success - the server is only powered on once the BMC is done clearing the key databases",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.slowSecureBootReset = true },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.False(t, world.poweredOnWhileResetting, "the server must not be powered on while the BMC is still clearing the key databases")
+			},
+		},
+		{
+			name:        "error - the BMC does not support the reset of the secure boot keys",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.noSecureBootReset = true },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{
+					api.ServerDeploymentStateResetSecureBootKeys,
+					api.ServerDeploymentStateFailed,
+				},
+			),
+			wantStatus:       api.ServerStatusUnregistered,
+			wantStatusDetail: api.ServerStatusDetailUnregisteredDeploymentFailed,
+			wantFailedState:  api.ServerDeploymentStateResetSecureBootKeys,
+			wantLastError:    "Resetting the secure boot keys is not supported",
 		},
 		{
 			name:        "success - the secure boot certificates are enrolled already",
@@ -184,6 +480,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesSecureBootOff,
 				deploymentStatesSecureBoot,
 				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
 				deploymentStatesInstall,
 				deploymentStatesFinalize,
 			),
@@ -417,7 +714,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),
 			worldOptions: []func(*bmcWorld){
-				func(w *bmcWorld) { w.ignorePowerOffs = 1 },
+				func(w *bmcWorld) { w.ignorePowerOffFor = worldIgnorePowerOffDuration },
 			},
 
 			wantStates: slices.Concat(
@@ -470,6 +767,87 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			wantStates:       deploymentStatesHappyPath(),
 			wantStatus:       api.ServerStatusPending,
 			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+		},
+		{
+			name:        "success - a BIOS attribute reflecting the secure boot state is verified after the enrollment",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.Attributes["SecureBootStatus"] = "Enabled"
+
+				return resolution
+			}(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.secureBootMode = worldSecureBootModeSetup
+					w.biosSecureBootStatusAttribute = "SecureBootStatus"
+				},
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("verifying them again once the secure boot certificates are enrolled"),
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the enrollment takes the server out of the setup mode")
+				require.Equal(t, 2, world.callCount("ApplyBIOSAttributes"), "one apply per BIOS pass, no pass is repeated for an attribute, that only the enrollment can satisfy")
+			},
+		},
+		{
+			name:        "failure - a BIOS attribute does not hold even after the secure boot certificates are enrolled",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.Attributes["SecureBootStatus"] = "Enabled"
+
+				return resolution
+			}(),
+			request: func(request *provisioning.ServerDeploymentRequest) {
+				request.SecureBootEnrollmentMedia = true
+			},
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.secureBootMode = worldSecureBootModeSetup
+					w.biosSecureBootStatusAttribute = "SecureBootStatus"
+					w.biosSecureBootStatusStuck = true
+				},
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				[]api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+				deploymentStatesSecureBootMedia,
+				deploymentStatesMediaCleared,
+				[]api.ServerDeploymentState{
+					api.ServerDeploymentStateEnableSecureBoot,
+					api.ServerDeploymentStatePowerOnSecureBoot,
+					api.ServerDeploymentStateWaitSecureBootSettled,
+					api.ServerDeploymentStateFailed,
+				},
+			),
+			wantStatus:       api.ServerStatusUnregistered,
+			wantStatusDetail: api.ServerStatusDetailUnregisteredDeploymentFailed,
+			wantFailedState:  api.ServerDeploymentStateWaitSecureBootSettled,
+			wantLastError:    "not even after the secure boot certificates were enrolled",
 		},
 		{
 			name:        "failure - the BIOS verification keeps failing",
@@ -986,7 +1364,7 @@ func TestServerService_DeploymentControlLoopGivesUpOnAServerNeverReachingAState(
 		forceReboot: true,
 		resolution:  deploymentTestResolution(),
 		worldOptions: []func(*bmcWorld){
-			func(world *bmcWorld) { world.ignorePowerOffs = 1000 },
+			func(world *bmcWorld) { world.ignorePowerOffFor = 10 * config.ServerDeploymentTimeout },
 		},
 	})
 

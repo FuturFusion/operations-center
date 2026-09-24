@@ -399,6 +399,14 @@ type swaggerTokenSeedResponse struct {
 	}
 }
 
+// The secure boot enrollment media
+//
+// swagger:response SecureBootMediaResponse
+type swaggerSecureBootMediaResponse struct {
+	// in: body
+	Body []byte
+}
+
 // The update
 //
 // swagger:response UpdateResponse

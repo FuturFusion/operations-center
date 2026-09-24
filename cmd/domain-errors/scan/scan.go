@@ -509,6 +509,7 @@ func (s *fileScan) inspectCall(call *ast.CallExpr) {
 // to one of them is not unclassified.
 var knownConstructors = map[string]bool{
 	"NewErrorf":         true,
+	"NewNotSettledErr":  true,
 	"NewRetryableErr":   true,
 	"NewValidationErrf": true,
 }

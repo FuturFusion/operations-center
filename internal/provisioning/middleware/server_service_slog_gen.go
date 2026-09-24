@@ -437,6 +437,37 @@ func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name strin
 	return _d._base.BMCRefreshByName(ctx, name)
 }
 
+// BMCResetSecureBootKeysByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCResetSecureBootKeysByName(ctx context.Context, name string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCResetSecureBootKeysByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method BMCResetSecureBootKeysByName returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method BMCResetSecureBootKeysByName finished")
+		}
+	}()
+	return _d._base.BMCResetSecureBootKeysByName(ctx, name)
+}
+
 // BMCServerPowerOffByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCServerPowerOffByName(ctx context.Context, name string, force bool) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

@@ -83,12 +83,15 @@ install_base_dependencies() {
         curl \
         direnv \
         dnsutils \
+        dosfstools \
+        efitools \
         fzf \
         fd-find \
         gnupg \
         jq \
         kpartx \
         less \
+        mtools \
         locales \
         locales-all \
         lsof \
@@ -100,6 +103,8 @@ install_base_dependencies() {
         sqlite3 \
         strace \
         sudo \
+        systemd-boot-efi \
+        systemd-repart \
         tmux \
         tree \
         unzip \

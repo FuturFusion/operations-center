@@ -101,6 +101,10 @@ const serviceUnavailableBody = `{"error":{"@Message.ExtendedInfo":[{"Message":"i
 
 const serviceUnavailableMessage = "BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.; Base.1.12.ServiceTemporarilyUnavailable: The service is temporarily unavailable.  Retry in 30 seconds. (severity: Critical) Resolution: Wait for the indicated retry duration and retry the operation."
 
+// inPostBody is how an iLO 5 turns a boot source override down, while the
+// server it belongs to is running through its power on self test.
+const inPostBody = `{"error":{"@Message.ExtendedInfo":[{"MessageId":"iLO.2.25.UnableToModifyDuringSystemPOST","Resolution":"After the computer system is either fully booted or powered off, retry the operation."}],"code":"iLO.0.10.ExtendedInfo","message":"See @Message.ExtendedInfo for more information."}}`
+
 func newCollectionError(failures map[string]error) error {
 	collectionErr := schemas.NewCollectionError()
 	maps.Copy(collectionErr.Failures, failures)
@@ -145,13 +149,31 @@ func TestWrapRedfishError_collectionWithoutRedfishError(t *testing.T) {
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF, "An item error which is not a Redfish error response stays reachable as well")
 }
 
-func TestRetryableWrapper(t *testing.T) {
+func TestErrorWrapper(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
 
-		wantRetryable bool
+		wantRetryable  bool
+		wantNotSettled bool
 	}{
+		{
+			name:           "the server is running through its POST",
+			err:            schemas.ConstructError(http.StatusBadRequest, []byte(inPostBody)),
+			wantNotSettled: true,
+		},
+		{
+			name: "the server is running through its POST, for a collection item",
+			err: fmt.Errorf("Failed to get BMC systems: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusBadRequest, []byte(inPostBody)),
+			})),
+			wantNotSettled: true,
+		},
+		{
+			name:           "the resource is in standby",
+			err:            schemas.ConstructError(http.StatusConflict, []byte(`{"error":{"code":"Base.1.12.ResourceInStandby","message":"The request could not be performed because the resource is in standby."}}`)),
+			wantNotSettled: true,
+		},
 		{
 			name: "nil",
 			err:  nil,
@@ -213,16 +235,17 @@ func TestRetryableWrapper(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := RetryableWrapper()(tc.err)
+			err := ErrorWrapper()(tc.err)
 
 			require.Equal(t, tc.wantRetryable, domain.IsRetryableError(err))
+			require.Equal(t, tc.wantNotSettled, domain.IsNotSettledError(err))
 
 			switch {
 			case tc.err == nil:
 				require.NoError(t, err)
 
-			case tc.wantRetryable:
-				require.EqualError(t, errors.Unwrap(err), tc.err.Error(), "Marking the error as retryable leaves the error reported to the caller untouched")
+			case tc.wantRetryable, tc.wantNotSettled:
+				require.EqualError(t, errors.Unwrap(err), tc.err.Error(), "Classifying the error leaves the error reported to the caller untouched")
 
 			default:
 				require.Equal(t, tc.err, err)
@@ -339,4 +362,56 @@ func TestRedactAuthorization(t *testing.T) {
 	}, "\n")
 
 	require.Equal(t, want, redactAuthorization(dump))
+}
+
+func TestIsApplyTimeRejected(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+
+		want bool
+	}{
+		{
+			name: "annotation and its member reported unknown",
+			body: `{"error":{"code":"Base.1.8.GeneralError","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","Message":"The property @Redfish.SettingsApplyTime is not in the list of valid properties for the resource."},{"MessageId":"Base.1.8.PropertyUnknown","Message":"The property ApplyTime is not in the list of valid properties for the resource."}]}}`,
+
+			want: true,
+		},
+		{
+			name: "annotation named by message argument",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","MessageArgs":["@Redfish.SettingsApplyTime"]}]}}`,
+
+			want: true,
+		},
+		{
+			name: "member named by related property",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","RelatedProperties":["#/ApplyTime"]}]}}`,
+
+			want: true,
+		},
+		{
+			name: "different property ending in ApplyTime",
+			body: `{"error":{"code":"Base.1.8.PropertyUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.8.PropertyUnknown","MessageArgs":["MaintenanceWindowApplyTime"]}]}}`,
+
+			want: false,
+		},
+		{
+			name: "rejected bios attribute value",
+			body: `{"error":{"code":"Base.1.5.PropertyValueNotInList","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.PropertyValueNotInList","MessageArgs":["auto","CbsDfCmnAcpiSratL3Numa"]}]}}`,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := schemas.ConstructError(400, []byte(tc.body))
+
+			require.Equal(t, tc.want, isApplyTimeRejected(err))
+		})
+	}
+}
+
+func TestIsApplyTimeRejected_nonRedfishError(t *testing.T) {
+	require.False(t, isApplyTimeRejected(errors.New("connection refused")))
 }

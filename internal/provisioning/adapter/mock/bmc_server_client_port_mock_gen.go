@@ -46,6 +46,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 //				panic("mock out the Dump method")
 //			},
+//			EnableSecureBootFunc: func(ctx context.Context, server provisioning.Server) (bool, error) {
+//				panic("mock out the EnableSecureBoot method")
+//			},
 //			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
 //				panic("mock out the GetData method")
 //			},
@@ -54,6 +57,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			},
 //			LogSourcesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
 //				panic("mock out the LogSources method")
+//			},
+//			ResetSecureBootKeysFunc: func(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ResetSecureBootKeys method")
 //			},
 //			ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ServerPowerOff method")
@@ -104,6 +110,9 @@ type BMCServerClientPortMock struct {
 	// DumpFunc mocks the Dump method.
 	DumpFunc func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
 
+	// EnableSecureBootFunc mocks the EnableSecureBoot method.
+	EnableSecureBootFunc func(ctx context.Context, server provisioning.Server) (bool, error)
+
 	// GetDataFunc mocks the GetData method.
 	GetDataFunc func(ctx context.Context, server provisioning.Server) (api.BMCData, error)
 
@@ -112,6 +121,9 @@ type BMCServerClientPortMock struct {
 
 	// LogSourcesFunc mocks the LogSources method.
 	LogSourcesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
+
+	// ResetSecureBootKeysFunc mocks the ResetSecureBootKeys method.
+	ResetSecureBootKeysFunc func(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error)
 
 	// ServerPowerOffFunc mocks the ServerPowerOff method.
 	ServerPowerOffFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
@@ -209,6 +221,13 @@ type BMCServerClientPortMock struct {
 			// Trace is the trace argument value.
 			Trace bool
 		}
+		// EnableSecureBoot holds details about calls to the EnableSecureBoot method.
+		EnableSecureBoot []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetData holds details about calls to the GetData method.
 		GetData []struct {
 			// Ctx is the ctx argument value.
@@ -227,6 +246,13 @@ type BMCServerClientPortMock struct {
 		}
 		// LogSources holds details about calls to the LogSources method.
 		LogSources []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// ResetSecureBootKeys holds details about calls to the ResetSecureBootKeys method.
+		ResetSecureBootKeys []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
@@ -295,9 +321,11 @@ type BMCServerClientPortMock struct {
 	lockConnectionTest              sync.RWMutex
 	lockDetachMedia                 sync.RWMutex
 	lockDump                        sync.RWMutex
+	lockEnableSecureBoot            sync.RWMutex
 	lockGetData                     sync.RWMutex
 	lockLogEntriesBySource          sync.RWMutex
 	lockLogSources                  sync.RWMutex
+	lockResetSecureBootKeys         sync.RWMutex
 	lockServerPowerOff              sync.RWMutex
 	lockServerPowerOn               sync.RWMutex
 	lockServerRestart               sync.RWMutex
@@ -634,6 +662,42 @@ func (mock *BMCServerClientPortMock) DumpCalls() []struct {
 	return calls
 }
 
+// EnableSecureBoot calls EnableSecureBootFunc.
+func (mock *BMCServerClientPortMock) EnableSecureBoot(ctx context.Context, server provisioning.Server) (bool, error) {
+	if mock.EnableSecureBootFunc == nil {
+		panic("BMCServerClientPortMock.EnableSecureBootFunc: method is nil but BMCServerClientPort.EnableSecureBoot was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockEnableSecureBoot.Lock()
+	mock.calls.EnableSecureBoot = append(mock.calls.EnableSecureBoot, callInfo)
+	mock.lockEnableSecureBoot.Unlock()
+	return mock.EnableSecureBootFunc(ctx, server)
+}
+
+// EnableSecureBootCalls gets all the calls that were made to EnableSecureBoot.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.EnableSecureBootCalls())
+func (mock *BMCServerClientPortMock) EnableSecureBootCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockEnableSecureBoot.RLock()
+	calls = mock.calls.EnableSecureBoot
+	mock.lockEnableSecureBoot.RUnlock()
+	return calls
+}
+
 // GetData calls GetDataFunc.
 func (mock *BMCServerClientPortMock) GetData(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
 	if mock.GetDataFunc == nil {
@@ -743,6 +807,42 @@ func (mock *BMCServerClientPortMock) LogSourcesCalls() []struct {
 	mock.lockLogSources.RLock()
 	calls = mock.calls.LogSources
 	mock.lockLogSources.RUnlock()
+	return calls
+}
+
+// ResetSecureBootKeys calls ResetSecureBootKeysFunc.
+func (mock *BMCServerClientPortMock) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (bool, *provisioning.BMCTaskMonitor, error) {
+	if mock.ResetSecureBootKeysFunc == nil {
+		panic("BMCServerClientPortMock.ResetSecureBootKeysFunc: method is nil but BMCServerClientPort.ResetSecureBootKeys was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockResetSecureBootKeys.Lock()
+	mock.calls.ResetSecureBootKeys = append(mock.calls.ResetSecureBootKeys, callInfo)
+	mock.lockResetSecureBootKeys.Unlock()
+	return mock.ResetSecureBootKeysFunc(ctx, server)
+}
+
+// ResetSecureBootKeysCalls gets all the calls that were made to ResetSecureBootKeys.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ResetSecureBootKeysCalls())
+func (mock *BMCServerClientPortMock) ResetSecureBootKeysCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockResetSecureBootKeys.RLock()
+	calls = mock.calls.ResetSecureBootKeys
+	mock.lockResetSecureBootKeys.RUnlock()
 	return calls
 }
 

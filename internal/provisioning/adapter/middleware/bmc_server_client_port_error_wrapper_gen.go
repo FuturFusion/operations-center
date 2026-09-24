@@ -106,6 +106,16 @@ func (_d BMCServerClientPortWithErrorWrapper) Dump(ctx context.Context, server p
 	return _d._base.Dump(ctx, server, additionalEndpoints, skipPredefined, trace)
 }
 
+// EnableSecureBoot implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) EnableSecureBoot(ctx context.Context, server provisioning.Server) (b bool, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.EnableSecureBoot(ctx, server)
+}
+
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
 	defer func() {
@@ -134,6 +144,16 @@ func (_d BMCServerClientPortWithErrorWrapper) LogSources(ctx context.Context, se
 		}
 	}()
 	return _d._base.LogSources(ctx, server)
+}
+
+// ResetSecureBootKeys implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (b bool, bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ResetSecureBootKeys(ctx, server)
 }
 
 // ServerPowerOff implements provisioning.BMCServerClientPort.

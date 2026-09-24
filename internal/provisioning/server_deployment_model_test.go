@@ -58,9 +58,17 @@ func TestServerDeploymentRequest_Validate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - undefined architecture",
+			name: "success - undefined architecture",
 			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
 				request.Architecture = images.UpdateFileArchitectureUndefined
+				return request
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - unknown architecture",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.Architecture = "ppc64le"
 				return request
 			},
 			assertErr: require.Error,
@@ -82,7 +90,8 @@ func TestNewServerDeploymentRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, api.ImageTypeISO, request.ImageType)
-	require.Equal(t, images.UpdateFileArchitecture64BitX86, request.Architecture)
+	require.Equal(t, images.UpdateFileArchitectureUndefined, request.Architecture,
+		"An architecture, that was not asked for, stays empty, so DeployByName takes it from the BMC of the server")
 	require.False(t, request.SkipSecureBootCertificates)
 	require.NoError(t, request.Validate())
 

@@ -6,6 +6,7 @@ Backend
 backoff
 balancer
 Balancer
+bitness
 BMC
 BMCs
 CAs
@@ -30,6 +31,7 @@ GPG
 hostname
 HPE
 https
+iLO
 Incus
 incusos
 IncusOS
@@ -82,6 +84,7 @@ ThinkSystem
 TLS
 toolchain
 TPM
+TTL
 UEFI
 UI
 URI

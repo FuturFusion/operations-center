@@ -65,7 +65,12 @@ jobs:
           sudo apt-get update
 
           sudo apt-get install --no-install-recommends -y \
-            make
+            make \
+            systemd-boot-efi \
+            efitools \
+            dosfstools \
+            mtools \
+            systemd-repart
 
       - name: Download go dependencies
         run: |

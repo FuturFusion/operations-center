@@ -398,6 +398,17 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 	}
 
 	if system != nil {
+		systemSecureBoot, err := system.SecureBoot()
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get secure boot information of BMC system", logger.Err(err))
+		}
+
+		if systemSecureBoot != nil {
+			bmcData.ServerSecureBootMode = string(systemSecureBoot.SecureBootMode)
+		}
+	}
+
+	if system != nil {
 		bios, err := system.Bios()
 		if err != nil {
 			markUnavailable(api.BMCDataPartBIOSAttributes, wrapRedfishError(err))
@@ -958,27 +969,45 @@ func (r redfish) ApplyBIOSAttributes(ctx context.Context, server provisioning.Se
 		return nil, fmt.Errorf("Failed to get bios settings apply time capabilities: %w", err)
 	}
 
-	if !slices.Contains(supportedApplyTimes, schemas.OnResetSettingsApplyTime) {
-		err = bios.UpdateBiosAttributes(schemas.SettingsAttributes(attributes))
-		if err != nil {
-			return nil, fmt.Errorf("Failed to apply bios attributes: %w", describeBIOSAttributesError(ctx, client, bios.AttributeRegistry, err))
-		}
-
-		return nil, nil
+	// Only ask for an apply time the BMC declared support for.
+	var applyTime schemas.SettingsApplyTime
+	if slices.Contains(supportedApplyTimes, schemas.OnResetSettingsApplyTime) {
+		applyTime = schemas.OnResetSettingsApplyTime
 	}
 
-	tm, err := bios.UpdateBiosAttributesApplyAtWithTask(schemas.SettingsAttributes(attributes), schemas.OnResetSettingsApplyTime)
+	taskMonitor, err := updateBIOSAttributes(ctx, server.BMCConfig.Endpoint, bios, attributes, applyTime)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to apply bios attributes: %w", describeBIOSAttributesError(ctx, client, bios.AttributeRegistry, err))
 	}
 
-	if tm != nil {
-		return &provisioning.BMCTaskMonitor{
-			URI: tm.TaskMonitor,
-		}, nil
+	if taskMonitor == nil {
+		return nil, nil
 	}
 
-	return nil, nil
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
+}
+
+// updateBIOSAttributes stages the attributes on the BIOS settings resource,
+// asking the BMC to apply them at the given apply time. A BMC, which turns the
+// apply time annotation down although it declared the apply time as supported,
+// gets the attributes without it. They are staged either way and the firmware
+// picks them up on the next boot.
+func updateBIOSAttributes(ctx context.Context, endpoint string, bios *schemas.Bios, attributes map[string]any, applyTime schemas.SettingsApplyTime) (*schemas.TaskMonitorInfo, error) {
+	taskMonitor, err := bios.UpdateBiosAttributesApplyAtWithTask(schemas.SettingsAttributes(attributes), applyTime)
+	if err == nil || applyTime == "" || !isApplyTimeRejected(err) {
+		return taskMonitor, err
+	}
+
+	slog.DebugContext(
+		ctx, "BMC does not know the BIOS settings apply time annotation it declared support for, staging the attributes without it",
+		slog.String("endpoint", endpoint),
+		slog.String("apply_time", string(applyTime)),
+		logger.Err(err),
+	)
+
+	return bios.UpdateBiosAttributesApplyAtWithTask(schemas.SettingsAttributes(attributes), "")
 }
 
 func (r redfish) BIOSAttributes(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error) {

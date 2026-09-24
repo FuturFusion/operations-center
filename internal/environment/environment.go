@@ -41,6 +41,7 @@ type Environment interface {
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
+	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
 }
 
 type httpClient interface {
@@ -53,6 +54,15 @@ type environment struct {
 	applicationEnvPrefix string
 
 	httpClient httpClient
+
+	// platformKeyUpdatePath is the signed platform key update of IncusOS on the
+	// EFI system partition of the host. It is a field, so a test can point it
+	// somewhere else.
+	platformKeyUpdatePath string
+
+	// isIncusOS tells, whether the host runs IncusOS. It is a field for the same
+	// reason.
+	isIncusOS func() bool
 }
 
 var _ Environment = environment{}
@@ -65,8 +75,10 @@ var _ Environment = environment{}
 // APP_DIR is formed.
 func New(applicationName, applicationEnvPrefix string) Environment {
 	return environment{
-		applicationName:      applicationName,
-		applicationEnvPrefix: applicationEnvPrefix,
+		applicationName:       applicationName,
+		applicationEnvPrefix:  applicationEnvPrefix,
+		platformKeyUpdatePath: PlatformKeyUpdatePath,
+		isIncusOS:             IsIncusOS,
 
 		httpClient: &http.Client{
 			Transport: &http.Transport{
@@ -168,6 +180,10 @@ const IncusOSSocket = "/run/incus-os/unix.socket"
 
 // IsIncusOS checks if the host system is running IncusOS.
 func (e environment) IsIncusOS() bool {
+	if e.isIncusOS != nil {
+		return e.isIncusOS()
+	}
+
 	return IsIncusOS()
 }
 
@@ -267,4 +283,32 @@ func (e environment) GetSecureBootCertificates(ctx context.Context) (incusosapi.
 	}
 
 	return certificates, nil
+}
+
+// PlatformKeyUpdatePath is where IncusOS keeps the signed update of the UEFI
+// platform key on the EFI system partition.
+const PlatformKeyUpdatePath = "/boot/loader/keys/auto/PK.auth"
+
+// GetSecureBootPlatformKeyUpdate returns the signed update of the UEFI platform
+// key of IncusOS, read from the EFI system partition of the host.
+//
+// The update is taken as it is rather than being built from the certificate,
+// since firmware, that requires the platform key to be self signed, only accepts
+// the one signed by the platform key of IncusOS itself, which Operations Center
+// does not hold.
+func (e environment) GetSecureBootPlatformKeyUpdate(_ context.Context) ([]byte, error) {
+	if !e.IsIncusOS() {
+		return nil, fmt.Errorf("Not an IncusOS system")
+	}
+
+	update, err := os.ReadFile(e.platformKeyUpdatePath)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read the IncusOS secure boot platform key update %q: %w", e.platformKeyUpdatePath, err)
+	}
+
+	if len(update) == 0 {
+		return nil, fmt.Errorf("The IncusOS secure boot platform key update %q is empty", e.platformKeyUpdatePath)
+	}
+
+	return update, nil
 }

@@ -3859,6 +3859,31 @@ const biosPatchErrorBodyPropertyValueNotInList = `{
   }
 }`
 
+// A Lenovo XCC declares OnReset among the supported apply times of its BIOS
+// resource, but does not know the annotation asking for it.
+const biosPatchErrorBodyApplyTimeUnknown = `{
+  "error": {
+    "code": "Base.1.8.GeneralError",
+    "message": "A general error has occurred. See ExtendedInfo for more information.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.8.PropertyUnknown",
+        "Message": "The property @Redfish.SettingsApplyTime is not in the list of valid properties for the resource.",
+        "MessageArgs": ["@Redfish.SettingsApplyTime"],
+        "Resolution": "Remove the unknown property from the request body and resubmit the request if the operation failed.",
+        "Severity": "Warning"
+      },
+      {
+        "MessageId": "Base.1.8.PropertyUnknown",
+        "Message": "The property ApplyTime is not in the list of valid properties for the resource.",
+        "MessageArgs": ["ApplyTime"],
+        "Resolution": "Remove the unknown property from the request body and resubmit the request if the operation failed.",
+        "Severity": "Warning"
+      }
+    ]
+  }
+}`
+
 // Message is optional in Redfish, a BMC might only report the message registry
 // identifier of the extended info.
 const biosPatchErrorBodyWithoutMessage = `{
@@ -4166,7 +4191,7 @@ func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
 
 	require.ErrorContains(t, err, "/redfish/v1/Systems/1: BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation.", "The Redfish error response the BMC reported for the system is rendered")
 
-	require.True(t, domain.IsRetryableError(redfish.RetryableWrapper()(err)), "A BMC which is temporarily unable to serve the system makes the request worth repeating")
+	require.True(t, domain.IsRetryableError(redfish.ErrorWrapper()(err)), "A BMC which is temporarily unable to serve the system makes the request worth repeating")
 }
 
 func TestRedfish_BIOSAttribute(t *testing.T) {
@@ -4400,10 +4425,11 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 		biosPatchStatusCode          int
 		biosPatchBody                string
 		biosPatchTaskMonitorLocation string
+		biosPatch                    mockResponses
 		extraRoutes                  map[string]mockRedfishRoute
 
 		attributes         map[string]any
-		wantPatchBody      string
+		wantPatchBodies    []string
 		wantTaskMonitor    *provisioning.BMCTaskMonitor
 		wantErrContains    string
 		wantErrNotContains string
@@ -4421,9 +4447,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBody,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBody,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody},
+			assertErr:       require.NoError,
 		},
 		{
 			name: "success - task monitor returned",
@@ -4438,8 +4464,8 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosPatchStatusCode:          http.StatusAccepted,
 			biosPatchTaskMonitorLocation: "/redfish/v1/TaskMonitor/1",
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBody,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody},
 			wantTaskMonitor: &provisioning.BMCTaskMonitor{
 				URI: "/redfish/v1/TaskMonitor/1",
 			},
@@ -4458,10 +4484,10 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosPatchStatusCode:   http.StatusOK,
 
 			attributes: map[string]any{"SecureBoot": "Enabled"},
-			wantPatchBody: `{
+			wantPatchBodies: []string{`{
   "Attributes": { "SecureBoot": "Enabled" },
   "@Redfish.SettingsApplyTime": { "ApplyTime": "OnReset" }
-}`,
+}`},
 			assertErr: require.NoError,
 		},
 		{
@@ -4476,9 +4502,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBodyApplyTimeNotDeclared,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
 		},
 		{
 			name: "success - apply time explicitly not supported, falls back to UpdateBiosAttributes",
@@ -4492,9 +4518,90 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			biosBody:              biosBodyApplyTimeNotSupported,
 			biosPatchStatusCode:   http.StatusOK,
 
-			attributes:    defaultBiosAttributes,
-			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
-			assertErr:     require.NoError,
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
+		},
+		{
+			name: "success - apply time declared but annotation rejected, retried without it",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusOK},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.NoError,
+		},
+		{
+			name: "success - annotation rejected, the retry returns a task monitor",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusAccepted},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - annotation rejected and the retry fails too",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusBadRequest},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown, biosPatchErrorBodyPropertyValueNotInList},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBody, wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       errassert.ValidationError,
+			wantErrContains: "The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.",
+		},
+		{
+			name: "error - apply time not declared, the rejection is not retried",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyApplyTimeNotDeclared,
+			biosPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusOK},
+				bodies:      []string{biosPatchErrorBodyApplyTimeUnknown},
+			},
+
+			attributes:      defaultBiosAttributes,
+			wantPatchBodies: []string{wantBiosPatchBodyApplyTimeNotSupported},
+			assertErr:       require.Error,
 		},
 		{
 			name:                  "error - failed to connect to BMC",
@@ -4663,7 +4770,7 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotPatchBody []byte
+			var gotPatchBodies [][]byte
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:        tc.serviceRootStatusCode,
@@ -4676,8 +4783,9 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 				biosPatchStatusCode:          tc.biosPatchStatusCode,
 				biosPatchBody:                tc.biosPatchBody,
 				biosPatchTaskMonitorLocation: tc.biosPatchTaskMonitorLocation,
+				biosPatch:                    tc.biosPatch,
 				extraRoutes:                  tc.extraRoutes,
-				gotBiosPatchBody:             &gotPatchBody,
+				gotBiosPatchBodies:           &gotPatchBodies,
 			}, nil)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -4686,8 +4794,12 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
 
-			if tc.wantPatchBody != "" {
-				require.JSONEq(t, tc.wantPatchBody, string(gotPatchBody))
+			if len(tc.wantPatchBodies) > 0 {
+				require.Len(t, gotPatchBodies, len(tc.wantPatchBodies), "BMC received exactly the expected BIOS patches")
+
+				for i, wantPatchBody := range tc.wantPatchBodies {
+					require.JSONEq(t, wantPatchBody, string(gotPatchBodies[i]), "BIOS patch %d", i)
+				}
 			}
 
 			if tc.wantErrContains != "" {
@@ -6700,6 +6812,14 @@ const secureBootBody = `{
 }`
 
 func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
+	// The fingerprints of the testdata certificates, as a BIOS profile names
+	// them to keep them across the wipe of a key database.
+	const (
+		microsoftCorporationUEFICA2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+		microsoftUEFICA2023            = "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901"
+		microsoftOptionROMUEFICA2023   = "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1"
+	)
+
 	// A valid certificate, which is not part of any allow list.
 	notAllowListedCertPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
@@ -6864,9 +6984,17 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{
+						microsoftCorporationUEFICA2011: true,
+						microsoftOptionROMUEFICA2023:   true,
+					},
+				},
+			},
 
-			// The two Microsoft CAs are kept, the option ROMs of the hardware
-			// stop being trusted otherwise.
+			// The two Microsoft CAs the BIOS profile keeps survive, the option
+			// ROMs of the hardware stop being trusted otherwise.
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "db/Certificates/2",
 			},
@@ -6899,9 +7027,17 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{
+						microsoftCorporationUEFICA2011: true,
+						microsoftOptionROMUEFICA2023:   true,
+					},
+				},
+			},
 
-			// Only the "db" database has an allow list, the very same
-			// certificate is wiped from any other key database.
+			// The allow list names the "db" database only, so the very same
+			// certificates are wiped from every other key database.
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
 				secureBootDatabasesPathPrefix + "dbx/Certificates/1",
@@ -6970,6 +7106,11 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{microsoftUEFICA2023: true},
+				},
+			},
 
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "db/Certificates/1",
@@ -7002,6 +7143,13 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
 				DB: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+			},
+			// The database holds the certificate of IncusOS plus one, that the
+			// BIOS profile keeps, so there is nothing left to do for it.
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{microsoftCorporationUEFICA2011: true},
+				},
 			},
 
 			assertErr: require.NoError,
@@ -7040,7 +7188,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - a BIOS profile keeps a certificate, the built in allow list does not",
+			name: "success - a BIOS profile keeps a certificate in a database it is not enrolled in",
 
 			serviceRootStatusCode:         http.StatusOK,
 			systemsStatusCode:             http.StatusOK,
@@ -7061,9 +7209,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootAllowList: api.BIOSSecureBoot{
 				KEK: api.BIOSSecureBootDatabase{
-					Certificates: map[string]bool{
-						"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true,
-					},
+					Certificates: map[string]bool{microsoftCorporationUEFICA2011: true},
 				},
 			},
 
@@ -7565,4 +7711,80 @@ func testSecureBootCertificatePEM(t *testing.T, file string) string {
 	require.NoError(t, err)
 
 	return string(pemCertificate)
+}
+
+func TestRedfish_EnableSecureBoot(t *testing.T) {
+	secureBootBodyWithEnable := func(enabled bool) string {
+		return fmt.Sprintf(`{
+  "@odata.id": "/redfish/v1/Systems/1/SecureBoot",
+  "Id": "SecureBoot",
+  "SecureBootEnable": %t,
+  "SecureBootMode": "SetupMode"
+}`, enabled)
+	}
+
+	tests := []struct {
+		name string
+
+		secureBootEnable bool
+
+		wantEnabled  bool
+		wantRequests []mockRequest
+	}{
+		{
+			// Secure boot is switched on only once the certificates are
+			// enrolled, since a server in the setup mode has nothing to enforce.
+			name: "success - secure boot is switched on",
+
+			secureBootEnable: false,
+
+			wantEnabled: true,
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/SecureBoot",
+					body:   `{"SecureBootEnable": true}`,
+				},
+			},
+		},
+		{
+			name: "success - secure boot is on already",
+
+			secureBootEnable: true,
+
+			wantEnabled:  false,
+			wantRequests: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotRequests []mockRequest
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           resetSystemsBody,
+				systemStatusCode:      http.StatusOK,
+				systemBody:            secureBootSystemBody,
+				secureBootStatusCode:  http.StatusOK,
+				secureBootBody:        secureBootBodyWithEnable(tc.secureBootEnable),
+			}, &gotRequests)
+
+			client := redfish.New()
+
+			enabled, err := client.EnableSecureBoot(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+			require.NoError(t, err)
+			require.Equal(t, tc.wantEnabled, enabled)
+
+			require.Len(t, gotRequests, len(tc.wantRequests))
+
+			for i, want := range tc.wantRequests {
+				require.Equal(t, want.method, gotRequests[i].method, "request %d", i)
+				require.Equal(t, want.path, gotRequests[i].path, "request %d", i)
+				require.JSONEq(t, want.body, gotRequests[i].body, "request %d, only the one writable property may be sent", i)
+			}
+		})
+	}
 }

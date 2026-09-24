@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -50,6 +51,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -115,6 +118,7 @@ type environment interface {
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
+	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
 }
 
 type Daemon struct {
@@ -312,16 +316,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 		seedprogress.New(),
 	)
 
-	biosProfileCatalogue, err := bios.New()
+	biosProfileCatalog, err := bios.New()
 	if err != nil {
 		return fmt.Errorf("Failed to load the BIOS profile catalog: %w", err)
 	}
 
 	biosProfile := provisioningAdapterMiddleware.NewBIOSProfilePortWithSlog(
-		biosProfileCatalogue,
+		biosProfileCatalog,
 	)
 
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress)
+	secureBootCatalog, err := securebootcerts.New()
+	if err != nil {
+		return fmt.Errorf("Failed to load the secure boot certificate catalog: %w", err)
+	}
+
+	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
+		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media")),
+	)
+
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -348,6 +361,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		imageSourceSvc,
 		incusImageSvc,
 		seedImageProgress,
+		secureBootMedia,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -416,7 +430,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, warningLogEmitter)
+	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -807,6 +821,8 @@ func (d *Daemon) setupServerService(
 	warningSvc provisioning.WarningServicePort,
 	biosProfile provisioning.BIOSProfilePort,
 	seedImageProgress provisioning.SeedImageProgressPort,
+	secureBootMedia provisioning.SecureBootMediaPort,
+	secureBootCatalog provisioning.SecureBootCertificateCatalogPort,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -827,6 +843,7 @@ func (d *Daemon) setupServerService(
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
+		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
@@ -834,7 +851,7 @@ func (d *Daemon) setupServerService(
 					redfish.New(
 						redfish.WithSecureBootCertificates(d.env),
 					),
-					redfish.RetryableWrapper(),
+					redfish.ErrorWrapper(),
 				),
 			),
 		),
@@ -954,6 +971,7 @@ func (d *Daemon) setupAPIRoutes(
 	imageSourceSvc image.IncusImageSourceService,
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
+	secureBootMedia provisioning.SecureBootMediaPort,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1011,6 +1029,10 @@ func (d *Daemon) setupAPIRoutes(
 			return false
 		}
 
+		if r.Pattern == "GET /1.0/provisioning/secure-boot-media/{filename}" {
+			return false
+		}
+
 		return true
 	}
 
@@ -1042,6 +1064,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
 	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
+
+	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
+	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
@@ -1085,6 +1110,7 @@ func (d *Daemon) setupBackgroundTasks(
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	imageFlasher *flasher.Flasher,
+	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
 ) {
 	if config.IsBackgroundTasksDisabled() {
@@ -1468,6 +1494,35 @@ func (d *Daemon) setupBackgroundTasks(
 		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
+	// Start background task to prune the generated secure boot enrollment media.
+	pruneSecureBootMediaTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
+
+		// A media, that a deployment has attached to a BMC, is kept: the BMC
+		// reads it only when the server boots, so it would otherwise be pruned
+		// while the server still needs it.
+		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
+	}
+
+	pruneSecureBootMediaTaskStop, _ := task.Start(ctx, pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pruneSecureBootMediaTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
@@ -1593,6 +1648,33 @@ func (d *Daemon) setupBackgroundTasks(
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
+}
+
+// attachedSecureBootMediaIDs returns the secure boot enrollment media, that the
+// deployment of a server still names (including failed deployments), so the
+// prune leaves it alone.
+func attachedSecureBootMediaIDs(ctx context.Context, serverSvc provisioning.ServerService) ([]string, error) {
+	servers, err := serverSvc.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get the servers to keep their secure boot enrollment media: %w", err)
+	}
+
+	var ids []string
+
+	for _, server := range servers {
+		if server.StatusInternal.Deployment == nil {
+			continue
+		}
+
+		id := server.StatusInternal.Deployment.SecureBootMediaID
+		if id == "" || slices.Contains(ids, id) {
+			continue
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
 
 func (d *Daemon) startBackgroundPollingTask(

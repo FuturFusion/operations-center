@@ -151,6 +151,20 @@ func (_d BMCServerClientPortWithPrometheus) Dump(ctx context.Context, server pro
 	return _d.base.Dump(ctx, server, additionalEndpoints, skipPredefined, trace)
 }
 
+// EnableSecureBoot implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) EnableSecureBoot(ctx context.Context, server provisioning.Server) (b bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "EnableSecureBoot", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.EnableSecureBoot(ctx, server)
+}
+
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
 	_since := time.Now()
@@ -191,6 +205,20 @@ func (_d BMCServerClientPortWithPrometheus) LogSources(ctx context.Context, serv
 		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "LogSources", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.LogSources(ctx, server)
+}
+
+// ResetSecureBootKeys implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) ResetSecureBootKeys(ctx context.Context, server provisioning.Server) (b bool, bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ResetSecureBootKeys", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResetSecureBootKeys(ctx, server)
 }
 
 // ServerPowerOff implements provisioning.BMCServerClientPort.
