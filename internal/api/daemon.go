@@ -1057,6 +1057,9 @@ func (d *Daemon) setupAPIRoutes(
 	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 
+	debugRouter := api10router.SubGroup("/debug")
+	registerDebugHandler(debugRouter, d.authorizer)
+
 	internalRouter := api10router.SubGroup("/internal")
 	registerInternalHandler(internalRouter, d.authorizer, db)
 
