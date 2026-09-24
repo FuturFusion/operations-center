@@ -219,11 +219,10 @@ type ServerDeployment struct {
 	// because the server is not settled, sends the deployment back to it.
 	LastPowerOffState api.ServerDeploymentState `json:"last_power_off_state"`
 
-	// MediaBytesRead holds how much of the installation media of size MediaSize
-	// the BMC had read when the deployment looked last, counting every byte once,
-	// no matter how often it was requested, or -1, if no progress is available.
+	// MediaBytesRead holds how much of the installation media the BMC had read
+	// when the deployment looked last, counting every byte once, no matter how
+	// often it was requested, or -1, if no progress is available.
 	MediaBytesRead int64 `json:"media_bytes_read"`
-	MediaSize      int64 `json:"media_size"`
 
 	// InstallOSObserved records, that the BMC has reported the server past the
 	// hand over to the operating system since the install wait was anchored, so
@@ -311,7 +310,6 @@ func (d ServerDeployment) ToAPI() *api.ServerDeploymentStatus {
 		MediaURL:               d.MediaURL,
 		SecureBootMediaURL:     d.SecureBootMediaURL,
 		MediaBytesRead:         d.MediaBytesRead,
-		MediaSize:              d.MediaSize,
 		Retries:                d.Retries,
 		LastError:              d.LastError,
 		FailedState:            d.FailedState,

@@ -1387,7 +1387,6 @@ func (s *serverService) attachDeploymentMedia(ctx context.Context, server provis
 		deployment.MediaURL = attached.imageURL
 		deployment.ImageDeploymentID = deploymentID
 		deployment.MediaBytesRead = -1
-		deployment.MediaSize = 0
 	}, nil
 }
 
@@ -2173,7 +2172,6 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 	if bytesRead != deployment.MediaBytesRead || osObserved != deployment.InstallOSObserved {
 		mutate = func(deployment *provisioning.ServerDeployment) {
 			deployment.MediaBytesRead = bytesRead
-			deployment.MediaSize = progress.Size
 			deployment.InstallOSObserved = osObserved
 		}
 	}

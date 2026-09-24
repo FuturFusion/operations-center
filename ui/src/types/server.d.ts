@@ -130,7 +130,6 @@ export interface ServerDeploymentStatus {
   media_url: string;
   secure_boot_media_url: string;
   media_bytes_read: number;
-  media_size: number;
   retries: number;
   last_error: string;
   failed_state: string;
