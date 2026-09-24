@@ -5559,14 +5559,6 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: MediaBytesRead
-            media_size:
-                description: |-
-                    MediaSize holds the size of the installation media the bytes above are
-                    read from. It is 0, if no read progress is available.
-                example: 3433074688
-                format: int64
-                type: integer
-                x-go-name: MediaSize
             media_url:
                 description: MediaURL holds the URL of the installation media attached to the server.
                 type: string
