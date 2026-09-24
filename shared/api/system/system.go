@@ -296,3 +296,20 @@ type UpdatesPut struct {
 	// first request, if set to false, authentication is done by HTTP header.
 	ImageServerAuthenticationByQueryParam bool `json:"image_server_authentication_by_query_param" yaml:"image_server_authentication_by_query_param"`
 }
+
+// BackupPost represents the options for the creation of a system backup.
+//
+// swagger:model
+type BackupPost struct {
+	// Complete includes the images and the cached update files in the backup.
+	// Example: false
+	Complete bool `json:"complete" yaml:"complete"`
+
+	// WithImages includes the images in the backup.
+	// Example: false
+	WithImages bool `json:"with_images" yaml:"with_images"`
+
+	// WithUpdates includes the cached update files in the backup.
+	// Example: false
+	WithUpdates bool `json:"with_updates" yaml:"with_updates"`
+}
