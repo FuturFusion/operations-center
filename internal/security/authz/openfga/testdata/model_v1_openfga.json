@@ -1,0 +1,168 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    {
+      "type": "user",
+      "relations": {},
+      "metadata": null
+    },
+    {
+      "type": "server",
+      "relations": {
+        "admin": {
+          "this": {}
+        },
+        "authenticated": {
+          "this": {}
+        },
+        "can_create": {
+          "computedUserset": {
+            "object": "",
+            "relation": "admin"
+          }
+        },
+        "can_delete": {
+          "computedUserset": {
+            "object": "",
+            "relation": "admin"
+          }
+        },
+        "can_edit": {
+          "computedUserset": {
+            "object": "",
+            "relation": "operator"
+          }
+        },
+        "can_view": {
+          "computedUserset": {
+            "object": "",
+            "relation": "viewer"
+          }
+        },
+        "operator": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "computedUserset": {
+                  "object": "",
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "user": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "computedUserset": {
+                  "object": "",
+                  "relation": "operator"
+                }
+              }
+            ]
+          }
+        },
+        "viewer": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "computedUserset": {
+                  "object": "",
+                  "relation": "user"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "admin": {
+            "directly_related_user_types": [
+              {
+                "type": "user",
+                "condition": ""
+              }
+            ],
+            "module": "",
+            "source_info": null
+          },
+          "authenticated": {
+            "directly_related_user_types": [
+              {
+                "type": "user",
+                "wildcard": {},
+                "condition": ""
+              }
+            ],
+            "module": "",
+            "source_info": null
+          },
+          "can_create": {
+            "directly_related_user_types": [],
+            "module": "",
+            "source_info": null
+          },
+          "can_delete": {
+            "directly_related_user_types": [],
+            "module": "",
+            "source_info": null
+          },
+          "can_edit": {
+            "directly_related_user_types": [],
+            "module": "",
+            "source_info": null
+          },
+          "can_view": {
+            "directly_related_user_types": [],
+            "module": "",
+            "source_info": null
+          },
+          "operator": {
+            "directly_related_user_types": [
+              {
+                "type": "user",
+                "condition": ""
+              }
+            ],
+            "module": "",
+            "source_info": null
+          },
+          "user": {
+            "directly_related_user_types": [
+              {
+                "type": "user",
+                "condition": ""
+              }
+            ],
+            "module": "",
+            "source_info": null
+          },
+          "viewer": {
+            "directly_related_user_types": [
+              {
+                "type": "user",
+                "condition": ""
+              }
+            ],
+            "module": "",
+            "source_info": null
+          }
+        },
+        "module": "",
+        "source_info": null
+      }
+    }
+  ],
+  "conditions": {}
+}

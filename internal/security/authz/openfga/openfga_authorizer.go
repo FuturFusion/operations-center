@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"time"
 
 	openfga "github.com/openfga/go-sdk"
@@ -122,16 +123,15 @@ func (f FGA) ensureAuthorizationModel(ctx context.Context) error {
 		return fmt.Errorf("Failed to read pre-existing OpenFGA model: %w", err)
 	}
 
+	var builtinAuthorizationModel client.ClientWriteAuthorizationModelRequest
+	err = json.Unmarshal([]byte(authModel), &builtinAuthorizationModel)
+	if err != nil {
+		return fmt.Errorf("Failed to unmarshal built in authorization model: %w", err)
+	}
+
 	// Check if we need to upload an initial model.
 	if readModelResponse.AuthorizationModel == nil {
 		slog.InfoContext(ctx, "Upload initial OpenFGA model")
-
-		// Upload the model itself.
-		var builtinAuthorizationModel client.ClientWriteAuthorizationModelRequest
-		err := json.Unmarshal([]byte(authModel), &builtinAuthorizationModel)
-		if err != nil {
-			return fmt.Errorf("Failed to unmarshal built in authorization model: %w", err)
-		}
 
 		_, err = f.client.WriteAuthorizationModel(ctx).Body(builtinAuthorizationModel).Execute()
 		if err != nil {
@@ -139,15 +139,104 @@ func (f FGA) ensureAuthorizationModel(ctx context.Context) error {
 		}
 
 		// Allow basic authenticated access.
-		err = f.sendTuples(ctx, []client.ClientTupleKey{
+		return f.sendTuples(ctx, []client.ClientTupleKey{
 			{User: "user:*", Relation: "authenticated", Object: authz.ObjectServer().String()},
 		}, nil)
-		if err != nil {
-			return err
-		}
+	}
+
+	latest := readModelResponse.AuthorizationModel
+	upToDate, err := isAuthorizationModelEqual(builtinAuthorizationModel, openfga.WriteAuthorizationModelRequest{
+		TypeDefinitions: latest.TypeDefinitions,
+		SchemaVersion:   latest.SchemaVersion,
+		Conditions:      latest.Conditions,
+	})
+	if err != nil {
+		return err
+	}
+
+	if upToDate {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "Upgrade outdated OpenFGA model", slog.String("outdated_model_id", latest.Id))
+
+	_, err = f.client.WriteAuthorizationModel(ctx).Body(builtinAuthorizationModel).Execute()
+	if err != nil {
+		return fmt.Errorf("Failed to write the authorization model: %w", err)
 	}
 
 	return nil
+}
+
+// isAuthorizationModelEqual compares two authorization models, ignoring the
+// zero values OpenFGA adds to the fields omitted in the built in model.
+func isAuthorizationModelEqual(a, b openfga.WriteAuthorizationModelRequest) (bool, error) {
+	normalizedA, err := normalizeAuthorizationModel(a)
+	if err != nil {
+		return false, err
+	}
+
+	normalizedB, err := normalizeAuthorizationModel(b)
+	if err != nil {
+		return false, err
+	}
+
+	return reflect.DeepEqual(normalizedA, normalizedB), nil
+}
+
+func normalizeAuthorizationModel(model openfga.WriteAuthorizationModelRequest) (any, error) {
+	body, err := json.Marshal(model)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal authorization model: %w", err)
+	}
+
+	var generic any
+	err = json.Unmarshal(body, &generic)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal authorization model: %w", err)
+	}
+
+	normalized, _ := pruneZeroValues(generic, "")
+
+	return normalized, nil
+}
+
+// pruneZeroValues recursively removes null, empty strings, empty lists and
+// empty objects and reports, if the value itself is empty. Empty objects are
+// kept for "this" and "wildcard", where their presence carries the meaning.
+func pruneZeroValues(value any, key string) (any, bool) {
+	switch v := value.(type) {
+	case nil:
+		return nil, true
+
+	case string:
+		return v, v == ""
+
+	case []any:
+		pruned := make([]any, 0, len(v))
+		for _, item := range v {
+			item, _ = pruneZeroValues(item, "")
+			pruned = append(pruned, item)
+		}
+
+		return pruned, len(pruned) == 0
+
+	case map[string]any:
+		pruned := make(map[string]any, len(v))
+		for k, item := range v {
+			item, empty := pruneZeroValues(item, k)
+			if empty {
+				continue
+			}
+
+			pruned[k] = item
+		}
+
+		return pruned, len(pruned) == 0 && key != "this" && key != "wildcard"
+
+	default:
+		return v, false
+	}
 }
 
 func (f FGA) CheckPermission(ctx context.Context, details *authz.RequestDetails, object authz.Object, entitlement authz.Entitlement) error {
