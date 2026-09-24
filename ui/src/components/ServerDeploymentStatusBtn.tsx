@@ -1,9 +1,8 @@
 import { FC, ReactNode, useState } from "react";
-import { ProgressBar } from "react-bootstrap";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { MdInfoOutline } from "react-icons/md";
 import ModalWindow from "components/ModalWindow";
-import { Server, ServerDeploymentStatus } from "types/server";
+import { Server } from "types/server";
 import { formatDateTime } from "util/date";
 import { bytesToHumanReadable } from "util/util";
 
@@ -17,22 +16,6 @@ const detailRow = (header: ReactNode, value: ReactNode) => {
       <div className="col-4 detail-table-header">{header}</div>
       <div className="col-8 detail-table-cell">{value}</div>
     </div>
-  );
-};
-
-const mediaRead = (deployment: ServerDeploymentStatus) => {
-  const read = bytesToHumanReadable(deployment.media_bytes_read);
-  if (deployment.media_size <= 0) {
-    return read;
-  }
-
-  return (
-    <>
-      {read} of {bytesToHumanReadable(deployment.media_size)}
-      <ProgressBar
-        now={(deployment.media_bytes_read / deployment.media_size) * 100}
-      />
-    </>
   );
 };
 
@@ -131,7 +114,10 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
               deployment.secure_boot_media_url,
             )}
           {deployment.media_bytes_read >= 0 &&
-            detailRow("Media read", mediaRead(deployment))}
+            detailRow(
+              "Media read",
+              bytesToHumanReadable(deployment.media_bytes_read),
+            )}
           {detailRow(
             "BIOS profiles",
             (deployment.bios_profiles ?? []).join(", "),
