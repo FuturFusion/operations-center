@@ -7,6 +7,7 @@ terminology of Operations Center.
 :maxdepth: 1
 
 API </reference/api>
+Backup and restore </reference/backup>
 Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
 Inventory </reference/inventory>
