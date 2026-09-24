@@ -448,11 +448,6 @@ type ServerDeploymentStatus struct {
 	// Example: 966754304
 	MediaBytesRead int64 `json:"media_bytes_read" yaml:"media_bytes_read"`
 
-	// MediaSize holds the size of the installation media the bytes above are
-	// read from. It is 0, if no read progress is available.
-	// Example: 3433074688
-	MediaSize int64 `json:"media_size" yaml:"media_size"`
-
 	// Retries holds the number of attempts already spent on the current state.
 	// Example: 0
 	Retries int `json:"retries" yaml:"retries"`
