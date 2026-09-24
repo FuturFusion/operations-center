@@ -1113,6 +1113,7 @@ func mustWriteFileWithContent(t *testing.T, filename string, magic []byte, size 
 
 const (
 	instanceStatusRunning = "Running"
+	instanceStatusStopped = "Stopped"
 	instanceStatusError   = "Error"
 )
 
@@ -1215,6 +1216,12 @@ func mustInstanceStatus(ctx context.Context, t *testing.T, name string) string {
 func waitInstanceStatusRunning(ctx context.Context, t *testing.T, name string, timeout time.Duration) string {
 	t.Helper()
 
+	return waitInstanceStatus(ctx, t, name, instanceStatusRunning, timeout)
+}
+
+func waitInstanceStatus(ctx context.Context, t *testing.T, name string, wantStatus string, timeout time.Duration) string {
+	t.Helper()
+
 	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
@@ -1226,13 +1233,13 @@ func waitInstanceStatusRunning(ctx context.Context, t *testing.T, name string, t
 		if err == nil {
 			lastStatus = status
 
-			if status == instanceStatusRunning {
+			if status == wantStatus {
 				return status
 			}
 		}
 
 		if count%10 == 0 {
-			t.Logf("Waiting %ds for instance %q to become running, current status: %q", count, name, lastStatus)
+			t.Logf("Waiting %ds for instance %q to reach status %q, current status: %q", count, name, wantStatus, lastStatus)
 		}
 
 		count++
@@ -1307,7 +1314,7 @@ func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) err
 	for attempt := range storageRetryAttempts {
 		resp := stopInstanceAttempt(ctx, t, name)
 		if resp.Success() {
-			return nil
+			return waitInstanceStopped(ctx, t, name)
 		}
 
 		lastErr = fmt.Errorf("Failed to stop instance %q: %w", name, fmtRunErr(resp))
@@ -1342,6 +1349,22 @@ func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) err
 	}
 
 	return fmt.Errorf("Giving up after %d attempts: %w", storageRetryAttempts, lastErr)
+}
+
+func waitInstanceStopped(ctx context.Context, t *testing.T, name string) error {
+	t.Helper()
+
+	status := waitInstanceStatus(ctx, t, name, instanceStatusStopped, 5*time.Minute)
+	if status == instanceStatusStopped {
+		return nil
+	}
+
+	err := errUnrecoverableStatus(name, status)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("Instance %q did not reach status %q after stop, current status: %q", name, instanceStatusStopped, status)
 }
 
 func startInstanceWithContext(ctx context.Context, t *testing.T, name string) error {
