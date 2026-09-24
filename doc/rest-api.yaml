@@ -5867,6 +5867,11 @@ definitions:
                     provisioning: DEBUG
                 type: object
                 x-go-name: LogLevels
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
             server_registration_scriptlet:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
@@ -5894,6 +5899,11 @@ definitions:
                     provisioning: DEBUG
                 type: object
                 x-go-name: LogLevels
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
             server_registration_scriptlet:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
