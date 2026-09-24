@@ -89,6 +89,7 @@ import (
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
+	systemSqlite "github.com/FuturFusion/operations-center/internal/system/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
@@ -148,6 +149,8 @@ type Daemon struct {
 
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
+
+	restartCh chan struct{}
 }
 
 func NewDaemon(ctx context.Context, env environment) *Daemon {
@@ -170,6 +173,7 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		configReloadMu:    &sync.Mutex{},
 		clientCertificate: string(clientCert),
 		clientKey:         string(clientKey),
+		restartCh:         make(chan struct{}, 1),
 
 		authenticator: &authn.Authenticator{},
 		oidcVerifier:  &authnoidc.Verifier{},
@@ -345,7 +349,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	d.systemSvc = d.setupSystemService(serverSvc)
+	backupRepo := systemLocalfs.NewBackup(d.env.VarDir())
+
+	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+
+	restored := backupRepo.IsRestoreApplied()
+	if restored {
+		err = d.abortRestoredOperations(ctx, serverSvc, clusterSvc)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Setup API routes
 	serveMux, inventorySyncers := d.setupAPIRoutes(
@@ -429,9 +443,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
-
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
 	select {
@@ -442,6 +453,61 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	case <-time.After(50 * time.Millisecond):
 		// Grace period we wait for potential immediate errors from serving the http server.
+	}
+
+	if restored {
+		err = backupRepo.CompleteRestore()
+		if err != nil {
+			return fmt.Errorf("Failed to complete restore: %w", err)
+		}
+
+		slog.InfoContext(ctx, "Restore from backup completed")
+	}
+
+	// Background tasks, started last to not act on a restore, which might be rolled back.
+	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
+
+	return nil
+}
+
+// abortRestoredOperations aborts the operations in progress at backup time.
+func (d *Daemon) abortRestoredOperations(ctx context.Context, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService) error {
+	clusters, err := clusterSvc.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get clusters after restore: %w", err)
+	}
+
+	for _, cluster := range clusters {
+		inProgress := cluster.UpdateStatus.InProgressStatus.InProgress
+		if inProgress == api.ClusterUpdateInProgressInactive || inProgress == api.ClusterUpdateInProgressError {
+			continue
+		}
+
+		slog.InfoContext(ctx, "Aborting cluster operation after restore", slog.String("cluster", cluster.Name), slog.String("operation", string(inProgress)))
+
+		err = clusterSvc.AbortClusterOperation(ctx, cluster.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to abort operation of cluster %q after restore: %w", cluster.Name, err)
+		}
+	}
+
+	servers, err := serverSvc.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get servers after restore: %w", err)
+	}
+
+	for _, server := range servers {
+		if !server.StatusInternal.Deployment.IsActive() {
+			continue
+		}
+
+		slog.InfoContext(ctx, "Cancelling server deployment after restore", slog.String("server", server.Name))
+
+		// Skip the cleanup, the server might have been deployed since.
+		err = serverSvc.CancelDeploymentByName(ctx, server.Name, true)
+		if err != nil {
+			return fmt.Errorf("Failed to cancel deployment of server %q after restore: %w", server.Name, err)
+		}
 	}
 
 	return nil
@@ -947,15 +1013,33 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
+func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
-			d.env, serverSvc,
+			d.env, serverSvc, clusterSvc,
 			systemRepoMiddleware.NewCacheRepoWithSlog(
 				systemLocalfs.New(d.env.CacheDir(), seedImageCacheDir),
 			),
+			systemRepoMiddleware.NewDatabaseRepoWithSlog(
+				systemSqlite.NewDatabase(db),
+			),
+			systemRepoMiddleware.NewBackupRepoWithSlog(backupRepo),
+			d.requestRestart,
 		),
 	)
+}
+
+// requestRestart asks the daemon to restart. It does not block.
+func (d *Daemon) requestRestart() {
+	select {
+	case d.restartCh <- struct{}{}:
+	default:
+	}
+}
+
+// RestartRequested is signaled, once the daemon asks to be restarted.
+func (d *Daemon) RestartRequested() <-chan struct{} {
+	return d.restartCh
 }
 
 func (d *Daemon) setupAPIRoutes(

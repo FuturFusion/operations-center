@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,6 +18,8 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/system"
+	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -64,6 +67,17 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
 	}
 
+	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
+
+	err = systemLocalfs.NewBackup(c.env.VarDir()).ApplyRestore()
+	if err != nil {
+		if !errors.Is(err, system.ErrRestoreRolledBack) {
+			return fmt.Errorf("Failed to prepare data directory %q: %w", c.env.VarDir(), err)
+		}
+
+		slog.ErrorContext(logCtx, "Failed to restore from backup", logger.Err(err))
+	}
+
 	// Ensure we have the run directory.
 	err = os.MkdirAll(c.env.RunDir(), 0o750)
 	if err != nil {
@@ -96,8 +110,6 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	)
 	defer stop()
 
-	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
-
 	// Generate client certificate if none are found.
 	clientCertFilename := filepath.Join(c.env.VarDir(), config.ClientCertificateFilename)
 	clientKeyFilename := filepath.Join(c.env.VarDir(), config.ClientKeyFilename)
@@ -119,19 +131,54 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	slog.InfoContext(logCtx, "Daemon started")
 
-	<-rootCtx.Done()
+	restart := false
+	select {
+	case <-rootCtx.Done():
+	case <-d.RestartRequested():
+		restart = true
+	}
+
 	slog.InfoContext(logCtx, "Shutting down")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
-	err = d.Stop(shutdownCtx)
-	if err != nil {
-		slog.ErrorContext(logCtx, "Error occurred during shutdown of daemon", logger.Err(err))
-		return fmt.Errorf("Error occurred during shutdown of daemon: %v", err)
+	stopErr := d.Stop(shutdownCtx)
+	if stopErr != nil {
+		slog.ErrorContext(logCtx, "Error occurred during shutdown of daemon", logger.Err(stopErr))
+	} else {
+		slog.InfoContext(logCtx, "Daemon shutdown completed successfully")
 	}
 
-	slog.InfoContext(logCtx, "Daemon shutdown completed successfully")
+	// A requested restart is performed even if the shutdown failed.
+	if restart {
+		err = restartDaemon(logCtx)
+		if err != nil {
+			slog.ErrorContext(logCtx, "Failed to restart daemon", logger.Err(err))
+			return fmt.Errorf("Failed to restart daemon: %v", err)
+		}
+	}
+
+	if stopErr != nil {
+		return fmt.Errorf("Error occurred during shutdown of daemon: %v", stopErr)
+	}
+
+	return nil
+}
+
+// restartDaemon replaces the running process with a new instance of the daemon.
+func restartDaemon(ctx context.Context) error {
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("Failed to determine executable: %w", err)
+	}
+
+	slog.InfoContext(ctx, "Restarting daemon")
+
+	err = unix.Exec(executable, os.Args, os.Environ())
+	if err != nil {
+		return fmt.Errorf("Failed to execute %q: %w", executable, err)
+	}
 
 	return nil
 }
