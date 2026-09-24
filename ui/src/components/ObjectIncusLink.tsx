@@ -8,12 +8,23 @@ type Props = {
   objectName: string;
 };
 
+const incusURL = (incusPath: string, clusterURL?: string): string => {
+  if (!clusterURL) return "";
+
+  try {
+    return new URL(incusPath, clusterURL).toString();
+  } catch {
+    return "";
+  }
+};
+
 const ObjectIncusLink: FC<Props> = ({ cluster, incusPath, objectName }) => {
   const { clusterMap, isLoading } = useClusterMap();
 
   if (isLoading) return <>{objectName}</>;
 
-  const href = new URL(incusPath, clusterMap[cluster]).toString();
+  const href = incusURL(incusPath, clusterMap[cluster]);
+  if (!href) return <>{objectName}</>;
 
   return (
     <Link
