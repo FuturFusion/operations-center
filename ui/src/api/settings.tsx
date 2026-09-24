@@ -1,4 +1,4 @@
-import { APIResponse } from "types/response";
+import { APIResponse, ErrorMetadata } from "types/response";
 import {
   SystemCertificate,
   SystemNetwork,
@@ -6,7 +6,7 @@ import {
   SystemSettings,
   SystemUpdates,
 } from "types/settings";
-import { processResponse } from "util/response";
+import { APIError, processResponse } from "util/response";
 
 export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
   return new Promise((resolve, reject) => {
@@ -116,6 +116,50 @@ export const updateSystemUpdates = (
     fetch(`/1.0/system/updates`, {
       method: "PUT",
       body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const createSystemBackup = (
+  withImages: boolean,
+  withUpdates: boolean,
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/system/:backup`, {
+      method: "POST",
+      body: JSON.stringify({
+        with_images: withImages,
+        with_updates: withUpdates,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const error =
+            (await response.json()) as APIResponse<ErrorMetadata | null>;
+          throw new APIError(error);
+        }
+
+        return response.blob();
+      })
+      .then((data) => resolve(URL.createObjectURL(data)))
+      .catch(reject);
+  });
+};
+
+export const restoreSystemBackup = (file: File): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/system/:restore`, {
+      method: "POST",
+      body: file,
+      headers: {
+        "Content-Type": "application/gzip",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
