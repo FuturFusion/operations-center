@@ -11,3 +11,11 @@ export const ClusterUpdateInProgress = {
   RollingReboot: "rolling reboot",
   Error: "error",
 } as const;
+
+export const validateConnectionURL = (value: string): string | undefined => {
+  if (!value.trim()) {
+    return "Connection URL is required";
+  }
+
+  return undefined;
+};

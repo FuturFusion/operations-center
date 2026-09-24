@@ -1,10 +1,11 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useFormik } from "formik";
+import { FormikErrors, useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
 import KeyValueWidget from "components/KeyValueWidget";
 import RestoreModeSelect from "components/RestoreModeSelect";
 import { Cluster, ClusterFormValues } from "types/cluster";
+import { validateConnectionURL } from "util/cluster";
 
 interface Props {
   cluster?: Cluster;
@@ -24,9 +25,23 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     restore_mode: cluster?.config.rolling_restart.restore_mode || "",
   };
 
+  const validateForm = (
+    values: ClusterFormValues,
+  ): FormikErrors<ClusterFormValues> => {
+    const errors: FormikErrors<ClusterFormValues> = {};
+
+    const connectionURLError = validateConnectionURL(values.connection_url);
+    if (connectionURLError) {
+      errors.connection_url = connectionURLError;
+    }
+
+    return errors;
+  };
+
   const formik = useFormik({
     initialValues: formikInitialValues,
     enableReinitialize: true,
+    validate: validateForm,
     onSubmit: (values: ClusterFormValues) => {
       onSubmit(values);
     },
@@ -84,7 +99,13 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
               value={formik.values.connection_url}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.connection_url && formik.touched.connection_url
+              }
             />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.connection_url}
+            </Form.Control.Feedback>
           </Form.Group>
           <ChannelSelect
             formClasses="mb-3"

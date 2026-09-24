@@ -8,6 +8,7 @@ import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
 import { ClusterPost } from "types/cluster";
+import { validateConnectionURL } from "util/cluster";
 import { IncusServerTypeString, ServerType } from "util/server";
 import { handleCtrlA } from "util/util";
 import YAML from "yaml";
@@ -32,6 +33,11 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
 
     if (!values.name) {
       errors.name = "Name is required";
+    }
+
+    const connectionURLError = validateConnectionURL(values.connection_url);
+    if (connectionURLError) {
+      errors.connection_url = connectionURLError;
     }
 
     if (values.server_names.length <= 0) {
