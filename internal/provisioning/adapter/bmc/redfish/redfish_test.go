@@ -11,8 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -25,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -6812,14 +6811,6 @@ const secureBootBody = `{
 }`
 
 func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
-	// The fingerprints of the testdata certificates, as a BIOS profile names
-	// them to keep them across the wipe of a key database.
-	const (
-		microsoftCorporationUEFICA2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
-		microsoftUEFICA2023            = "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901"
-		microsoftOptionROMUEFICA2023   = "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1"
-	)
-
 	// A valid certificate, which is not part of any allow list.
 	notAllowListedCertPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
@@ -6978,9 +6969,9 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("db"),
 			secureBootDatabases: map[string]mockSecureBootDatabase{
 				"db": withSecureBootCertificateContents(newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated, "1", "2", "3"), "db", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftCorporationUEFICA2011)},
 					"2": {pemCertificate: string(notAllowListedCertPEM)},
-					"3": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-option-rom-uefi-ca-2023.pem")},
+					"3": {pemCertificate: catalogCertificate(t, microsoftOptionROMUEFICA2023)},
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
@@ -7020,10 +7011,10 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK", "dbx"),
 			secureBootDatabases: map[string]mockSecureBootDatabase{
 				"KEK": withSecureBootCertificateContents(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), "KEK", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftCorporationUEFICA2011)},
 				}),
 				"dbx": withSecureBootCertificateContents(newSecureBootDatabaseFixture("dbx", http.StatusOK, http.StatusCreated, "1"), "dbx", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-option-rom-uefi-ca-2023.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftOptionROMUEFICA2023)},
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
@@ -7102,7 +7093,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 					// A BMC not reporting the certificate itself leaves no way
 					// to tell whether it is allow listed, so it is wiped.
 					"1": {pemCertificate: ""},
-					"2": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+					"2": {pemCertificate: catalogCertificate(t, microsoftUEFICA2023)},
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
@@ -7137,12 +7128,12 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("db"),
 			secureBootDatabases: map[string]mockSecureBootDatabase{
 				"db": withSecureBootCertificateContents(newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated, "1", "2"), "db", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
-					"2": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftUEFICA2023)},
+					"2": {pemCertificate: catalogCertificate(t, microsoftCorporationUEFICA2011)},
 				}),
 			},
 			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
-				DB: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+				DB: []string{catalogCertificate(t, microsoftUEFICA2023)},
 			},
 			// The database holds the certificate of IncusOS plus one, that the
 			// BIOS profile keeps, so there is nothing left to do for it.
@@ -7168,22 +7159,22 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK", "dbx"),
 			secureBootDatabases: map[string]mockSecureBootDatabase{
 				"KEK": withSecureBootCertificateContents(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), "KEK", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftUEFICA2023)},
 				}),
 				"dbx": withSecureBootCertificateContents(newSecureBootDatabaseFixture("dbx", http.StatusOK, http.StatusCreated, "1"), "dbx", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-option-rom-uefi-ca-2023.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftOptionROMUEFICA2023)},
 				}),
 			},
 			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
-				KEK: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
-				DBX: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+				KEK: []string{catalogCertificate(t, microsoftUEFICA2023)},
+				DBX: []string{catalogCertificate(t, microsoftUEFICA2023)},
 			},
 
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "dbx/Certificates/1",
 			},
 			wantPostedCerts: map[string][]postedCertificate{
-				"dbx": {{CertificateString: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem"), CertificateType: "PEM"}},
+				"dbx": {{CertificateString: catalogCertificate(t, microsoftUEFICA2023), CertificateType: "PEM"}},
 			},
 			assertErr: require.NoError,
 		},
@@ -7201,11 +7192,11 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
 			secureBootDatabases: map[string]mockSecureBootDatabase{
 				"KEK": withSecureBootCertificateContents(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), "KEK", map[string]secureBootCertificateContent{
-					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+					"1": {pemCertificate: catalogCertificate(t, microsoftCorporationUEFICA2011)},
 				}),
 			},
 			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
-				KEK: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+				KEK: []string{catalogCertificate(t, microsoftUEFICA2023)},
 			},
 			secureBootAllowList: api.BIOSSecureBoot{
 				KEK: api.BIOSSecureBootDatabase{
@@ -7214,7 +7205,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 
 			wantPostedCerts: map[string][]postedCertificate{
-				"KEK": {{CertificateString: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem"), CertificateType: "PEM"}},
+				"KEK": {{CertificateString: catalogCertificate(t, microsoftUEFICA2023), CertificateType: "PEM"}},
 			},
 			assertErr: require.NoError,
 		},
@@ -7704,13 +7695,25 @@ func secureBootCertificateBody(dbID string, certID string, content secureBootCer
 		secureBootDatabasesPathPrefix+dbID+"/Certificates/"+certID, certID, content.pemCertificate, content.serialNumber, content.fingerprint)
 }
 
-func testSecureBootCertificatePEM(t *testing.T, file string) string {
+// The fingerprints of the shipped certificates, as a BIOS profile names them to
+// keep them across the wipe of a key database.
+const (
+	microsoftCorporationUEFICA2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+	microsoftUEFICA2023            = "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901"
+	microsoftOptionROMUEFICA2023   = "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1"
+)
+
+func catalogCertificate(t *testing.T, fingerprint string) string {
 	t.Helper()
 
-	pemCertificate, err := os.ReadFile(filepath.Join("testdata", file))
+	catalog, err := securebootcerts.New()
 	require.NoError(t, err)
 
-	return string(pemCertificate)
+	certificates, unknown := catalog.CertificatesByFingerprint([]string{fingerprint})
+	require.Empty(t, unknown, "The certificate %q has to be shipped in the catalog", fingerprint)
+	require.Len(t, certificates, 1)
+
+	return certificates[0]
 }
 
 func TestRedfish_EnableSecureBoot(t *testing.T) {

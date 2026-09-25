@@ -3,8 +3,6 @@ package redfish
 import (
 	"encoding/pem"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,8 +10,19 @@ import (
 	"github.com/stmcginnis/gofish/schemas"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+// The fingerprints of the shipped certificates, as a BIOS profile names them to
+// keep them across the wipe of a key database.
+const (
+	microsoftCorporationUEFICA2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+	microsoftUEFICA2023            = "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901"
+	microsoftOptionROMUEFICA2023   = "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1"
+	lenovoSupplierExecutableCA2017 = "89942cabd60392f5817bbde1ab7be34483ecb3ef2d282737dd266b6b30dfcce1"
 )
 
 func TestSecureBootCertificateFingerprint(t *testing.T) {
@@ -26,17 +35,17 @@ func TestSecureBootCertificateFingerprint(t *testing.T) {
 	}{
 		{
 			name:              "success",
-			certificateString: readTestdataCertificate(t, "microsoft-corporation-uefi-ca-2011.pem"),
+			certificateString: catalogCertificate(t, microsoftCorporationUEFICA2011),
 
-			want:      "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507",
+			want:      microsoftCorporationUEFICA2011,
 			assertErr: require.NoError,
 		},
 		{
 			name: "success - a chain is identified by its leaf certificate",
-			certificateString: readTestdataCertificate(t, "microsoft-uefi-ca-2023.pem") +
-				readTestdataCertificate(t, "microsoft-option-rom-uefi-ca-2023.pem"),
+			certificateString: catalogCertificate(t, microsoftUEFICA2023) +
+				catalogCertificate(t, microsoftOptionROMUEFICA2023),
 
-			want:      "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
+			want:      microsoftUEFICA2023,
 			assertErr: require.NoError,
 		},
 		{
@@ -63,9 +72,9 @@ func TestSecureBootCertificateFingerprint(t *testing.T) {
 			// fingerprinted, or the allow list can not keep it and the option
 			// ROMs it signs stop being trusted.
 			name:              "success - a certificate, that can not be parsed, still has a fingerprint",
-			certificateString: readTestdataCertificate(t, "lenovo-supplier-executable-ca-2017.pem"),
+			certificateString: catalogCertificate(t, lenovoSupplierExecutableCA2017),
 
-			want:      "89942cabd60392f5817bbde1ab7be34483ecb3ef2d282737dd266b6b30dfcce1",
+			want:      lenovoSupplierExecutableCA2017,
 			assertErr: require.NoError,
 		},
 	}
@@ -261,13 +270,17 @@ func newSecureBootDatabaseWithODataID(odataID string) *schemas.SecureBootDatabas
 	return secureBootDB
 }
 
-func readTestdataCertificate(t *testing.T, file string) string {
+func catalogCertificate(t *testing.T, fingerprint string) string {
 	t.Helper()
 
-	pemCertificate, err := os.ReadFile(filepath.Join("testdata", file))
+	catalog, err := securebootcerts.New()
 	require.NoError(t, err)
 
-	return string(pemCertificate)
+	certificates, unknown := catalog.CertificatesByFingerprint([]string{fingerprint})
+	require.Empty(t, unknown, "The certificate %q has to be shipped in the catalog", fingerprint)
+	require.Len(t, certificates, 1)
+
+	return certificates[0]
 }
 
 func keys[V any](m map[string]V) []string {
@@ -360,9 +373,9 @@ func TestSecureBootAllowList(t *testing.T) {
 }
 
 func TestSecureBootDatabaseApplied(t *testing.T) {
-	microsoft2011 := readTestdataCertificate(t, "microsoft-corporation-uefi-ca-2011.pem")
-	incusOS := readTestdataCertificate(t, "microsoft-uefi-ca-2023.pem")
-	optionROM := readTestdataCertificate(t, "microsoft-option-rom-uefi-ca-2023.pem")
+	microsoft2011 := catalogCertificate(t, microsoftCorporationUEFICA2011)
+	incusOS := catalogCertificate(t, microsoftUEFICA2023)
+	optionROM := catalogCertificate(t, microsoftOptionROMUEFICA2023)
 
 	tests := []struct {
 		name            string
@@ -480,7 +493,7 @@ func testSecureBootAllowList(t *testing.T, pemCertificates []string, signatures 
 	}
 
 	for _, pemCertificate := range pemCertificates {
-		fingerprint, err := pemCertificateFingerprint("allow list", pemCertificate)
+		fingerprint, err := certificate.DERFingerprint("allow list", []byte(pemCertificate))
 		require.NoError(t, err)
 
 		allowList.certificates[fingerprint] = struct{}{}

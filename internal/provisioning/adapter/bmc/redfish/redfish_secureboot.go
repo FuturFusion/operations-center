@@ -2,10 +2,7 @@ package redfish
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -18,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -413,7 +411,7 @@ func secureBootDatabaseApplied(state secureBootDatabaseState, allowList secureBo
 		// A certificate, that can not be parsed, can not be looked for either,
 		// so the database has to be reinitialized. The enrollment then posts it
 		// verbatim and lets the BMC reject it.
-		fingerprint, err := pemCertificateFingerprint("of IncusOS", pemCertificate)
+		fingerprint, err := certificate.DERFingerprint("of IncusOS", []byte(pemCertificate))
 		if err != nil {
 			return false
 		}
@@ -492,26 +490,7 @@ func wipeSecureBootDatabase(ctx context.Context, client *gofish.APIClient, state
 }
 
 func secureBootCertificateFingerprint(cert *schemas.Certificate) (string, error) {
-	return pemCertificateFingerprint(cert.ODataID, cert.CertificateString)
-}
-
-// pemCertificateFingerprint returns the lower case hex encoded SHA256
-// fingerprint of the DER encoding of a PEM encoded certificate.
-//
-// The DER is hashed as it is, rather than being parsed first: some vendors,
-// Lenovo among them, enroll certificates, that x509.ParseCertificate rejects,
-// for example for carrying an extension twice. Parsing them would leave them
-// without a fingerprint to match an allow list against, which has them wiped
-// from the key database, and with them the trust in the option ROMs they sign.
-func pemCertificateFingerprint(name string, pemCertificate string) (string, error) {
-	block, _ := pem.Decode([]byte(pemCertificate))
-	if block == nil || block.Type != "CERTIFICATE" {
-		return "", fmt.Errorf("Secure boot database certificate %q does not contain a PEM encoded certificate", name)
-	}
-
-	sum := sha256.Sum256(block.Bytes)
-
-	return hex.EncodeToString(sum[:]), nil
+	return certificate.DERFingerprint(cert.ODataID, []byte(cert.CertificateString))
 }
 
 func deleteSecureBootEntry(client *gofish.APIClient, odataID string) error {
