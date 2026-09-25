@@ -401,3 +401,25 @@ func ensureDBRows(before map[string]int, after map[string]int) error {
 
 	return nil
 }
+
+// Version returns the current and the latest known schema version of db.
+func Version(ctx context.Context, db *sql.DB) (current int, latest int, _ error) {
+	err := transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
+		exists, err := doesSchemaTableExist(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("Failed to check if schema table is there: %w", err)
+		}
+
+		if !exists {
+			return nil
+		}
+
+		current, err = queryCurrentVersion(ctx, tx)
+		return err
+	})
+	if err != nil {
+		return -1, -1, err
+	}
+
+	return current, len(updates), nil
+}
