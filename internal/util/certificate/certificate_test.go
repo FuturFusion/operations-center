@@ -4,8 +4,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/pem"
 	"math/big"
 	"testing"
@@ -81,6 +83,83 @@ func TestDecode(t *testing.T) {
 			require.NotNil(t, cert)
 		})
 	}
+}
+
+func TestDERFingerprint(t *testing.T) {
+	leafPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	issuerPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	leafBlock, _ := pem.Decode(leafPEM)
+	require.NotNil(t, leafBlock)
+
+	leafSum := sha256.Sum256(leafBlock.Bytes)
+	leafFingerprint := hex.EncodeToString(leafSum[:])
+
+	tests := []struct {
+		name           string
+		pemCertificate string
+
+		want      string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success",
+			pemCertificate: string(leafPEM),
+
+			want:      leafFingerprint,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - a chain is identified by its leaf certificate",
+			pemCertificate: string(leafPEM) + string(issuerPEM),
+
+			want:      leafFingerprint,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - empty",
+			pemCertificate: "",
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - not PEM encoded",
+			pemCertificate: "not a PEM encoded certificate",
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - PEM block is not a certificate",
+			pemCertificate: string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: []byte("public key")})),
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := certificate.DERFingerprint("test", []byte(tc.pemCertificate))
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestDERFingerprintDoesNotParse(t *testing.T) {
+	unparseable := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("not-a-real-der-certificate")}))
+
+	_, err := certificate.Decode([]byte(unparseable))
+	require.Error(t, err, "The certificate has to be one x509.ParseCertificate rejects")
+
+	sum := sha256.Sum256([]byte("not-a-real-der-certificate"))
+
+	got, err := certificate.DERFingerprint("unparseable", []byte(unparseable))
+	require.NoError(t, err)
+	require.Equal(t, hex.EncodeToString(sum[:]), got)
 }
 
 func TestEncodeToPEM(t *testing.T) {

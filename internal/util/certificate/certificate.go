@@ -1,7 +1,9 @@
 package certificate
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -20,6 +22,25 @@ func Decode(certBytes []byte) (*x509.Certificate, error) {
 	}
 
 	return cert, nil
+}
+
+// DERFingerprint returns the lower case hex encoded SHA256 fingerprint of the
+// DER encoding of a PEM encoded certificate. The name identifies the
+// certificate in the error.
+//
+// The DER is hashed as it is, rather than being parsed first: some vendors,
+// Lenovo among them, ship certificates, that x509.ParseCertificate rejects, for
+// example for carrying an extension twice, while the firmware enrolls and trusts
+// them just fine.
+func DERFingerprint(name string, pemCertificate []byte) (string, error) {
+	block, _ := pem.Decode(pemCertificate)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return "", fmt.Errorf("Certificate %q does not contain a PEM encoded certificate", name)
+	}
+
+	sum := sha256.Sum256(block.Bytes)
+
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // EncodeToPEM encodes a raw DER certificate in PEM format.

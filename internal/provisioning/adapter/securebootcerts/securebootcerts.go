@@ -3,15 +3,13 @@
 package securebootcerts
 
 import (
-	"crypto/sha256"
 	"embed"
-	"encoding/hex"
-	"encoding/pem"
 	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 )
 
 //go:embed certs/*.pem
@@ -90,7 +88,7 @@ func newFromFS(fsys embed.FS, dir string, entries []entry) (Catalog, error) {
 			return Catalog{}, fmt.Errorf("Failed to read UEFI certificate from %q: %w", path, err)
 		}
 
-		fingerprint, err := certificateFingerprint(path, body)
+		fingerprint, err := certificate.DERFingerprint(path, body)
 		if err != nil {
 			return Catalog{}, err
 		}
@@ -111,24 +109,6 @@ func newFromFS(fsys embed.FS, dir string, entries []entry) (Catalog, error) {
 	return catalog, nil
 }
 
-// certificateFingerprint returns the lower case hex encoded SHA256 fingerprint
-// of the DER encoding of a PEM encoded certificate.
-//
-// The DER is hashed as it is, rather than being parsed first: some vendors,
-// Lenovo among them, ship certificates, that x509.ParseCertificate rejects, for
-// example for carrying an extension twice, while the firmware enrolls and trusts
-// them just fine.
-func certificateFingerprint(name string, pemCertificate []byte) (string, error) {
-	block, _ := pem.Decode(pemCertificate)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return "", fmt.Errorf("UEFI certificate %q does not contain a PEM encoded certificate", name)
-	}
-
-	sum := sha256.Sum256(block.Bytes)
-
-	return hex.EncodeToString(sum[:]), nil
-}
-
 func (c Catalog) CertificatesByFingerprint(fingerprints []string) ([]string, []string) {
 	var (
 		certificates []string
@@ -136,13 +116,13 @@ func (c Catalog) CertificatesByFingerprint(fingerprints []string) ([]string, []s
 	)
 
 	for _, fingerprint := range fingerprints {
-		certificate, ok := c.certificates[fingerprint]
+		pemCertificate, ok := c.certificates[fingerprint]
 		if !ok {
 			unknown = append(unknown, fingerprint)
 			continue
 		}
 
-		certificates = append(certificates, certificate)
+		certificates = append(certificates, pemCertificate)
 	}
 
 	return certificates, unknown
