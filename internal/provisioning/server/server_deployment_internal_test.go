@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"testing"
 	"time"
 
@@ -1231,6 +1232,20 @@ func Test_deploymentStatesSecureBootRecordsItsAttempt(t *testing.T) {
 	prepare(&deployment)
 
 	require.True(t, deployment.SecureBootAttempted)
+}
+
+// Test_deploymentStatesCancelPhase asserts, that exactly the states, which clean
+// a cancelled deployment up, are exempt from being preempted by a cancellation.
+// A state marked wrongly either never cancels or never finishes cancelling.
+func Test_deploymentStatesCancelPhase(t *testing.T) {
+	want := []api.ServerDeploymentState{
+		api.ServerDeploymentStateCancel,
+		api.ServerDeploymentStateWaitCancel,
+	}
+
+	for state, definition := range deploymentStates {
+		require.Equal(t, slices.Contains(want, state), definition.cancelPhase, "state %q is marked as a cancel phase wrongly", state)
+	}
 }
 
 func Test_deploymentStatesAreAllReachable(t *testing.T) {
