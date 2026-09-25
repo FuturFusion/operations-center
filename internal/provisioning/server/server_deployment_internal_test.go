@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -769,27 +770,28 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 		powerState      string
 		poweredOffSince time.Time
 
-		wantMet             bool
+		wantOutcome         deploymentWaitOutcome
 		wantPoweredOffSince time.Time
-		wantPowerOffs       int
 	}{
 		{
 			name:       "the server is still powered on",
 			powerState: bmcPowerStateOn,
 
-			wantPowerOffs: 1,
+			wantOutcome: deploymentWaitPending,
 		},
 		{
 			name:            "the server is powered on again after it had been reported powered off",
 			powerState:      bmcPowerStateOn,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 
-			wantPowerOffs: 1,
+			wantOutcome:         deploymentWaitRevert,
+			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 		},
 		{
 			name:       "the server is reported powered off for the first time",
 			powerState: bmcPowerStateOff,
 
+			wantOutcome:         deploymentWaitPending,
 			wantPoweredOffSince: deploymentTestNow,
 		},
 		{
@@ -797,6 +799,7 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 			powerState:      bmcPowerStateOff,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
 
+			wantOutcome:         deploymentWaitPending,
 			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
 		},
 		{
@@ -804,7 +807,7 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 			powerState:      bmcPowerStateOff,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 
-			wantMet:             true,
+			wantOutcome:         deploymentWaitMet,
 			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 		},
 	}
@@ -832,17 +835,9 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 				},
 			}
 
-			powerOffs := 0
-
-			bmcClient := &adapterMock.BMCServerClientPortMock{
-				ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
-					powerOffs++
-
-					require.True(t, force, "the deployment cuts the power instead of asking for a graceful shutdown")
-
-					return nil, nil
-				},
-			}
+			// The wait only observes, a power off by the wait would call into
+			// the BMC client, which has no function set up for it.
+			bmcClient := &adapterMock.BMCServerClientPortMock{}
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -855,10 +850,9 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
 			)
 
-			met, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server, deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset])
+			outcome, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server, deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset])
 			require.NoError(t, err)
-			require.Equal(t, tc.wantMet, met)
-			require.Equal(t, tc.wantPowerOffs, powerOffs, "a server, that is not down, has the power cut again")
+			require.Equal(t, tc.wantOutcome, outcome)
 
 			deployment := *server.StatusInternal.Deployment
 			if mutate != nil {
@@ -1302,6 +1296,8 @@ func Test_deploymentStates(t *testing.T) {
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
 				require.Nil(t, definition.action, "terminal state %q has an action", state)
 				require.Nil(t, definition.wait, "terminal state %q has a wait", state)
+				require.Empty(t, definition.revert, "terminal state %q reverts", state)
+				require.False(t, definition.powerOff, "terminal state %q powers off", state)
 				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
 				require.NotEmpty(t, definition.status, "terminal state %q reports no server status", state)
 
@@ -1334,6 +1330,7 @@ func Test_deploymentStates(t *testing.T) {
 				require.Zero(t, definition.rebootWindow, "action state %q has a reboot window", state)
 				require.Zero(t, definition.install, "action state %q has install thresholds", state)
 				require.Nil(t, definition.wait, "action state %q has a wait", state)
+				require.Empty(t, definition.revert, "action state %q reverts", state)
 
 				return
 			}
@@ -1341,9 +1338,19 @@ func Test_deploymentStates(t *testing.T) {
 			require.NotNil(t, definition.wait, "wait state %q waits for nothing", state)
 			require.Nil(t, definition.action, "wait state %q has an action", state)
 			require.NotZero(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
+			require.False(t, definition.powerOff, "wait state %q powers off", state)
+
+			if definition.revert != "" {
+				require.Contains(t, deploymentStates, definition.revert, "wait state %q reverts to the unknown state %q", state, definition.revert)
+				require.Equal(t, deploymentStateKindAction, deploymentStates[definition.revert].kind, "wait state %q reverts to %q, which is not an action", state, definition.revert)
+				require.Positive(t, definition.retries, "wait state %q reverts, but has no retry budget", state)
+				require.NotEmpty(t, definition.revertReason, "wait state %q reverts, but does not say why", state)
+			}
 
 			if definition.fallback == "" {
-				require.Zero(t, definition.retries, "wait state %q has no trigger to fall back to, so its retry budget can not be spent", state)
+				if definition.revert == "" {
+					require.Zero(t, definition.retries, "wait state %q has no trigger to fall back to or revert to, so its retry budget can not be spent", state)
+				}
 
 				return
 			}
@@ -1472,6 +1479,10 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 
 		for _, branch := range definition.branches {
 			walk(branch)
+		}
+
+		if definition.revert != "" {
+			walk(definition.revert)
 		}
 	}
 
@@ -1681,6 +1692,206 @@ func Test_deploymentBMCData_requiresParts(t *testing.T) {
 			require.Nil(t, current)
 			require.Contains(t, err.Error(), tc.wantErr)
 			require.True(t, domain.IsRetryableError(err), "a BMC, that could not be asked, is asked again")
+		})
+	}
+}
+
+func Test_checkDeploymentRebooted(t *testing.T) {
+	tests := []struct {
+		name        string
+		powerState  string
+		lastUpdated time.Time
+
+		wantOutcome deploymentWaitOutcome
+	}{
+		{
+			name:        "the server stayed off",
+			powerState:  bmcPowerStateOff,
+			lastUpdated: deploymentTestNow,
+
+			wantOutcome: deploymentWaitRevert,
+		},
+		{
+			name:        "the server is reported off by BMC data collected before the state was entered",
+			powerState:  bmcPowerStateOff,
+			lastUpdated: deploymentTestNow.Add(-time.Second),
+
+			wantOutcome: deploymentWaitPending,
+		},
+		{
+			name:        "the server is up, but the reboot is not observed yet",
+			powerState:  bmcPowerStateOn,
+			lastUpdated: deploymentTestNow,
+
+			wantOutcome: deploymentWaitPending,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stateEnteredAt := deploymentTestNow.Add(-time.Second)
+
+			server := provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusDeploying,
+				// The BMC data is fresh, so the wait works off the record
+				// instead of asking the BMC again.
+				BMCData: api.BMCData{ServerPowerState: tc.powerState, ServerLastResetTime: stateEnteredAt, LastUpdated: tc.lastUpdated},
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State:          api.ServerDeploymentStateWaitReboot,
+						StateEnteredAt: stateEnteredAt,
+						InstallSnapshot: provisioning.ServerDeploymentBMCSnapshot{
+							Taken:         stateEnteredAt,
+							LastResetTime: stateEnteredAt,
+						},
+					},
+				},
+			}
+
+			// The wait only observes, a power on by the wait would call into the
+			// BMC client, which has no function set up for it.
+			serverSvc := New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				WithNow(func() time.Time { return deploymentTestNow }),
+				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, &adapterMock.BMCServerClientPortMock{}),
+			)
+
+			outcome, _, err := serverSvc.checkDeploymentRebooted(t.Context(), slog.Default(), server, deploymentStates[api.ServerDeploymentStateWaitReboot])
+			require.NoError(t, err)
+			require.Equal(t, tc.wantOutcome, outcome)
+		})
+	}
+}
+
+func Test_serverService_deploymentWait(t *testing.T) {
+	timedOut := deploymentTestNow.Add(-config.ServerDeploymentStepTimeout - time.Second)
+
+	tests := []struct {
+		name           string
+		outcome        deploymentWaitOutcome
+		waitRetries    int
+		stateEnteredAt time.Time
+
+		wantProgressed bool
+		wantState      api.ServerDeploymentState
+		wantRetries    int
+		wantLastError  string
+	}{
+		{
+			name:    "a revert goes back to the step before the wait",
+			outcome: deploymentWaitRevert,
+
+			wantProgressed: true,
+			wantState:      api.ServerDeploymentStatePowerOffBIOS,
+			wantRetries:    1,
+			wantLastError:  "was reverted, since server powered on again",
+		},
+		{
+			name:        "a revert, that exhausts the retry budget, fails the deployment",
+			outcome:     deploymentWaitRevert,
+			waitRetries: config.ServerDeploymentStepRetries,
+
+			wantState:     api.ServerDeploymentStateFailed,
+			wantRetries:   config.ServerDeploymentStepRetries,
+			wantLastError: "was reverted, since server powered on again",
+		},
+		{
+			name:           "a timeout falls back to the trigger",
+			outcome:        deploymentWaitPending,
+			stateEnteredAt: timedOut,
+
+			wantProgressed: true,
+			wantState:      api.ServerDeploymentStatePowerOffBIOS,
+			wantRetries:    1,
+			wantLastError:  "did not complete within " + config.ServerDeploymentStepTimeout.String(),
+		},
+		{
+			name:           "a timeout, that exhausts the retry budget, fails the deployment",
+			outcome:        deploymentWaitPending,
+			waitRetries:    config.ServerDeploymentStepRetries,
+			stateEnteredAt: timedOut,
+
+			wantState:     api.ServerDeploymentStateFailed,
+			wantRetries:   config.ServerDeploymentStepRetries,
+			wantLastError: "did not complete within " + config.ServerDeploymentStepTimeout.String(),
+		},
+		{
+			name:           "a revert shares the retry budget with the timeouts",
+			outcome:        deploymentWaitRevert,
+			waitRetries:    config.ServerDeploymentStepRetries - 1,
+			stateEnteredAt: timedOut,
+
+			wantProgressed: true,
+			wantState:      api.ServerDeploymentStatePowerOffBIOS,
+			wantRetries:    config.ServerDeploymentStepRetries,
+			wantLastError:  "was reverted, since server powered on again",
+		},
+		{
+			name:        "a met wait resets the wait retries",
+			outcome:     deploymentWaitMet,
+			waitRetries: 1,
+
+			wantProgressed: true,
+			wantState:      api.ServerDeploymentStateApplyBIOS,
+		},
+		{
+			name:        "a pending wait keeps the wait retries",
+			outcome:     deploymentWaitPending,
+			waitRetries: 1,
+
+			wantState:   api.ServerDeploymentStateWaitPowerOffBIOS,
+			wantRetries: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stored := provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusDeploying,
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State:          api.ServerDeploymentStateWaitPowerOffBIOS,
+						StartedAt:      deploymentTestNow,
+						StateEnteredAt: cmp.Or(tc.stateEnteredAt, deploymentTestNow),
+						WaitRetries:    tc.waitRetries,
+					},
+				},
+			}
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					server := stored
+					deployment := *stored.StatusInternal.Deployment
+					server.StatusInternal.Deployment = &deployment
+
+					return &server, nil
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					stored = in
+
+					return nil
+				},
+			}
+
+			serverSvc := New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				WithNow(func() time.Time { return deploymentTestNow }),
+			)
+
+			definition := deploymentStates[api.ServerDeploymentStateWaitPowerOffBIOS]
+			definition.wait = func(*serverService, context.Context, *slog.Logger, provisioning.Server, deploymentStateDefinition) (deploymentWaitOutcome, func(*provisioning.ServerDeployment), error) {
+				return tc.outcome, nil, nil
+			}
+
+			server, err := repo.GetByName(t.Context(), "one")
+			require.NoError(t, err)
+
+			progressed, err := serverSvc.deploymentWait(t.Context(), slog.Default(), *server, definition)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantProgressed, progressed)
+			require.Equal(t, tc.wantState, stored.StatusInternal.Deployment.State)
+			require.Equal(t, tc.wantRetries, stored.StatusInternal.Deployment.WaitRetries)
+			require.Contains(t, stored.StatusInternal.Deployment.LastError, tc.wantLastError)
 		})
 	}
 }

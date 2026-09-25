@@ -498,6 +498,7 @@ type ExprServerDeployment struct {
 	ImageDeploymentID               string                          `json:"image_deployment_id" expr:"image_deployment_id"`
 	BIOSTaskMonitor                 string                          `json:"bios_task_monitor" expr:"bios_task_monitor"`
 	FallbackAttempts                int                             `json:"fallback_attempts" expr:"fallback_attempts"`
+	WaitRetries                     int                             `json:"wait_retries" expr:"wait_retries"`
 	PoweredOffSince                 time.Time                       `json:"powered_off_since" expr:"powered_off_since"`
 	LastPowerOffState               api.ServerDeploymentState       `json:"last_power_off_state" expr:"last_power_off_state"`
 	MediaBytesRead                  int64                           `json:"media_bytes_read" expr:"media_bytes_read"`
@@ -1144,6 +1145,7 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		ImageDeploymentID:               s.ImageDeploymentID,
 		BIOSTaskMonitor:                 s.BIOSTaskMonitor,
 		FallbackAttempts:                s.FallbackAttempts,
+		WaitRetries:                     s.WaitRetries,
 		PoweredOffSince:                 s.PoweredOffSince,
 		LastPowerOffState:               s.LastPowerOffState,
 		MediaBytesRead:                  s.MediaBytesRead,

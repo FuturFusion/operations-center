@@ -433,9 +433,11 @@ what has been staged for it, has the BMC report the power state off in the troug
 of that reset, and the server is back in its POST moments later, where it accepts
 neither a boot source override nor a modification of its key databases. Every
 power off wait therefore only passes once the BMC has been reporting the server
-off for `ServerDeploymentPowerOffSettleDelay`, and a server, that is found powered
-on, has the power cut again right away rather than the wait being left to time
-out. The clean up of a canceled deployment is the exception: nothing follows it,
+off for `ServerDeploymentPowerOffSettleDelay`. A server, that is found powered on
+again after it had been reported off, reverts the deployment to the power off
+rather than the wait being left to time out. A wait only ever observes the
+server, it never acts on it: every power operation is a state of its own, so
+the generated diagram shows every one of them. The clean up of a canceled deployment is the exception: nothing follows it,
 which the server would have to be down for.
 
 **A BMC, that turns a request down because the server is not settled**, is
@@ -587,8 +589,10 @@ snapshot taken for the install wait, not against a fresh one: the reboot, that
 ended that wait through signal 2, has already happened by the time this state is
 entered.
 
-A server, that powered off instead of rebooting, is powered on again on every
-tick. A BMC, that reports none of the properties the reboot detection needs, can
+A server, that powered off instead of rebooting, reverts the deployment to
+**power on**, which leads back to the wait. Only BMC data collected after the
+wait has been entered counts, so the power on, that led to it, is not mistaken
+for the server having stayed off. A BMC, that reports none of the properties the reboot detection needs, can
 never answer the question, so `ServerDeploymentRebootObservationWindow` bounds
 how long the reboot is looked for before the wait settles for the server not
 being powered off. The state has no fallback, so timing out would fail the
@@ -606,7 +610,15 @@ every state, its timeout, the trigger a wait falls back to and the successor.
   fails the deployment.
 * **Wait state**: the condition being met advances the deployment and resets the
   counter. Within the timeout, the deployment simply stays. On a timeout the
-  counter is incremented and the deployment falls back to the trigger.
+  deployment falls back to the trigger, which counts against the retry budget of
+  the wait in `WaitRetries`. The per state counter can not hold that budget,
+  since the trigger succeeding resets it, while `WaitRetries` survives the round
+  trip and is only reset once a wait is met.
+* **Revert**: a wait, that observes something contradicting the step before it —
+  a server powered on again after a power off, or a server, that stayed off
+  after the installation — reverts the deployment to the action, that
+  re-establishes it. Reverts share the `WaitRetries` budget with the timeouts of
+  the wait.
 * **Call timeout**: independently of both, every attempt of a state runs with a
   deadline of its own, so a BMC, that accepts the connection and then stops
   answering, ends the attempt instead of parking the control loop. Running out
