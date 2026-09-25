@@ -74,6 +74,10 @@ type deploymentInstallThresholds struct {
 // machine. Every step is split into a trigger and a wait state, so a retry
 // re-issues the trigger, a wait timeout falls back to it and a daemon restart
 // re-enters the persisted state.
+//
+// Nothing reachable from a function stored here may read deploymentStates: the
+// table refers to these functions, so a read back is an initialization cycle.
+// Whatever a function needs, it is handed with the definition it is called with.
 type deploymentStateDefinition struct {
 	kind   deploymentStateKind
 	detail api.ServerStatusDetail
@@ -159,10 +163,14 @@ func (d deploymentStateDefinition) callTimeoutOrDefault() time.Duration {
 	return config.ServerDeploymentStepCallTimeout
 }
 
-// deploymentStates holds the deployment state machine. Every wait condition
-// listed here is re-derivable from the BMC data or the server record alone, a
-// persisted task monitor is only ever an optimization, since a BMC forgets
-// about one once it has been consumed or has been reset.
+// deploymentStates holds the deployment state machine. It is the single point
+// defining the states and the transitions: the action or the wait condition of a
+// state, the retry budget, the timeouts and every threshold, that decides when a
+// wait is satisfied, are declared here and nowhere else.
+//
+// Every wait condition listed here is re-derivable from the BMC data or the
+// server record alone, a persisted task monitor is only ever an optimization,
+// since a BMC forgets about one once it has been consumed or has been reset.
 var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateRefreshBMCData: {
 		kind:    deploymentStateKindAction,
@@ -566,6 +574,8 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitInstall: {
+		// The installation can not be triggered a second time, so the wait has no
+		// trigger to fall back to and fails the deployment instead.
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingInstalling,
 		wait:        (*serverService).checkDeploymentInstalled,
@@ -596,6 +606,8 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitReboot: {
+		// A server, that does not come back, can not be rebooted again, so the
+		// wait has no trigger to fall back to.
 		kind:         deploymentStateKindWait,
 		detail:       api.ServerStatusDetailDeployingFinalizing,
 		wait:         (*serverService).checkDeploymentRebooted,
