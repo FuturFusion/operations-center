@@ -15,6 +15,7 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
     log_levels: settings?.log_levels ?? {},
     server_registration_scriptlet:
       settings?.server_registration_scriptlet ?? "",
+    pprof_enabled: settings?.pprof_enabled ?? false,
   };
 
   const formik = useFormik({
@@ -49,6 +50,22 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
             <Form.Control.Feedback type="invalid">
               {formik.errors.log_level}
             </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group
+            className="mb-3 d-flex align-items-center gap-2"
+            controlId="pprof_enabled"
+          >
+            <Form.Check
+              type="checkbox"
+              name="pprof_enabled"
+              checked={formik.values.pprof_enabled}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
+            />
+            <Form.Label className="me-2 mb-0">
+              Enable pprof debug endpoints
+            </Form.Label>
           </Form.Group>
           <Form.Group
             className="mb-3"

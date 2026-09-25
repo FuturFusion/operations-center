@@ -84,6 +84,7 @@ certificates are available.
 | `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`  |
 | `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |         |
 | `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |         |
+| `pprof_enabled`                 | Enable the pprof debug endpoints, see *pprof debug endpoints* below for details                               | true/false           | false   |
 
 The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
 
@@ -141,6 +142,32 @@ have a name of their own, e.g. `provisioning.server_service`,
 Changes to `log_levels` take effect immediately, a restart is not required. The
 `--verbose` and `--debug` command line flags of `operations-centerd` only govern
 the default log level, the per component log levels always apply.
+
+### pprof debug endpoints
+
+Operations Center exposes the Go runtime profiling data in the format of
+[pprof](https://pkg.go.dev/net/http/pprof) on the REST API below
+`/1.0/debug/pprof/`. This allows to collect CPU and memory profiles, goroutine
+dumps and execution traces, e.g. when investigating an issue together with the
+development team.
+
+The endpoints are disabled by default and need to be enabled with the
+`pprof_enabled` setting. They are served on the regular REST API listener and
+require authentication. With OpenFGA, the `can_debug` entitlement on the server
+is required, which is granted to the `admin` relation.
+
+A profile is downloaded with the command line client:
+
+```shell
+operations-center admin debug pprof heap
+operations-center admin debug pprof profile --seconds 30
+operations-center admin debug pprof goroutine --debug 2
+```
+
+For `profile` and `trace`, `--seconds` sets the duration of the capture, which
+is limited to 300 seconds. Only one capture runs at a time. The downloaded
+profile can be analyzed with `go tool pprof <file>` respectively
+`go tool trace <file>`.
 
 ### Server registration scriptlet
 

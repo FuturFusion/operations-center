@@ -59,6 +59,10 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 		}
 	}
 
+	if isPprofEnabledChanged(oldCfg, newCfg) {
+		slog.WarnContext(logCtx, "Updated pprof debug endpoints setting", slog.Bool("enabled", newCfg.Settings.PprofEnabled))
+	}
+
 	if updated == sectionSettings || isSettingsChanged(oldCfg, newCfg) {
 		err := lifecycle.SettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
 		if err != nil {

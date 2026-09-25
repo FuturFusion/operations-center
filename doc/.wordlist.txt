@@ -64,6 +64,7 @@ PEM
 PFX
 PKCS
 PowerEdge
+pprof
 pre
 preseed
 Redfish

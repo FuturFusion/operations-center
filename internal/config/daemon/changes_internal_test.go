@@ -41,6 +41,10 @@ func Test_isSettingsChanged(t *testing.T) {
 			field:  "ServerRegistrationScriptlet",
 			mutate: func(settings *system.SettingsPut) { settings.ServerRegistrationScriptlet = "def register(): fail" },
 		},
+		{
+			field:  "PprofEnabled",
+			mutate: func(settings *system.SettingsPut) { settings.PprofEnabled = true },
+		},
 	}
 
 	require.False(t, isSettingsChanged(newConfig(base), newConfig(base)), "identical settings are not reported as changed")

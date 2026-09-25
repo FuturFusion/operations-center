@@ -647,3 +647,28 @@ func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func assertOperationsCenterCliAdminDebugPprof(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	t.Log("Assert operations-center cli admin debug pprof")
+
+	// Disabled by default.
+	resp := run(t, `../bin/operations-center.linux.%s admin debug pprof heap -o %s/heap.pprof`, cpuArch, tmpDir)
+	require.NoError(t, resp.err)
+	require.False(t, resp.Success(), "expect pprof to be disabled by default")
+	require.Contains(t, resp.Output(), "pprof_enabled")
+
+	// Enable pprof.
+	mustRun(t, `EDITOR='sed -i "s|^pprof_enabled: .*|pprof_enabled: true|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+	t.Cleanup(func() {
+		mustRun(t, `EDITOR='sed -i "s|^pprof_enabled: .*|pprof_enabled: false|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+	})
+
+	// Binary profile.
+	mustRun(t, `../bin/operations-center.linux.%s admin debug pprof heap -o %s/heap.pprof`, cpuArch, tmpDir)
+	mustRun(t, `gzip -t %s/heap.pprof`, tmpDir)
+
+	// Text profile.
+	mustRun(t, `../bin/operations-center.linux.%s admin debug pprof goroutine --debug 1 | grep "goroutine profile:"`, cpuArch)
+}
