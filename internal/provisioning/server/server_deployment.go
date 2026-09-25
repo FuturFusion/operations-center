@@ -33,6 +33,9 @@ const (
 	deploymentStateKindTerminal
 )
 
+// deploymentWaitFunc evaluates the condition of a wait state.
+type deploymentWaitFunc func(*serverService, context.Context, *slog.Logger, provisioning.Server, deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error)
+
 // deploymentBIOSPass tells, which of the two BIOS passes a state belongs to,
 // which the attributes to apply and to verify are picked by.
 type deploymentBIOSPass int
@@ -71,6 +74,9 @@ type deploymentStateDefinition struct {
 	kind   deploymentStateKind
 	detail api.ServerStatusDetail
 	next   api.ServerDeploymentState
+
+	// wait evaluates the condition of a wait state.
+	wait deploymentWaitFunc
 
 	// enterState returns the state the deployment enters in place of this one:
 	// the state itself, or the state to skip to, where it has nothing left to do
@@ -181,6 +187,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffBIOS: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingPreparing,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateApplyBIOS,
 		fallback:            api.ServerDeploymentStatePowerOffBIOS,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -205,6 +212,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitBIOSApplied: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentBIOSApplied,
 		next:        api.ServerDeploymentStateVerifyBIOS,
 		fallback:    api.ServerDeploymentStatePowerOffBIOS,
 		timeout:     config.ServerDeploymentStepWaitBIOSAppliedTimeout,
@@ -238,6 +246,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateApplyBIOSDeferred,
 		fallback:            api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -262,6 +271,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitBIOSAppliedDeferred: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentBIOSApplied,
 		next:        api.ServerDeploymentStateVerifyBIOSDeferred,
 		fallback:    api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:     config.ServerDeploymentStepWaitBIOSAppliedTimeout,
@@ -286,6 +296,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffSecureBoot: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateSecureBoot,
 		fallback:            api.ServerDeploymentStatePowerOffSecureBoot,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -325,6 +336,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitSecureBootReset: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentSecureBootReset,
 		next:        api.ServerDeploymentStatePowerOnSecureBootReset,
 		timeout:     config.ServerDeploymentStepWaitBIOSAppliedTimeout,
 		settleDelay: config.ServerDeploymentSettleDelay,
@@ -354,6 +366,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitSecureBootSetupMode: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:     deploymentBMCWait(isDeploymentInSecureBootSetupMode),
 		next:     api.ServerDeploymentStatePowerOffSecureBootReset,
 		fallback: api.ServerDeploymentStatePowerOnSecureBootReset,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
@@ -368,6 +381,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffSecureBootReset: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateAttachSecureBootMedia,
 		fallback:            api.ServerDeploymentStatePowerOffSecureBootReset,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -384,6 +398,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitSecureBootMediaAttached: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		wait:     deploymentBMCWait(isDeploymentSecureBootMediaHoldingImage),
 		next:     api.ServerDeploymentStatePowerOnSecureBootMedia,
 		fallback: api.ServerDeploymentStateAttachSecureBootMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
@@ -398,6 +413,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitSecureBootEnrolled: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:        (*serverService).checkDeploymentSecureBootEnrolled,
 		next:        api.ServerDeploymentStatePowerOffSecureBootMedia,
 		fallback:    api.ServerDeploymentStatePowerOnSecureBootMedia,
 		timeout:     config.ServerDeploymentSecureBootEnrollTimeout,
@@ -413,6 +429,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffSecureBootMedia: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateClearMedia,
 		fallback:            api.ServerDeploymentStatePowerOffSecureBootMedia,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -428,6 +445,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitMediaCleared: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		wait:     deploymentBMCWait(deploymentNoMediaInserted),
 		next:     api.ServerDeploymentStateEnableSecureBoot,
 		fallback: api.ServerDeploymentStateClearMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
@@ -470,6 +488,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitSecureBootSettled: {
 		kind:         deploymentStateKindWait,
 		detail:       api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:         (*serverService).checkDeploymentSecureBootSettled,
 		next:         api.ServerDeploymentStatePowerOffSecureBootSettled,
 		fallback:     api.ServerDeploymentStatePowerOnSecureBoot,
 		timeout:      config.ServerDeploymentStepWaitBIOSAppliedTimeout,
@@ -486,6 +505,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: {
 		kind:                deploymentStateKindWait,
 		detail:              api.ServerStatusDetailDeployingConfiguringBIOS,
+		wait:                (*serverService).checkDeploymentPoweredOff,
 		next:                api.ServerDeploymentStateAttachMedia,
 		fallback:            api.ServerDeploymentStatePowerOffSecureBootSettled,
 		timeout:             config.ServerDeploymentStepTimeout,
@@ -502,6 +522,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitMediaAttached: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		wait:     (*serverService).checkDeploymentMediaAttached,
 		next:     api.ServerDeploymentStatePowerOnInstall,
 		fallback: api.ServerDeploymentStateAttachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
@@ -516,6 +537,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitInstall: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingInstalling,
+		wait:        (*serverService).checkDeploymentInstalled,
 		next:        api.ServerDeploymentStateDetachMedia,
 		timeout:     config.ServerDeploymentInstallTimeout,
 		settleDelay: config.ServerDeploymentSettleDelay,
@@ -535,6 +557,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitMediaDetached: {
 		kind:     deploymentStateKindWait,
 		detail:   api.ServerStatusDetailDeployingFinalizing,
+		wait:     deploymentBMCWait(deploymentMediaEjected),
 		next:     api.ServerDeploymentStateWaitReboot,
 		fallback: api.ServerDeploymentStateDetachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
@@ -543,6 +566,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitReboot: {
 		kind:         deploymentStateKindWait,
 		detail:       api.ServerStatusDetailDeployingFinalizing,
+		wait:         (*serverService).checkDeploymentRebooted,
 		next:         api.ServerDeploymentStateWaitRegistration,
 		timeout:      config.ServerDeploymentRebootTimeout,
 		rebootWindow: config.ServerDeploymentRebootObservationWindow,
@@ -550,6 +574,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitRegistration: {
 		kind:    deploymentStateKindWait,
 		detail:  api.ServerStatusDetailDeployingFinalizing,
+		wait:    (*serverService).checkDeploymentRegistered,
 		next:    api.ServerDeploymentStateCleanup,
 		timeout: config.ServerDeploymentRegistrationTimeout,
 	},
@@ -569,6 +594,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateWaitCancel: {
 		kind:        deploymentStateKindWait,
 		detail:      api.ServerStatusDetailDeployingCancelling,
+		wait:        deploymentBMCWait(deploymentCancelSettled),
 		next:        api.ServerDeploymentStateCancelled,
 		fallback:    api.ServerDeploymentStateCancel,
 		timeout:     config.ServerDeploymentStepTimeout,
@@ -1407,10 +1433,15 @@ func (s *serverService) runBoundedDeploymentAction(ctx context.Context, log *slo
 // checkBoundedDeploymentWait evaluates the condition of a wait state with the
 // same deadline the trigger states get.
 func (s *serverService) checkBoundedDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+	if definition.wait == nil {
+		//domain-errors:internal Programmer error, the state table and the state disagree.
+		return false, nil, fmt.Errorf("Deployment state %q is not a wait", server.StatusInternal.Deployment.State)
+	}
+
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
 	defer cancel()
 
-	return s.checkDeploymentWait(callCtx, log, server, definition)
+	return definition.wait(s, callCtx, log, server, definition)
 }
 
 // runDeploymentAction performs the operation of a trigger state and returns a
@@ -1892,25 +1923,18 @@ type deploymentBMCCondition struct {
 	met      func(*provisioning.ServerDeployment, api.BMCData) bool
 }
 
-// bmcWaitConditions holds the wait conditions, that are a plain predicate over
-// the BMC data of the server.
-var bmcWaitConditions = map[api.ServerDeploymentState]deploymentBMCCondition{
-	api.ServerDeploymentStateWaitCancel:                  deploymentCancelSettled,
-	api.ServerDeploymentStateWaitSecureBootSetupMode:     isDeploymentInSecureBootSetupMode,
-	api.ServerDeploymentStateWaitSecureBootMediaAttached: isDeploymentSecureBootMediaHoldingImage,
-	api.ServerDeploymentStateWaitMediaCleared:            deploymentNoMediaInserted,
-	api.ServerDeploymentStateWaitMediaDetached:           deploymentMediaEjected,
-}
+// deploymentBMCWait turns a condition over the BMC data of the server into a
+// wait, so a state, whose condition is nothing but a look at the BMC, only has
+// to name the condition.
+func deploymentBMCWait(condition deploymentBMCCondition) deploymentWaitFunc {
+	return func(s *serverService, ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+		current, err := s.deploymentBMCData(ctx, server, condition.requires)
+		if err != nil {
+			return false, nil, err
+		}
 
-// deploymentPowerOffWaits are the waits, that are only passed once the power off
-// preceding them has settled, see checkDeploymentPoweredOff.
-var deploymentPowerOffWaits = []api.ServerDeploymentState{
-	api.ServerDeploymentStateWaitPowerOffBIOS,
-	api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
-	api.ServerDeploymentStateWaitPowerOffSecureBoot,
-	api.ServerDeploymentStateWaitPowerOffSecureBootReset,
-	api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
-	api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+		return condition.met(server.StatusInternal.Deployment, current.BMCData), nil, nil
+	}
 }
 
 var deploymentPowerIsOff = deploymentBMCCondition{
@@ -1978,56 +2002,6 @@ var isDeploymentInSecureBootSetupMode = deploymentBMCCondition{
 	met: func(_ *provisioning.ServerDeployment, data api.BMCData) bool {
 		return data.ServerSecureBootMode == string(schemas.SetupModeSecureBootModeType)
 	},
-}
-
-// checkDeploymentWait evaluates the condition of a wait state. Every condition
-// is derived from the BMC data or the server record, never from a task monitor
-// alone, since a BMC forgets about a task monitor once it has been consumed.
-func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
-	deployment := server.StatusInternal.Deployment
-
-	condition, ok := bmcWaitConditions[deployment.State]
-	if ok {
-		current, err := s.deploymentBMCData(ctx, server, condition.requires)
-		if err != nil {
-			return false, nil, err
-		}
-
-		return condition.met(deployment, current.BMCData), nil, nil
-	}
-
-	if slices.Contains(deploymentPowerOffWaits, deployment.State) {
-		return s.checkDeploymentPoweredOff(ctx, log, server, definition)
-	}
-
-	switch deployment.State {
-	case api.ServerDeploymentStateWaitMediaAttached:
-		return s.checkDeploymentMediaAttached(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitSecureBootSettled:
-		return s.checkDeploymentSecureBootSettled(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitSecureBootEnrolled:
-		return s.checkDeploymentSecureBootEnrolled(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitBIOSApplied, api.ServerDeploymentStateWaitBIOSAppliedDeferred:
-		return s.checkDeploymentBIOSApplied(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitSecureBootReset:
-		return s.checkDeploymentSecureBootReset(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitInstall:
-		return s.checkDeploymentInstalled(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitReboot:
-		return s.checkDeploymentRebooted(ctx, log, server, definition)
-
-	case api.ServerDeploymentStateWaitRegistration:
-		return serverHasRegistered(server), nil, nil
-	}
-
-	//domain-errors:internal Programmer error, the state table and the state disagree.
-	return false, nil, fmt.Errorf("Deployment state %q is not a wait", deployment.State)
 }
 
 // checkDeploymentPoweredOff tells, whether the server has settled at powered
@@ -2540,6 +2514,12 @@ func deploymentRebootObserved(now time.Time, deployment *provisioning.ServerDepl
 	}
 
 	return true, false
+}
+
+// checkDeploymentRegistered tells, whether the server has registered itself with
+// Operations Center after the installation.
+func (*serverService) checkDeploymentRegistered(_ context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
+	return serverHasRegistered(server), nil, nil
 }
 
 func serverHasRegistered(server provisioning.Server) bool {
