@@ -88,6 +88,21 @@ func Init(env enver) error {
 	return nil
 }
 
+// ValidateFile validates the config file of env without applying it.
+func ValidateFile(env enver) error {
+	cfg, _, err := loadConfig(env)
+	if err != nil {
+		return err
+	}
+
+	cfg, err = normalize(cfg)
+	if err != nil {
+		return err
+	}
+
+	return validate(cfg, cfg, env.IsIncusOS())
+}
+
 func GetNetwork() system.Network {
 	return defaultStore.Load().get().Network
 }
