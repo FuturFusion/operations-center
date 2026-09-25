@@ -207,6 +207,11 @@ type ServerDeployment struct {
 	// an earlier state, instead of being retried in place.
 	FallbackAttempts int `json:"fallback_attempts"`
 
+	// WaitRetries counts, how often a wait has sent the deployment back to the
+	// step before it, by timing out or by reverting, since a wait has last been
+	// met. It survives the round trip, which resets the retries.
+	WaitRetries int `json:"wait_retries"`
+
 	// PoweredOffSince records, since when the BMC reports the server powered off
 	// in the power off wait the deployment is in. A single observation does not
 	// establish a settled power off, since firmware, that resets the server on

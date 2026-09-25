@@ -272,6 +272,10 @@ const (
 	// the first stage of the installation.
 	ServerDeploymentStateWaitReboot ServerDeploymentState = "wait-reboot"
 
+	// ServerDeploymentStatePowerOnReboot powers the server on, if it stayed off
+	// after the first stage of the installation.
+	ServerDeploymentStatePowerOnReboot ServerDeploymentState = "power-on-reboot"
+
 	// ServerDeploymentStateWaitRegistration waits for the server to register
 	// itself with Operations Center.
 	ServerDeploymentStateWaitRegistration ServerDeploymentState = "wait-registration"
@@ -341,6 +345,7 @@ var serverDeploymentStates = map[ServerDeploymentState]struct{}{
 	ServerDeploymentStateDetachMedia:                   {},
 	ServerDeploymentStateWaitMediaDetached:             {},
 	ServerDeploymentStateWaitReboot:                    {},
+	ServerDeploymentStatePowerOnReboot:                 {},
 	ServerDeploymentStateWaitRegistration:              {},
 	ServerDeploymentStateCleanup:                       {},
 	ServerDeploymentStateCancel:                        {},
