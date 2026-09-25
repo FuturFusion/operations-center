@@ -56,6 +56,10 @@ type deploymentStateDefinition struct {
 	// deployment fails.
 	retries int
 
+	// status is the server status a terminal state reports. An empty status
+	// leaves the server deploying.
+	status api.ServerStatus
+
 	// timeout bounds a wait state.
 	timeout time.Duration
 
@@ -407,9 +411,22 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout:  config.ServerDeploymentStepTimeout,
 		retries:  config.ServerDeploymentStepRetries,
 	},
-	api.ServerDeploymentStateCompleted: {kind: deploymentStateKindTerminal},
-	api.ServerDeploymentStateFailed:    {kind: deploymentStateKindTerminal},
-	api.ServerDeploymentStateCancelled: {kind: deploymentStateKindTerminal},
+	// A registration would have moved the server out of status deploying already,
+	// so reaching the completed state means the deployment completed without one.
+	api.ServerDeploymentStateCompleted: {
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+	},
+	api.ServerDeploymentStateFailed: {
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+		detail: api.ServerStatusDetailUnregisteredDeploymentFailed,
+	},
+	api.ServerDeploymentStateCancelled: {
+		kind:   deploymentStateKindTerminal,
+		status: api.ServerStatusUnregistered,
+		detail: api.ServerStatusDetailUnregisteredDeploymentCancelled,
+	},
 }
 
 // deploymentRetryFromError routes a failed step back to an earlier state of the
@@ -2553,25 +2570,14 @@ func (s *serverService) applyDeploymentServerStatus(server *provisioning.Server)
 		return
 	}
 
-	status := api.ServerStatusDeploying
-	statusDetail := deploymentStates[deployment.State].detail
+	definition := deploymentStates[deployment.State]
 
-	switch deployment.State {
-	case api.ServerDeploymentStateFailed:
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailUnregisteredDeploymentFailed
-
-	case api.ServerDeploymentStateCancelled:
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailUnregisteredDeploymentCancelled
-
-	case api.ServerDeploymentStateCompleted:
-		// A registration would have moved the server out of status deploying
-		// already, so reaching this point means the deployment completed without
-		// one.
-		status = api.ServerStatusUnregistered
-		statusDetail = api.ServerStatusDetailNone
+	status := definition.status
+	if status == "" {
+		status = api.ServerStatusDeploying
 	}
+
+	statusDetail := definition.detail
 
 	if server.Status == status && server.StatusDetail == statusDetail {
 		return
