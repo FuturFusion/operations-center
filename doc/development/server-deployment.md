@@ -102,159 +102,16 @@ Both rules rest on **every action being idempotent**: a crash between entering a
 trigger state and the BMC having accepted the operation leaves the deployment in
 the trigger state, so the action is simply issued again.
 
-```{mermaid}
-stateDiagram-v2
-    state "refresh BMC data" as RefreshBMCData
-    state "check BIOS" as CheckBIOS
-    state "power off" as PowerOffBIOS
-    state "wait for power off" as WaitPowerOffBIOS
-    state "apply BIOS" as ApplyBIOS
-    state "power on" as PowerOnBIOS
-    state "wait for BIOS applied" as WaitBIOSApplied
-    state "verify BIOS" as VerifyBIOS
-    state "power off" as PowerOffBIOSDeferred
-    state "wait for power off" as WaitPowerOffBIOSDeferred
-    state "apply deferred BIOS" as ApplyBIOSDeferred
-    state "power on" as PowerOnBIOSDeferred
-    state "wait for BIOS applied" as WaitBIOSAppliedDeferred
-    state "verify deferred BIOS" as VerifyBIOSDeferred
-    state "power off" as PowerOffSecureBoot
-    state "wait for power off" as WaitPowerOffSecureBoot
-    state "secure boot certificates" as SecureBoot
-    state "reset secure boot keys" as ResetSecureBootKeys
-    state "wait for key databases cleared" as WaitSecureBootReset
-    state "power on" as PowerOnSecureBootReset
-    state "wait for setup mode" as WaitSecureBootSetupMode
-    state "power off" as PowerOffSecureBootReset
-    state "wait for power off" as WaitPowerOffSecureBootReset
-    state "attach enrollment media" as AttachSecureBootMedia
-    state "wait for media attached" as WaitSecureBootMediaAttached
-    state "power on" as PowerOnSecureBootMedia
-    state "wait for certificates enrolled" as WaitSecureBootEnrolled
-    state "power off" as PowerOffSecureBootMedia
-    state "wait for power off" as WaitPowerOffSecureBootMedia
-    state "clear stale media" as ClearMedia
-    state "wait for media cleared" as WaitMediaCleared
-    state "enable secure boot" as EnableSecureBoot
-    state "power on" as PowerOnSecureBoot
-    state "wait for secure boot settled" as WaitSecureBootSettled
-    state "power off" as PowerOffSecureBootSettled
-    state "wait for power off" as WaitPowerOffSecureBootSettled
-    state "attach media" as AttachMedia
-    state "wait for media attached" as WaitMediaAttached
-    state "power on" as PowerOnInstall
-    state "installing" as WaitInstall
-    state "detach media" as DetachMedia
-    state "wait for media detached" as WaitMediaDetached
-    state "wait for reboot" as WaitReboot
-    state "wait for registration" as WaitRegistration
-    state "cleanup" as Cleanup
-    state "cancel" as Cancel
-    state "wait for power off" as WaitCancel
-    state "completed" as Completed
-    state "failed" as Failed
-    state "canceled" as Canceled
-
-    [*] --> RefreshBMCData: deploy triggered
-    RefreshBMCData --> CheckBIOS
-    CheckBIOS --> PowerOffBIOS: attributes not applied
-    CheckBIOS --> PowerOffBIOSDeferred: attributes match
-    CheckBIOS --> PowerOffSecureBoot: attributes match, no deferred attributes pending
-    PowerOffBIOS --> WaitPowerOffBIOS
-    WaitPowerOffBIOS --> PowerOffBIOS: timeout
-    WaitPowerOffBIOS --> PowerOffBIOS: server powered on again
-    WaitPowerOffBIOS --> ApplyBIOS: power state settled off
-    ApplyBIOS --> PowerOnBIOS
-    PowerOnBIOS --> WaitBIOSApplied
-    WaitBIOSApplied --> PowerOffBIOS: timeout
-    WaitBIOSApplied --> VerifyBIOS: task completed, or task unavailable after settle delay and power state on
-    VerifyBIOS --> PowerOffBIOS: attributes not applied
-    VerifyBIOS --> PowerOffBIOSDeferred: attributes match
-    VerifyBIOS --> PowerOffSecureBoot: attributes match, no deferred attributes pending
-    PowerOffBIOSDeferred --> WaitPowerOffBIOSDeferred
-    WaitPowerOffBIOSDeferred --> PowerOffBIOSDeferred: timeout
-    WaitPowerOffBIOSDeferred --> PowerOffBIOSDeferred: server powered on again
-    WaitPowerOffBIOSDeferred --> ApplyBIOSDeferred: power state settled off
-    ApplyBIOSDeferred --> PowerOnBIOSDeferred
-    PowerOnBIOSDeferred --> WaitBIOSAppliedDeferred
-    WaitBIOSAppliedDeferred --> PowerOffBIOSDeferred: timeout
-    WaitBIOSAppliedDeferred --> VerifyBIOSDeferred: task completed, or task unavailable after settle delay and power state on
-    VerifyBIOSDeferred --> PowerOffBIOSDeferred: attributes not applied
-    VerifyBIOSDeferred --> PowerOffSecureBoot: attributes match
-    PowerOffSecureBoot --> WaitPowerOffSecureBoot
-    WaitPowerOffSecureBoot --> PowerOffSecureBoot: timeout
-    WaitPowerOffSecureBoot --> PowerOffSecureBoot: server powered on again
-    WaitPowerOffSecureBoot --> SecureBoot: power state settled off
-    WaitPowerOffSecureBoot --> ClearMedia: power state settled off, secure boot certificates skipped
-    WaitPowerOffSecureBoot --> ResetSecureBootKeys: power state settled off, enrollment media requested
-    SecureBoot --> ClearMedia
-    ResetSecureBootKeys --> WaitSecureBootReset: key databases cleared, BMC runs a task
-    ResetSecureBootKeys --> PowerOnSecureBootReset: key databases cleared
-    ResetSecureBootKeys --> AttachSecureBootMedia: already in setup mode
-    WaitSecureBootReset --> PowerOnSecureBootReset: BMC task done
-    PowerOnSecureBootReset --> WaitSecureBootSetupMode
-    WaitSecureBootSetupMode --> PowerOnSecureBootReset: timeout
-    WaitSecureBootSetupMode --> PowerOffSecureBootReset: secure boot mode is setup mode
-    PowerOffSecureBootReset --> WaitPowerOffSecureBootReset
-    WaitPowerOffSecureBootReset --> PowerOffSecureBootReset: timeout
-    WaitPowerOffSecureBootReset --> PowerOffSecureBootReset: server powered on again
-    WaitPowerOffSecureBootReset --> AttachSecureBootMedia: power state settled off
-    AttachSecureBootMedia --> WaitSecureBootMediaAttached
-    WaitSecureBootMediaAttached --> AttachSecureBootMedia: timeout
-    WaitSecureBootMediaAttached --> PowerOnSecureBootMedia: enrollment media inserted in selected device
-    PowerOnSecureBootMedia --> WaitSecureBootEnrolled
-    WaitSecureBootEnrolled --> PowerOnSecureBootMedia: timeout
-    WaitSecureBootEnrolled --> PowerOffSecureBootMedia: secure boot mode left setup mode, or reboot detected
-    PowerOffSecureBootMedia --> WaitPowerOffSecureBootMedia
-    WaitPowerOffSecureBootMedia --> PowerOffSecureBootMedia: timeout
-    WaitPowerOffSecureBootMedia --> PowerOffSecureBootMedia: server powered on again
-    WaitPowerOffSecureBootMedia --> ClearMedia: power state settled off
-    ClearMedia --> WaitMediaCleared
-    WaitMediaCleared --> ClearMedia: timeout
-    WaitMediaCleared --> EnableSecureBoot: no media inserted
-    EnableSecureBoot --> PowerOnSecureBoot
-    WaitMediaCleared --> AttachMedia: no media inserted, secure boot certificates skipped
-    PowerOnSecureBoot --> WaitSecureBootSettled
-    WaitSecureBootSettled --> PowerOnSecureBoot: timeout
-    WaitSecureBootSettled --> PowerOffSecureBootSettled: reboot detected or settle duration passed
-    PowerOffSecureBootSettled --> WaitPowerOffSecureBootSettled
-    WaitPowerOffSecureBootSettled --> PowerOffSecureBootSettled: timeout
-    WaitPowerOffSecureBootSettled --> PowerOffSecureBootSettled: server powered on again
-    WaitPowerOffSecureBootSettled --> AttachMedia: power state settled off
-    AttachMedia --> WaitMediaAttached
-    WaitMediaAttached --> AttachMedia: timeout
-    WaitMediaAttached --> PowerOnInstall: expected media inserted in selected device
-    PowerOnInstall --> WaitInstall
-    WaitInstall --> DetachMedia: install stage 1 done
-    DetachMedia --> WaitMediaDetached
-    WaitMediaDetached --> DetachMedia: timeout
-    WaitMediaDetached --> WaitReboot: media ejected
-    WaitReboot --> WaitRegistration: server registered, reboot detected, or observation window passed while powered on
-    WaitRegistration --> Cleanup: server registered
-    Cleanup --> Completed
-    Completed --> [*]
-
-    RefreshBMCData --> Failed: retries exhausted
-    WaitInstall --> Failed: timeout
-    WaitReboot --> Failed: timeout
-    WaitRegistration --> Failed: timeout
-    Failed --> [*]
-
-    RefreshBMCData --> Cancel: cancel requested
-    WaitInstall --> Cancel: cancel requested
-    WaitInstall --> Canceled: cancel requested, clean up skipped
-    Cancel --> WaitCancel
-    WaitCancel --> Cancel: timeout
-    WaitCancel --> Canceled: power state off
-    Canceled --> [*]
+```{include} server-deployment-states.md
 ```
 
-To keep the diagram readable, only some of the edges into `failed` and `cancel`
-are drawn. Every state can reach both: a trigger, that exhausts its retry
-budget, and a wait, that has no fallback and times out, end in `failed`, and a
-cancellation preempts every state but the clean up it triggers itself. A
-cancellation, that skips the clean up, has nothing to trigger and goes straight
-to `canceled`.
+To keep the diagram readable, the edges into `failed` and `cancel`, that every
+state has, are left out. The only ones drawn are the timeouts of the waits,
+that have no trigger to fall back to, since those end the deployment where they
+are drawn. Beyond them, a trigger, that exhausts its retry budget, also ends in
+`failed`, and a cancellation preempts every state but the clean up it triggers
+itself. A cancellation, that skips the clean up, has nothing to trigger and goes
+straight to `canceled`.
 
 ### BIOS attributes are applied in two passes
 
