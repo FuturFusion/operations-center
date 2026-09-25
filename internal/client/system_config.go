@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -144,4 +145,40 @@ func (c OperationsCenterClient) CleanSystemCache(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c OperationsCenterClient) GetSystemBackup(ctx context.Context, options system.BackupPost) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodPost, "/system/:backup", nil, options)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
+func (c OperationsCenterClient) RestoreSystemBackup(ctx context.Context, archive io.Reader) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, "/system/:restore", nil, gzipArchive{Reader: archive})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// gzipArchive sends a gzip compressed archive.
+type gzipArchive struct {
+	io.Reader
+}
+
+func (gzipArchive) Close() error {
+	return nil
+}
+
+func (gzipArchive) ContentType() string {
+	return "application/gzip"
 }
