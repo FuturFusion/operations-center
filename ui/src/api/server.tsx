@@ -181,12 +181,14 @@ export const updateSystemServer = (
   name: string,
   updateOS: boolean,
   applications: string[],
+  osOnly = false,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:update`, {
       method: "POST",
       body: JSON.stringify({
         os: { name: "os", trigger_update: updateOS },
+        os_only: osOnly,
         applications: applications.map((name) => ({
           name: name,
           trigger_update: true,

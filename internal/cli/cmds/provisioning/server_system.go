@@ -345,6 +345,7 @@ type cmdServerUpdate struct {
 
 	flagForce        bool
 	flagUpdateOS     bool
+	flagUpdateOSOnly bool
 	flagApplications []string
 }
 
@@ -358,11 +359,13 @@ func (c *cmdServerUpdate) Command() *cobra.Command {
   Triggers an update on a server.
 
   An update of the OS makes IncusOS update every installed application as well,
-  so "--os" can not be combined with "--application".
+  so "--os" can not be combined with "--application". Add "--os-only" to update
+  the OS on its own and leave the installed applications untouched.
 `
 
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger an update")
 	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger update of the OS and of all installed applications")
+	cmd.Flags().BoolVar(&c.flagUpdateOSOnly, "os-only", false, `restrict the update triggered by "--os" to the OS and leave the installed applications untouched`)
 	cmd.Flags().StringSliceVar(&c.flagApplications, "application", nil, "trigger update for the given application, can be provided multiple times")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -382,6 +385,10 @@ func (c *cmdServerUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string
 		return fmt.Errorf(`"--os" already covers the applications and can not be combined with "--application"`)
 	}
 
+	if c.flagUpdateOSOnly && !c.flagUpdateOS {
+		return fmt.Errorf(`"--os-only" restricts the update triggered by "--os" and requires it`)
+	}
+
 	if !c.flagUpdateOS && len(c.flagApplications) == 0 {
 		return fmt.Errorf(`One of "--os" or "--application" is required`)
 	}
@@ -397,6 +404,7 @@ func (c *cmdServerUpdate) run(cmd *cobra.Command, args []string) error {
 			Name:          "os",
 			TriggerUpdate: c.flagUpdateOS,
 		},
+		OSOnly: c.flagUpdateOSOnly,
 	}
 
 	for _, application := range c.flagApplications {

@@ -1644,6 +1644,10 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		return domain.NewValidationErrf("An update of the OS covers the applications as well and can not be combined with an update of individual applications")
 	}
 
+	if updateRequest.OSOnly && !updateRequest.OS.TriggerUpdate {
+		return domain.NewValidationErrf("An update restricted to the OS requires an update of the OS to be triggered")
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -1721,9 +1725,10 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 			for _, application := range server.VersionData.Applications {
 				// An OS update makes IncusOS update every application as well, so all
-				// of those in need of an update are covered by it.
+				// of those in need of an update are covered by it. An update restricted
+				// to the OS leaves them on the version they are on, so none of them is.
 				isCovered := slices.Contains(applications, application.Name) ||
-					(updateRequest.OS.TriggerUpdate && ptr.From(application.NeedsUpdate))
+					(updateRequest.OS.TriggerUpdate && !updateRequest.OSOnly && ptr.From(application.NeedsUpdate))
 
 				if !isCovered || application.AvailableVersion == nil {
 					continue
@@ -1776,7 +1781,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	}
 
 	if updateRequest.OS.TriggerUpdate {
-		err = s.client.UpdateOS(ctx, *server)
+		err = s.client.UpdateOS(ctx, *server, updateRequest.OSOnly)
 		if err != nil {
 			previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepUpdate, err)
 

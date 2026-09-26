@@ -554,13 +554,15 @@ func (c Client) Restore(ctx context.Context, server provisioning.Server, restore
 	return nil
 }
 
-func (c Client) UpdateOS(ctx context.Context, server provisioning.Server) error {
+func (c Client) UpdateOS(ctx context.Context, server provisioning.Server, osOnly bool) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/update/:check", http.NoBody, "")
+	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/update/:check", map[string]bool{
+		"os_only": osOnly,
+	}, "")
 	if err != nil {
 		return fmt.Errorf("Failed to trigger update check on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}

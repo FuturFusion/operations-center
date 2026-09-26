@@ -237,13 +237,13 @@ func (_d ServerClientPortWithErrorWrapper) UpdateNetworkConfig(ctx context.Conte
 }
 
 // UpdateOS implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithErrorWrapper) UpdateOS(ctx context.Context, server provisioning.Server, osOnly bool) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.UpdateOS(ctx, server)
+	return _d._base.UpdateOS(ctx, server, osOnly)
 }
 
 // UpdateProviderConfig implements provisioning.ServerClientPort.
