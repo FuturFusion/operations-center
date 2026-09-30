@@ -9,6 +9,8 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -140,6 +142,37 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 		}
 	}()
 	return _d._base.Delete(ctx, update)
+}
+
+// DeleteUnknown implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithSlog) DeleteUnknown(ctx context.Context, known []uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("known", known),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteUnknown")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method DeleteUnknown returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method DeleteUnknown finished")
+		}
+	}()
+	return _d._base.DeleteUnknown(ctx, known)
 }
 
 // Exists implements provisioning.UpdateFilesRepo.

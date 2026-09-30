@@ -175,6 +175,7 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 //     by a restore of the application's backuped state by IncusOS.
 func (s updateService) Prune(ctx context.Context) error {
 	var fileRepoErrs []error
+	var known []uuid.UUID
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		updates, err := s.repo.GetAll(ctx)
@@ -208,6 +209,7 @@ func (s updateService) Prune(ctx context.Context) error {
 			}
 
 			if !remove {
+				known = append(known, update.UUID)
 				continue
 			}
 
@@ -224,6 +226,11 @@ func (s updateService) Prune(ctx context.Context) error {
 
 		return nil
 	})
+	if err == nil {
+		// Files of updates unknown to the database, e.g. after a restore, are removed.
+		err = s.filesRepo.DeleteUnknown(ctx, known)
+	}
+
 	err = errors.Join(append([]error{err}, fileRepoErrs...)...)
 	if err != nil {
 		return fmt.Errorf("Failed to prune pending updates: %w", err)

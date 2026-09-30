@@ -296,8 +296,10 @@ func TestUpdateService_Prune(t *testing.T) {
 		filesRepoGet     []queue.Item[fileDetail]
 		filesRepoDelete  queue.Errs
 		repoDeleteByUUID queue.Errs
+		deleteUnknownErr error
 
 		assertErr require.ErrorAssertionFunc
+		wantKnown []uuid.UUID
 	}{
 		{
 			name: "success",
@@ -340,6 +342,13 @@ func TestUpdateService_Prune(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantKnown: []uuid.UUID{uuidgen.FromPattern(t, "2")},
+		},
+		{
+			name:             "error - filesRepo.DeleteUnknown",
+			deleteUnknownErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:          "error - repo.GetAll",
@@ -405,6 +414,9 @@ func TestUpdateService_Prune(t *testing.T) {
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.filesRepoDelete.PopOrNil(t)
 				},
+				DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
+					return tc.deleteUnknownErr
+				},
 			}
 
 			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
@@ -416,6 +428,11 @@ func TestUpdateService_Prune(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Empty(t, tc.repoDeleteByUUID)
+
+			if tc.wantKnown != nil {
+				require.Len(t, repoUpdateFiles.DeleteUnknownCalls(), 1)
+				require.Equal(t, tc.wantKnown, repoUpdateFiles.DeleteUnknownCalls()[0].Known)
+			}
 		})
 	}
 }

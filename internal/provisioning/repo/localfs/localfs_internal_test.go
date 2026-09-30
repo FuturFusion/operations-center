@@ -468,6 +468,27 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 	}
 }
 
+func TestLocalfs_DeleteUnknown(t *testing.T) {
+	tmpDir := t.TempDir()
+	known := uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc")
+	unknown := uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110")
+
+	for _, name := range []string{known.String(), unknown.String(), "tmp-update-123"} {
+		err := os.MkdirAll(filepath.Join(tmpDir, name), 0o700)
+		require.NoError(t, err)
+	}
+
+	lfs, err := New(tmpDir, "")
+	require.NoError(t, err)
+
+	err = lfs.DeleteUnknown(t.Context(), []uuid.UUID{known})
+	require.NoError(t, err)
+
+	require.DirExists(t, filepath.Join(tmpDir, known.String()))
+	require.NoDirExists(t, filepath.Join(tmpDir, unknown.String()))
+	require.NoDirExists(t, filepath.Join(tmpDir, "tmp-update-123"))
+}
+
 type testLocalfsCreateFromArchive struct {
 	name            string
 	tarContentFiles string

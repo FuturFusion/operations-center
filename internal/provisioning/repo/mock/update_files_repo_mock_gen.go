@@ -10,6 +10,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
@@ -32,6 +34,9 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //			},
 //			DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the Delete method")
+//			},
+//			DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
+//				panic("mock out the DeleteUnknown method")
 //			},
 //			ExistsFunc: func(ctx context.Context, update provisioning.Update, filename string) (bool, error) {
 //				panic("mock out the Exists method")
@@ -63,6 +68,9 @@ type UpdateFilesRepoMock struct {
 
 	// DeleteFunc mocks the Delete method.
 	DeleteFunc func(ctx context.Context, update provisioning.Update) error
+
+	// DeleteUnknownFunc mocks the DeleteUnknown method.
+	DeleteUnknownFunc func(ctx context.Context, known []uuid.UUID) error
 
 	// ExistsFunc mocks the Exists method.
 	ExistsFunc func(ctx context.Context, update provisioning.Update, filename string) (bool, error)
@@ -99,6 +107,13 @@ type UpdateFilesRepoMock struct {
 			Ctx context.Context
 			// Update is the update argument value.
 			Update provisioning.Update
+		}
+		// DeleteUnknown holds details about calls to the DeleteUnknown method.
+		DeleteUnknown []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Known is the known argument value.
+			Known []uuid.UUID
 		}
 		// Exists holds details about calls to the Exists method.
 		Exists []struct {
@@ -145,6 +160,7 @@ type UpdateFilesRepoMock struct {
 	lockCleanupAll        sync.RWMutex
 	lockCreateFromArchive sync.RWMutex
 	lockDelete            sync.RWMutex
+	lockDeleteUnknown     sync.RWMutex
 	lockExists            sync.RWMutex
 	lockGet               sync.RWMutex
 	lockPruneFiles        sync.RWMutex
@@ -253,6 +269,42 @@ func (mock *UpdateFilesRepoMock) DeleteCalls() []struct {
 	mock.lockDelete.RLock()
 	calls = mock.calls.Delete
 	mock.lockDelete.RUnlock()
+	return calls
+}
+
+// DeleteUnknown calls DeleteUnknownFunc.
+func (mock *UpdateFilesRepoMock) DeleteUnknown(ctx context.Context, known []uuid.UUID) error {
+	if mock.DeleteUnknownFunc == nil {
+		panic("UpdateFilesRepoMock.DeleteUnknownFunc: method is nil but UpdateFilesRepo.DeleteUnknown was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Known []uuid.UUID
+	}{
+		Ctx:   ctx,
+		Known: known,
+	}
+	mock.lockDeleteUnknown.Lock()
+	mock.calls.DeleteUnknown = append(mock.calls.DeleteUnknown, callInfo)
+	mock.lockDeleteUnknown.Unlock()
+	return mock.DeleteUnknownFunc(ctx, known)
+}
+
+// DeleteUnknownCalls gets all the calls that were made to DeleteUnknown.
+// Check the length with:
+//
+//	len(mockedUpdateFilesRepo.DeleteUnknownCalls())
+func (mock *UpdateFilesRepoMock) DeleteUnknownCalls() []struct {
+	Ctx   context.Context
+	Known []uuid.UUID
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Known []uuid.UUID
+	}
+	mock.lockDeleteUnknown.RLock()
+	calls = mock.calls.DeleteUnknown
+	mock.lockDeleteUnknown.RUnlock()
 	return calls
 }
 

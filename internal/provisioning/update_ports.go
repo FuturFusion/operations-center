@@ -60,6 +60,7 @@ type UpdateFilesRepo interface {
 	PruneFiles(ctx context.Context, update Update) (_ error)
 	UsageInformation(ctx context.Context) (file.UsageInformation, error)
 	CleanupAll(ctx context.Context) error
+	DeleteUnknown(ctx context.Context, known []uuid.UUID) error
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
 
