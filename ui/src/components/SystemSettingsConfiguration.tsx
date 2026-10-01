@@ -9,7 +9,7 @@ const SystemSettingsConfiguration = () => {
   const { notify } = useNotification();
 
   const onSubmit = (settings: SystemSettings) => {
-    updateSystemSettings(JSON.stringify(settings, null, 2))
+    return updateSystemSettings(JSON.stringify(settings, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`System settings updated`);
