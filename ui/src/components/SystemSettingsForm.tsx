@@ -6,7 +6,7 @@ import { LogLevel } from "util/settings";
 
 interface Props {
   settings?: SystemSettings;
-  onSubmit: (values: SystemSettings) => void;
+  onSubmit: (values: SystemSettings) => Promise<void>;
 }
 
 const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
@@ -22,7 +22,7 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
     initialValues: formikInitialValues,
     enableReinitialize: true,
     onSubmit: (values: SystemSettings) => {
-      onSubmit(values);
+      return onSubmit(values);
     },
   });
 
