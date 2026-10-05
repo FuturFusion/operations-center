@@ -662,7 +662,15 @@ func assertOperationsCenterCliAdminDebugPprof(t *testing.T, tmpDir string) {
 	// Enable pprof.
 	mustRun(t, `EDITOR='sed -i "s|^pprof_enabled: .*|pprof_enabled: true|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
 	t.Cleanup(func() {
-		mustRun(t, `EDITOR='sed -i "s|^pprof_enabled: .*|pprof_enabled: false|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		mustRunWithContext(ctx, t, `EDITOR='sed -i "s|^pprof_enabled: .*|pprof_enabled: false|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
 	})
 
 	// Binary profile.
