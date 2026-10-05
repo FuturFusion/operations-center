@@ -1178,12 +1178,14 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.fallback, "terminal state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
 				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
+				require.NotEmpty(t, definition.status, "terminal state %q reports no server status", state)
 
 				return
 			}
 
 			require.False(t, state.IsTerminal(), "non terminal state %q reports itself as terminal", state)
 			require.NotEmpty(t, definition.detail, "state %q reports no status detail", state)
+			require.Empty(t, definition.status, "non terminal state %q reports a server status, which would take the server out of deploying", state)
 			require.NotEqual(t, state, definition.next, "state %q leads to itself", state)
 			require.Contains(t, deploymentStates, definition.next, "state %q leads to the unknown state %q", state, definition.next)
 
