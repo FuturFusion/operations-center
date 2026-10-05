@@ -3746,6 +3746,8 @@ func TestClusterService_AddServers(t *testing.T) {
 		clientSetServerConfigErr              error
 		serverSvcUpdateErr                    error
 
+		serverSvcReconcileMeshTunnelLocalAddressErr error
+
 		assertErr           require.ErrorAssertionFunc
 		wantOSServiceConfig []osServiceConfig
 	}{
@@ -3874,6 +3876,136 @@ func TestClusterService_AddServers(t *testing.T) {
 					},
 				},
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - reconcile mesh tunnel local address fails",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: new("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{
+				MemberConfig: []incusapi.ClusterMemberConfigKey{
+					{
+						Entity: "storage-pool",
+						Name:   "local",
+						Key:    "source",
+					},
+					{
+						Entity: "network",
+						Name:   "incusbr0",
+						Key:    "nic",
+					},
+				},
+			},
+			incusClientGetStoragePool: &incusapi.StoragePool{
+				StoragePoolPut: incusapi.StoragePoolPut{
+					Config: incusapi.ConfigMap{
+						"source": "incus",
+					},
+				},
+			},
+			incusClientGetNetwork: &incusapi.Network{
+				NetworkPut: incusapi.NetworkPut{
+					Config: incusapi.ConfigMap{
+						"nic": "eth0",
+					},
+				},
+			},
+
+			serverSvcReconcileMeshTunnelLocalAddressErr: boom.Error,
 
 			assertErr: require.NoError,
 		},
@@ -6444,6 +6576,9 @@ func TestClusterService_AddServers(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
 					return tc.serverSvcUpdateErr
+				},
+				ReconcileMeshTunnelLocalAddressFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.serverSvcReconcileMeshTunnelLocalAddressErr
 				},
 			}
 
