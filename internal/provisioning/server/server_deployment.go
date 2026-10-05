@@ -69,6 +69,10 @@ type deploymentStateDefinition struct {
 	// unresponsive BMC from parking the control loop.
 	callTimeout time.Duration
 
+	// cancelPhase marks the states, that clean a cancelled deployment up, and
+	// which a cancellation therefore does not preempt.
+	cancelPhase bool
+
 	// prepare records, that the action of the state is about to run, and is
 	// persisted before it does. It belongs to a step, whose side effect can not
 	// be told apart from a no-op once it has been performed, so a re-issued
@@ -398,18 +402,20 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCancel: {
-		kind:    deploymentStateKindAction,
-		detail:  api.ServerStatusDetailDeployingCancelling,
-		next:    api.ServerDeploymentStateWaitCancel,
-		retries: config.ServerDeploymentStepRetries,
+		kind:        deploymentStateKindAction,
+		detail:      api.ServerStatusDetailDeployingCancelling,
+		next:        api.ServerDeploymentStateWaitCancel,
+		retries:     config.ServerDeploymentStepRetries,
+		cancelPhase: true,
 	},
 	api.ServerDeploymentStateWaitCancel: {
-		kind:     deploymentStateKindWait,
-		detail:   api.ServerStatusDetailDeployingCancelling,
-		next:     api.ServerDeploymentStateCancelled,
-		fallback: api.ServerDeploymentStateCancel,
-		timeout:  config.ServerDeploymentStepTimeout,
-		retries:  config.ServerDeploymentStepRetries,
+		kind:        deploymentStateKindWait,
+		detail:      api.ServerStatusDetailDeployingCancelling,
+		next:        api.ServerDeploymentStateCancelled,
+		fallback:    api.ServerDeploymentStateCancel,
+		timeout:     config.ServerDeploymentStepTimeout,
+		retries:     config.ServerDeploymentStepRetries,
+		cancelPhase: true,
 	},
 	// A registration would have moved the server out of status deploying already,
 	// so reaching the completed state means the deployment completed without one.
@@ -1142,12 +1148,14 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 		slog.String("deployment_state", deployment.State.String()),
 	)
 
+	// An unknown state yields the zero definition, which is not a cancel phase and
+	// not a kind the dispatcher drives, so it reaches the check below.
+	definition, ok := deploymentStates[deployment.State]
+
 	// Cancellation preempts everything but the clean up it triggers itself. A
 	// cancellation, that skips the clean up, has nothing to trigger and ends the
 	// deployment right here.
-	if deployment.CancelRequested &&
-		deployment.State != api.ServerDeploymentStateCancel &&
-		deployment.State != api.ServerDeploymentStateWaitCancel {
+	if deployment.CancelRequested && !definition.cancelPhase {
 		log.InfoContext(ctx, "Deployment cancelled", slog.Bool("skip_cleanup", deployment.CancelSkipCleanup))
 
 		next := api.ServerDeploymentStateCancel
@@ -1165,7 +1173,6 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 			WithDetail("timeout", config.ServerDeploymentTimeout.String()))
 	}
 
-	definition, ok := deploymentStates[deployment.State]
 	if !ok {
 		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment is in the state %q, which Operations Center does not know how to continue from", deployment.State).
 			WithHintf("Start the deployment again.").
