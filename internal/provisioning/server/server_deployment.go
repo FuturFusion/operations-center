@@ -52,6 +52,10 @@ type deploymentStateDefinition struct {
 	// deploymentNextState, part of the state machine description.
 	branches []api.ServerDeploymentState
 
+	// retries is the number of attempts granted to the state, before the
+	// deployment fails.
+	retries int
+
 	// timeout bounds a wait state.
 	timeout time.Duration
 
@@ -82,19 +86,22 @@ func (d deploymentStateDefinition) callTimeoutOrDefault() time.Duration {
 // about one once it has been consumed or has been reset.
 var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 	api.ServerDeploymentStateRefreshBMCData: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStateCheckBIOS,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingPreparing,
+		next:    api.ServerDeploymentStateCheckBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCheckBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStatePowerOffBIOS,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingPreparing,
+		next:    api.ServerDeploymentStatePowerOffBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingPreparing,
-		next:   api.ServerDeploymentStateWaitPowerOffBIOS,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingPreparing,
+		next:    api.ServerDeploymentStateWaitPowerOffBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOS: {
 		kind:     deploymentStateKindWait,
@@ -102,16 +109,19 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateApplyBIOS,
 		fallback: api.ServerDeploymentStatePowerOffBIOS,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateApplyBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOnBIOS,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOnBIOS,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOnBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitBIOSApplied,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitBIOSApplied,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitBIOSApplied: {
 		kind:     deploymentStateKindWait,
@@ -119,16 +129,19 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateVerifyBIOS,
 		fallback: api.ServerDeploymentStatePowerOffBIOS,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateVerifyBIOS: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOffBIOSDeferred,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOffBIOSDeferred,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffBIOSDeferred: {
 		kind:     deploymentStateKindWait,
@@ -136,16 +149,19 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateApplyBIOSDeferred,
 		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateApplyBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOnBIOSDeferred,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOnBIOSDeferred,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOnBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitBIOSAppliedDeferred,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitBIOSAppliedDeferred: {
 		kind:     deploymentStateKindWait,
@@ -153,16 +169,19 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateVerifyBIOSDeferred,
 		fallback: api.ServerDeploymentStatePowerOffBIOSDeferred,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateVerifyBIOSDeferred: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOffSecureBoot,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOffSecureBoot,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffSecureBoot: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBoot,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBoot,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBoot: {
 		kind:     deploymentStateKindWait,
@@ -170,12 +189,14 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateSecureBoot,
 		fallback: api.ServerDeploymentStatePowerOffSecureBoot,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateSecureBoot: {
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		next:        api.ServerDeploymentStateClearMedia,
 		branches:    []api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
@@ -185,6 +206,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		next:        api.ServerDeploymentStateWaitSecureBootReset,
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
 	},
 	api.ServerDeploymentStateWaitSecureBootReset: {
@@ -194,9 +216,10 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout: config.ServerDeploymentStepWaitBIOSAppliedTimeout,
 	},
 	api.ServerDeploymentStatePowerOnSecureBootReset: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitSecureBootSetupMode,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitSecureBootSetupMode,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitSecureBootSetupMode: {
 		kind:     deploymentStateKindWait,
@@ -204,11 +227,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStatePowerOffSecureBootReset,
 		fallback: api.ServerDeploymentStatePowerOnSecureBootReset,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffSecureBootReset: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBootReset,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBootReset,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBootReset: {
 		kind:     deploymentStateKindWait,
@@ -216,11 +241,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateAttachSecureBootMedia,
 		fallback: api.ServerDeploymentStatePowerOffSecureBootReset,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateAttachSecureBootMedia: {
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingAttachingMedia,
 		next:        api.ServerDeploymentStateWaitSecureBootMediaAttached,
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentAttachMediaCallTimeout,
 	},
 	api.ServerDeploymentStateWaitSecureBootMediaAttached: {
@@ -229,11 +256,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStatePowerOnSecureBootMedia,
 		fallback: api.ServerDeploymentStateAttachSecureBootMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOnSecureBootMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitSecureBootEnrolled,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitSecureBootEnrolled,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitSecureBootEnrolled: {
 		kind:     deploymentStateKindWait,
@@ -241,11 +270,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStatePowerOffSecureBootMedia,
 		fallback: api.ServerDeploymentStatePowerOnSecureBootMedia,
 		timeout:  config.ServerDeploymentSecureBootEnrollTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffSecureBootMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBootMedia: {
 		kind:     deploymentStateKindWait,
@@ -253,11 +284,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateClearMedia,
 		fallback: api.ServerDeploymentStatePowerOffSecureBootMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateClearMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingAttachingMedia,
-		next:   api.ServerDeploymentStateWaitMediaCleared,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingAttachingMedia,
+		next:    api.ServerDeploymentStateWaitMediaCleared,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaCleared: {
 		kind:     deploymentStateKindWait,
@@ -265,16 +298,19 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateEnableSecureBoot,
 		fallback: api.ServerDeploymentStateClearMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateEnableSecureBoot: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStatePowerOnSecureBoot,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOnSecureBoot,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOnSecureBoot: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitSecureBootSettled,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitSecureBootSettled,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitSecureBootSettled: {
 		kind:     deploymentStateKindWait,
@@ -282,11 +318,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStatePowerOffSecureBootSettled,
 		fallback: api.ServerDeploymentStatePowerOnSecureBoot,
 		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOffSecureBootSettled: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
-		next:   api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: {
 		kind:     deploymentStateKindWait,
@@ -294,11 +332,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateAttachMedia,
 		fallback: api.ServerDeploymentStatePowerOffSecureBootSettled,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateAttachMedia: {
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingAttachingMedia,
 		next:        api.ServerDeploymentStateWaitMediaAttached,
+		retries:     config.ServerDeploymentStepRetries,
 		callTimeout: config.ServerDeploymentAttachMediaCallTimeout,
 	},
 	api.ServerDeploymentStateWaitMediaAttached: {
@@ -307,11 +347,13 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStatePowerOnInstall,
 		fallback: api.ServerDeploymentStateAttachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStatePowerOnInstall: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingInstalling,
-		next:   api.ServerDeploymentStateWaitInstall,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingInstalling,
+		next:    api.ServerDeploymentStateWaitInstall,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitInstall: {
 		kind:    deploymentStateKindWait,
@@ -320,9 +362,10 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout: config.ServerDeploymentInstallTimeout,
 	},
 	api.ServerDeploymentStateDetachMedia: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingFinalizing,
-		next:   api.ServerDeploymentStateWaitMediaDetached,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingFinalizing,
+		next:    api.ServerDeploymentStateWaitMediaDetached,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitMediaDetached: {
 		kind:     deploymentStateKindWait,
@@ -330,6 +373,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateWaitReboot,
 		fallback: api.ServerDeploymentStateDetachMedia,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitReboot: {
 		kind:    deploymentStateKindWait,
@@ -344,14 +388,16 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		timeout: config.ServerDeploymentRegistrationTimeout,
 	},
 	api.ServerDeploymentStateCleanup: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingFinalizing,
-		next:   api.ServerDeploymentStateCompleted,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingFinalizing,
+		next:    api.ServerDeploymentStateCompleted,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCancel: {
-		kind:   deploymentStateKindAction,
-		detail: api.ServerStatusDetailDeployingCancelling,
-		next:   api.ServerDeploymentStateWaitCancel,
+		kind:    deploymentStateKindAction,
+		detail:  api.ServerStatusDetailDeployingCancelling,
+		next:    api.ServerDeploymentStateWaitCancel,
+		retries: config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateWaitCancel: {
 		kind:     deploymentStateKindWait,
@@ -359,6 +405,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		next:     api.ServerDeploymentStateCancelled,
 		fallback: api.ServerDeploymentStateCancel,
 		timeout:  config.ServerDeploymentStepTimeout,
+		retries:  config.ServerDeploymentStepRetries,
 	},
 	api.ServerDeploymentStateCompleted: {kind: deploymentStateKindTerminal},
 	api.ServerDeploymentStateFailed:    {kind: deploymentStateKindTerminal},
@@ -1159,7 +1206,7 @@ func (s *serverService) deploymentAction(ctx context.Context, log *slog.Logger, 
 
 	mutate, err := s.runBoundedDeploymentAction(ctx, log, server, definition)
 	if err != nil {
-		return false, s.recordDeploymentFailure(ctx, log, server.Name, err)
+		return false, s.recordDeploymentFailure(ctx, log, server.Name, definition, err)
 	}
 
 	return true, s.advanceDeployment(ctx, server.Name, definition.next, mutate)
@@ -1205,7 +1252,7 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
-	if deployment.Retries+1 > config.ServerDeploymentStepRetries {
+	if deployment.Retries+1 > definition.retries {
 		return false, s.failDeployment(ctx, server.Name, timeoutErr)
 	}
 
@@ -2400,7 +2447,7 @@ func (s *serverService) advanceDeployment(ctx context.Context, name string, next
 
 // recordDeploymentFailure accounts for a failed step, either by scheduling
 // another attempt or by failing the deployment.
-func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.Logger, name string, stepErr error) error {
+func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.Logger, name string, definition deploymentStateDefinition, stepErr error) error {
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return err
@@ -2429,7 +2476,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 	// counter would be reset on every round and the two states would loop.
 	retryFrom, ok := errors.AsType[deploymentRetryFromError](stepErr)
 	if ok {
-		if deployment.FallbackAttempts+1 > config.ServerDeploymentStepRetries {
+		if deployment.FallbackAttempts+1 > definition.retries {
 			return s.failDeployment(ctx, name, stepErr)
 		}
 
@@ -2443,7 +2490,7 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 		})
 	}
 
-	if !domain.IsRetryableError(stepErr) || deployment.Retries+1 > config.ServerDeploymentStepRetries {
+	if !domain.IsRetryableError(stepErr) || deployment.Retries+1 > definition.retries {
 		return s.failDeployment(ctx, name, stepErr)
 	}
 
