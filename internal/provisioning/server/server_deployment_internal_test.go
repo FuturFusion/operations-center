@@ -138,6 +138,114 @@ func Test_deploymentIsBIOSDeferredPass(t *testing.T) {
 	}
 }
 
+// deploymentTestFlagCombinations returns a deployment for every combination of
+// the flags, the pass by decisions are taken on, so a skip is exercised in both
+// directions.
+func deploymentTestFlagCombinations() []*provisioning.ServerDeployment {
+	deployments := make([]*provisioning.ServerDeployment, 0, 128)
+
+	for flags := range 128 {
+		deployment := &provisioning.ServerDeployment{
+			BIOSPending:            flags&1 != 0,
+			BIOSDeferredPending:    flags&2 != 0,
+			SecureBootPending:      flags&4 != 0,
+			SecureBootResetPending: flags&16 != 0,
+			Request: provisioning.ServerDeploymentRequest{
+				SkipSecureBootCertificates: flags&8 != 0,
+				SecureBootEnrollmentMedia:  flags&32 != 0,
+			},
+		}
+
+		if flags&64 != 0 {
+			deployment.SecureBootResetTaskMonitor = "/redfish/v1/TaskService/Tasks/1"
+			deployment.BIOSSecureBootPendingAttributes = []string{"SecureBoot"}
+		}
+
+		deployments = append(deployments, deployment)
+	}
+
+	return deployments
+}
+
+// deploymentTestRanks numbers the states along the happy path and the branches
+// off it, so a skip can be held against the order the machine runs in. A state
+// ranks behind every state, that leads to it.
+func deploymentTestRanks(t *testing.T) map[api.ServerDeploymentState]int {
+	t.Helper()
+
+	ranks := map[api.ServerDeploymentState]int{}
+
+	var visit func(state api.ServerDeploymentState, path []api.ServerDeploymentState)
+
+	visit = func(state api.ServerDeploymentState, path []api.ServerDeploymentState) {
+		require.NotContains(t, path, state, "the happy path revisits state %q", state)
+
+		rank, seen := ranks[state]
+		if seen && rank >= len(path) {
+			return
+		}
+
+		ranks[state] = len(path)
+
+		definition := deploymentStates[state]
+		path = append(slices.Clone(path), state)
+
+		for _, successor := range append([]api.ServerDeploymentState{definition.next}, definition.branches...) {
+			if successor == "" {
+				continue
+			}
+
+			visit(successor, path)
+		}
+	}
+
+	visit(api.ServerDeploymentStateRefreshBMCData, nil)
+
+	return ranks
+}
+
+// Test_deploymentStatesSkipForward asserts, that a state, which is passed by,
+// names a state further along the happy path. That is what makes the loop in
+// deploymentNextState settle, whatever the deployment looks like.
+func Test_deploymentStatesSkipForward(t *testing.T) {
+	ranks := deploymentTestRanks(t)
+
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			require.Contains(t, ranks, state, "state %q is passed by, but is not on the happy path", state)
+
+			for _, deployment := range deploymentTestFlagCombinations() {
+				entered := definition.enterState(deployment)
+				if entered == state {
+					continue
+				}
+
+				require.Contains(t, deploymentStates, entered, "state %q skips to the unknown state %q", state, entered)
+				require.Greater(t, ranks[entered], ranks[state], "state %q skips to %q, which does not move forward", state, entered)
+			}
+		})
+	}
+}
+
+// Test_deploymentNextStateSettles asserts, that the chain of skips always comes
+// to rest, from every state and for every deployment.
+func Test_deploymentNextStateSettles(t *testing.T) {
+	for state := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			for _, deployment := range deploymentTestFlagCombinations() {
+				next := deploymentNextState(deployment, state)
+
+				require.Contains(t, deploymentStates, next, "state %q settles on the unknown state %q", state, next)
+				require.Equal(t, next, deploymentNextState(deployment, next), "state %q settles on %q, which is passed by itself", state, next)
+			}
+		})
+	}
+}
+
 func Test_deploymentBackoff(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1279,8 +1387,16 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 	walk(api.ServerDeploymentStateCancel)
 	walk(api.ServerDeploymentStateFailed)
 
-	for state := range deploymentStates {
+	for state, definition := range deploymentStates {
 		require.Contains(t, reached, state, "state %q can not be reached from the entry states", state)
+
+		if definition.enterState == nil {
+			continue
+		}
+
+		for _, deployment := range deploymentTestFlagCombinations() {
+			require.Contains(t, reached, definition.enterState(deployment), "state %q skips to an unreachable state", state)
+		}
 	}
 }
 
