@@ -1116,6 +1116,12 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 			return nil, nil
 		}
 
+		// The power state changed between the BMC turning the reset down and
+		// reading it back, so issuing the reset again settles it.
+		if powerState != "" && isInvalidForSystemState(err) {
+			return nil, domain.NewRetryableErr(fmt.Errorf("Failed to perform BMC reset operation: %w", wrapRedfishError(err)))
+		}
+
 		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", wrapRedfishError(err))
 	}
 

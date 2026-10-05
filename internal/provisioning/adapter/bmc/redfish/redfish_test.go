@@ -1667,6 +1667,8 @@ const (
   }
 }`
 
+	resetInvalidForSystemStateBody = `{"error":{"@Message.ExtendedInfo":[{"MessageArgs":["Power is off"],"MessageId":"iLO.2.25.InvalidOperationForSystemState"}],"code":"iLO.0.10.ExtendedInfo","message":"See @Message.ExtendedInfo for more information."}}`
+
 	resetSystemPoweredOffBody = `{
   "@odata.id": "/redfish/v1/Systems/1",
   "Id": "1",
@@ -1772,6 +1774,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 		resetActionInfoStatusCode int
 		resetActionInfoBody       string
 		resetStatusCode           int
+		resetBody                 string
 		resetLocation             string
 
 		wantResetType   string
@@ -1909,6 +1912,24 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			assertErr:     errassert.Contains("Failed to perform BMC reset operation"),
 		},
 		{
+			name:  "error - reset turned down as invalid for the system state and the server is not powered on",
+			force: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOffBody},
+			resetStatusCode:       http.StatusBadRequest,
+			resetBody:             resetInvalidForSystemStateBody,
+
+			wantResetType: "ForceOn",
+			assertErr: func(tt require.TestingT, err error, msgAndArgs ...any) {
+				require.ErrorContains(tt, err, "Failed to perform BMC reset operation", msgAndArgs...)
+				require.True(tt, domain.IsRetryableError(err), "the reset is worth issuing again, since the power state changed underneath it")
+			},
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -2012,6 +2033,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 				resetActionInfoStatusCode: tc.resetActionInfoStatusCode,
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
+				resetBody:                 tc.resetBody,
 				resetLocation:             tc.resetLocation,
 			}, &gotRequests)
 
@@ -2043,6 +2065,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 		resetActionInfoStatusCode int
 		resetActionInfoBody       string
 		resetStatusCode           int
+		resetBody                 string
 		resetLocation             string
 
 		wantResetType   string
@@ -2180,6 +2203,24 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			assertErr:     errassert.Contains("Failed to perform BMC reset operation"),
 		},
 		{
+			name:  "error - reset turned down as invalid for the system state and the server is not powered off",
+			force: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOnBody},
+			resetStatusCode:       http.StatusBadRequest,
+			resetBody:             resetInvalidForSystemStateBody,
+
+			wantResetType: "ForceOff",
+			assertErr: func(tt require.TestingT, err error, msgAndArgs ...any) {
+				require.ErrorContains(tt, err, "Failed to perform BMC reset operation", msgAndArgs...)
+				require.True(tt, domain.IsRetryableError(err), "the reset is worth issuing again, since the power state changed underneath it")
+			},
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -2283,6 +2324,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 				resetActionInfoStatusCode: tc.resetActionInfoStatusCode,
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
+				resetBody:                 tc.resetBody,
 				resetLocation:             tc.resetLocation,
 			}, &gotRequests)
 

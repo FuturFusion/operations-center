@@ -376,6 +376,12 @@ func isRequestRejected(err error) bool {
 	return isClientError(redfishErr.HTTPReturnedStatusCode)
 }
 
+// isInvalidForSystemState reports whether the BMC turned the request down
+// because the state the server is in does not allow it.
+func isInvalidForSystemState(err error) bool {
+	return isRequestRejected(err) && redfishErrorHasMessageID(err, "InvalidOperationForSystemState")
+}
+
 func isClientError(statusCode int) bool {
 	return statusCode >= 400 && statusCode < 500
 }
