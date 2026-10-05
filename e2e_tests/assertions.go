@@ -455,6 +455,21 @@ func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	})
 
 	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == %d'`, clusterName, len(serverNames))
+
+	// Every cluster member has its own source address pinned for the internal mesh network.
+	resp = mustRun(t, `incus cluster list %s: -f json | jq -r '.[].server_name'`, clusterName)
+
+	meshTunnelLocalAddresses := map[string]string{}
+	for memberName := range strings.FieldsSeq(resp.Output()) {
+		resp = mustRun(t, `incus network get %s:meshbr0 tunnel.mesh.local --target %s`, clusterName, memberName)
+		localAddress := resp.OutputTrimmed()
+		require.NotEmpty(t, localAddress, "expect tunnel.mesh.local to be set for cluster member %s", memberName)
+
+		otherMemberName, ok := meshTunnelLocalAddresses[localAddress]
+		require.False(t, ok, "expect tunnel.mesh.local %s of cluster member %s to be unique, also used by %s", localAddress, memberName, otherMemberName)
+
+		meshTunnelLocalAddresses[localAddress] = memberName
+	}
 }
 
 func assertInventory(t *testing.T, clusterName string, names []string) {
