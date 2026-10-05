@@ -30,6 +30,10 @@ locals {
   meshTunnelInterfaces = {
     "server-1" = "enp5s0"
   }
+
+  meshTunnelLocalAddresses = {
+    "server-1" = "1.2.3.4"
+  }
 }
 
 // Generate random values for the meshbr0 IPv6 subnet.
@@ -53,9 +57,12 @@ resource "incus_network" "meshbr0_per_node" {
   target = each.key
   type   = "bridge"
 
-  config = {
-    "tunnel.mesh.interface" = local.meshTunnelInterfaces[each.key]
-  }
+  config = merge(
+    {
+      "tunnel.mesh.interface" = local.meshTunnelInterfaces[each.key]
+    },
+    { for key, value in { "tunnel.mesh.local" = local.meshTunnelLocalAddresses[each.key] } : key => value if value != "" },
+  )
 
   depends_on = [
     null_resource.post_projects,

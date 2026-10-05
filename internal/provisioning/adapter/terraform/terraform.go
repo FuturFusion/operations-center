@@ -150,6 +150,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	}
 
 	meshTunnelInterfaces := make(map[string]string, len(config.Servers))
+	meshTunnelLocalAddresses := make(map[string]string, len(config.Servers))
 	for _, server := range config.Servers {
 		meshTunnelInterface, err := provisioning.DetermineMeshTunnelInterface(server.OSData)
 		if err != nil {
@@ -157,6 +158,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		}
 
 		meshTunnelInterfaces[server.Name] = meshTunnelInterface
+		meshTunnelLocalAddresses[server.Name] = provisioning.DetermineMeshTunnelLocalAddress(server.OSData)
 	}
 
 	for _, templateFile := range templateFiles {
@@ -176,11 +178,12 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 			case ".gotmpl":
 				err = tmpl.ExecuteTemplate(
 					targetFile, templateFile.Name(), map[string]any{
-						"ClusterID":            config.Cluster.ID,
-						"ClusterName":          name,
-						"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
-						"MeshTunnelInterfaces": meshTunnelInterfaces,
-						"IncusPreseed":         incusPreseed,
+						"ClusterID":                config.Cluster.ID,
+						"ClusterName":              name,
+						"ClusterAddress":           config.ClusterEndpoint.GetConnectionURL(),
+						"MeshTunnelInterfaces":     meshTunnelInterfaces,
+						"MeshTunnelLocalAddresses": meshTunnelLocalAddresses,
+						"IncusPreseed":             incusPreseed,
 
 						"KnownTrustedCertificates": knownTrustedCertificates,
 
