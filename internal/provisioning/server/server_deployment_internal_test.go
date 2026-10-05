@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,35 +145,6 @@ func Test_deploymentStatesBIOSPass(t *testing.T) {
 	}
 }
 
-// deploymentTestFlagCombinations returns a deployment for every combination of
-// the flags, the pass by decisions are taken on, so a skip is exercised in both
-// directions.
-func deploymentTestFlagCombinations() []*provisioning.ServerDeployment {
-	deployments := make([]*provisioning.ServerDeployment, 0, 128)
-
-	for flags := range 128 {
-		deployment := &provisioning.ServerDeployment{
-			BIOSPending:            flags&1 != 0,
-			BIOSDeferredPending:    flags&2 != 0,
-			SecureBootPending:      flags&4 != 0,
-			SecureBootResetPending: flags&16 != 0,
-			Request: provisioning.ServerDeploymentRequest{
-				SkipSecureBootCertificates: flags&8 != 0,
-				SecureBootEnrollmentMedia:  flags&32 != 0,
-			},
-		}
-
-		if flags&64 != 0 {
-			deployment.SecureBootResetTaskMonitor = "/redfish/v1/TaskService/Tasks/1"
-			deployment.BIOSSecureBootPendingAttributes = []string{"SecureBoot"}
-		}
-
-		deployments = append(deployments, deployment)
-	}
-
-	return deployments
-}
-
 // deploymentTestRanks numbers the states along the happy path and the branches
 // off it, so a skip can be held against the order the machine runs in. A state
 // ranks behind every state, that leads to it.
@@ -223,7 +196,7 @@ func Test_deploymentStatesSkipForward(t *testing.T) {
 		t.Run(state.String(), func(t *testing.T) {
 			require.Contains(t, ranks, state, "state %q is passed by, but is not on the happy path", state)
 
-			for _, deployment := range deploymentTestFlagCombinations() {
+			for _, deployment := range deploymentDiagramSkipFlags() {
 				entered := definition.enterState(deployment)
 				if entered == state {
 					continue
@@ -241,12 +214,143 @@ func Test_deploymentStatesSkipForward(t *testing.T) {
 func Test_deploymentNextStateSettles(t *testing.T) {
 	for state := range deploymentStates {
 		t.Run(state.String(), func(t *testing.T) {
-			for _, deployment := range deploymentTestFlagCombinations() {
+			for _, deployment := range deploymentDiagramSkipFlags() {
 				next := deploymentNextState(deployment, state)
 
 				require.Contains(t, deploymentStates, next, "state %q settles on the unknown state %q", state, next)
 				require.Equal(t, next, deploymentNextState(deployment, next), "state %q settles on %q, which is passed by itself", state, next)
 			}
+		})
+	}
+}
+
+func deploymentTestLeafFields(t *testing.T, value reflect.Value, path string, visit func(path string, field reflect.Value)) {
+	t.Helper()
+
+	if value.Kind() != reflect.Struct || value.Type() == reflect.TypeFor[time.Time]() {
+		visit(path, value)
+
+		return
+	}
+
+	for i := range value.NumField() {
+		deploymentTestLeafFields(t, value.Field(i), path+"."+value.Type().Field(i).Name, visit)
+	}
+}
+
+func deploymentTestSetNonZero(t *testing.T, path string, field reflect.Value) {
+	t.Helper()
+
+	if field.Type() == reflect.TypeFor[time.Time]() {
+		field.Set(reflect.ValueOf(deploymentTestNow))
+
+		return
+	}
+
+	switch field.Kind() {
+	case reflect.Bool:
+		field.SetBool(true)
+
+	case reflect.String:
+		field.SetString("set")
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		field.SetInt(1)
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		field.SetUint(1)
+
+	case reflect.Float32, reflect.Float64:
+		field.SetFloat(1)
+
+	case reflect.Array:
+		deploymentTestSetNonZero(t, path, field.Index(0))
+
+	case reflect.Slice:
+		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
+
+	case reflect.Map:
+		field.Set(reflect.MakeMapWithSize(field.Type(), 1))
+		field.SetMapIndex(reflect.Zero(field.Type().Key()), reflect.Zero(field.Type().Elem()))
+
+	case reflect.Pointer:
+		field.Set(reflect.New(field.Type().Elem()))
+
+	default:
+		require.FailNow(t, "unsupported field kind", "field %q is of kind %s, which the test does not know how to set", path, field.Kind())
+	}
+}
+
+func Test_deploymentDiagramSkipFlagsCoverWhatEnterStateReads(t *testing.T) {
+	combinations := deploymentDiagramSkipFlags()
+
+	enumerated := map[string]bool{}
+	allSet := reflect.ValueOf(combinations[len(combinations)-1]).Elem()
+
+	deploymentTestLeafFields(t, reflect.ValueOf(combinations[0]).Elem(), "deployment", func(path string, field reflect.Value) {
+		enumerated[path] = false
+	})
+
+	deploymentTestLeafFields(t, allSet, "deployment", func(path string, field reflect.Value) {
+		enumerated[path] = !field.IsZero()
+	})
+
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			for _, base := range combinations {
+				want := definition.enterState(base)
+
+				changed := *base
+				deploymentTestLeafFields(t, reflect.ValueOf(&changed).Elem(), "deployment", func(path string, field reflect.Value) {
+					if enumerated[path] {
+						return
+					}
+
+					before := reflect.New(field.Type()).Elem()
+					before.Set(field)
+
+					deploymentTestSetNonZero(t, path, field)
+
+					require.Equal(t, want, definition.enterState(&changed), "state %q is entered or passed by depending on %q, which deploymentDiagramSkipFlags does not enumerate", state, path)
+
+					field.Set(before)
+				})
+			}
+		})
+	}
+}
+
+func Test_deploymentStatesEnterStateOutcomes(t *testing.T) {
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			require.Empty(t, definition.branches, "state %q declares branches, but has nothing routing to them", state)
+
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			outcomes := map[api.ServerDeploymentState]struct{}{}
+			for _, deployment := range deploymentDiagramSkipFlags() {
+				outcomes[definition.enterState(deployment)] = struct{}{}
+			}
+
+			require.Contains(t, outcomes, state, "state %q is never entered", state)
+
+			for _, branch := range definition.branches {
+				require.Contains(t, outcomes, branch, "state %q declares the branch %q, but never routes to it", state, branch)
+			}
+
+			delete(outcomes, state)
+
+			for _, branch := range definition.branches {
+				delete(outcomes, branch)
+			}
+
+			require.LessOrEqual(t, len(outcomes), 1, "state %q routes to %v, which are neither declared as branches nor a single state to skip to", state, slices.Collect(maps.Keys(outcomes)))
 		})
 	}
 }
@@ -1517,7 +1621,7 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 			continue
 		}
 
-		for _, deployment := range deploymentTestFlagCombinations() {
+		for _, deployment := range deploymentDiagramSkipFlags() {
 			require.Contains(t, reached, definition.enterState(deployment), "state %q skips to an unreachable state", state)
 		}
 	}
@@ -1708,6 +1812,154 @@ func Test_deploymentBMCData_requiresParts(t *testing.T) {
 			require.Nil(t, current)
 			require.Contains(t, err.Error(), tc.wantErr)
 			require.True(t, domain.IsRetryableError(err), "a BMC, that could not be asked, is asked again")
+		})
+	}
+}
+
+// Test_deploymentStatesDiagramMetadata asserts, that every state carries what
+// the generated state diagram needs, so a state can not be added to the table
+// without showing up in the documentation.
+func Test_deploymentStatesDiagramMetadata(t *testing.T) {
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			require.NotEmpty(t, definition.label, "state %q has no label to draw it by", state)
+
+			condition, err := deploymentDiagramCondition(definition)
+			require.NoError(t, err, "the condition of state %q does not render", state)
+			require.NotContains(t, condition, "<no value>", "the condition of state %q references something the view does not hold", state)
+
+			if definition.enterState != nil {
+				require.NotEmpty(t, definition.skipReason, "state %q can be passed by, but does not say why", state)
+			}
+
+			if len(definition.branches) > 0 {
+				require.NotEmpty(t, definition.branchReason, "state %q branches off, but does not say why", state)
+			}
+
+			if definition.retryFrom != "" {
+				require.NotEmpty(t, definition.retryReason, "state %q routes back to %q, but does not say why", state, definition.retryFrom)
+			}
+
+			if definition.kind == deploymentStateKindWait {
+				require.NotEmpty(t, definition.condition, "wait state %q does not say, what satisfies it", state)
+			}
+		})
+	}
+}
+
+func Test_deploymentDiagramDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration time.Duration
+
+		want string
+	}{
+		{name: "zero", duration: 0, want: "0s"},
+		{name: "negative", duration: -time.Minute, want: "0s"},
+		{name: "seconds", duration: 10 * time.Second, want: "10s"},
+		{name: "whole minutes", duration: 10 * time.Minute, want: "10m"},
+		{name: "whole hours", duration: 2 * time.Hour, want: "2h"},
+		{name: "hours and minutes", duration: 90 * time.Minute, want: "1h30m"},
+		{name: "every unit", duration: time.Hour + 2*time.Minute + 3*time.Second, want: "1h2m3s"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, deploymentDiagramDuration(tc.duration))
+		})
+	}
+}
+
+// Test_DeploymentStateDiagram asserts, that the rendered diagram covers the
+// table and nothing but the table, and that it does not depend on the iteration
+// order of the map.
+func Test_DeploymentStateDiagram(t *testing.T) {
+	diagram, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+
+	again, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+	require.Equal(t, diagram, again, "the diagram is not rendered deterministically")
+
+	declared := map[string]struct{}{}
+
+	for line := range strings.SplitSeq(diagram, "\n") {
+		line = strings.TrimSpace(line)
+
+		id, ok := strings.CutPrefix(line, "state ")
+		if ok {
+			_, id, _ = strings.Cut(id, " as ")
+			declared[id] = struct{}{}
+
+			continue
+		}
+
+		from, rest, ok := strings.Cut(line, " --> ")
+		if !ok {
+			continue
+		}
+
+		to, _, _ := strings.Cut(rest, ": ")
+
+		for _, id := range []string{from, to} {
+			if id == "[*]" {
+				continue
+			}
+
+			require.Contains(t, declared, id, "the diagram draws an edge to %q, which it does not declare", id)
+		}
+	}
+
+	require.Len(t, declared, len(deploymentStates), "the diagram does not declare every state of the table")
+
+	for state := range deploymentStates {
+		require.Contains(t, declared, deploymentDiagramID(state), "the diagram leaves state %q out", state)
+	}
+}
+
+func Test_deploymentDiagramEdges(t *testing.T) {
+	edges, err := deploymentDiagramEdges(deploymentDiagramOrder())
+	require.NoError(t, err)
+
+	drawn := map[api.ServerDeploymentState]map[string][]string{}
+	for _, edge := range edges {
+		from := api.ServerDeploymentState(edge.from)
+		if drawn[from] == nil {
+			drawn[from] = map[string][]string{}
+		}
+
+		drawn[from][edge.to] = append(drawn[from][edge.to], edge.label)
+	}
+
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			want := map[string]struct{}{}
+
+			if definition.kind == deploymentStateKindTerminal {
+				want["[*]"] = struct{}{}
+			} else {
+				for _, deployment := range deploymentDiagramSkipFlags() {
+					want[string(deploymentNextState(deployment, definition.next))] = struct{}{}
+				}
+			}
+
+			if definition.retryFrom != "" {
+				want[string(definition.retryFrom)] = struct{}{}
+				require.Contains(t, drawn[state][string(definition.retryFrom)], definition.retryReason, "the edge of state %q back to %q is not labeled with its reason", state, definition.retryFrom)
+			}
+
+			if definition.revert != "" {
+				want[string(definition.revert)] = struct{}{}
+				require.Contains(t, drawn[state][string(definition.revert)], definition.revertReason, "the edge of wait %q reverting to %q is not labeled with its reason", state, definition.revert)
+			}
+
+			if definition.kind == deploymentStateKindWait {
+				timeout := cmp.Or(definition.fallback, api.ServerDeploymentStateFailed)
+				want[string(timeout)] = struct{}{}
+				require.Contains(t, drawn[state][string(timeout)], "timeout ("+deploymentDiagramDuration(definition.timeout)+")", "the diagram does not draw the timeout of wait %q to %q", state, timeout)
+			}
+
+			require.ElementsMatch(t, slices.Collect(maps.Keys(want)), slices.Collect(maps.Keys(drawn[state])), "the diagram does not draw exactly the transitions of state %q", state)
 		})
 	}
 }
