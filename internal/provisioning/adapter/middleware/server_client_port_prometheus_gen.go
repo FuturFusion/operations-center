@@ -207,6 +207,20 @@ func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, ser
 	return _d.base.GetVersionData(ctx, server)
 }
 
+// IncusClient implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "IncusClient", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IncusClient(ctx, endpoint)
+}
+
 // IsReady implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) IsReady(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()

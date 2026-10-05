@@ -151,6 +151,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the RebootSystemByName method")
 //			},
+//			ReconcileMeshTunnelLocalAddressFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the ReconcileMeshTunnelLocalAddress method")
+//			},
 //			RegisterFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 //				panic("mock out the Register method")
 //			},
@@ -340,6 +343,9 @@ type ServerServiceMock struct {
 
 	// RebootSystemByNameFunc mocks the RebootSystemByName method.
 	RebootSystemByNameFunc func(ctx context.Context, name string, force bool) error
+
+	// ReconcileMeshTunnelLocalAddressFunc mocks the ReconcileMeshTunnelLocalAddress method.
+	ReconcileMeshTunnelLocalAddressFunc func(ctx context.Context, server provisioning.Server) error
 
 	// RegisterFunc mocks the Register method.
 	RegisterFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
@@ -740,6 +746,13 @@ type ServerServiceMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
+		// ReconcileMeshTunnelLocalAddress holds details about calls to the ReconcileMeshTunnelLocalAddress method.
+		ReconcileMeshTunnelLocalAddress []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// Register holds details about calls to the Register method.
 		Register []struct {
 			// Ctx is the ctx argument value.
@@ -946,6 +959,7 @@ type ServerServiceMock struct {
 	lockPoweroffSystemByName                 sync.RWMutex
 	lockPreRegister                          sync.RWMutex
 	lockRebootSystemByName                   sync.RWMutex
+	lockReconcileMeshTunnelLocalAddress      sync.RWMutex
 	lockRegister                             sync.RWMutex
 	lockRename                               sync.RWMutex
 	lockRestartApplication                   sync.RWMutex
@@ -2568,6 +2582,42 @@ func (mock *ServerServiceMock) RebootSystemByNameCalls() []struct {
 	mock.lockRebootSystemByName.RLock()
 	calls = mock.calls.RebootSystemByName
 	mock.lockRebootSystemByName.RUnlock()
+	return calls
+}
+
+// ReconcileMeshTunnelLocalAddress calls ReconcileMeshTunnelLocalAddressFunc.
+func (mock *ServerServiceMock) ReconcileMeshTunnelLocalAddress(ctx context.Context, server provisioning.Server) error {
+	if mock.ReconcileMeshTunnelLocalAddressFunc == nil {
+		panic("ServerServiceMock.ReconcileMeshTunnelLocalAddressFunc: method is nil but ServerService.ReconcileMeshTunnelLocalAddress was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockReconcileMeshTunnelLocalAddress.Lock()
+	mock.calls.ReconcileMeshTunnelLocalAddress = append(mock.calls.ReconcileMeshTunnelLocalAddress, callInfo)
+	mock.lockReconcileMeshTunnelLocalAddress.Unlock()
+	return mock.ReconcileMeshTunnelLocalAddressFunc(ctx, server)
+}
+
+// ReconcileMeshTunnelLocalAddressCalls gets all the calls that were made to ReconcileMeshTunnelLocalAddress.
+// Check the length with:
+//
+//	len(mockedServerService.ReconcileMeshTunnelLocalAddressCalls())
+func (mock *ServerServiceMock) ReconcileMeshTunnelLocalAddressCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockReconcileMeshTunnelLocalAddress.RLock()
+	calls = mock.calls.ReconcileMeshTunnelLocalAddress
+	mock.lockReconcileMeshTunnelLocalAddress.RUnlock()
 	return calls
 }
 

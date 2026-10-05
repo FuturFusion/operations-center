@@ -3,13 +3,10 @@ package sqlite_test
 import (
 	"context"
 	"crypto/tls"
-	"net/http"
 	"strings"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusclient "github.com/lxc/incus/v7/client"
-	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -113,22 +110,8 @@ func TestServerDatabaseActions(t *testing.T) {
 		},
 	}
 
-	// The cluster does not have an internal mesh network.
-	var incusClient *adapterMock.InstanceServerMock
-
-	incusClient = &adapterMock.InstanceServerMock{
-		UseTargetFunc: func(name string) incusclient.InstanceServer {
-			return incusClient
-		},
-		GetNetworkFunc: func(name string) (*incusapi.Network, string, error) {
-			return nil, "", incusapi.StatusErrorf(http.StatusNotFound, "Network not found")
-		},
-	}
-
 	serverClient := &adapterMock.ServerClientPortMock{
-		IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
-			return incusClient, nil
-		},
+		IncusClientFunc: adapterMock.IncusClientWithoutMeshNetwork,
 		GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
 			return provisioning.ServerSystemUpdate{
 				Config: incusosapi.SystemUpdateConfig{

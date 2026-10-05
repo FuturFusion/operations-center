@@ -1392,6 +1392,37 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 	return _d._base.RebootSystemByName(ctx, name, force)
 }
 
+// ReconcileMeshTunnelLocalAddress implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ReconcileMeshTunnelLocalAddress(ctx context.Context, server provisioning.Server) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ReconcileMeshTunnelLocalAddress")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ReconcileMeshTunnelLocalAddress returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ReconcileMeshTunnelLocalAddress finished")
+		}
+	}()
+	return _d._base.ReconcileMeshTunnelLocalAddress(ctx, server)
+}
+
 // Register implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
