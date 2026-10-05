@@ -33,6 +33,7 @@ type mockRedfishServer struct {
 	resetActionInfoStatusCode int
 	resetActionInfoBody       string
 	resetStatusCode           int
+	resetBody                 string
 	resetLocation             string
 
 	systemVirtualMediaStatusCode        int
@@ -276,6 +277,7 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) ht
 			}
 
 			w.WriteHeader(cfg.resetStatusCode)
+			_, _ = w.Write([]byte(cfg.resetBody))
 
 		case "/redfish/v1/Managers":
 			w.WriteHeader(cfg.managersStatusCode)
