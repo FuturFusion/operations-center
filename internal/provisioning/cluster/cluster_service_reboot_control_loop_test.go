@@ -23,6 +23,7 @@ import (
 // through an on demand rolling reboot, i.e. without ever applying an update.
 func rebootOnlyServerClient(world *serverWorld) *adapterMock.ServerClientPortMock {
 	return &adapterMock.ServerClientPortMock{
+		IncusClientFunc: incusClientWithoutMeshNetwork,
 		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 			return nil
 		},

@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/lxc/incus/v7/shared/revert"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
@@ -63,6 +64,9 @@ type serverService struct {
 	deploymentControlLoopRuns map[string]*deploymentRun
 
 	httpClient *http.Client
+
+	meshTunnelMu       sync.Mutex
+	meshTunnelInFlight map[string]struct{}
 
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
@@ -2295,6 +2299,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		serverType, _ = s.client.GetServerType(ctx, server)
 	}
 
+	var updatedServer provisioning.Server
+
 	// Perform the update of the server in a transaction in order to respect
 	// potential updates, that happened since we queried for the list of servers
 	// in pending state.
@@ -2439,6 +2445,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			}
 		}
 
+		updatedServer = *server
+
 		return s.repo.Update(ctx, *server)
 	})
 	if err != nil {
@@ -2449,7 +2457,102 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		server.SignalLifecycleEvent()
 	}
 
+	if updateServerConfiguration && updatedServer.Cluster != nil {
+		// The poll it self succeeded, a failed reconciliation is retried with the next poll.
+		err = s.ReconcileMeshTunnelLocalAddress(ctx, updatedServer)
+		if err != nil {
+			log.WarnContext(ctx, "Failed to reconcile the source address of the internal mesh network", logger.Err(err))
+		}
+	}
+
 	return nil
+}
+
+// ReconcileMeshTunnelLocalAddress ensures, that the source address of the internal mesh
+// network of the given clustered server is pinned to an address of its mesh interface.
+func (s *serverService) ReconcileMeshTunnelLocalAddress(ctx context.Context, server provisioning.Server) error {
+	if server.Cluster == nil {
+		return nil
+	}
+
+	// Updating the network recreates the tunnel, therefore process one server per cluster
+	// at a time. A skipped server is processed with its next poll.
+	if !s.beginMeshTunnelReconcile(server) {
+		return nil
+	}
+
+	defer s.endMeshTunnelReconcile(server)
+
+	incusClient, err := s.client.IncusClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus client instance for server %q: %w", server.Name, err)
+	}
+
+	incusClient = incusClient.UseTarget(server.Name)
+
+	network, etag, err := incusClient.GetNetwork(provisioning.MeshNetworkName)
+	if err != nil {
+		// Clusters without the internal mesh network are not managed.
+		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			return nil
+		}
+
+		return fmt.Errorf("Failed to get network %q on server %q: %w", provisioning.MeshNetworkName, server.Name, err)
+	}
+
+	// The network is still being created by the provisioner.
+	if network.Status != incusapi.NetworkStatusCreated {
+		return nil
+	}
+
+	// Never unset the address, the interface might just be in the process of being reconfigured.
+	localAddresses := provisioning.MeshTunnelLocalAddresses(server.OSData, network.Config[provisioning.MeshTunnelInterfaceKey])
+	if len(localAddresses) == 0 {
+		return nil
+	}
+
+	// Keep the current address as long as it is a usable address of the mesh interface.
+	currentIP := net.ParseIP(network.Config[provisioning.MeshTunnelLocalKey])
+	if currentIP != nil && slices.Contains(localAddresses, currentIP.String()) {
+		return nil
+	}
+
+	network.Config[provisioning.MeshTunnelLocalKey] = localAddresses[0]
+
+	err = incusClient.UpdateNetwork(provisioning.MeshNetworkName, network.NetworkPut, etag)
+	if err != nil {
+		return fmt.Errorf("Failed to set %q of network %q on server %q: %w", provisioning.MeshTunnelLocalKey, provisioning.MeshNetworkName, server.Name, err)
+	}
+
+	slog.InfoContext(ctx, "Pinned the source address of the internal mesh network", slog.String("server", server.Name), slog.String("address", localAddresses[0]))
+
+	return nil
+}
+
+// beginMeshTunnelReconcile reports, whether no other server of the same cluster is currently being processed.
+func (s *serverService) beginMeshTunnelReconcile(server provisioning.Server) bool {
+	s.meshTunnelMu.Lock()
+	defer s.meshTunnelMu.Unlock()
+
+	_, ok := s.meshTunnelInFlight[*server.Cluster]
+	if ok {
+		return false
+	}
+
+	if s.meshTunnelInFlight == nil {
+		s.meshTunnelInFlight = map[string]struct{}{}
+	}
+
+	s.meshTunnelInFlight[*server.Cluster] = struct{}{}
+
+	return true
+}
+
+func (s *serverService) endMeshTunnelReconcile(server provisioning.Server) {
+	s.meshTunnelMu.Lock()
+	defer s.meshTunnelMu.Unlock()
+
+	delete(s.meshTunnelInFlight, *server.Cluster)
 }
 
 func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server provisioning.Server, log *slog.Logger) error {

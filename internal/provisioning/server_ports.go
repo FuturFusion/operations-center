@@ -36,6 +36,7 @@ type ServerService interface {
 
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
+	ReconcileMeshTunnelLocalAddress(ctx context.Context, server Server) error
 	ResyncBMCData(ctx context.Context) error
 
 	BeginUpdateRunByCluster(ctx context.Context, clusterName string, rebootPending bool) error
@@ -123,6 +124,7 @@ type ServerClientPort interface {
 	UpdateSystemKernel(ctx context.Context, server Server, config ServerSystemKernel) error
 	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, server Server, config ServerSystemLogging) error
+	IncusClient(ctx context.Context, endpoint Endpoint) (InstanceServer, error)
 }
 
 type ServerScriptletPort interface {

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"regexp"
 	"slices"
@@ -16,6 +17,8 @@ import (
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incusclient "github.com/lxc/incus/v7/client"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -317,6 +320,7 @@ var (
 // through a rolling cluster update with reboot.
 func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPortMock {
 	return &adapterMock.ServerClientPortMock{
+		IncusClientFunc: incusClientWithoutMeshNetwork,
 		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 			return nil
 		},
@@ -644,4 +648,21 @@ func (w *serverWorld) releaseWithErr(ctx context.Context, versionData api.Server
 	if transition.callback != nil {
 		transition.callback(ctx, err)
 	}
+}
+
+// incusClientWithoutMeshNetwork returns the incus client of a server, whose cluster
+// does not have an internal mesh network.
+func incusClientWithoutMeshNetwork(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+	var incusClient *adapterMock.InstanceServerMock
+
+	incusClient = &adapterMock.InstanceServerMock{
+		UseTargetFunc: func(name string) incusclient.InstanceServer {
+			return incusClient
+		},
+		GetNetworkFunc: func(name string) (*incusapi.Network, string, error) {
+			return nil, "", incusapi.StatusErrorf(http.StatusNotFound, "Network not found")
+		},
+	}
+
+	return incusClient, nil
 }
