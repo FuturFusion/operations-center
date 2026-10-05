@@ -853,7 +853,7 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
 			)
 
-			met, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server)
+			met, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server, deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset])
 			require.NoError(t, err)
 			require.Equal(t, tc.wantMet, met)
 			require.Equal(t, tc.wantPowerOffs, powerOffs, "a server, that is not down, has the power cut again")
@@ -1493,10 +1493,10 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			switch definition.kind {
 			case deploymentStateKindAction:
-				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server)
+				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindWait:
-				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server)
+				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindTerminal:
 				return

@@ -1325,7 +1325,7 @@ func (s *serverService) runBoundedDeploymentAction(ctx context.Context, log *slo
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
 	defer cancel()
 
-	return s.runDeploymentAction(callCtx, log, server)
+	return s.runDeploymentAction(callCtx, log, server, definition)
 }
 
 // checkBoundedDeploymentWait evaluates the condition of a wait state with the
@@ -1334,12 +1334,12 @@ func (s *serverService) checkBoundedDeploymentWait(ctx context.Context, log *slo
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
 	defer cancel()
 
-	return s.checkDeploymentWait(callCtx, log, server)
+	return s.checkDeploymentWait(callCtx, log, server, definition)
 }
 
 // runDeploymentAction performs the operation of a trigger state and returns a
 // mutation, that records what the operation produced.
-func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	switch deployment.State {
@@ -1347,7 +1347,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, s.resyncBMCData(ctx, server)
 
 	case api.ServerDeploymentStateCheckBIOS:
-		return s.checkDeploymentBIOSAttributes(ctx, log, server)
+		return s.checkDeploymentBIOSAttributes(ctx, log, server, definition)
 
 	case api.ServerDeploymentStatePowerOffBIOS, api.ServerDeploymentStatePowerOffBIOSDeferred,
 		api.ServerDeploymentStatePowerOffSecureBoot, api.ServerDeploymentStatePowerOffSecureBootSettled,
@@ -1385,7 +1385,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, err
 
 	case api.ServerDeploymentStateVerifyBIOS, api.ServerDeploymentStateVerifyBIOSDeferred:
-		return s.verifyDeploymentBIOSAttributes(ctx, log, server)
+		return s.verifyDeploymentBIOSAttributes(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateSecureBoot:
 		attempted := deployment.SecureBootAttempted
@@ -1415,10 +1415,10 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		}, nil
 
 	case api.ServerDeploymentStateAttachSecureBootMedia:
-		return s.attachDeploymentSecureBootMedia(ctx, log, server)
+		return s.attachDeploymentSecureBootMedia(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateEnableSecureBoot:
-		return s.enableDeploymentSecureBoot(ctx, server)
+		return s.enableDeploymentSecureBoot(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateClearMedia:
 		return nil, s.detachAllDeploymentMedia(ctx, server)
@@ -1427,7 +1427,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return nil, s.cleanupDeploymentMedia(ctx, server)
 
 	case api.ServerDeploymentStateAttachMedia:
-		return s.attachDeploymentMedia(ctx, server)
+		return s.attachDeploymentMedia(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateDetachMedia:
 		_, err := s.bmcDetachMediaByName(ctx, server.Name, deployment.Request.VirtualMediaID, false)
@@ -1451,7 +1451,7 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 
 // attachDeploymentMedia generates the installation media, attaches it and
 // registers it as the boot device for the next boot.
-func (s *serverService) attachDeploymentMedia(ctx context.Context, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) attachDeploymentMedia(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 	request := deployment.Request
 
@@ -1486,7 +1486,7 @@ func (s *serverService) attachDeploymentMedia(ctx context.Context, server provis
 
 // attachDeploymentSecureBootMedia generates the secure boot enrollment media,
 // attaches it and registers it as the boot device for the next boot.
-func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	attached, err := s.bmcAttachSecureBootMediaByName(ctx, log, server, deployment.Request.ImageType, deployment.Request.Architecture, deployment.SecureBoot, deployment.Request.VirtualMediaID)
@@ -1509,7 +1509,7 @@ func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log
 // refuses to have secure boot switched on. The setting takes effect on the next
 // boot, which is the one the deployment performs right after to let the firmware
 // pick the certificates up.
-func (s *serverService) enableDeploymentSecureBoot(ctx context.Context, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) enableDeploymentSecureBoot(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
 		//domain-errors:internal Programmer error, the BMC API type is not handled.
@@ -1690,7 +1690,7 @@ func (s *serverService) deploymentBIOSAttributesByName(ctx context.Context, serv
 // have anything to apply, so an already correctly configured server is not power
 // cycled for nothing. The outcome recorded for the second pass is only a first
 // estimate, which the verification of the first pass overwrites, if it runs.
-func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBIOSAttributesByName(ctx, server)
@@ -1718,7 +1718,7 @@ func (s *serverService) checkDeploymentBIOSAttributes(ctx context.Context, log *
 // them to the set, the BIOS pass, that just ran, has applied. Attributes, that
 // the BMC does not report at all, are skipped: not every attribute the firmware
 // accepts is published back through the attribute registry.
-func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+func (s *serverService) verifyDeploymentBIOSAttributes(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBIOSAttributesByName(ctx, server)
@@ -1912,7 +1912,7 @@ var isDeploymentInSecureBootSetupMode = deploymentBMCCondition{
 // checkDeploymentWait evaluates the condition of a wait state. Every condition
 // is derived from the BMC data or the server record, never from a task monitor
 // alone, since a BMC forgets about a task monitor once it has been consumed.
-func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	condition, ok := bmcWaitConditions[deployment.State]
@@ -1926,30 +1926,30 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 	}
 
 	if slices.Contains(deploymentPowerOffWaits, deployment.State) {
-		return s.checkDeploymentPoweredOff(ctx, log, server)
+		return s.checkDeploymentPoweredOff(ctx, log, server, definition)
 	}
 
 	switch deployment.State {
 	case api.ServerDeploymentStateWaitMediaAttached:
-		return s.checkDeploymentMediaAttached(ctx, server)
+		return s.checkDeploymentMediaAttached(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitSecureBootSettled:
-		return s.checkDeploymentSecureBootSettled(ctx, log, server)
+		return s.checkDeploymentSecureBootSettled(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitSecureBootEnrolled:
-		return s.checkDeploymentSecureBootEnrolled(ctx, log, server)
+		return s.checkDeploymentSecureBootEnrolled(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitBIOSApplied, api.ServerDeploymentStateWaitBIOSAppliedDeferred:
-		return s.checkDeploymentBIOSApplied(ctx, log, server)
+		return s.checkDeploymentBIOSApplied(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitSecureBootReset:
-		return s.checkDeploymentSecureBootReset(ctx, log, server)
+		return s.checkDeploymentSecureBootReset(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitInstall:
-		return s.checkDeploymentInstalled(ctx, log, server)
+		return s.checkDeploymentInstalled(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitReboot:
-		return s.checkDeploymentRebooted(ctx, log, server)
+		return s.checkDeploymentRebooted(ctx, log, server, definition)
 
 	case api.ServerDeploymentStateWaitRegistration:
 		return serverHasRegistered(server), nil, nil
@@ -1966,7 +1966,7 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 // its power on self test moments later, where it accepts neither a boot source
 // override nor a modification of its UEFI key databases. A server, that is
 // found powered on, has the power cut again.
-func (s *serverService) checkDeploymentPoweredOff(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentPoweredOff(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server, deploymentPowerIsOff.requires)
@@ -2006,7 +2006,7 @@ func (s *serverService) checkDeploymentPoweredOff(ctx context.Context, log *slog
 	return now.Sub(deployment.PoweredOffSince) >= config.ServerDeploymentPowerOffSettleDelay, nil, nil
 }
 
-func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, _ *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartVirtualMedia})
@@ -2024,7 +2024,7 @@ func (s *serverService) checkDeploymentMediaAttached(ctx context.Context, server
 
 // checkDeploymentRebooted tells, whether the server has come back up after the
 // first stage of the installation, powering it on again, if it stayed off.
-func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	if serverHasRegistered(server) {
 		return true, nil, nil
 	}
@@ -2050,7 +2050,7 @@ func (s *serverService) checkDeploymentRebooted(ctx context.Context, log *slog.L
 
 // checkDeploymentBIOSApplied tells, whether the firmware has picked the staged
 // BIOS attributes up.
-func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
@@ -2100,7 +2100,7 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 
 // checkDeploymentSecureBootReset tells, whether the BMC is done clearing the key
 // databases, so the server is only powered on once the reset has taken effect.
-func (s *serverService) checkDeploymentSecureBootReset(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentSecureBootReset(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
@@ -2153,7 +2153,7 @@ func deploymentSettleSnapshot(now time.Time, deployment *provisioning.ServerDepl
 
 // checkDeploymentSecureBootSettled tells, whether the firmware has picked the
 // enrolled secure boot certificates up.
-func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
@@ -2187,7 +2187,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 // checkDeploymentSecureBootEnrolled tells, whether the secure boot enrollment
 // media has enrolled the certificates, which the server signals by leaving the
 // secure boot setup mode.
-func (s *serverService) checkDeploymentSecureBootEnrolled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentSecureBootEnrolled(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
@@ -2224,7 +2224,7 @@ func (s *serverService) checkDeploymentSecureBootEnrolled(ctx context.Context, l
 
 // checkDeploymentInstalled tells, whether the first stage of the IncusOS
 // installation is done, from the strongest signal available.
-func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (bool, func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
 	// 1. The server registered itself, so it rebooted and finished on its own.
