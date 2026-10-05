@@ -1300,6 +1300,7 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.next, "terminal state %q leads somewhere", state)
 				require.Empty(t, definition.fallback, "terminal state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
+				require.Nil(t, definition.action, "terminal state %q has an action", state)
 				require.Nil(t, definition.wait, "terminal state %q has a wait", state)
 				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
 				require.NotEmpty(t, definition.status, "terminal state %q reports no server status", state)
@@ -1324,6 +1325,7 @@ func Test_deploymentStates(t *testing.T) {
 			}
 
 			if definition.kind == deploymentStateKindAction {
+				require.NotNil(t, definition.action, "action state %q performs nothing", state)
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
 				require.Positive(t, definition.retries, "action state %q has no retry budget", state)
@@ -1337,6 +1339,7 @@ func Test_deploymentStates(t *testing.T) {
 			}
 
 			require.NotNil(t, definition.wait, "wait state %q waits for nothing", state)
+			require.Nil(t, definition.action, "wait state %q has an action", state)
 			require.NotZero(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
 
 			if definition.fallback == "" {
@@ -1586,7 +1589,9 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			switch definition.kind {
 			case deploymentStateKindAction:
-				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server, definition)
+				require.NotNil(t, definition.action, "action state %q declares no action", state)
+
+				_, err = definition.action(serverSvc, t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindWait:
 				require.NotNil(t, definition.wait, "wait state %q declares no wait", state)
@@ -1603,7 +1608,6 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 			}
 
 			require.Error(t, err, "state %q reached none of the failing collaborators", state)
-			require.NotContains(t, err.Error(), "is not an action", "action state %q is not dispatched", state)
 		})
 	}
 }
