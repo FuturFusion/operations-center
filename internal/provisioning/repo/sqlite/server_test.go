@@ -111,6 +111,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	}
 
 	serverClient := &adapterMock.ServerClientPortMock{
+		IncusClientFunc: adapterMock.IncusClientWithoutMeshNetwork,
 		GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
 			return provisioning.ServerSystemUpdate{
 				Config: incusosapi.SystemUpdateConfig{

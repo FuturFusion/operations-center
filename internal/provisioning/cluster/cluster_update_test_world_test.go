@@ -317,6 +317,7 @@ var (
 // through a rolling cluster update with reboot.
 func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPortMock {
 	return &adapterMock.ServerClientPortMock{
+		IncusClientFunc: adapterMock.IncusClientWithoutMeshNetwork,
 		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 			return nil
 		},

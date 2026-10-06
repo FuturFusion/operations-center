@@ -908,7 +908,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		// Ignore the error, the cluster role address has already been successfully determined for `core.https_address`.
 		clusterRoleAddress, _ := determineClusterRoleAddress(server)
 
-		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint, clusterConfig.MemberConfig)
+		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint, memberConfigForServer(clusterConfig.MemberConfig, server))
 		if err != nil {
 			return fmt.Errorf("Failed to join cluster %q for server %q: %w", cluster.Name, server.Name, err)
 		}
@@ -958,6 +958,15 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	err = s.refreshOSDataForMeshTunnelInterface(ctx, additionalServers)
 	if err != nil {
 		return err
+	}
+
+	// Pin the source address of the internal mesh, if not done while joining.
+	for _, server := range additionalServers {
+		// A failed reconciliation is retried with the next poll of the server.
+		err = s.serverSvc.ReconcileMeshTunnelLocalAddress(ctx, server)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to reconcile the source address of the internal mesh network", slog.String("cluster", cluster.Name), slog.String("server", server.Name), logger.Err(err))
+		}
 	}
 
 	// Create local storage pool and the internal storage volumes for backup,
@@ -1912,6 +1921,43 @@ func (s *clusterService) refreshOSDataForMeshTunnelInterface(ctx context.Context
 		case <-time.After(s.meshTunnelInterfaceDetectionRetryDelay):
 		}
 	}
+}
+
+// memberConfigForServer returns a copy of the member config with the values, which
+// can not be taken over from an other cluster member, replaced by the ones of server.
+func memberConfigForServer(memberConfig []incusapi.ClusterMemberConfigKey, server provisioning.Server) []incusapi.ClusterMemberConfigKey {
+	isMeshNetworkKey := func(key incusapi.ClusterMemberConfigKey, name string) bool {
+		return key.Entity == "network" && key.Name == provisioning.MeshNetworkName && key.Key == name
+	}
+
+	var localAddress string
+
+	for _, key := range memberConfig {
+		if !isMeshNetworkKey(key, provisioning.MeshTunnelInterfaceKey) {
+			continue
+		}
+
+		localAddresses := provisioning.MeshTunnelLocalAddresses(server.OSData, key.Value)
+		if len(localAddresses) > 0 {
+			localAddress = localAddresses[0]
+		}
+	}
+
+	serverMemberConfig := make([]incusapi.ClusterMemberConfigKey, 0, len(memberConfig))
+	for _, key := range memberConfig {
+		if isMeshNetworkKey(key, provisioning.MeshTunnelLocalKey) {
+			// Without a usable address, the source address is left unset instead of taken over.
+			if localAddress == "" {
+				continue
+			}
+
+			key.Value = localAddress
+		}
+
+		serverMemberConfig = append(serverMemberConfig, key)
+	}
+
+	return serverMemberConfig
 }
 
 func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serverName string, timeout time.Duration, incusClient provisioning.InstanceServer) error {

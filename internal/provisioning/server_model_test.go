@@ -851,3 +851,80 @@ func TestDetermineMeshTunnelInterface(t *testing.T) {
 		})
 	}
 }
+
+func TestDetermineMeshTunnelLocalAddress(t *testing.T) {
+	osData := func(addresses ...string) api.OSData {
+		return api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: addresses,
+							Roles:     []string{incusosapi.SystemNetworkInterfaceRoleCluster},
+						},
+						"eth1": {
+							Addresses: []string{"192.168.2.2"},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+		in   api.OSData
+
+		want string
+	}{
+		{
+			name: "IPv4",
+			in:   osData("192.168.1.2"),
+
+			want: "192.168.1.2",
+		},
+		{
+			name: "mixed - first global unicast IPv4 wins",
+			in:   osData("fd42::2", "169.254.1.2", "192.168.1.2", "192.168.1.3"),
+
+			want: "192.168.1.2",
+		},
+		{
+			name: "IPv6 only",
+			in:   osData("fd42::2"),
+		},
+		{
+			name: "IPv4 link-local only",
+			in:   osData("169.254.1.2"),
+		},
+		{
+			name: "no mesh tunnel interface",
+			in:   api.OSData{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := provisioning.DetermineMeshTunnelLocalAddress(tc.in)
+
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestMeshTunnelLocalAddresses(t *testing.T) {
+	osData := api.OSData{
+		Network: incusosapi.SystemNetwork{
+			State: incusosapi.SystemNetworkState{
+				Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+					"eth0": {
+						Addresses: []string{"fd42::2", "169.254.1.2", "192.168.1.2", "192.168.1.3"},
+					},
+				},
+			},
+		},
+	}
+
+	require.Equal(t, []string{"192.168.1.2", "192.168.1.3"}, provisioning.MeshTunnelLocalAddresses(osData, "eth0"))
+	require.Empty(t, provisioning.MeshTunnelLocalAddresses(osData, "eth1"))
+}

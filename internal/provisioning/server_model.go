@@ -320,6 +320,17 @@ func DetermineManagementRoleURL(osdata api.OSData) (string, error) {
 	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
 }
 
+const (
+	// MeshNetworkName is the name of the internal mesh network.
+	MeshNetworkName = "meshbr0"
+
+	// MeshTunnelInterfaceKey is the config key for the network interface of the internal mesh network.
+	MeshTunnelInterfaceKey = "tunnel.mesh.interface"
+
+	// MeshTunnelLocalKey is the config key for the source address of the internal mesh network.
+	MeshTunnelLocalKey = "tunnel.mesh.local"
+)
+
 // DetermineMeshTunnelInterface returns the name of the network interface to be used
 // for the internal mesh network ("tunnel.mesh.interface").
 //
@@ -344,6 +355,45 @@ func DetermineMeshTunnelInterface(osdata api.OSData) (string, error) {
 	}
 
 	return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", `The server does not have a network interface with the role "cluster" or "management", which is required for the internal mesh network`)
+}
+
+// DetermineMeshTunnelLocalAddress returns the address to be used as source address
+// of the internal mesh network ("tunnel.mesh.local").
+//
+// The first usable address of the interface returned by DetermineMeshTunnelInterface
+// is returned. An empty string is returned, if no such address is present.
+func DetermineMeshTunnelLocalAddress(osdata api.OSData) string {
+	name, err := DetermineMeshTunnelInterface(osdata)
+	if err != nil {
+		return ""
+	}
+
+	addresses := MeshTunnelLocalAddresses(osdata, name)
+	if len(addresses) == 0 {
+		return ""
+	}
+
+	return addresses[0]
+}
+
+// MeshTunnelLocalAddresses returns the addresses of the given network interface, which
+// are usable as source address of the internal mesh network ("tunnel.mesh.local").
+//
+// Only global unicast IPv4 addresses are returned, since the multicast group of the
+// tunnel is IPv4 only.
+func MeshTunnelLocalAddresses(osdata api.OSData, interfaceName string) []string {
+	var addresses []string
+
+	for _, address := range osdata.Network.State.Interfaces[interfaceName].Addresses {
+		ip := net.ParseIP(address)
+		if ip == nil || ip.To4() == nil || !ip.IsGlobalUnicast() {
+			continue
+		}
+
+		addresses = append(addresses, ip.String())
+	}
+
+	return addresses
 }
 
 type BMCTaskMonitor struct {

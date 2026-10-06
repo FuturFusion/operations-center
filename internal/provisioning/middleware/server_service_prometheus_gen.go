@@ -629,6 +629,20 @@ func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, na
 	return _d.base.RebootSystemByName(ctx, name, force)
 }
 
+// ReconcileMeshTunnelLocalAddress implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ReconcileMeshTunnelLocalAddress(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ReconcileMeshTunnelLocalAddress", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ReconcileMeshTunnelLocalAddress(ctx, server)
+}
+
 // Register implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	_since := time.Now()

@@ -18,6 +18,8 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusclient "github.com/lxc/incus/v7/client"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -5867,6 +5869,7 @@ func TestServerService_PollServer(t *testing.T) {
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
 				},
+				IncusClientFunc: adapterMock.IncusClientWithoutMeshNetwork,
 			}
 
 			runner := &adapterMock.ServerScriptletPortMock{
@@ -12504,6 +12507,279 @@ func TestServerService_BMCDetachMediaByName(t *testing.T) {
 			case <-tc.resyncDone:
 			case <-time.After(100 * time.Millisecond):
 				t.Fatal("timed out waiting for asynchronous BMC resync")
+			}
+		})
+	}
+}
+
+func TestServerService_ReconcileMeshTunnelLocalAddress(t *testing.T) {
+	osData := func(addresses ...string) api.OSData {
+		return api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: addresses,
+							Roles:     []string{incusosapi.SystemNetworkInterfaceRoleCluster},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name                        string
+		serverArg                   provisioning.Server
+		clientIncusClientErr        error
+		incusClientGetNetwork       incusapi.ConfigMap
+		incusClientGetNetworkStatus string
+		incusClientGetNetworkErr    error
+		incusClientUpdateNetworkErr error
+
+		assertErr           require.ErrorAssertionFunc
+		wantMeshTunnelLocal string
+	}{
+		{
+			name: "success - address not yet pinned",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("fd42::2", "192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+			},
+
+			assertErr:           require.NoError,
+			wantMeshTunnelLocal: "192.168.0.100",
+		},
+		{
+			name: "success - pinned address is stale",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+				"tunnel.mesh.local":     "192.168.0.99",
+			},
+
+			assertErr:           require.NoError,
+			wantMeshTunnelLocal: "192.168.0.100",
+		},
+		{
+			name: "success - pinned address is still assigned",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100", "192.168.0.101"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+				"tunnel.mesh.local":     "192.168.0.101",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - pinned address is not usable",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("fd42::2", "192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+				"tunnel.mesh.local":     "fd42::2",
+			},
+
+			assertErr:           require.NoError,
+			wantMeshTunnelLocal: "192.168.0.100",
+		},
+		{
+			name: "success - interface of the network takes precedence",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData: api.OSData{
+					Network: incusosapi.SystemNetwork{
+						State: incusosapi.SystemNetworkState{
+							Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+								"eth0": {
+									Addresses: []string{"192.168.0.100"},
+									Roles:     []string{incusosapi.SystemNetworkInterfaceRoleCluster},
+								},
+								"eth1": {
+									Addresses: []string{"10.0.0.100"},
+								},
+							},
+						},
+					},
+				},
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth1",
+				"tunnel.mesh.local":     "192.168.0.100",
+			},
+
+			assertErr:           require.NoError,
+			wantMeshTunnelLocal: "10.0.0.100",
+		},
+		{
+			name: "success - network is pending",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+			},
+			incusClientGetNetworkStatus: incusapi.NetworkStatusPending,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - network without mesh interface",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - no IPv4 address",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("fd42::2"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - not clustered",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				OSData: osData("192.168.0.100"),
+			},
+			incusClientGetNetworkErr: boom.Error, // not called
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - no internal mesh network",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetworkErr: incusapi.StatusErrorf(http.StatusNotFound, "Network not found"),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - client.IncusClient",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			clientIncusClientErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - incusClient.GetNetwork",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetworkErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - incusClient.UpdateNetwork",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				OSData:  osData("192.168.0.100"),
+			},
+			incusClientGetNetwork: incusapi.ConfigMap{
+				"tunnel.mesh.interface": "eth0",
+			},
+			incusClientUpdateNetworkErr: boom.Error,
+
+			assertErr:           boom.ErrorIs,
+			wantMeshTunnelLocal: "192.168.0.100",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var gotTarget string
+			var gotMeshTunnelLocal string
+
+			var incusClient *adapterMock.InstanceServerMock
+
+			incusClient = &adapterMock.InstanceServerMock{
+				UseTargetFunc: func(name string) incusclient.InstanceServer {
+					gotTarget = name
+					return incusClient
+				},
+				GetNetworkFunc: func(name string) (*incusapi.Network, string, error) {
+					require.Equal(t, "meshbr0", name)
+
+					status := tc.incusClientGetNetworkStatus
+					if status == "" {
+						status = incusapi.NetworkStatusCreated
+					}
+
+					return &incusapi.Network{
+						NetworkPut: incusapi.NetworkPut{
+							Config: tc.incusClientGetNetwork,
+						},
+						Status: status,
+					}, "etag", tc.incusClientGetNetworkErr
+				},
+				UpdateNetworkFunc: func(name string, network incusapi.NetworkPut, ETag string) error {
+					require.Equal(t, "meshbr0", name)
+					require.Equal(t, "etag", ETag)
+
+					gotMeshTunnelLocal = network.Config["tunnel.mesh.local"]
+
+					return tc.incusClientUpdateNetworkErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+					return incusClient, tc.clientIncusClientErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(nil, client, nil, nil, nil, nil, nil, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.ReconcileMeshTunnelLocalAddress(t.Context(), tc.serverArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantMeshTunnelLocal, gotMeshTunnelLocal)
+
+			if len(incusClient.GetNetworkCalls()) > 0 {
+				require.Equal(t, tc.serverArg.Name, gotTarget)
 			}
 		})
 	}

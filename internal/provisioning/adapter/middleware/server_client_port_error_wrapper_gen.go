@@ -146,6 +146,16 @@ func (_d ServerClientPortWithErrorWrapper) GetVersionData(ctx context.Context, s
 	return _d._base.GetVersionData(ctx, server)
 }
 
+// IncusClient implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithErrorWrapper) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.IncusClient(ctx, endpoint)
+}
+
 // IsReady implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithErrorWrapper) IsReady(ctx context.Context, server provisioning.Server) (err error) {
 	defer func() {

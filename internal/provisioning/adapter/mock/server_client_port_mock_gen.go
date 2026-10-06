@@ -58,6 +58,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 //				panic("mock out the GetVersionData method")
 //			},
+//			IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+//				panic("mock out the IncusClient method")
+//			},
 //			IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the IsReady method")
 //			},
@@ -145,6 +148,9 @@ type ServerClientPortMock struct {
 
 	// GetVersionDataFunc mocks the GetVersionData method.
 	GetVersionDataFunc func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error)
+
+	// IncusClientFunc mocks the IncusClient method.
+	IncusClientFunc func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error)
 
 	// IsReadyFunc mocks the IsReady method.
 	IsReadyFunc func(ctx context.Context, server provisioning.Server) error
@@ -280,6 +286,13 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+		}
+		// IncusClient holds details about calls to the IncusClient method.
+		IncusClient []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// IsReady holds details about calls to the IsReady method.
 		IsReady []struct {
@@ -421,6 +434,7 @@ type ServerClientPortMock struct {
 	lockGetSystemLogging     sync.RWMutex
 	lockGetUpdateConfig      sync.RWMutex
 	lockGetVersionData       sync.RWMutex
+	lockIncusClient          sync.RWMutex
 	lockIsReady              sync.RWMutex
 	lockPing                 sync.RWMutex
 	lockPoweroff             sync.RWMutex
@@ -875,6 +889,42 @@ func (mock *ServerClientPortMock) GetVersionDataCalls() []struct {
 	mock.lockGetVersionData.RLock()
 	calls = mock.calls.GetVersionData
 	mock.lockGetVersionData.RUnlock()
+	return calls
+}
+
+// IncusClient calls IncusClientFunc.
+func (mock *ServerClientPortMock) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+	if mock.IncusClientFunc == nil {
+		panic("ServerClientPortMock.IncusClientFunc: method is nil but ServerClientPort.IncusClient was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockIncusClient.Lock()
+	mock.calls.IncusClient = append(mock.calls.IncusClient, callInfo)
+	mock.lockIncusClient.Unlock()
+	return mock.IncusClientFunc(ctx, endpoint)
+}
+
+// IncusClientCalls gets all the calls that were made to IncusClient.
+// Check the length with:
+//
+//	len(mockedServerClientPort.IncusClientCalls())
+func (mock *ServerClientPortMock) IncusClientCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockIncusClient.RLock()
+	calls = mock.calls.IncusClient
+	mock.lockIncusClient.RUnlock()
 	return calls
 }
 

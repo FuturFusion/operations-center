@@ -7,6 +7,7 @@ import (
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -1135,4 +1136,52 @@ func Test_rollingRestartPostRestoreDelay(t *testing.T) {
 	cluster := provisioning.Cluster{}
 	cluster.Config.RollingRestart.PostRestoreDelay = "20s"
 	require.Equal(t, 20*time.Second, rollingRestartPostRestoreDelay(cluster, time.Minute))
+}
+
+func Test_memberConfigForServer(t *testing.T) {
+	memberConfig := []incusapi.ClusterMemberConfigKey{
+		{Entity: "storage-pool", Name: "local", Key: "source", Value: "local/incus"},
+		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.interface", Value: "eth1"},
+		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.local", Value: "192.168.0.1"},
+	}
+
+	server := func(eth1Addresses ...string) provisioning.Server {
+		return provisioning.Server{
+			OSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{"10.0.0.2"},
+								Roles:     []string{incusosapi.SystemNetworkInterfaceRoleCluster},
+							},
+							"eth1": {
+								Addresses: eth1Addresses,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// The address is taken from the interface of the member config.
+	got := memberConfigForServer(memberConfig, server("fd42::2", "192.168.0.2"))
+
+	require.Equal(t, []incusapi.ClusterMemberConfigKey{
+		{Entity: "storage-pool", Name: "local", Key: "source", Value: "local/incus"},
+		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.interface", Value: "eth1"},
+		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.local", Value: "192.168.0.2"},
+	}, got)
+
+	// The member config of the cluster is shared between the joining servers.
+	require.Equal(t, "192.168.0.1", memberConfig[2].Value)
+
+	// Without a usable address, the key is dropped.
+	got = memberConfigForServer(memberConfig, server("fd42::2"))
+
+	require.Equal(t, []incusapi.ClusterMemberConfigKey{
+		{Entity: "storage-pool", Name: "local", Key: "source", Value: "local/incus"},
+		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.interface", Value: "eth1"},
+	}, got)
 }

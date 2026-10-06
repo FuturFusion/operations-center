@@ -431,6 +431,38 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 	return _d._base.GetVersionData(ctx, server)
 }
 
+// IncusClient implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling IncusClient")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("instanceServer", instanceServer),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method IncusClient returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method IncusClient finished")
+		}
+	}()
+	return _d._base.IncusClient(ctx, endpoint)
+}
+
 // IsReady implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) IsReady(ctx context.Context, server provisioning.Server) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
