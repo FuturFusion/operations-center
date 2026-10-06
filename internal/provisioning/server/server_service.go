@@ -289,6 +289,12 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 		}
 
 		if preRegisteredServer != nil {
+			if preRegisteredServer.Status != api.ServerStatusUnregistered && preRegisteredServer.Status != api.ServerStatusDeploying {
+				// The existing server is not named, the caller is only authenticated by the token.
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "A server with the same system UUID or machine ID is already registered").
+					WithHintf("Remove the existing server first, if it has been reinstalled.")
+			}
+
 			deploymentInProgress = preRegisteredServer.StatusInternal.Deployment.IsActive()
 
 			preRegisteredServer.ConnectionURL = newServer.ConnectionURL
