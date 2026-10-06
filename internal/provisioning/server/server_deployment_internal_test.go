@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"maps"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -1511,65 +1512,114 @@ func Test_deploymentStatesCancelPhase(t *testing.T) {
 	}
 }
 
-// Test_deploymentStatesTuningIsDeclaredWhereItIsRead asserts, that a threshold is
-// declared exactly at the states, whose wait reads it. A threshold left at zero
-// would silently turn the signal it guards into an immediate accept.
+func deploymentTestFuncName(fn any) string {
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if strings.Contains(name, ".deploymentBMCWait.") {
+		return "deploymentBMCWait"
+	}
+
+	return name[strings.LastIndex(name, ".")+1:]
+}
+
 func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
-	wantSettleDelay := []api.ServerDeploymentState{
-		api.ServerDeploymentStateWaitBIOSApplied,
-		api.ServerDeploymentStateWaitBIOSAppliedDeferred,
-		api.ServerDeploymentStateWaitSecureBootReset,
-		api.ServerDeploymentStateWaitSecureBootEnrolled,
-		api.ServerDeploymentStateWaitSecureBootSettled,
-		api.ServerDeploymentStateWaitInstall,
-		api.ServerDeploymentStateWaitReboot,
+	type tuning struct {
+		wait                deploymentWaitFunc
+		settleDelay         bool
+		powerOffSettleDelay bool
+		rebootWindow        bool
+		install             bool
+		reverts             bool
 	}
 
-	wantRebootWindow := []api.ServerDeploymentState{
-		api.ServerDeploymentStateWaitSecureBootSettled,
-		api.ServerDeploymentStateWaitReboot,
+	waits := []tuning{
+		{wait: (*serverService).checkDeploymentPoweredOff, powerOffSettleDelay: true, reverts: true},
+		{wait: (*serverService).checkDeploymentRebooted, settleDelay: true, rebootWindow: true, reverts: true},
+		{wait: (*serverService).checkDeploymentBIOSApplied, settleDelay: true},
+		{wait: (*serverService).checkDeploymentSecureBootReset, settleDelay: true},
+		{wait: (*serverService).checkDeploymentSecureBootSettled, settleDelay: true, rebootWindow: true},
+		{wait: (*serverService).checkDeploymentSecureBootEnrolled, settleDelay: true},
+		{wait: (*serverService).checkDeploymentInstalled, settleDelay: true, install: true},
+		{wait: (*serverService).checkDeploymentMediaAttached},
+		{wait: (*serverService).checkDeploymentRegistered},
+		{wait: deploymentBMCWait(deploymentPowerIsOff)},
 	}
 
-	wantPowerOffSettleDelay := []api.ServerDeploymentState{
-		api.ServerDeploymentStateWaitPowerOffBIOS,
-		api.ServerDeploymentStateWaitPowerOffBIOSDeferred,
-		api.ServerDeploymentStateWaitPowerOffSecureBoot,
-		api.ServerDeploymentStateWaitPowerOffSecureBootReset,
-		api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
-		api.ServerDeploymentStateWaitPowerOffSecureBootSettled,
+	reads := map[string]tuning{}
+	for _, wait := range waits {
+		reads[deploymentTestFuncName(wait.wait)] = wait
 	}
 
-	wantInstall := []api.ServerDeploymentState{
-		api.ServerDeploymentStateWaitInstall,
+	require.Len(t, reads, len(waits), "two wait functions can not be told apart")
+
+	for state, definition := range deploymentStates {
+		if definition.kind != deploymentStateKindWait {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			name := deploymentTestFuncName(definition.wait)
+
+			read, ok := reads[name]
+			require.True(t, ok, "the wait function of state %q is not listed with what it reads from the definition", state)
+
+			require.Equal(t, read.settleDelay, definition.settleDelay > 0, "state %q waits with %s, settle delay declared: %s", state, name, definition.settleDelay)
+			require.Equal(t, read.powerOffSettleDelay, definition.powerOffSettleDelay > 0, "state %q waits with %s, power off settle delay declared: %s", state, name, definition.powerOffSettleDelay)
+			require.Equal(t, read.rebootWindow, definition.rebootWindow > 0, "state %q waits with %s, reboot window declared: %s", state, name, definition.rebootWindow)
+			require.Equal(t, read.reverts, definition.revert != "", "state %q waits with %s, revert declared: %q", state, name, definition.revert)
+
+			if !read.install {
+				require.Zero(t, definition.install, "state %q waits with %s, which reads no install thresholds", state, name)
+
+				return
+			}
+
+			require.Positive(t, definition.install.minDuration, "state %q declares no minimum install duration", state)
+			require.Positive(t, definition.install.rebootFallbackDelay, "state %q declares no reboot fallback delay", state)
+			require.Positive(t, definition.install.mediaIdlePeriod, "state %q declares no media idle period", state)
+			require.Positive(t, definition.install.mediaMinBytesRead, "state %q declares no minimum of media read", state)
+		})
 	}
+}
+
+func Test_deploymentStatesDeclareWhatTheirFunctionReliesOn(t *testing.T) {
+	powerOff := deploymentTestFuncName((*serverService).powerOffDeploymentServer)
+	poweredOff := deploymentTestFuncName((*serverService).checkDeploymentPoweredOff)
+	applyBIOS := deploymentTestFuncName((*serverService).applyDeploymentBIOSAttributes)
+	verifyBIOS := deploymentTestFuncName((*serverService).verifyDeploymentBIOSAttributes)
 
 	for state, definition := range deploymentStates {
 		t.Run(state.String(), func(t *testing.T) {
-			if slices.Contains(wantSettleDelay, state) {
-				require.Positive(t, definition.settleDelay, "state %q reads a settle delay, but declares none", state)
-			} else {
-				require.Zero(t, definition.settleDelay, "state %q declares a settle delay, which nothing reads", state)
-			}
+			switch definition.kind {
+			case deploymentStateKindAction:
+				action := deploymentTestFuncName(definition.action)
 
-			if slices.Contains(wantPowerOffSettleDelay, state) {
-				require.Positive(t, definition.powerOffSettleDelay, "state %q reads a power off settle delay, but declares none", state)
-			} else {
-				require.Zero(t, definition.powerOffSettleDelay, "state %q declares a power off settle delay, which nothing reads", state)
-			}
+				require.Equal(t, action == powerOff, definition.powerOff, "state %q is marked as a power off wrongly", state)
+				require.Equal(t, action == verifyBIOS, definition.retryFrom != "", "state %q declares a state to route back to wrongly: %q", state, definition.retryFrom)
 
-			if slices.Contains(wantRebootWindow, state) {
-				require.Positive(t, definition.rebootWindow, "state %q reads a reboot window, but declares none", state)
-			} else {
-				require.Zero(t, definition.rebootWindow, "state %q declares a reboot window, which nothing reads", state)
-			}
+				if action == powerOff {
+					next := deploymentStates[definition.next]
+					require.Equal(t, deploymentStateKindWait, next.kind, "power off %q is not followed by a wait", state)
+					require.Equal(t, poweredOff, deploymentTestFuncName(next.wait), "power off %q is not followed by the wait for the power off to settle", state)
+				}
 
-			if slices.Contains(wantInstall, state) {
-				require.Positive(t, definition.install.minDuration, "state %q declares no minimum install duration", state)
-				require.Positive(t, definition.install.rebootFallbackDelay, "state %q declares no reboot fallback delay", state)
-				require.Positive(t, definition.install.mediaIdlePeriod, "state %q declares no media idle period", state)
-				require.Positive(t, definition.install.mediaMinBytesRead, "state %q declares no minimum of media read", state)
-			} else {
-				require.Zero(t, definition.install, "state %q declares install thresholds, which nothing reads", state)
+				if action == applyBIOS || action == verifyBIOS {
+					require.NotEqual(t, deploymentBIOSPassNone, definition.biosPass, "state %q reads the BIOS pass, but declares none", state)
+				}
+
+				if action == verifyBIOS {
+					require.Equal(t, definition.biosPass, deploymentStates[definition.retryFrom].biosPass, "state %q routes back to %q, which belongs to another BIOS pass", state, definition.retryFrom)
+				}
+
+			case deploymentStateKindWait:
+				require.Empty(t, definition.retryFrom, "wait state %q declares a state to route back to, which only an action does", state)
+
+				if deploymentTestFuncName(definition.wait) == poweredOff {
+					require.Equal(t, definition.fallback, definition.revert, "power off wait %q reverts to another state than it falls back to", state)
+					require.True(t, deploymentStates[definition.revert].powerOff, "power off wait %q reverts to %q, which is not a power off", state, definition.revert)
+				}
+
+			case deploymentStateKindTerminal:
+				require.Empty(t, definition.retryFrom, "terminal state %q declares a state to route back to", state)
 			}
 		})
 	}
@@ -2208,4 +2258,64 @@ func Test_serverService_deploymentWait(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_serverService_checkBoundedDeploymentWait_notAWait(t *testing.T) {
+	server := provisioning.Server{
+		Name: "one",
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{State: api.ServerDeploymentStateWaitInstall},
+		},
+	}
+
+	serverSvc := New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+
+	_, _, err := serverSvc.checkBoundedDeploymentWait(t.Context(), slog.Default(), server, deploymentStateDefinition{})
+
+	_, fatal := errors.AsType[deploymentFatalError](err)
+	require.True(t, fatal, "a wait state without a wait ends the deployment instead of being repeated until it times out, got: %v", err)
+}
+
+func Test_serverService_recordDeploymentFailure_unknownRetryFrom(t *testing.T) {
+	stored := provisioning.Server{
+		Name:   "one",
+		Status: api.ServerStatusDeploying,
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{
+				State:          api.ServerDeploymentStateVerifyBIOS,
+				StartedAt:      deploymentTestNow,
+				StateEnteredAt: deploymentTestNow,
+			},
+		},
+	}
+
+	repo := &repoMock.ServerRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			server := stored
+			deployment := *stored.StatusInternal.Deployment
+			server.StatusInternal.Deployment = &deployment
+
+			return &server, nil
+		},
+		UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+			stored = in
+
+			return nil
+		},
+	}
+
+	serverSvc := New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+		WithNow(func() time.Time { return deploymentTestNow }),
+	)
+
+	definition := deploymentStates[api.ServerDeploymentStateVerifyBIOS]
+	definition.retryFrom = ""
+
+	err := serverSvc.recordDeploymentFailure(t.Context(), slog.Default(), "one", definition, deploymentRetryFromError{state: definition.retryFrom, err: boom.Error})
+	require.NoError(t, err)
+
+	deployment := stored.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State, "a step, that has no state to go back to, fails the deployment instead of leaving it in no state at all")
+	require.Equal(t, api.ServerDeploymentStateVerifyBIOS, deployment.FailedState)
 }

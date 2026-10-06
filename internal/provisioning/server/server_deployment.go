@@ -28,7 +28,7 @@ import (
 type deploymentStateKind int
 
 const (
-	deploymentStateKindAction deploymentStateKind = iota
+	deploymentStateKindAction deploymentStateKind = iota + 1
 	deploymentStateKindWait
 	deploymentStateKindTerminal
 )
@@ -1567,9 +1567,11 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 
 	case deploymentStateKindWait:
 		return s.deploymentWait(ctx, log, *server, definition)
-	}
 
-	return false, nil
+	default:
+		//domain-errors:internal Programmer error, the state table declares no kind the dispatcher drives.
+		return false, s.failDeployment(ctx, name, fmt.Errorf("Deployment state %q is neither an action nor a wait", deployment.State))
+	}
 }
 
 func (s *serverService) deploymentAction(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (bool, error) {
@@ -1763,7 +1765,7 @@ func (s *serverService) runBoundedDeploymentAction(ctx context.Context, log *slo
 func (s *serverService) checkBoundedDeploymentWait(ctx context.Context, log *slog.Logger, server provisioning.Server, definition deploymentStateDefinition) (deploymentWaitOutcome, func(*provisioning.ServerDeployment), error) {
 	if definition.wait == nil {
 		//domain-errors:internal Programmer error, the state table and the state disagree.
-		return deploymentWaitPending, nil, fmt.Errorf("Deployment state %q is not a wait", server.StatusInternal.Deployment.State)
+		return deploymentWaitPending, nil, deploymentFatalError{err: fmt.Errorf("Deployment state %q is not a wait", server.StatusInternal.Deployment.State)}
 	}
 
 	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
@@ -2874,6 +2876,12 @@ func (s *serverService) recordDeploymentFailure(ctx context.Context, log *slog.L
 	// counter would be reset on every round and the two states would loop.
 	retryFrom, ok := errors.AsType[deploymentRetryFromError](stepErr)
 	if ok {
+		_, known := deploymentStates[retryFrom.state]
+		if !known {
+			//domain-errors:internal Programmer error, the state table and the step disagree.
+			return s.failDeployment(ctx, name, fmt.Errorf("Deployment state %q has no known state %q to go back to: %w", deployment.State, retryFrom.state, stepErr))
+		}
+
 		if deployment.FallbackAttempts+1 > definition.retries {
 			return s.failDeployment(ctx, name, stepErr)
 		}
