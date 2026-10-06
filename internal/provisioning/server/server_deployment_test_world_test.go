@@ -203,6 +203,9 @@ type bmcWorld struct {
 	rebootsEarly                  bool
 	haltsAfterInstall             bool
 	awaitingPowerOn               bool
+	powerOnDelay                  time.Duration
+	powerOnPending                bool
+	biosTaskStuck                 bool
 	powerOffErrs                  queue.Errs
 	attachMediaErrs               queue.Errs
 	enableSecureBootErrs          queue.Errs
@@ -662,10 +665,34 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 				world.poweredOnWhileResetting = true
 			}
 
+			// A BMC, that accepts the power on, may take a while to report it.
+			if world.powerOnPending {
+				return monitor(world), nil
+			}
+
+			if world.powerOnDelay > 0 && world.awaitingPowerOn {
+				world.powerOnPending = true
+
+				world.schedule(world.powerOnDelay, "accepted power on came through", func(ctx context.Context, w *bmcWorld) error {
+					w.mu.Lock()
+					defer w.mu.Unlock()
+
+					w.powerOnPending = false
+					w.awaitingPowerOn = false
+					w.powerOn = true
+					w.bootNow()
+					w.scheduleRegistration()
+
+					return nil
+				})
+
+				return monitor(world), nil
+			}
+
 			world.powerOn = true
 			world.bootNow()
 
-			if world.biosTaskPending {
+			if world.biosTaskPending && !world.biosTaskStuck {
 				world.schedule(worldBIOSApplyDelay, "staged BIOS attributes applied", func(ctx context.Context, w *bmcWorld) error {
 					w.mu.Lock()
 					defer w.mu.Unlock()

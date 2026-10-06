@@ -1,11 +1,17 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"reflect"
+	"runtime"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,28 +117,241 @@ func Test_deploymentNextState(t *testing.T) {
 	}
 }
 
-func Test_deploymentIsBIOSDeferredPass(t *testing.T) {
+func Test_deploymentStatesBIOSPass(t *testing.T) {
 	tests := []struct {
 		name  string
 		state api.ServerDeploymentState
 
-		want bool
+		want deploymentBIOSPass
 	}{
-		{name: "power off", state: api.ServerDeploymentStatePowerOffBIOSDeferred, want: true},
-		{name: "wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOSDeferred, want: true},
-		{name: "apply", state: api.ServerDeploymentStateApplyBIOSDeferred, want: true},
-		{name: "power on", state: api.ServerDeploymentStatePowerOnBIOSDeferred, want: true},
-		{name: "wait applied", state: api.ServerDeploymentStateWaitBIOSAppliedDeferred, want: true},
-		{name: "verify", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: true},
-		{name: "first pass", state: api.ServerDeploymentStateApplyBIOS, want: false},
-		{name: "unrelated state", state: api.ServerDeploymentStateAttachMedia, want: false},
+		{name: "first pass power off", state: api.ServerDeploymentStatePowerOffBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass apply", state: api.ServerDeploymentStateApplyBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass power on", state: api.ServerDeploymentStatePowerOnBIOS, want: deploymentBIOSPassFirst},
+		{name: "first pass wait applied", state: api.ServerDeploymentStateWaitBIOSApplied, want: deploymentBIOSPassFirst},
+		{name: "first pass verify", state: api.ServerDeploymentStateVerifyBIOS, want: deploymentBIOSPassFirst},
+		{name: "deferred pass power off", state: api.ServerDeploymentStatePowerOffBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass wait power off", state: api.ServerDeploymentStateWaitPowerOffBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass apply", state: api.ServerDeploymentStateApplyBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass power on", state: api.ServerDeploymentStatePowerOnBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass wait applied", state: api.ServerDeploymentStateWaitBIOSAppliedDeferred, want: deploymentBIOSPassDeferred},
+		{name: "deferred pass verify", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: deploymentBIOSPassDeferred},
+		{name: "unrelated state", state: api.ServerDeploymentStateAttachMedia, want: deploymentBIOSPassNone},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentIsBIOSDeferredPass(tc.state)
+			require.Equal(t, tc.want, deploymentStates[tc.state].biosPass)
+		})
+	}
+}
 
-			require.Equal(t, tc.want, got)
+// deploymentTestRanks numbers the states along the happy path and the branches
+// off it, so a skip can be held against the order the machine runs in. A state
+// ranks behind every state, that leads to it.
+func deploymentTestRanks(t *testing.T) map[api.ServerDeploymentState]int {
+	t.Helper()
+
+	ranks := map[api.ServerDeploymentState]int{}
+
+	var visit func(state api.ServerDeploymentState, path []api.ServerDeploymentState)
+
+	visit = func(state api.ServerDeploymentState, path []api.ServerDeploymentState) {
+		require.NotContains(t, path, state, "the happy path revisits state %q", state)
+
+		rank, seen := ranks[state]
+		if seen && rank >= len(path) {
+			return
+		}
+
+		ranks[state] = len(path)
+
+		definition := deploymentStates[state]
+		path = append(slices.Clone(path), state)
+
+		for _, successor := range append([]api.ServerDeploymentState{definition.next}, definition.branches...) {
+			if successor == "" {
+				continue
+			}
+
+			visit(successor, path)
+		}
+	}
+
+	visit(api.ServerDeploymentStateRefreshBMCData, nil)
+
+	return ranks
+}
+
+// Test_deploymentStatesSkipForward asserts, that a state, which is passed by,
+// names a state further along the happy path. That is what makes the loop in
+// deploymentNextState settle, whatever the deployment looks like.
+func Test_deploymentStatesSkipForward(t *testing.T) {
+	ranks := deploymentTestRanks(t)
+
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			require.Contains(t, ranks, state, "state %q is passed by, but is not on the happy path", state)
+
+			for _, deployment := range deploymentDiagramSkipFlags() {
+				entered := definition.enterState(deployment)
+				if entered == state {
+					continue
+				}
+
+				require.Contains(t, deploymentStates, entered, "state %q skips to the unknown state %q", state, entered)
+				require.Greater(t, ranks[entered], ranks[state], "state %q skips to %q, which does not move forward", state, entered)
+			}
+		})
+	}
+}
+
+// Test_deploymentNextStateSettles asserts, that the chain of skips always comes
+// to rest, from every state and for every deployment.
+func Test_deploymentNextStateSettles(t *testing.T) {
+	for state := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			for _, deployment := range deploymentDiagramSkipFlags() {
+				next := deploymentNextState(deployment, state)
+
+				require.Contains(t, deploymentStates, next, "state %q settles on the unknown state %q", state, next)
+				require.Equal(t, next, deploymentNextState(deployment, next), "state %q settles on %q, which is passed by itself", state, next)
+			}
+		})
+	}
+}
+
+func deploymentTestLeafFields(t *testing.T, value reflect.Value, path string, visit func(path string, field reflect.Value)) {
+	t.Helper()
+
+	if value.Kind() != reflect.Struct || value.Type() == reflect.TypeFor[time.Time]() {
+		visit(path, value)
+
+		return
+	}
+
+	for i := range value.NumField() {
+		deploymentTestLeafFields(t, value.Field(i), path+"."+value.Type().Field(i).Name, visit)
+	}
+}
+
+func deploymentTestSetNonZero(t *testing.T, path string, field reflect.Value) {
+	t.Helper()
+
+	if field.Type() == reflect.TypeFor[time.Time]() {
+		field.Set(reflect.ValueOf(deploymentTestNow))
+
+		return
+	}
+
+	switch field.Kind() {
+	case reflect.Bool:
+		field.SetBool(true)
+
+	case reflect.String:
+		field.SetString("set")
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		field.SetInt(1)
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		field.SetUint(1)
+
+	case reflect.Float32, reflect.Float64:
+		field.SetFloat(1)
+
+	case reflect.Array:
+		deploymentTestSetNonZero(t, path, field.Index(0))
+
+	case reflect.Slice:
+		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
+
+	case reflect.Map:
+		field.Set(reflect.MakeMapWithSize(field.Type(), 1))
+		field.SetMapIndex(reflect.Zero(field.Type().Key()), reflect.Zero(field.Type().Elem()))
+
+	case reflect.Pointer:
+		field.Set(reflect.New(field.Type().Elem()))
+
+	default:
+		require.FailNow(t, "unsupported field kind", "field %q is of kind %s, which the test does not know how to set", path, field.Kind())
+	}
+}
+
+func Test_deploymentDiagramSkipFlagsCoverWhatEnterStateReads(t *testing.T) {
+	combinations := deploymentDiagramSkipFlags()
+
+	enumerated := map[string]bool{}
+	allSet := reflect.ValueOf(combinations[len(combinations)-1]).Elem()
+
+	deploymentTestLeafFields(t, reflect.ValueOf(combinations[0]).Elem(), "deployment", func(path string, field reflect.Value) {
+		enumerated[path] = false
+	})
+
+	deploymentTestLeafFields(t, allSet, "deployment", func(path string, field reflect.Value) {
+		enumerated[path] = !field.IsZero()
+	})
+
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			for _, base := range combinations {
+				want := definition.enterState(base)
+
+				changed := *base
+				deploymentTestLeafFields(t, reflect.ValueOf(&changed).Elem(), "deployment", func(path string, field reflect.Value) {
+					if enumerated[path] {
+						return
+					}
+
+					before := reflect.New(field.Type()).Elem()
+					before.Set(field)
+
+					deploymentTestSetNonZero(t, path, field)
+
+					require.Equal(t, want, definition.enterState(&changed), "state %q is entered or passed by depending on %q, which deploymentDiagramSkipFlags does not enumerate", state, path)
+
+					field.Set(before)
+				})
+			}
+		})
+	}
+}
+
+func Test_deploymentStatesEnterStateOutcomes(t *testing.T) {
+	for state, definition := range deploymentStates {
+		if definition.enterState == nil {
+			require.Empty(t, definition.branches, "state %q declares branches, but has nothing routing to them", state)
+
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			outcomes := map[api.ServerDeploymentState]struct{}{}
+			for _, deployment := range deploymentDiagramSkipFlags() {
+				outcomes[definition.enterState(deployment)] = struct{}{}
+			}
+
+			require.Contains(t, outcomes, state, "state %q is never entered", state)
+
+			for _, branch := range definition.branches {
+				require.Contains(t, outcomes, branch, "state %q declares the branch %q, but never routes to it", state, branch)
+			}
+
+			delete(outcomes, state)
+
+			for _, branch := range definition.branches {
+				delete(outcomes, branch)
+			}
+
+			require.LessOrEqual(t, len(outcomes), 1, "state %q routes to %v, which are neither declared as branches nor a single state to skip to", state, slices.Collect(maps.Keys(outcomes)))
 		})
 	}
 }
@@ -316,15 +535,14 @@ func Test_deploymentBIOSAttributes(t *testing.T) {
 		want map[string]any
 	}{
 		{name: "first pass", state: api.ServerDeploymentStateApplyBIOS, want: deployment.BIOSAttributes},
+		{name: "verification of the first pass", state: api.ServerDeploymentStateVerifyBIOS, want: deployment.BIOSAttributes},
 		{name: "deferred pass", state: api.ServerDeploymentStateApplyBIOSDeferred, want: deployment.BIOSDeferredAttributes},
 		{name: "verification of the deferred pass", state: api.ServerDeploymentStateVerifyBIOSDeferred, want: deployment.BIOSDeferredAttributes},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			deployment.State = tc.state
-
-			got := deploymentBIOSAttributes(&deployment)
+			got := deploymentBIOSAttributes(deploymentStates[tc.state], &deployment)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -346,7 +564,7 @@ func Test_deploymentMediaBytesRequired(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaBytesRequired(tc.size)
+			got := deploymentMediaBytesRequired(tc.size, config.ServerDeploymentMediaMinBytesRead)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -398,7 +616,7 @@ func Test_deploymentMediaReadOut(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaReadOut(tc.progress)
+			got := deploymentMediaReadOut(tc.progress, config.ServerDeploymentMediaMinBytesRead)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -440,7 +658,7 @@ func Test_deploymentMediaIdle(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentMediaIdle(deploymentTestNow, tc.progress)
+			got := deploymentMediaIdle(deploymentTestNow, tc.progress, config.ServerDeploymentMediaIdlePeriod)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -476,7 +694,7 @@ func Test_deploymentInstallCouldBeDone(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := deploymentInstallCouldBeDone(deploymentTestNow, &provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt})
+			got := deploymentInstallCouldBeDone(deploymentTestNow, &provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt}, config.ServerDeploymentMinInstallDuration)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -556,7 +774,7 @@ func Test_deploymentRebootObserved(t *testing.T) {
 				StateEnteredAt:  tc.stateEnteredAt,
 			}
 
-			rebooted, observed := deploymentRebootObserved(deploymentTestNow, &deployment, tc.current)
+			rebooted, observed := deploymentRebootObserved(deploymentTestNow, &deployment, tc.current, config.ServerDeploymentRebootObservationWindow)
 
 			require.Equal(t, tc.wantRebooted, rebooted)
 			require.Equal(t, tc.wantObserved, observed)
@@ -630,7 +848,7 @@ func Test_deploymentSettleSnapshot(t *testing.T) {
 
 			deployment := provisioning.ServerDeployment{StateEnteredAt: tc.stateEnteredAt}
 
-			mutate := deploymentSettleSnapshot(deploymentTestNow, &deployment, data, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
+			mutate := deploymentSettleSnapshot(deploymentTestNow, &deployment, data, config.ServerDeploymentSettleDelay, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
 				deployment.InstallSnapshot = snapshot
 			})
 
@@ -658,27 +876,28 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 		powerState      string
 		poweredOffSince time.Time
 
-		wantMet             bool
+		wantOutcome         deploymentWaitOutcome
 		wantPoweredOffSince time.Time
-		wantPowerOffs       int
 	}{
 		{
 			name:       "the server is still powered on",
 			powerState: bmcPowerStateOn,
 
-			wantPowerOffs: 1,
+			wantOutcome: deploymentWaitPending,
 		},
 		{
 			name:            "the server is powered on again after it had been reported powered off",
 			powerState:      bmcPowerStateOn,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 
-			wantPowerOffs: 1,
+			wantOutcome:         deploymentWaitRevert,
+			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 		},
 		{
 			name:       "the server is reported powered off for the first time",
 			powerState: bmcPowerStateOff,
 
+			wantOutcome:         deploymentWaitPending,
 			wantPoweredOffSince: deploymentTestNow,
 		},
 		{
@@ -686,6 +905,7 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 			powerState:      bmcPowerStateOff,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
 
+			wantOutcome:         deploymentWaitPending,
 			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay + time.Second),
 		},
 		{
@@ -693,7 +913,7 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 			powerState:      bmcPowerStateOff,
 			poweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 
-			wantMet:             true,
+			wantOutcome:         deploymentWaitMet,
 			wantPoweredOffSince: deploymentTestNow.Add(-config.ServerDeploymentPowerOffSettleDelay),
 		},
 	}
@@ -721,17 +941,9 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 				},
 			}
 
-			powerOffs := 0
-
-			bmcClient := &adapterMock.BMCServerClientPortMock{
-				ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
-					powerOffs++
-
-					require.True(t, force, "the deployment cuts the power instead of asking for a graceful shutdown")
-
-					return nil, nil
-				},
-			}
+			// The wait only observes, a power off by the wait would call into
+			// the BMC client, which has no function set up for it.
+			bmcClient := &adapterMock.BMCServerClientPortMock{}
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -744,10 +956,9 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
 			)
 
-			met, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server)
+			outcome, mutate, err := serverSvc.checkDeploymentPoweredOff(t.Context(), slog.Default(), server, deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset])
 			require.NoError(t, err)
-			require.Equal(t, tc.wantMet, met)
-			require.Equal(t, tc.wantPowerOffs, powerOffs, "a server, that is not down, has the power cut again")
+			require.Equal(t, tc.wantOutcome, outcome)
 
 			deployment := *server.StatusInternal.Deployment
 			if mutate != nil {
@@ -759,29 +970,36 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 	}
 }
 
-func Test_bmcWaitConditions(t *testing.T) {
+func Test_deploymentBMCConditions(t *testing.T) {
 	deployment := provisioning.ServerDeployment{
 		Request:  provisioning.ServerDeploymentRequest{VirtualMediaID: "system:1"},
 		MediaURL: "https://oc.example.com:8443/one.iso",
 	}
 
 	tests := []struct {
-		name  string
-		state api.ServerDeploymentState
-		data  api.BMCData
+		name      string
+		condition deploymentBMCCondition
+		data      api.BMCData
 
 		want bool
 	}{
 		{
-			name:  "power is still on",
-			state: api.ServerDeploymentStateWaitCancel,
-			data:  api.BMCData{ServerPowerState: bmcPowerStateOn},
+			name:      "power is off",
+			condition: deploymentPowerIsOff,
+			data:      api.BMCData{ServerPowerState: bmcPowerStateOff},
+
+			want: true,
+		},
+		{
+			name:      "power is still on",
+			condition: deploymentCancelSettled,
+			data:      api.BMCData{ServerPowerState: bmcPowerStateOn},
 
 			want: false,
 		},
 		{
-			name:  "the cancellation has powered the server off and ejected the media",
-			state: api.ServerDeploymentStateWaitCancel,
+			name:      "the cancellation has powered the server off and ejected the media",
+			condition: deploymentCancelSettled,
 			data: api.BMCData{
 				ServerPowerState: bmcPowerStateOff,
 				VirtualMedia: map[string]api.BMCVirtualMedia{
@@ -792,8 +1010,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "the cancellation has powered the server off, but the media is still inserted",
-			state: api.ServerDeploymentStateWaitCancel,
+			name:      "the cancellation has powered the server off, but the media is still inserted",
+			condition: deploymentCancelSettled,
 			data: api.BMCData{
 				ServerPowerState: bmcPowerStateOff,
 				VirtualMedia: map[string]api.BMCVirtualMedia{
@@ -804,8 +1022,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: false,
 		},
 		{
-			name:  "no media is inserted",
-			state: api.ServerDeploymentStateWaitMediaCleared,
+			name:      "no media is inserted",
+			condition: deploymentNoMediaInserted,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1"},
 			}},
@@ -813,8 +1031,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "another media is still inserted",
-			state: api.ServerDeploymentStateWaitMediaCleared,
+			name:      "another media is still inserted",
+			condition: deploymentNoMediaInserted,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"manager:1": {ID: "manager:1", Inserted: true},
 			}},
@@ -822,8 +1040,8 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: false,
 		},
 		{
-			name:  "the media is ejected",
-			state: api.ServerDeploymentStateWaitMediaDetached,
+			name:      "the media is ejected",
+			condition: deploymentMediaEjected,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1"},
 			}},
@@ -831,15 +1049,15 @@ func Test_bmcWaitConditions(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "the media device is gone",
-			state: api.ServerDeploymentStateWaitMediaDetached,
-			data:  api.BMCData{},
+			name:      "the media device is gone",
+			condition: deploymentMediaEjected,
+			data:      api.BMCData{},
 
 			want: true,
 		},
 		{
-			name:  "the media is still inserted",
-			state: api.ServerDeploymentStateWaitMediaDetached,
+			name:      "the media is still inserted",
+			condition: deploymentMediaEjected,
 			data: api.BMCData{VirtualMedia: map[string]api.BMCVirtualMedia{
 				"system:1": {ID: "system:1", Inserted: true, Image: "https://oc.example.com:8443/one.iso"},
 			}},
@@ -850,19 +1068,24 @@ func Test_bmcWaitConditions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			condition, ok := bmcWaitConditions[tc.state]
-			require.True(t, ok, "state %q has no BMC wait condition", tc.state)
-
-			require.Equal(t, tc.want, condition.met(&deployment, tc.data))
+			require.Equal(t, tc.want, tc.condition.met(&deployment, tc.data))
 		})
 	}
 }
 
-func Test_bmcWaitConditionsDeclareTheirParts(t *testing.T) {
-	require.NotEmpty(t, bmcWaitConditions)
+func Test_deploymentBMCConditionsDeclareTheirParts(t *testing.T) {
+	conditions := map[string]deploymentBMCCondition{
+		"power is off":                  deploymentPowerIsOff,
+		"cancel settled":                deploymentCancelSettled,
+		"no media inserted":             deploymentNoMediaInserted,
+		"media holds image":             deploymentMediaHoldsImage,
+		"media ejected":                 deploymentMediaEjected,
+		"secure boot media holds image": isDeploymentSecureBootMediaHoldingImage,
+		"in secure boot setup mode":     isDeploymentInSecureBootSetupMode,
+	}
 
-	for state, condition := range bmcWaitConditions {
-		t.Run(state.String(), func(t *testing.T) {
+	for name, condition := range conditions {
+		t.Run(name, func(t *testing.T) {
 			require.NotNil(t, condition.met)
 			require.NotEmpty(t, condition.requires)
 
@@ -1177,12 +1400,19 @@ func Test_deploymentStates(t *testing.T) {
 				require.Empty(t, definition.next, "terminal state %q leads somewhere", state)
 				require.Empty(t, definition.fallback, "terminal state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "terminal state %q has a timeout", state)
+				require.Nil(t, definition.action, "terminal state %q has an action", state)
+				require.Nil(t, definition.wait, "terminal state %q has a wait", state)
+				require.Empty(t, definition.revert, "terminal state %q reverts", state)
+				require.False(t, definition.powerOff, "terminal state %q powers off", state)
+				require.Zero(t, definition.retries, "terminal state %q has a retry budget", state)
+				require.NotEmpty(t, definition.status, "terminal state %q reports no server status", state)
 
 				return
 			}
 
 			require.False(t, state.IsTerminal(), "non terminal state %q reports itself as terminal", state)
 			require.NotEmpty(t, definition.detail, "state %q reports no status detail", state)
+			require.Empty(t, definition.status, "non terminal state %q reports a server status, which would take the server out of deploying", state)
 			require.NotEqual(t, state, definition.next, "state %q leads to itself", state)
 			require.Contains(t, deploymentStates, definition.next, "state %q leads to the unknown state %q", state, definition.next)
 
@@ -1191,23 +1421,66 @@ func Test_deploymentStates(t *testing.T) {
 				require.Contains(t, deploymentStates, branch, "state %q branches to the unknown state %q", state, branch)
 			}
 
+			if definition.retryFrom != "" {
+				require.Contains(t, deploymentStates, definition.retryFrom, "state %q routes back to the unknown state %q", state, definition.retryFrom)
+				require.Equal(t, deploymentStateKindAction, deploymentStates[definition.retryFrom].kind, "state %q routes back to %q, which is not an action", state, definition.retryFrom)
+			}
+
 			if definition.kind == deploymentStateKindAction {
+				require.NotNil(t, definition.action, "action state %q performs nothing", state)
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
+				require.Positive(t, definition.retries, "action state %q has no retry budget", state)
+				require.Zero(t, definition.settleDelay, "action state %q has a settle delay", state)
+				require.Zero(t, definition.powerOffSettleDelay, "action state %q has a power off settle delay", state)
+				require.Zero(t, definition.rebootWindow, "action state %q has a reboot window", state)
+				require.Zero(t, definition.install, "action state %q has install thresholds", state)
+				require.Nil(t, definition.wait, "action state %q has a wait", state)
+				require.Empty(t, definition.revert, "action state %q reverts", state)
 
 				return
 			}
 
-			require.NotZero(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
+			require.NotNil(t, definition.wait, "wait state %q waits for nothing", state)
+			require.Nil(t, definition.action, "wait state %q has an action", state)
+			require.Positive(t, definition.timeout, "wait state %q is not bounded by a timeout", state)
+			require.False(t, definition.powerOff, "wait state %q powers off", state)
+
+			if definition.revert != "" {
+				require.Contains(t, deploymentStates, definition.revert, "wait state %q reverts to the unknown state %q", state, definition.revert)
+				require.Equal(t, deploymentStateKindAction, deploymentStates[definition.revert].kind, "wait state %q reverts to %q, which is not an action", state, definition.revert)
+				require.Positive(t, definition.retries, "wait state %q reverts, but has no retry budget", state)
+				require.NotEmpty(t, definition.revertReason, "wait state %q reverts, but does not say why", state)
+				require.True(t, deploymentTestLeadsTo(definition.revert, state), "wait state %q reverts to %q, which does not lead back to it", state, definition.revert)
+			}
 
 			if definition.fallback == "" {
+				if definition.revert == "" {
+					require.Zero(t, definition.retries, "wait state %q has no trigger to fall back to or revert to, so its retry budget can not be spent", state)
+				}
+
 				return
 			}
+
+			require.Positive(t, definition.retries, "wait state %q falls back to a trigger, but has no retry budget", state)
 
 			require.Contains(t, deploymentStates, definition.fallback, "wait state %q falls back to the unknown state %q", state, definition.fallback)
 			require.Equal(t, deploymentStateKindAction, deploymentStates[definition.fallback].kind, "wait state %q falls back to %q, which is not an action", state, definition.fallback)
+			require.True(t, deploymentTestLeadsTo(definition.fallback, state), "wait state %q falls back to %q, which does not lead back to it", state, definition.fallback)
 		})
 	}
+}
+
+func deploymentTestLeadsTo(from api.ServerDeploymentState, to api.ServerDeploymentState) bool {
+	for range len(deploymentStates) {
+		if from == to {
+			return true
+		}
+
+		from = deploymentStates[from].next
+	}
+
+	return false
 }
 
 // Test_deploymentStatesSecureBootRecordsItsAttempt asserts, that the enrollment
@@ -1223,6 +1496,133 @@ func Test_deploymentStatesSecureBootRecordsItsAttempt(t *testing.T) {
 	prepare(&deployment)
 
 	require.True(t, deployment.SecureBootAttempted)
+}
+
+// Test_deploymentStatesCancelPhase asserts, that exactly the states, which clean
+// a cancelled deployment up, are exempt from being preempted by a cancellation.
+// A state marked wrongly either never cancels or never finishes cancelling.
+func Test_deploymentStatesCancelPhase(t *testing.T) {
+	want := []api.ServerDeploymentState{
+		api.ServerDeploymentStateCancel,
+		api.ServerDeploymentStateWaitCancel,
+	}
+
+	for state, definition := range deploymentStates {
+		require.Equal(t, slices.Contains(want, state), definition.cancelPhase, "state %q is marked as a cancel phase wrongly", state)
+	}
+}
+
+func deploymentTestFuncName(fn any) string {
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if strings.Contains(name, ".deploymentBMCWait.") {
+		return "deploymentBMCWait"
+	}
+
+	return name[strings.LastIndex(name, ".")+1:]
+}
+
+func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
+	type tuning struct {
+		wait                deploymentWaitFunc
+		settleDelay         bool
+		powerOffSettleDelay bool
+		rebootWindow        bool
+		install             bool
+		reverts             bool
+	}
+
+	waits := []tuning{
+		{wait: (*serverService).checkDeploymentPoweredOff, powerOffSettleDelay: true, reverts: true},
+		{wait: (*serverService).checkDeploymentRebooted, settleDelay: true, rebootWindow: true, reverts: true},
+		{wait: (*serverService).checkDeploymentBIOSApplied, settleDelay: true},
+		{wait: (*serverService).checkDeploymentSecureBootReset, settleDelay: true},
+		{wait: (*serverService).checkDeploymentSecureBootSettled, settleDelay: true, rebootWindow: true},
+		{wait: (*serverService).checkDeploymentSecureBootEnrolled, settleDelay: true},
+		{wait: (*serverService).checkDeploymentInstalled, settleDelay: true, install: true},
+		{wait: (*serverService).checkDeploymentMediaAttached},
+		{wait: (*serverService).checkDeploymentRegistered},
+		{wait: deploymentBMCWait(deploymentPowerIsOff)},
+	}
+
+	reads := map[string]tuning{}
+	for _, wait := range waits {
+		reads[deploymentTestFuncName(wait.wait)] = wait
+	}
+
+	require.Len(t, reads, len(waits), "two wait functions can not be told apart")
+
+	for state, definition := range deploymentStates {
+		if definition.kind != deploymentStateKindWait {
+			continue
+		}
+
+		t.Run(state.String(), func(t *testing.T) {
+			name := deploymentTestFuncName(definition.wait)
+
+			read, ok := reads[name]
+			require.True(t, ok, "the wait function of state %q is not listed with what it reads from the definition", state)
+
+			require.Equal(t, read.settleDelay, definition.settleDelay > 0, "state %q waits with %s, settle delay declared: %s", state, name, definition.settleDelay)
+			require.Equal(t, read.powerOffSettleDelay, definition.powerOffSettleDelay > 0, "state %q waits with %s, power off settle delay declared: %s", state, name, definition.powerOffSettleDelay)
+			require.Equal(t, read.rebootWindow, definition.rebootWindow > 0, "state %q waits with %s, reboot window declared: %s", state, name, definition.rebootWindow)
+			require.Equal(t, read.reverts, definition.revert != "", "state %q waits with %s, revert declared: %q", state, name, definition.revert)
+
+			if !read.install {
+				require.Zero(t, definition.install, "state %q waits with %s, which reads no install thresholds", state, name)
+
+				return
+			}
+
+			require.Positive(t, definition.install.minDuration, "state %q declares no minimum install duration", state)
+			require.Positive(t, definition.install.rebootFallbackDelay, "state %q declares no reboot fallback delay", state)
+			require.Positive(t, definition.install.mediaIdlePeriod, "state %q declares no media idle period", state)
+			require.Positive(t, definition.install.mediaMinBytesRead, "state %q declares no minimum of media read", state)
+		})
+	}
+}
+
+func Test_deploymentStatesDeclareWhatTheirFunctionReliesOn(t *testing.T) {
+	powerOff := deploymentTestFuncName((*serverService).powerOffDeploymentServer)
+	poweredOff := deploymentTestFuncName((*serverService).checkDeploymentPoweredOff)
+	applyBIOS := deploymentTestFuncName((*serverService).applyDeploymentBIOSAttributes)
+	verifyBIOS := deploymentTestFuncName((*serverService).verifyDeploymentBIOSAttributes)
+
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			switch definition.kind {
+			case deploymentStateKindAction:
+				action := deploymentTestFuncName(definition.action)
+
+				require.Equal(t, action == powerOff, definition.powerOff, "state %q is marked as a power off wrongly", state)
+				require.Equal(t, action == verifyBIOS, definition.retryFrom != "", "state %q declares a state to route back to wrongly: %q", state, definition.retryFrom)
+
+				if action == powerOff {
+					next := deploymentStates[definition.next]
+					require.Equal(t, deploymentStateKindWait, next.kind, "power off %q is not followed by a wait", state)
+					require.Equal(t, poweredOff, deploymentTestFuncName(next.wait), "power off %q is not followed by the wait for the power off to settle", state)
+				}
+
+				if action == applyBIOS || action == verifyBIOS {
+					require.NotEqual(t, deploymentBIOSPassNone, definition.biosPass, "state %q reads the BIOS pass, but declares none", state)
+				}
+
+				if action == verifyBIOS {
+					require.Equal(t, definition.biosPass, deploymentStates[definition.retryFrom].biosPass, "state %q routes back to %q, which belongs to another BIOS pass", state, definition.retryFrom)
+				}
+
+			case deploymentStateKindWait:
+				require.Empty(t, definition.retryFrom, "wait state %q declares a state to route back to, which only an action does", state)
+
+				if deploymentTestFuncName(definition.wait) == poweredOff {
+					require.Equal(t, definition.fallback, definition.revert, "power off wait %q reverts to another state than it falls back to", state)
+					require.True(t, deploymentStates[definition.revert].powerOff, "power off wait %q reverts to %q, which is not a power off", state, definition.revert)
+				}
+
+			case deploymentStateKindTerminal:
+				require.Empty(t, definition.retryFrom, "terminal state %q declares a state to route back to", state)
+			}
+		})
+	}
 }
 
 func Test_deploymentStatesAreAllReachable(t *testing.T) {
@@ -1250,14 +1650,30 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 		for _, branch := range definition.branches {
 			walk(branch)
 		}
+
+		if definition.revert != "" {
+			walk(definition.revert)
+		}
 	}
 
 	walk(api.ServerDeploymentStateRefreshBMCData)
 	walk(api.ServerDeploymentStateCancel)
 	walk(api.ServerDeploymentStateFailed)
 
-	for state := range deploymentStates {
+	for state, definition := range deploymentStates {
 		require.Contains(t, reached, state, "state %q can not be reached from the entry states", state)
+
+		if definition.retryFrom != "" {
+			require.Contains(t, reached, definition.retryFrom, "state %q routes back to the unreachable state %q", state, definition.retryFrom)
+		}
+
+		if definition.enterState == nil {
+			continue
+		}
+
+		for _, deployment := range deploymentDiagramSkipFlags() {
+			require.Contains(t, reached, definition.enterState(deployment), "state %q skips to an unreachable state", state)
+		}
 	}
 }
 
@@ -1354,10 +1770,14 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 
 			switch definition.kind {
 			case deploymentStateKindAction:
-				_, err = serverSvc.runDeploymentAction(t.Context(), slog.Default(), server)
+				require.NotNil(t, definition.action, "action state %q declares no action", state)
+
+				_, err = definition.action(serverSvc, t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindWait:
-				_, _, err = serverSvc.checkDeploymentWait(t.Context(), slog.Default(), server)
+				require.NotNil(t, definition.wait, "wait state %q declares no wait", state)
+
+				_, _, err = definition.wait(serverSvc, t.Context(), slog.Default(), server, definition)
 
 			case deploymentStateKindTerminal:
 				return
@@ -1369,8 +1789,6 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 			}
 
 			require.Error(t, err, "state %q reached none of the failing collaborators", state)
-			require.NotContains(t, err.Error(), "is not an action", "action state %q is not dispatched", state)
-			require.NotContains(t, err.Error(), "is not a wait", "wait state %q is not dispatched", state)
 		})
 	}
 }
@@ -1446,4 +1864,458 @@ func Test_deploymentBMCData_requiresParts(t *testing.T) {
 			require.True(t, domain.IsRetryableError(err), "a BMC, that could not be asked, is asked again")
 		})
 	}
+}
+
+// Test_deploymentStatesDiagramMetadata asserts, that every state carries what
+// the generated state diagram needs, so a state can not be added to the table
+// without showing up in the documentation.
+func Test_deploymentStatesDiagramMetadata(t *testing.T) {
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			require.NotEmpty(t, definition.label, "state %q has no label to draw it by", state)
+
+			condition, err := deploymentDiagramCondition(definition)
+			require.NoError(t, err, "the condition of state %q does not render", state)
+			require.NotContains(t, condition, "<no value>", "the condition of state %q references something the view does not hold", state)
+
+			if definition.enterState != nil {
+				require.NotEmpty(t, definition.skipReason, "state %q can be passed by, but does not say why", state)
+			}
+
+			if len(definition.branches) > 0 {
+				require.NotEmpty(t, definition.branchReason, "state %q branches off, but does not say why", state)
+			}
+
+			if definition.retryFrom != "" {
+				require.NotEmpty(t, definition.retryReason, "state %q routes back to %q, but does not say why", state, definition.retryFrom)
+			}
+
+			if definition.kind == deploymentStateKindWait {
+				require.NotEmpty(t, definition.condition, "wait state %q does not say, what satisfies it", state)
+			}
+		})
+	}
+}
+
+func Test_deploymentDiagramDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration time.Duration
+
+		want string
+	}{
+		{name: "zero", duration: 0, want: "0s"},
+		{name: "negative", duration: -time.Minute, want: "0s"},
+		{name: "seconds", duration: 10 * time.Second, want: "10s"},
+		{name: "whole minutes", duration: 10 * time.Minute, want: "10m"},
+		{name: "whole hours", duration: 2 * time.Hour, want: "2h"},
+		{name: "hours and minutes", duration: 90 * time.Minute, want: "1h30m"},
+		{name: "every unit", duration: time.Hour + 2*time.Minute + 3*time.Second, want: "1h2m3s"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, deploymentDiagramDuration(tc.duration))
+		})
+	}
+}
+
+// Test_DeploymentStateDiagram asserts, that the rendered diagram covers the
+// table and nothing but the table, and that it does not depend on the iteration
+// order of the map.
+func Test_DeploymentStateDiagram(t *testing.T) {
+	diagram, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+
+	again, err := DeploymentStateDiagram()
+	require.NoError(t, err)
+	require.Equal(t, diagram, again, "the diagram is not rendered deterministically")
+
+	declared := map[string]struct{}{}
+
+	for line := range strings.SplitSeq(diagram, "\n") {
+		line = strings.TrimSpace(line)
+
+		id, ok := strings.CutPrefix(line, "state ")
+		if ok {
+			_, id, _ = strings.Cut(id, " as ")
+			declared[id] = struct{}{}
+
+			continue
+		}
+
+		from, rest, ok := strings.Cut(line, " --> ")
+		if !ok {
+			continue
+		}
+
+		to, _, _ := strings.Cut(rest, ": ")
+
+		for _, id := range []string{from, to} {
+			if id == "[*]" {
+				continue
+			}
+
+			require.Contains(t, declared, id, "the diagram draws an edge to %q, which it does not declare", id)
+		}
+	}
+
+	require.Len(t, declared, len(deploymentStates), "the diagram does not declare every state of the table")
+
+	for state := range deploymentStates {
+		require.Contains(t, declared, deploymentDiagramID(state), "the diagram leaves state %q out", state)
+	}
+}
+
+func Test_deploymentDiagramEdges(t *testing.T) {
+	edges, err := deploymentDiagramEdges(deploymentDiagramOrder())
+	require.NoError(t, err)
+
+	drawn := map[api.ServerDeploymentState]map[string][]string{}
+	for _, edge := range edges {
+		from := api.ServerDeploymentState(edge.from)
+		if drawn[from] == nil {
+			drawn[from] = map[string][]string{}
+		}
+
+		drawn[from][edge.to] = append(drawn[from][edge.to], edge.label)
+	}
+
+	for state, definition := range deploymentStates {
+		t.Run(state.String(), func(t *testing.T) {
+			want := map[string]struct{}{}
+
+			if definition.kind == deploymentStateKindTerminal {
+				want["[*]"] = struct{}{}
+			} else {
+				for _, deployment := range deploymentDiagramSkipFlags() {
+					want[string(deploymentNextState(deployment, definition.next))] = struct{}{}
+				}
+			}
+
+			if definition.retryFrom != "" {
+				want[string(definition.retryFrom)] = struct{}{}
+				require.Contains(t, drawn[state][string(definition.retryFrom)], definition.retryReason, "the edge of state %q back to %q is not labeled with its reason", state, definition.retryFrom)
+			}
+
+			if definition.revert != "" {
+				want[string(definition.revert)] = struct{}{}
+				require.Contains(t, drawn[state][string(definition.revert)], definition.revertReason, "the edge of wait %q reverting to %q is not labeled with its reason", state, definition.revert)
+			}
+
+			if definition.kind == deploymentStateKindWait {
+				timeout := cmp.Or(definition.fallback, api.ServerDeploymentStateFailed)
+				want[string(timeout)] = struct{}{}
+				require.Contains(t, drawn[state][string(timeout)], "timeout ("+deploymentDiagramDuration(definition.timeout)+")", "the diagram does not draw the timeout of wait %q to %q", state, timeout)
+			}
+
+			require.ElementsMatch(t, slices.Collect(maps.Keys(want)), slices.Collect(maps.Keys(drawn[state])), "the diagram does not draw exactly the transitions of state %q", state)
+		})
+	}
+}
+
+func Test_checkDeploymentRebooted(t *testing.T) {
+	settleDelay := deploymentStates[api.ServerDeploymentStateWaitReboot].settleDelay
+
+	tests := []struct {
+		name          string
+		powerState    string
+		enteredAgo    time.Duration
+		noSettleDelay bool
+		staleBMCData  bool
+
+		wantOutcome deploymentWaitOutcome
+	}{
+		{
+			name:       "the server stayed off for the settle delay",
+			powerState: bmcPowerStateOff,
+			enteredAgo: settleDelay,
+
+			wantOutcome: deploymentWaitRevert,
+		},
+		{
+			name:       "the server is off, but the power on has not been given the settle delay yet",
+			powerState: bmcPowerStateOff,
+			enteredAgo: settleDelay - time.Second,
+
+			wantOutcome: deploymentWaitPending,
+		},
+		{
+			name:          "the server is reported off by BMC data collected before the state was entered",
+			powerState:    bmcPowerStateOff,
+			enteredAgo:    time.Second,
+			noSettleDelay: true,
+			staleBMCData:  true,
+
+			wantOutcome: deploymentWaitPending,
+		},
+		{
+			name:       "the server is up, but the reboot is not observed yet",
+			powerState: bmcPowerStateOn,
+			enteredAgo: time.Second,
+
+			wantOutcome: deploymentWaitPending,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stateEnteredAt := deploymentTestNow.Add(-tc.enteredAgo)
+
+			lastUpdated := deploymentTestNow
+			if tc.staleBMCData {
+				lastUpdated = stateEnteredAt
+			}
+
+			server := provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusDeploying,
+				BMCData: api.BMCData{ServerPowerState: tc.powerState, ServerLastResetTime: stateEnteredAt, LastUpdated: lastUpdated},
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State:          api.ServerDeploymentStateWaitReboot,
+						StateEnteredAt: stateEnteredAt,
+						InstallSnapshot: provisioning.ServerDeploymentBMCSnapshot{
+							Taken:         stateEnteredAt,
+							LastResetTime: stateEnteredAt,
+						},
+					},
+				},
+			}
+
+			serverSvc := New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				WithNow(func() time.Time { return deploymentTestNow }),
+				AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, &adapterMock.BMCServerClientPortMock{}),
+			)
+
+			definition := deploymentStates[api.ServerDeploymentStateWaitReboot]
+			if tc.noSettleDelay {
+				definition.settleDelay = 0
+			}
+
+			outcome, _, err := serverSvc.checkDeploymentRebooted(t.Context(), slog.Default(), server, definition)
+			require.NoError(t, err, "the wait only observes, the BMC client mock has no function to power the server on with")
+			require.Equal(t, tc.wantOutcome, outcome)
+		})
+	}
+}
+
+func Test_serverService_deploymentWait(t *testing.T) {
+	const otherWaitRetries = 2
+
+	timedOut := deploymentTestNow.Add(-config.ServerDeploymentStepTimeout - time.Second)
+
+	tests := []struct {
+		name           string
+		outcome        deploymentWaitOutcome
+		waitRetries    int
+		stateEnteredAt time.Time
+
+		wantProgressed  bool
+		wantState       api.ServerDeploymentState
+		wantWaitRetries int
+		wantRetries     int
+		wantLastError   string
+	}{
+		{
+			name:    "a revert goes back to the step before the wait",
+			outcome: deploymentWaitRevert,
+
+			wantProgressed:  true,
+			wantState:       api.ServerDeploymentStatePowerOffBIOS,
+			wantWaitRetries: 1,
+			wantLastError:   "was reverted, since server powered on again",
+		},
+		{
+			name:        "a revert, that exhausts the retry budget, fails the deployment",
+			outcome:     deploymentWaitRevert,
+			waitRetries: config.ServerDeploymentStepRetries,
+
+			wantState:       api.ServerDeploymentStateFailed,
+			wantWaitRetries: config.ServerDeploymentStepRetries,
+			wantLastError:   fmt.Sprintf("failed after going back %d times, since server powered on again", config.ServerDeploymentStepRetries),
+		},
+		{
+			name:           "a timeout falls back to the trigger",
+			outcome:        deploymentWaitPending,
+			stateEnteredAt: timedOut,
+
+			wantProgressed:  true,
+			wantState:       api.ServerDeploymentStatePowerOffBIOS,
+			wantWaitRetries: 1,
+			wantRetries:     1,
+			wantLastError:   "did not complete within " + config.ServerDeploymentStepTimeout.String(),
+		},
+		{
+			name:           "a timeout, that exhausts the retry budget, fails the deployment",
+			outcome:        deploymentWaitPending,
+			waitRetries:    config.ServerDeploymentStepRetries,
+			stateEnteredAt: timedOut,
+
+			wantState:       api.ServerDeploymentStateFailed,
+			wantWaitRetries: config.ServerDeploymentStepRetries,
+			wantLastError:   "did not complete within " + config.ServerDeploymentStepTimeout.String(),
+		},
+		{
+			name:        "a revert spends the last retry of the budget the wait shares with its timeouts",
+			outcome:     deploymentWaitRevert,
+			waitRetries: config.ServerDeploymentStepRetries - 1,
+
+			wantProgressed:  true,
+			wantState:       api.ServerDeploymentStatePowerOffBIOS,
+			wantWaitRetries: config.ServerDeploymentStepRetries,
+			wantLastError:   "was reverted, since server powered on again",
+		},
+		{
+			name:        "a met wait resets its wait retries",
+			outcome:     deploymentWaitMet,
+			waitRetries: 1,
+
+			wantProgressed: true,
+			wantState:      api.ServerDeploymentStateApplyBIOS,
+		},
+		{
+			name:        "a pending wait keeps the wait retries",
+			outcome:     deploymentWaitPending,
+			waitRetries: 1,
+
+			wantState:       api.ServerDeploymentStateWaitPowerOffBIOS,
+			wantWaitRetries: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			waitRetries := map[api.ServerDeploymentState]int{
+				api.ServerDeploymentStateWaitBIOSApplied: otherWaitRetries,
+			}
+
+			if tc.waitRetries > 0 {
+				waitRetries[api.ServerDeploymentStateWaitPowerOffBIOS] = tc.waitRetries
+			}
+
+			stored := provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusDeploying,
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State:          api.ServerDeploymentStateWaitPowerOffBIOS,
+						StartedAt:      deploymentTestNow,
+						StateEnteredAt: cmp.Or(tc.stateEnteredAt, deploymentTestNow),
+						WaitRetries:    waitRetries,
+					},
+				},
+			}
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					server := stored
+					deployment := *stored.StatusInternal.Deployment
+					deployment.WaitRetries = maps.Clone(deployment.WaitRetries)
+					server.StatusInternal.Deployment = &deployment
+
+					return &server, nil
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					stored = in
+
+					return nil
+				},
+			}
+
+			serverSvc := New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				WithNow(func() time.Time { return deploymentTestNow }),
+			)
+
+			definition := deploymentStates[api.ServerDeploymentStateWaitPowerOffBIOS]
+			definition.wait = func(*serverService, context.Context, *slog.Logger, provisioning.Server, deploymentStateDefinition) (deploymentWaitOutcome, func(*provisioning.ServerDeployment), error) {
+				return tc.outcome, nil, nil
+			}
+
+			server, err := repo.GetByName(t.Context(), "one")
+			require.NoError(t, err)
+
+			progressed, err := serverSvc.deploymentWait(t.Context(), slog.Default(), *server, definition)
+			require.NoError(t, err)
+
+			deployment := stored.StatusInternal.Deployment
+
+			require.Equal(t, tc.wantProgressed, progressed)
+			require.Equal(t, tc.wantState, deployment.State)
+			require.Equal(t, tc.wantRetries, deployment.Retries, "only a timeout gates the re-issued trigger on the backoff")
+			require.Equal(t, otherWaitRetries, deployment.WaitRetries[api.ServerDeploymentStateWaitBIOSApplied], "the wait retries of another wait are left alone")
+
+			if tc.wantWaitRetries == 0 {
+				require.NotContains(t, deployment.WaitRetries, api.ServerDeploymentStateWaitPowerOffBIOS)
+			} else {
+				require.Equal(t, tc.wantWaitRetries, deployment.WaitRetries[api.ServerDeploymentStateWaitPowerOffBIOS])
+			}
+
+			if tc.wantLastError == "" {
+				require.Empty(t, deployment.LastError)
+			} else {
+				require.Contains(t, deployment.LastError, tc.wantLastError)
+			}
+		})
+	}
+}
+
+func Test_serverService_checkBoundedDeploymentWait_notAWait(t *testing.T) {
+	server := provisioning.Server{
+		Name: "one",
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{State: api.ServerDeploymentStateWaitInstall},
+		},
+	}
+
+	serverSvc := New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+
+	_, _, err := serverSvc.checkBoundedDeploymentWait(t.Context(), slog.Default(), server, deploymentStateDefinition{})
+
+	_, fatal := errors.AsType[deploymentFatalError](err)
+	require.True(t, fatal, "a wait state without a wait ends the deployment instead of being repeated until it times out, got: %v", err)
+}
+
+func Test_serverService_recordDeploymentFailure_unknownRetryFrom(t *testing.T) {
+	stored := provisioning.Server{
+		Name:   "one",
+		Status: api.ServerStatusDeploying,
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{
+				State:          api.ServerDeploymentStateVerifyBIOS,
+				StartedAt:      deploymentTestNow,
+				StateEnteredAt: deploymentTestNow,
+			},
+		},
+	}
+
+	repo := &repoMock.ServerRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			server := stored
+			deployment := *stored.StatusInternal.Deployment
+			server.StatusInternal.Deployment = &deployment
+
+			return &server, nil
+		},
+		UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+			stored = in
+
+			return nil
+		},
+	}
+
+	serverSvc := New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+		WithNow(func() time.Time { return deploymentTestNow }),
+	)
+
+	definition := deploymentStates[api.ServerDeploymentStateVerifyBIOS]
+	definition.retryFrom = ""
+
+	err := serverSvc.recordDeploymentFailure(t.Context(), slog.Default(), "one", definition, deploymentRetryFromError{state: definition.retryFrom, err: boom.Error})
+	require.NoError(t, err)
+
+	deployment := stored.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State, "a step, that has no state to go back to, fails the deployment instead of leaving it in no state at all")
+	require.Equal(t, api.ServerDeploymentStateVerifyBIOS, deployment.FailedState)
 }
