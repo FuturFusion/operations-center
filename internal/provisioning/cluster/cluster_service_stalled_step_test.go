@@ -197,7 +197,7 @@ func TestClusterService_ClusterUpdateControlLoopRebootsWithoutNeedsRebootReporte
 
 	// The update is staged, so the server no longer asks for one, but it does not
 	// ask for a reboot yet either.
-	serverClient.UpdateOSFunc = func(ctx context.Context, server provisioning.Server) error {
+	serverClient.UpdateOSFunc = func(ctx context.Context, server provisioning.Server, osOnly bool) error {
 		world.set(server.Name, versionDataUpdating, false)
 		world.deferTransition(serverWorldTransition{
 			server:      server.Name,
