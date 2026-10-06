@@ -460,6 +460,7 @@ one
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
 				Name:       "one",
+				Status:     api.ServerStatusUnregistered,
 				SystemUUID: new("1"),
 			},
 
@@ -479,6 +480,7 @@ one
 			repoGetByMachineID: &provisioning.Server{
 				ID:        1,
 				Name:      "one",
+				Status:    api.ServerStatusUnregistered,
 				MachineID: new("1"),
 			},
 
@@ -498,6 +500,7 @@ one
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
 				Name:       "one",
+				Status:     api.ServerStatusUnregistered,
 				SystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
 			},
 
@@ -612,6 +615,28 @@ one
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - matched server already registered",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+		`),
+				SystemUUID: new("1"),
+			},
+			repoGetBySystemUUID: &provisioning.Server{
+				ID:         1,
+				Name:       "one",
+				Status:     api.ServerStatusReady,
+				SystemUUID: new("1"),
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name: "error - repo.Update - pre registered server by system UUID",
 			server: provisioning.Server{
 				Name:          "one",
@@ -625,6 +650,7 @@ one
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
 				Name:       "one",
+				Status:     api.ServerStatusUnregistered,
 				SystemUUID: new("1"),
 			},
 			repoUpdateErr: boom.Error,

@@ -394,11 +394,7 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 		return response.SmartError(err)
 	}
 
-	result := api.ServerRegistrationResponse{
-		ClientCertificate: s.clientCertificate,
-	}
-
-	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name} servers server_get
