@@ -22,8 +22,16 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 
 		logResponse(r.Context(), log, resp)
 
-		err := resp.Render(w)
+		tw := &trackingWriter{ResponseWriter: w}
+
+		err := resp.Render(tw)
 		if err != nil {
+			// An error can not be reported anymore, once the response is started.
+			if tw.started {
+				log.ErrorContext(r.Context(), "Failed rendering started HTTP response, aborting connection", logger.Err(err))
+				panic(http.ErrAbortHandler)
+			}
+
 			writeErr := SmartError(err).Render(w)
 			if writeErr != nil {
 				log.ErrorContext(r.Context(), "Failed writing error for HTTP response", logger.Err(err), slog.Any("write_err", writeErr))
@@ -33,6 +41,28 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 			log.ErrorContext(r.Context(), "Render error")
 		}
 	}
+}
+
+// trackingWriter records, if the response has been started.
+type trackingWriter struct {
+	http.ResponseWriter
+
+	started bool
+}
+
+func (w *trackingWriter) WriteHeader(statusCode int) {
+	w.started = true
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *trackingWriter) Write(p []byte) (int, error) {
+	w.started = true
+	return w.ResponseWriter.Write(p)
+}
+
+// Unwrap gives http.ResponseController access to the wrapped writer.
+func (w *trackingWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 // logResponse reports the outcome of the request. It is the single place, where
