@@ -252,6 +252,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				deploymentStatesBIOSDeferredPass,
 				deploymentStatesSecureBootOff,
 				deploymentStatesSecureBootReset,
+				deploymentStatesSecureBootReset[4:],
 				deploymentStatesSecureBootMedia,
 				deploymentStatesMediaCleared,
 				deploymentStatesSecureBootSettle,
@@ -264,7 +265,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			assertWorld: func(t *testing.T, world *bmcWorld) {
 				t.Helper()
 
-				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the wait cuts the power again instead of taking the trough of the firmware reset for a settled power off, so the enrollment media is attached to a server, that is down")
+				require.Equal(t, worldSecureBootModeUser, world.secureBootMode, "the wait goes back to the power off instead of taking the trough of the firmware reset for a settled power off, so the enrollment media is attached to a server, that is down")
 			},
 		},
 		{
@@ -700,17 +701,33 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 				request.Force = true
 			},
 
-			wantStates:       deploymentStatesHappyPath(),
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBoot,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize[:3],
+				[]api.ServerDeploymentState{api.ServerDeploymentStatePowerOnReboot},
+				deploymentStatesFinalize[2:],
+			),
 			wantStatus:       api.ServerStatusPending,
 			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("Deployment wait reverted"),
 			assertWorld: func(t *testing.T, world *bmcWorld) {
 				t.Helper()
 
-				require.True(t, world.isPoweredOn(), "the reboot wait powers a server, that stayed off, on again")
+				require.True(t, world.isPoweredOn(), "a server, that stayed off after the installation, is powered on again")
 			},
 		},
 		{
-			name:        "success - a wait times out once and falls back to its trigger",
+			// The wait does not cut the power again, while the server has not been
+			// seen powered off, so a BMC ignoring the power off costs a timeout per
+			// attempt.
+			name:        "success - a wait times out and falls back to its trigger",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),
 			worldOptions: []func(*bmcWorld){
@@ -719,6 +736,7 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 
 			wantStates: slices.Concat(
 				deploymentStatesPreparing,
+				deploymentStatesBIOSPass[:2],
 				deploymentStatesBIOSPass[:2],
 				deploymentStatesBIOSPass,
 				deploymentStatesBIOSDeferredPass,
@@ -1355,8 +1373,8 @@ func TestServerService_DeploymentControlLoopLeavesAFailedDeploymentAlone(t *test
 
 // TestServerService_DeploymentControlLoopGivesUpOnAServerNeverReachingAState
 // asserts, that a wait, whose trigger keeps being accepted while the server
-// never reaches the state it asks for, is ended by the timeout of the deployment
-// as a whole rather than repeating forever.
+// never reaches the state it asks for, is ended by the retry budget of the wait
+// rather than repeating until the deployment as a whole times out.
 func TestServerService_DeploymentControlLoopGivesUpOnAServerNeverReachingAState(t *testing.T) {
 	ctx := t.Context()
 
@@ -1376,19 +1394,156 @@ func TestServerService_DeploymentControlLoopGivesUpOnAServerNeverReachingAState(
 	deployment := server.StatusInternal.Deployment
 
 	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
-	require.Contains(t, deployment.LastError, "The deployment did not complete within "+config.ServerDeploymentTimeout.String())
+	require.Contains(t, deployment.LastError, `The deployment step "wait-power-off-bios" did not complete within `+config.ServerDeploymentStepTimeout.String())
+	require.Equal(t, config.ServerDeploymentStepRetries, deployment.WaitRetries[api.ServerDeploymentStateWaitPowerOffBIOS], "the wait fell back to its trigger until its retry budget was spent")
 	require.Equal(t, api.ServerStatusUnregistered, server.Status)
 	require.Equal(t, api.ServerStatusDetailUnregisteredDeploymentFailed, server.StatusDetail)
 
 	states := deploymentStateSequence(server)
 	require.Equal(t, slices.Concat(deploymentStatesPreparing, deploymentStatesBIOSPass[:2]), states[:4])
+	require.Len(t, states, 4+2*config.ServerDeploymentStepRetries+1, "every fallback repeats the trigger and the wait once")
 
 	for _, state := range states[2 : len(states)-1] {
 		require.Contains(
 			t, deploymentStatesBIOSPass[:2], state,
-			"the deployment fell back to the trigger of the wait it timed out in until it ran out of time",
+			"the deployment fell back to the trigger of the wait it timed out in until its retry budget was spent",
 		)
 	}
+}
+
+func TestServerService_DeploymentControlLoopGivesUpOnABIOSTaskNeverCompleting(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+		worldOptions: []func(*bmcWorld){
+			func(world *bmcWorld) { world.biosTaskStuck = true },
+		},
+	})
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	server := driveDeployment(t, ctx, w, false)
+
+	deployment := server.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
+	require.Contains(
+		t, deployment.LastError, `The deployment step "wait-bios-applied" did not complete within `+config.ServerDeploymentStepWaitBIOSAppliedTimeout.String(),
+		"the wait is ended by its own retry budget, not by the timeout of the deployment as a whole",
+	)
+	require.Equal(
+		t, config.ServerDeploymentStepRetries, deployment.WaitRetries[api.ServerDeploymentStateWaitBIOSApplied],
+		"the power off wait being met on the way back does not reset the retries of the wait for the BIOS attributes",
+	)
+	require.NotContains(t, deployment.WaitRetries, api.ServerDeploymentStateWaitPowerOffBIOS, "a met wait resets its own retries")
+
+	states := deploymentStateSequence(server)
+	require.Equal(t, slices.Concat(deploymentStatesPreparing, deploymentStatesBIOSPass[:5]), states[:7])
+	require.Len(t, states, 2+5*(config.ServerDeploymentStepRetries+1)+1, "every fallback repeats the BIOS pass up to the wait once")
+}
+
+func TestServerService_DeploymentControlLoopRetriesTheCancelAfterASpentWaitBudget(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+		worldOptions: []func(*bmcWorld){
+			func(world *bmcWorld) { world.ignorePowerOffFor = 10 * config.ServerDeploymentTimeout },
+		},
+	})
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	server := driveDeployment(t, ctx, w, false, func(t *testing.T, ctx context.Context, svc provisioning.ServerService, server provisioning.Server) {
+		t.Helper()
+
+		deployment := server.StatusInternal.Deployment
+		if deployment.CancelRequested || deployment.WaitRetries[api.ServerDeploymentStateWaitPowerOffBIOS] < config.ServerDeploymentStepRetries {
+			return
+		}
+
+		require.NoError(t, svc.CancelDeploymentByName(ctx, worldServerName, false))
+	})
+
+	deployment := server.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
+	require.Contains(t, deployment.LastError, `The deployment step "wait-cancel" did not complete within `+config.ServerDeploymentStepTimeout.String())
+	require.Equal(
+		t, config.ServerDeploymentStepRetries, deployment.WaitRetries[api.ServerDeploymentStateWaitCancel],
+		"the clean up of the cancellation gets a retry budget of its own",
+	)
+
+	cancels := 0
+
+	for _, state := range deploymentStateSequence(server) {
+		if state == api.ServerDeploymentStateCancel {
+			cancels++
+		}
+	}
+
+	require.Equal(t, config.ServerDeploymentStepRetries+1, cancels, "the clean up is re-issued until the retry budget of its wait is spent")
+}
+
+func TestServerService_DeploymentControlLoopLetsAnAcceptedPowerOnSettle(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		resolution: deploymentTestResolution(),
+		trackMedia: true,
+		worldOptions: []func(*bmcWorld){
+			func(world *bmcWorld) {
+				world.installViaMediaRead = true
+				world.haltsAfterInstall = true
+				world.powerOnDelay = config.ServerDeploymentSettleDelay - config.ServerDeploymentControlLoopInterval
+			},
+		},
+	})
+
+	request := deploymentTestRequest(w.tokenUUID)
+	request.Force = true
+
+	err := w.service.DeployByName(ctx, worldServerName, request)
+	require.NoError(t, err)
+
+	var server *provisioning.Server
+
+	for range 10 * deploymentDriveIterations {
+		server, err = w.repo.GetByName(ctx, worldServerName)
+		require.NoError(t, err)
+
+		if !server.StatusInternal.Deployment.IsActive() {
+			break
+		}
+
+		require.NoError(t, w.world.settle(ctx))
+		require.NoError(t, w.service.DeploymentControlLoop(ctx, nil))
+
+		w.clock.advance(deploymentTick)
+	}
+
+	deployment := server.StatusInternal.Deployment
+
+	require.Equal(t, api.ServerDeploymentStateCompleted, deployment.State, "driven at the pace of the control loop, last error: %s", deployment.LastError)
+	require.Greater(
+		t, w.world.powerOnDelay, time.Duration(config.ServerDeploymentStepRetries)*config.ServerDeploymentControlLoopInterval,
+		"the power on takes longer than the retry budget lasts at one revert per run of the control loop",
+	)
+
+	powerOns := 0
+
+	for _, state := range deploymentStateSequence(*server) {
+		if state == api.ServerDeploymentStatePowerOnReboot {
+			powerOns++
+		}
+	}
+
+	require.Equal(t, 1, powerOns, "the server is powered on once and given the settle delay to show it")
 }
 
 // TestServerService_DeploymentControlLoopSurvivesAnUnobservableWait asserts,
