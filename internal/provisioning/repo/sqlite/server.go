@@ -143,6 +143,10 @@ func (s server) GetByName(ctx context.Context, name string) (*provisioning.Serve
 }
 
 func (s server) GetByCertificate(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
+	if certificatePEM == "" {
+		return nil, domain.ErrNotFound
+	}
+
 	servers, err := s.getAllWithFilter(ctx, &provisioning.ServerFilter{
 		Certificate: &certificatePEM,
 	})
