@@ -504,6 +504,7 @@ type ExprServerDeployment struct {
 	LastPowerOffState               api.ServerDeploymentState         `json:"last_power_off_state" expr:"last_power_off_state"`
 	MediaBytesRead                  int64                             `json:"media_bytes_read" expr:"media_bytes_read"`
 	InstallOSObserved               bool                              `json:"install_os_observed" expr:"install_os_observed"`
+	InstallBootProgressState        string                            `json:"install_boot_progress_state" expr:"install_boot_progress_state"`
 	SecureBootSnapshot              ExprServerDeploymentBMCSnapshot   `json:"secure_boot_snapshot" expr:"secure_boot_snapshot"`
 	InstallSnapshot                 ExprServerDeploymentBMCSnapshot   `json:"install_snapshot" expr:"install_snapshot"`
 	SecureBootEnrollSnapshot        ExprServerDeploymentBMCSnapshot   `json:"secure_boot_enroll_snapshot" expr:"secure_boot_enroll_snapshot"`
@@ -1154,6 +1155,7 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		LastPowerOffState:               s.LastPowerOffState,
 		MediaBytesRead:                  s.MediaBytesRead,
 		InstallOSObserved:               s.InstallOSObserved,
+		InstallBootProgressState:        s.InstallBootProgressState,
 		SecureBootSnapshot:              ToExprServerDeploymentBMCSnapshot(s.SecureBootSnapshot),
 		InstallSnapshot:                 ToExprServerDeploymentBMCSnapshot(s.InstallSnapshot),
 		SecureBootEnrollSnapshot:        ToExprServerDeploymentBMCSnapshot(s.SecureBootEnrollSnapshot),

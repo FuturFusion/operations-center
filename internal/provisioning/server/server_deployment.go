@@ -2713,11 +2713,14 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 	// the very boot, that is supposed to start the installer.
 	osObserved := deployment.InstallOSObserved || deploymentInstallOSObserved(deployment, current.BMCData)
 
+	bootProgressState := current.BMCData.ServerBootProgress.LastState
+
 	var mutate func(*provisioning.ServerDeployment)
-	if bytesRead != deployment.MediaBytesRead || osObserved != deployment.InstallOSObserved {
+	if bytesRead != deployment.MediaBytesRead || osObserved != deployment.InstallOSObserved || bootProgressState != deployment.InstallBootProgressState {
 		mutate = func(deployment *provisioning.ServerDeployment) {
 			deployment.MediaBytesRead = bytesRead
 			deployment.InstallOSObserved = osObserved
+			deployment.InstallBootProgressState = bootProgressState
 		}
 	}
 
@@ -2736,6 +2739,7 @@ func (s *serverService) checkDeploymentInstalled(ctx context.Context, log *slog.
 				slog.Int64("bytes_covered", progress.BytesCovered),
 				slog.Int64("bytes_served", progress.BytesServed),
 				slog.Int64("bytes_required", deploymentMediaBytesRequired(progress.Size, definition.install.mediaMinBytesRead)),
+				slog.String("boot_progress_before_reboot", deployment.InstallBootProgressState),
 				slog.Duration("installing_for", now.Sub(deployment.StateEnteredAt)),
 			)
 
@@ -2827,6 +2831,12 @@ func deploymentInstallCouldBeDone(now time.Time, deployment *provisioning.Server
 func deploymentInstallRebootTellsTheInstallation(now time.Time, deployment *provisioning.ServerDeployment, osObserved bool, thresholds deploymentInstallThresholds) bool {
 	if osObserved {
 		return true
+	}
+
+	// A boot, the BMC last reported short of the hand over to the operating
+	// system, never ran the installer, however long it took.
+	if api.BMCBootProgressBeforeOS(deployment.InstallBootProgressState) {
+		return false
 	}
 
 	return now.Sub(deployment.StateEnteredAt) >= thresholds.rebootFallbackDelay

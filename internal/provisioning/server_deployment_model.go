@@ -333,6 +333,11 @@ type ServerDeployment struct {
 	// cycles of the boot, that is supposed to start the installer.
 	InstallOSObserved bool `json:"install_os_observed"`
 
+	// InstallBootProgressState holds the boot progress state the BMC reported,
+	// when the install wait looked last. On a reboot, it is the state the boot
+	// before it got to, which tells a boot, that never reached the installer.
+	InstallBootProgressState string `json:"install_boot_progress_state"`
+
 	// SecureBootSnapshot and InstallSnapshot hold the reboot relevant BMC
 	// properties, as they were observed on the boot, that lets the firmware pick
 	// the enrolled certificates up, respectively on entering the install wait.
