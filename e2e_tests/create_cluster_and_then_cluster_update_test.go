@@ -89,6 +89,8 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list`, cpuArch)
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show incus-os-cluster`, cpuArch)
 
+	updateClusterApplication(ctx, t, clusterName)
+
 	stopUpdate := timeTrack(t, "cluster update")
 	defer stopUpdate()
 
@@ -169,6 +171,62 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 	assertWorkloadRunning(ctx, t, "Update cluster - post update workload", clusterName, instanceNames)
 
 	t.Log("Update cluster - update completed")
+}
+
+// updateClusterApplication runs an application only rolling update, skipped if no installed application is outdated.
+func updateClusterApplication(ctx context.Context, t *testing.T, clusterName string) {
+	t.Helper()
+
+	// A restricted update is validated, whatever the servers need.
+	resp := run(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application does-not-exist`, cpuArch, clusterName)
+	require.False(t, resp.Success(), "Update cluster application: the update of an unknown application was accepted")
+
+	resp = run(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application incus --reboot`, cpuArch, clusterName)
+	require.False(t, resp.Success(), "Update cluster application: the update of an application with reboot was accepted")
+
+	// The newly assigned update is only picked up with the next poll of the servers.
+	ok, err := waitForSuccessWithTimeout(ctx, t, "the cluster to need an update",
+		`../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '.[] | select(.name == "%s") | (.update_status.needs_update // []) | length >= 1'`,
+		10*time.Minute, cpuArch, clusterName)
+	require.NoError(t, err)
+	require.True(t, ok, "Update cluster application: the cluster does not report the assigned update")
+
+	// Pick any outdated application, which ones are outdated depends on the assigned update.
+	applicationResp := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == "%s") | (.version_data.applications // [])[] | select(.needs_update == true) | .name ] | first // ""'`, cpuArch, clusterName)
+	application := applicationResp.OutputTrimmed()
+	if application == "" {
+		t.Log("Update cluster application - no installed application is outdated, skipping the application only update")
+		return
+	}
+
+	stopUpdate := timeTrack(t, "cluster application update")
+	defer stopUpdate()
+
+	t.Logf("Update cluster application - trigger update of application %q", application)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application %s`, cpuArch, clusterName, application)
+
+	// A failed run stays in the error state, which ends the wait as well.
+	ok, err = waitForSuccessWithTimeout(ctx, t, "the cluster application update to complete",
+		`../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress | . == "" or . == "error"'`,
+		15*time.Minute, cpuArch, clusterName)
+	require.NoError(t, err)
+	if !ok {
+		printServerList(t)
+	}
+
+	require.Truef(t, ok, "Update cluster application: the update of %q did not complete", application)
+
+	resp = mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error // ""'`, cpuArch, clusterName)
+	require.Emptyf(t, resp.OutputTrimmed(), "Update cluster application: the update of %q failed: %s", application, resp.OutputTrimmed())
+
+	resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == "%s") | select(.version_data.applications[] | select(.name == "%s") | .needs_update == true) | .name ] | join(",")'`, cpuArch, clusterName, application)
+	require.Emptyf(t, resp.OutputTrimmed(), "Update cluster application: %q still needs an update on: %s", application, resp.OutputTrimmed())
+
+	// An application only update must not leave any server in need of a reboot.
+	resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_reboot // []) | join(",")'`, cpuArch, clusterName)
+	require.Emptyf(t, resp.OutputTrimmed(), "Update cluster application: servers need a reboot: %s", resp.OutputTrimmed())
+
+	t.Log("Update cluster application - update completed")
 }
 
 // clusterUpdateStateRegexp matches the step and the total number of steps of the
