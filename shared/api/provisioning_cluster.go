@@ -110,6 +110,15 @@ type ClusterUpdateInProgressStatus struct {
 	// calculated.
 	PendingReboot []string `json:"pending_reboot" yaml:"pending_reboot"`
 
+	// Applications holds the names of the applications the ongoing update is
+	// restricted to. If empty, the update is not restricted to applications.
+	// Example: ["incus"]
+	Applications []string `json:"applications,omitempty" yaml:"applications,omitempty"`
+
+	// OSOnly is true, if the ongoing update is restricted to the operating
+	// system and leaves the installed applications on the version they are on.
+	OSOnly bool `json:"os_only,omitempty" yaml:"os_only,omitempty"`
+
 	// LastUpdated is the time, when this information has been updated for the
 	// last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
@@ -437,9 +446,22 @@ type ClusterBulkUpdatePost struct {
 //
 // swagger:model
 type ClusterUpdatePost struct {
-	// Reboot indicates ifif after the update a rolling reboot of the servers
+	// Reboot indicates if after the update a rolling reboot of the servers
 	// should be triggered or not. If reboot is set to true, the servers are
 	// rebooted, otherwise only the updates are applied without reboot (OS updates
 	// will require a reboot at a later stage).
 	Reboot bool `json:"reboot" yaml:"reboot"`
+
+	// Applications restricts the update to the given applications and leaves the
+	// operating system untouched. Each application has to be installed on at
+	// least one server, servers without it are skipped. If empty, the update is
+	// not restricted to applications. It can neither be combined with reboot nor
+	// with os_only.
+	// Example: ["incus"]
+	Applications []string `json:"applications" yaml:"applications"`
+
+	// OSOnly restricts the update to the operating system and leaves the
+	// installed applications on the version they are on. It can not be combined
+	// with applications.
+	OSOnly bool `json:"os_only" yaml:"os_only"`
 }
