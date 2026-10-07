@@ -46,8 +46,7 @@ requested, so an impossible deployment is rejected right away:
 
 1. The server exists, is `unregistered` and has a BMC configured.
 1. No deployment is already running for the server.
-1. The token exists, has uses remaining and stays valid for the whole deployment
-   timeout, since the server registers itself at the very end.
+1. The token exists and has uses remaining.
 1. The token seed exists and is public.
 1. The install config of the token seed sets `force_reboot`, so the server
    reboots on its own when the first stage of the installation is done. A seed
@@ -76,6 +75,15 @@ requested, so an impossible deployment is rejected right away:
    deferred attributes and secure boot allow lists are snapshotted onto the
    deployment, so a later change of the catalog does not alter what a running
    deployment applies.
+   part of the certificate catalog. The resolved profile names, attributes, deferred attributes and secure boot allow lists
+   are snapshotted onto the deployment, so a later change of the catalog does
+   not alter what a running deployment applies.
+1. The deployment settings of the BIOS profiles fit together: what a wait holds
+   out for is shorter than its timeout and no timeout exceeds the deployment
+   timeout.
+1. The token stays valid for the whole deployment timeout, since the server
+   registers itself at the very end. The timeout is the one in effect for the
+   server, see "Retries and timeouts" below.
 
 ### Architecture
 
@@ -550,7 +558,38 @@ every state, its timeout, the trigger a wait falls back to and the successor.
 * **Global**: the overall duration is checked at the top of every tick. Running
   out of it reports the last error of the state the deployment is stuck in.
 
-The defaults live in `internal/config/daemon/consts.go`.
+The defaults live in `internal/config/daemon/consts.go` and are what the state
+table declares and the diagram above shows.
+
+### Deployment settings of the BIOS profiles
+
+Hardware differs in how long it takes to run through its power on self test, to
+apply BIOS changes or to answer the BMC, so the BIOS profiles are able to
+override the timings for the servers they match. The `deployment` section of a
+profile holds named settings, which are documented with the profiles in
+`internal/provisioning/adapter/bios/profiles/README.md`. They are deliberately
+not keyed by state: a setting like `power_off_settle_delay` feeds every power
+off wait, and the states are free to change.
+
+* The settings are resolved together with the BIOS attributes, a profile with a
+  higher priority overriding single settings, and are snapshotted on the
+  deployment as `Settings`. A deployment therefore keeps its timings across a
+  restart and a change of the profiles.
+* The dispatcher applies the snapshot to the definition of the state it is about
+  to drive (`withSettings`), so the actions and waits read the effective values
+  from the definition they are handed, as before.
+* Only what a state declares is replaced, so a setting can not switch on a
+  threshold a state does not read. Where a duration of the table is fed by
+  different settings depending on the state, the state names the setting next to
+  the default (`timeoutSetting`, `rebootWindowSetting`, `callTimeoutSetting`).
+* `deployment_timeout` takes the place of the overall duration, including the
+  one the token has to stay valid for.
+* The retry backoff and the settings of the control loop are not part of the
+  state table and stay global.
+
+The settings deviating from the defaults are part of the BIOS profile resolution
+and of the deployment status, so they are visible without consulting the
+profiles.
 
 ## Control loop
 

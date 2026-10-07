@@ -123,7 +123,8 @@ operations-center provisioning token list
 ```{note}
 Give the token enough uses for the retries you might need. Every deployment
 consumes one use of the token when the server registers itself. The token also
-has to stay valid for the whole deployment, which takes up to two hours.
+has to stay valid for the whole deployment, which takes up to two hours, unless
+the BIOS profiles of the server grant it more time.
 ```
 
 ## Create the Token Seed
