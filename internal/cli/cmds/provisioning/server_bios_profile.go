@@ -92,7 +92,12 @@ func (c *cmdServerBIOSProfile) run(cmd *cobra.Command, args []string) error {
 			renderBIOSAttributes("Deferred attributes", resolution.DeferredAttributes)
 		}
 
-		return renderSecureBoot(resolution.SecureBoot)
+		err = renderSecureBoot(resolution.SecureBoot)
+		if err != nil {
+			return err
+		}
+
+		return renderDeploymentSettings("Deployment settings", resolution.Deployment)
 	}
 }
 
@@ -126,6 +131,22 @@ func renderSecureBoot(secureBoot api.BIOSSecureBoot) error {
 
 		fmt.Printf("Secure Boot %s:\n%s\n", database.name, render.Indent(2, strings.TrimSpace(string(entriesYAML))))
 	}
+
+	return nil
+}
+
+// renderDeploymentSettings prints the deployment settings deviating from the defaults.
+func renderDeploymentSettings(title string, settings api.ServerDeploymentSettings) error {
+	if settings.IsZero() {
+		return nil
+	}
+
+	settingsYAML, err := yaml.Marshal(settings)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s:\n%s\n", title, render.Indent(2, strings.TrimSpace(string(settingsYAML))))
 
 	return nil
 }
