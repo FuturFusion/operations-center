@@ -1,9 +1,11 @@
 package provisioning
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -32,6 +34,8 @@ type cmdServerDeploy struct {
 	flagForce                      bool
 	flagSkipSecureBootCertificates bool
 	flagSecureBootEnrollmentMedia  bool
+	flagBIOSProfiles               []string
+	flagSecureBootCertificates     []string
 	flagWait                       bool
 }
 
@@ -64,6 +68,14 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
   The BIOS attributes are resolved from the BIOS profiles matching the server.
   Use "server bios-profile" to see what would be applied.
 
+  Use --bios-profiles to resolve the BIOS configuration, which is the BIOS
+  attributes and the secure boot allow lists, from the BIOS profiles of a file
+  instead. The file holds BIOS profiles in the format of the ones shipped with
+  Operations Center, they are matched against the server and accumulated by
+  priority the same way. Certificates, that such a profile keeps in a secure
+  boot database and that Operations Center does not know, have to be provided
+  with --secure-boot-certificate for the enrollment media to enroll them.
+
   Use "server deploy-status" to follow the progress and "server deploy-cancel"
   to stop a deployment.
 `
@@ -75,6 +87,8 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, `Accept a token seed, that does not set "force_reboot"`)
 	cmd.Flags().BoolVar(&c.flagSkipSecureBootCertificates, "skip-secure-boot-certificates", false, "Skip the enrollment of the secure boot certificates of IncusOS, they are expected to have been enrolled manually")
 	cmd.Flags().BoolVar(&c.flagSecureBootEnrollmentMedia, "secure-boot-enrollment-media", false, "Enroll the secure boot certificates of IncusOS by booting a generated enrollment media instead of through the Redfish API")
+	cmd.Flags().StringArrayVar(&c.flagBIOSProfiles, "bios-profiles", nil, "YAML file with the BIOS profiles to resolve the BIOS configuration from instead of the ones shipped with Operations Center (can be given multiple times)")
+	cmd.Flags().StringArrayVar(&c.flagSecureBootCertificates, "secure-boot-certificate", nil, "PEM file with an additional secure boot certificate kept by the provided BIOS profiles, requires --bios-profiles and --secure-boot-enrollment-media (can be given multiple times)")
 	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "Wait for the deployment to complete")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -98,7 +112,22 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 	tokenUUID := args[1]
 	seed := args[2]
 
-	err := c.ocClient.DeployServer(cmd.Context(), name, api.ServerDeploymentPost{
+	biosProfiles, err := readBIOSProfiles(c.flagBIOSProfiles)
+	if err != nil {
+		return err
+	}
+
+	secureBootCertificates := make([]string, 0, len(c.flagSecureBootCertificates))
+	for _, filename := range c.flagSecureBootCertificates {
+		certificate, err := os.ReadFile(filename)
+		if err != nil {
+			return fmt.Errorf("Failed to read secure boot certificate: %w", err)
+		}
+
+		secureBootCertificates = append(secureBootCertificates, string(certificate))
+	}
+
+	err = c.ocClient.DeployServer(cmd.Context(), name, api.ServerDeploymentPost{
 		TokenUUID:                  tokenUUID,
 		Seed:                       seed,
 		Type:                       c.flagType,
@@ -108,6 +137,8 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 		Force:                      c.flagForce,
 		SkipSecureBootCertificates: c.flagSkipSecureBootCertificates,
 		SecureBootEnrollmentMedia:  c.flagSecureBootEnrollmentMedia,
+		BIOSProfiles:               biosProfiles,
+		SecureBootCertificates:     secureBootCertificates,
 	})
 	if err != nil {
 		return err
@@ -123,6 +154,68 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return deploymentResultError(name, deployment)
+}
+
+// readBIOSProfiles reads the BIOS profiles from YAML files.
+func readBIOSProfiles(filenames []string) ([]api.BIOSProfile, error) {
+	var profiles []api.BIOSProfile
+
+	for _, filename := range filenames {
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read BIOS profiles: %w", err)
+		}
+
+		fileProfiles, err := parseBIOSProfiles(content)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse BIOS profiles %q: %w", filename, err)
+		}
+
+		if len(fileProfiles) == 0 {
+			return nil, fmt.Errorf("BIOS profiles file %q does not hold any profile", filename)
+		}
+
+		profiles = append(profiles, fileProfiles...)
+	}
+
+	return profiles, nil
+}
+
+// parseBIOSProfiles parses a list of BIOS profiles, like the files of the catalog hold one, or a single one.
+func parseBIOSProfiles(content []byte) ([]api.BIOSProfile, error) {
+	var document yaml.Node
+
+	err := yaml.Unmarshal(content, &document)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(document.Content) == 0 {
+		return nil, nil
+	}
+
+	decoder := yaml.NewDecoder(bytes.NewReader(content))
+	decoder.KnownFields(true)
+
+	if document.Content[0].Kind == yaml.MappingNode {
+		profile := api.BIOSProfile{}
+
+		err = decoder.Decode(&profile)
+		if err != nil {
+			return nil, err
+		}
+
+		return []api.BIOSProfile{profile}, nil
+	}
+
+	profiles := []api.BIOSProfile{}
+
+	err = decoder.Decode(&profiles)
+	if err != nil {
+		return nil, err
+	}
+
+	return profiles, nil
 }
 
 // waitForDeployment polls the deployment of the given server until it reaches a

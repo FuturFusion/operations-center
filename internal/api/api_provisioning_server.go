@@ -1552,6 +1552,10 @@ func serverDeploymentStatus(server provisioning.Server) *api.ServerDeploymentSta
 //	requires. The certificates are then expected to have been enrolled by an
 //	operator before the deployment is triggered.
 //
+//	A request, that provides "bios_profiles", has the BIOS configured from the
+//	provided profiles matching the server, the BIOS profiles of Operations
+//	Center are not consulted. The profiles are used for this deployment only.
+//
 //	The progress of the deployment is reported through the server status and, in
 //	more detail, through the "deployment" field of the server.
 //

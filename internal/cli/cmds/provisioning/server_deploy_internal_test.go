@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -252,6 +253,79 @@ func TestDeploymentResultError(t *testing.T) {
 			err := deploymentResultError("one", tc.deployment)
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestParseBIOSProfiles(t *testing.T) {
+	example, err := os.ReadFile("../../../provisioning/adapter/bios/profiles/_dummy.yaml.example")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		content string
+
+		assertErr require.ErrorAssertionFunc
+		wantNames []string
+	}{
+		{
+			name:    "the example of the catalog",
+			content: string(example),
+
+			assertErr: require.NoError,
+			wantNames: []string{"dummy"},
+		},
+		{
+			name:    "a list of profiles",
+			content: "- name: one\n- name: two\n",
+
+			assertErr: require.NoError,
+			wantNames: []string{"one", "two"},
+		},
+		{
+			name:    "a single profile",
+			content: "name: one\n",
+
+			assertErr: require.NoError,
+			wantNames: []string{"one"},
+		},
+		{
+			name: "an empty file",
+
+			assertErr: require.NoError,
+			wantNames: []string{},
+		},
+		{
+			name:    "error - unknown field in a list",
+			content: "- name: one\n  unknown_field: {}\n",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "unknown_field", a...)
+			},
+		},
+		{
+			name:    "error - malformed YAML",
+			content: "not: a: profile",
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			profiles, err := parseBIOSProfiles([]byte(tc.content))
+			tc.assertErr(t, err)
+
+			if err != nil {
+				return
+			}
+
+			names := make([]string, 0, len(profiles))
+			for _, profile := range profiles {
+				names = append(names, profile.Name)
+			}
+
+			require.Equal(t, tc.wantNames, names)
 		})
 	}
 }

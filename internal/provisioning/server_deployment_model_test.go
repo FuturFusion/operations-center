@@ -1,6 +1,8 @@
 package provisioning_test
 
 import (
+	"encoding/asn1"
+	"slices"
 	"testing"
 	"time"
 
@@ -9,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -18,6 +22,25 @@ func TestServerDeploymentRequest_Validate(t *testing.T) {
 		Seed:         "default",
 		ImageType:    api.ImageTypeISO,
 		Architecture: images.UpdateFileArchitecture64BitX86,
+	}
+
+	// The certificates are not parsed as X509, any DER sequence does.
+	der, err := asn1.Marshal(struct{ Name string }{Name: "certificate"})
+	require.NoError(t, err)
+
+	pemCertificate := certificate.EncodeToPEM(der)
+
+	fingerprint, err := certificate.DERFingerprint("test", []byte(pemCertificate))
+	require.NoError(t, err)
+
+	keepingProfile := func(fingerprint string) provisioning.BIOSProfiles {
+		return provisioning.BIOSProfiles{{
+			Name:  "in-development",
+			Match: []provisioning.BIOSProfileMatch{{}},
+			SecureBoot: provisioning.BIOSSecureBoot{
+				DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{fingerprint: new(true)}},
+			},
+		}}
 	}
 
 	tests := []struct {
@@ -73,6 +96,111 @@ func TestServerDeploymentRequest_Validate(t *testing.T) {
 			},
 			assertErr: require.Error,
 		},
+		{
+			name: "error - BIOS profile without match",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.BIOSProfiles = provisioning.BIOSProfiles{{Name: "in-development", Attributes: map[string]any{"BootMode": "Uefi"}}}
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("at least one match is required"),
+		},
+		{
+			name: "valid - secure boot certificate kept by the BIOS profile",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - secure boot certificate without BIOS profile",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("only be provided together with BIOS profiles"),
+		},
+		{
+			name: "error - secure boot certificate without enrollment media",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("only be enrolled from the secure boot enrollment media"),
+		},
+		{
+			name: "error - secure boot certificate not kept by the BIOS profile",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = provisioning.BIOSProfiles{{Name: "in-development", Match: []provisioning.BIOSProfileMatch{{}}, Attributes: map[string]any{"BootMode": "Uefi"}}}
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("is not kept by any of the provided BIOS profiles"),
+		},
+		{
+			name: "error - secure boot certificate is not PEM encoded",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{"not a certificate"}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("has to hold exactly one PEM encoded certificate"),
+		},
+		{
+			name: "error - secure boot certificate file holds more than one certificate",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{pemCertificate + pemCertificate}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("has to hold exactly one PEM encoded certificate"),
+		},
+		{
+			name: "error - secure boot certificate is not DER encoded",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{certificate.EncodeToPEM([]byte("certificate"))}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("is not DER encoded"),
+		},
+		{
+			name: "error - secure boot certificate provided more than once",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = []string{pemCertificate, pemCertificate}
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("is provided more than once"),
+		},
+		{
+			name: "error - too many secure boot certificates",
+			request: func(request provisioning.ServerDeploymentRequest) provisioning.ServerDeploymentRequest {
+				request.SecureBootEnrollmentMedia = true
+				request.BIOSProfiles = keepingProfile(fingerprint)
+				request.SecureBootCertificates = slices.Repeat([]string{pemCertificate}, 17)
+
+				return request
+			},
+			assertErr: errassert.ValidationErrorContains("at most 16 secure boot certificates"),
+		},
 	}
 
 	for _, tc := range tests {
@@ -103,6 +231,22 @@ func TestNewServerDeploymentRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, request.SkipSecureBootCertificates)
 	require.True(t, request.ToAPI().SkipSecureBootCertificates)
+
+	request, err = provisioning.NewServerDeploymentRequest(api.ServerDeploymentPost{
+		TokenUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+		Seed:      "default",
+		BIOSProfiles: []api.BIOSProfile{{
+			Name:       "in-development",
+			Match:      []api.BIOSProfileMatch{{Manufacturer: "Lenovo"}},
+			Priority:   10,
+			Attributes: map[string]any{"BootMode": "Uefi"},
+		}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, request.Validate())
+	require.Equal(t, "Lenovo", request.BIOSProfiles[0].Match[0].Manufacturer)
+	require.Equal(t, 10, request.BIOSProfiles[0].Priority)
+	require.Empty(t, request.ToAPI().BIOSProfiles, "The BIOS profiles are not reported back")
 
 	_, err = provisioning.NewServerDeploymentRequest(api.ServerDeploymentPost{
 		TokenUUID: "not-a-uuid",

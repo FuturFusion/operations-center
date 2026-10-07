@@ -24,8 +24,17 @@ deployment, that failed on its own, is.
 The deployment request carries the token and the token seed the installation
 media is generated from, and optionally the virtual media device, the image
 type, the architecture, which is taken from the BMC when it is not given, and
-the channel. It deliberately carries **no BIOS attributes**: those are resolved
+the channel. It carries **no BIOS attributes** by default: those are resolved
 from the BIOS profiles matching the server.
+
+For the development of BIOS profiles, the request optionally carries a list of
+BIOS profiles in the format of the catalog. The catalog is not consulted at all
+then: the provided profiles take its place and are resolved exactly like it,
+matched against the BMC data of the server and accumulated by priority. A
+request, none of whose profiles matches the server, is rejected. The profiles
+are used for this request only: they are not kept, only what they resolve to is
+snapshotted onto the deployment, the same way it is for the profiles of the
+catalog.
 
 The progress is reported through the server status and status detail, and in
 more detail through the `deployment` field of the server.
@@ -59,10 +68,14 @@ requested, so an impossible deployment is rejected right away:
 1. A deployment, that asks for the secure boot enrollment media, is rejected
    where the architecture of the server is not `x86_64`, which is the only
    architecture the media can be built for, see below.
-1. The BIOS profiles matching the server resolve to something. The resolved
-   profile names, attributes, deferred attributes and secure boot allow lists
-   are snapshotted onto the deployment, so a later change of the catalog does
-   not alter what a running deployment applies.
+1. The BIOS profiles matching the server resolve to something. BIOS profiles
+   provided with the request take the place of the catalog and have to match the
+   server as well. Where they are combined with the secure boot enrollment
+   media, every certificate they keep has to be provided with the request or be
+   part of the certificate catalog. The resolved profile names, attributes,
+   deferred attributes and secure boot allow lists are snapshotted onto the
+   deployment, so a later change of the catalog does not alter what a running
+   deployment applies.
 
 ### Architecture
 
@@ -223,6 +236,12 @@ distinguishes it from the installation media as far as the BMC is concerned.
 profiles is resolved to the certificates of the catalog, while an allow listed
 signature is reported as a warning and lost: the media enrolls signature lists
 built from certificates, so there is nothing to rebuild a bare signature from.
+
+A request, that provides BIOS profiles, can also provide additional PEM encoded
+certificates, for a profile keeping a certificate the catalog does not know.
+Each of them has to be kept by one of the provided profiles and they take precedence
+over the catalog. They are held on the deployment, keyed by fingerprint, for the
+enrollment media to be generated from and are not reported through the API.
 
 Since the enrollment media enrolls the certificates itself, the deployment never
 sets `SecureBootPending`, so the settle boot of the Redfish path is passed by and

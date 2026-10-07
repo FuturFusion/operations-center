@@ -193,6 +193,8 @@ func (s BIOSSecureBoot) IsEmpty() bool {
 	return true
 }
 
+var secureBootCertificateFingerprintPattern = regexp.MustCompile(`\A[0-9a-fA-F]{64}\z`)
+
 // BIOSProfile is a set of BIOS attributes, that is applied to the servers
 // selected by any of its matches.
 type BIOSProfile struct {
@@ -215,6 +217,28 @@ type BIOSProfile struct {
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
+}
+
+// NewBIOSProfileFromAPI builds a BIOS profile from its API representation.
+func NewBIOSProfileFromAPI(profile api.BIOSProfile) BIOSProfile {
+	matches := make([]BIOSProfileMatch, 0, len(profile.Match))
+	for _, match := range profile.Match {
+		matches = append(matches, BIOSProfileMatch(match))
+	}
+
+	return BIOSProfile{
+		Name:               profile.Name,
+		Description:        profile.Description,
+		Match:              matches,
+		Priority:           profile.Priority,
+		Attributes:         maps.Clone(profile.Attributes),
+		DeferredAttributes: maps.Clone(profile.DeferredAttributes),
+		SecureBoot: BIOSSecureBoot{
+			DB:  BIOSSecureBootDatabase(profile.SecureBoot.DB).Clone(),
+			DBX: BIOSSecureBootDatabase(profile.SecureBoot.DBX).Clone(),
+			KEK: BIOSSecureBootDatabase(profile.SecureBoot.KEK).Clone(),
+		},
+	}
 }
 
 func (p BIOSProfile) Validate() error {
@@ -375,6 +399,34 @@ func validateBIOSAttributeValue(biosAttribute api.BIOSAttribute, value any) erro
 }
 
 type BIOSProfiles []BIOSProfile
+
+// ValidateForDeployment validates the BIOS profiles provided with a deployment request.
+func (p BIOSProfiles) ValidateForDeployment() error {
+	names := make(map[string]bool, len(p))
+
+	for _, profile := range p {
+		err := profile.Validate()
+		if err != nil {
+			return err
+		}
+
+		if names[profile.Name] {
+			return domain.NewValidationErrf("Invalid BIOS profile %q, the name is used more than once", profile.Name)
+		}
+
+		names[profile.Name] = true
+
+		for _, database := range []BIOSSecureBootDatabase{profile.SecureBoot.DB, profile.SecureBoot.DBX, profile.SecureBoot.KEK} {
+			for _, fingerprint := range slices.Sorted(maps.Keys(database.Certificates)) {
+				if !secureBootCertificateFingerprintPattern.MatchString(strings.TrimSpace(fingerprint)) {
+					return domain.NewValidationErrf("Invalid BIOS profile %q, secure boot certificate %q is not a SHA256 fingerprint in hex notation", profile.Name, fingerprint)
+				}
+			}
+		}
+	}
+
+	return nil
+}
 
 // Sort orders the profiles in the order they are applied, by priority ascending
 // and finally by name.

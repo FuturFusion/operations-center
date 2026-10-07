@@ -204,6 +204,105 @@ definitions:
         title: BIOSAttribute describes a single BIOS attribute known to the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSProfile:
+        description: |-
+            BIOSProfile is a set of BIOS attributes and secure boot allow lists in the
+            format of the BIOS profiles shipped with Operations Center.
+        properties:
+            attributes:
+                additionalProperties: {}
+                description: |-
+                    Attributes holds the BIOS attribute names and values to apply to the
+                    server via BMC, e.g. {"SecureBoot": "Enabled", "TpmSecurity": "On"}.
+                type: object
+                x-go-name: Attributes
+            deferred_attributes:
+                additionalProperties: {}
+                description: |-
+                    DeferredAttributes holds the BIOS attribute names and values, that are
+                    applied to the server in a second pass, once the attributes above are in
+                    effect, e.g. {"Tpm2Algorithm": "SHA256"}.
+                type: object
+                x-go-name: DeferredAttributes
+            description:
+                description: Description of the BIOS profile.
+                example: Lenovo ThinkSystem
+                type: string
+                x-go-name: Description
+            match:
+                description: Match selects the servers the BIOS profile applies to.
+                items:
+                    $ref: '#/definitions/BIOSProfileMatch'
+                type: array
+                x-go-name: Match
+            name:
+                description: Name of the BIOS profile.
+                example: lenovo-thinksystem
+                type: string
+                x-go-name: Name
+            priority:
+                description: |-
+                    Priority orders the BIOS profiles matching a server, a higher priority
+                    overwrites what a lower priority has contributed.
+                example: 2000
+                format: int64
+                type: integer
+                x-go-name: Priority
+            secure_boot:
+                $ref: '#/definitions/BIOSProfileSecureBoot'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSProfileMatch:
+        description: |-
+            The string fields are regular expressions, which are matched
+            case-insensitively against the complete value reported by the BMC.
+        properties:
+            bios_version:
+                description: BIOSVersion is a semver constraint for the BIOS version of the server.
+                example: '>= 2.1.0'
+                type: string
+                x-go-name: BIOSVersion
+            cpu_sockets:
+                description: CPUSockets is compared to the number of CPU sockets of the server.
+                example: 2
+                format: int64
+                type: integer
+                x-go-name: CPUSockets
+            has_tpm:
+                description: HasTPM is compared to the presence of a trusted platform module.
+                example: true
+                type: boolean
+                x-go-name: HasTPM
+            manufacturer:
+                description: Manufacturer is matched against the manufacturer of the server.
+                example: Lenovo
+                type: string
+                x-go-name: Manufacturer
+            model:
+                description: Model is matched against the model of the server.
+                example: ThinkSystem SR6.*
+                type: string
+                x-go-name: Model
+            processor_architecture:
+                description: ProcessorArchitecture is matched against the architecture of the processor.
+                example: x86
+                type: string
+                x-go-name: ProcessorArchitecture
+            processor_instruction_set:
+                description: ProcessorInstructionSet is matched against the instruction set of the processor.
+                example: x86-64
+                type: string
+                x-go-name: ProcessorInstructionSet
+            processor_manufacturer:
+                description: ProcessorManufacturer is matched against the manufacturer of the processor.
+                example: AMD
+                type: string
+                x-go-name: ProcessorManufacturer
+        title: |-
+            BIOSProfileMatch selects the servers a BIOS profile applies to. An empty
+            field matches any value, a match without any field set matches every server.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     BIOSProfileResolution:
         description: |-
             BIOSProfileResolution is the outcome of the resolution of the BIOS profiles
@@ -239,6 +338,42 @@ definitions:
                 x-go-name: Profiles
             secure_boot:
                 $ref: '#/definitions/BIOSSecureBoot'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSProfileSecureBoot:
+        description: |-
+            BIOSProfileSecureBoot holds the secure boot configuration of a BIOS profile
+            per secure boot database.
+        properties:
+            db:
+                $ref: '#/definitions/BIOSProfileSecureBootDatabase'
+            dbx:
+                $ref: '#/definitions/BIOSProfileSecureBootDatabase'
+            kek:
+                $ref: '#/definitions/BIOSProfileSecureBootDatabase'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSProfileSecureBootDatabase:
+        description: |-
+            BIOSProfileSecureBootDatabase holds the secure boot certificates and
+            signatures of a single secure boot database as a BIOS profile defines them. A
+            value of true keeps the entry, a value of false removes it and a null value
+            drops what the BIOS profiles with a lower priority have set for the entry.
+        properties:
+            certificates:
+                additionalProperties:
+                    type: boolean
+                description: |-
+                    Certificates is keyed by the SHA256 fingerprint of the certificate in hex
+                    notation.
+                type: object
+                x-go-name: Certificates
+            signatures:
+                additionalProperties:
+                    type: boolean
+                description: Signatures is keyed by the signature value.
+                type: object
+                x-go-name: Signatures
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BIOSSecureBoot:
@@ -5415,6 +5550,17 @@ definitions:
                 example: x86_64
                 type: string
                 x-go-name: Architecture
+            bios_profiles:
+                description: |-
+                    BIOSProfiles holds the BIOS profiles the BIOS configuration of the server
+                    is resolved from, by match and priority, instead of the BIOS profiles
+                    shipped with Operations Center. The request is rejected, if none of them
+                    matches the server. Optional, intended for the development of BIOS
+                    profiles.
+                items:
+                    $ref: '#/definitions/BIOSProfile'
+                type: array
+                x-go-name: BIOSProfiles
             channel:
                 description: |-
                     Channel holds the channel the most recent update should be taken from to
@@ -5433,6 +5579,17 @@ definitions:
                 example: false
                 type: boolean
                 x-go-name: Force
+            secure_boot_certificates:
+                description: |-
+                    SecureBootCertificates holds additional PEM encoded secure boot
+                    certificates, that the secure boot enrollment media enrolls, where the
+                    provided BIOS profiles keep their SHA256 fingerprint in a secure boot
+                    database. Optional, requires BIOS profiles and the secure boot
+                    enrollment media.
+                items:
+                    type: string
+                type: array
+                x-go-name: SecureBootCertificates
             secure_boot_enrollment_media:
                 description: |-
                     SecureBootEnrollmentMedia requests, that the secure boot certificates of
@@ -11705,6 +11862,10 @@ paths:
                 support the modification of the UEFI key databases through its Redfish API,
                 requires. The certificates are then expected to have been enrolled by an
                 operator before the deployment is triggered.
+
+                A request, that provides "bios_profiles", has the BIOS configured from the
+                provided profiles matching the server, the BIOS profiles of Operations
+                Center are not consulted. The profiles are used for this deployment only.
 
                 The progress of the deployment is reported through the server status and, in
                 more detail, through the "deployment" field of the server.

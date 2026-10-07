@@ -3158,8 +3158,9 @@ func resetSecureBootKeys(ctx context.Context, client provisioning.BMCServerClien
 
 // secureBootEnrollmentCertificates assembles what the secure boot enrollment
 // media of a server enrolls: the certificates of IncusOS, plus the certificates
-// the resolved BIOS profiles keep in the key databases.
-func (s *serverService) secureBootEnrollmentCertificates(ctx context.Context, log *slog.Logger, secureBoot api.BIOSSecureBoot) (provisioning.SecureBootCertificates, error) {
+// the resolved BIOS profiles keep in the key databases. The additional
+// certificates, keyed by fingerprint, take precedence over the catalog.
+func (s *serverService) secureBootEnrollmentCertificates(ctx context.Context, log *slog.Logger, secureBoot api.BIOSSecureBoot, additional map[string]string) (provisioning.SecureBootCertificates, error) {
 	if s.secureBootMedia == nil || s.secureBootCertificate == nil || s.secureBootCatalog == nil {
 		return provisioning.SecureBootCertificates{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Enrolling the secure boot certificates from an enrollment media is not supported, no source for the certificates is configured")
 	}
@@ -3185,9 +3186,9 @@ func (s *serverService) secureBootEnrollmentCertificates(ctx context.Context, lo
 		PKUpdate: platformKeyUpdate,
 	}
 
-	certificates.KEK = append(certificates.KEK, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseKEK, secureBoot.KEK)...)
-	certificates.DB = append(certificates.DB, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDB, secureBoot.DB)...)
-	certificates.DBX = append(certificates.DBX, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDBX, secureBoot.DBX)...)
+	certificates.KEK = append(certificates.KEK, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseKEK, secureBoot.KEK, additional)...)
+	certificates.DB = append(certificates.DB, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDB, secureBoot.DB, additional)...)
+	certificates.DBX = append(certificates.DBX, s.keptSecureBootCertificates(ctx, log, api.SecureBootDatabaseDBX, secureBoot.DBX, additional)...)
 
 	if certificates.PK == "" {
 		return provisioning.SecureBootCertificates{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Enrolling the secure boot certificates from an enrollment media is not possible, IncusOS did not provide a platform key")
@@ -3196,22 +3197,75 @@ func (s *serverService) secureBootEnrollmentCertificates(ctx context.Context, lo
 	return certificates, nil
 }
 
+// validateKeptSecureBootCertificates checks, that the enrollment media is able to enroll what the provided BIOS profiles keep.
+func (s *serverService) validateKeptSecureBootCertificates(name string, secureBoot api.BIOSSecureBoot, additional map[string]string) error {
+	kept := map[string]bool{}
+
+	for _, database := range []api.BIOSSecureBootDatabase{secureBoot.DB, secureBoot.DBX, secureBoot.KEK} {
+		for fingerprint, keep := range database.Certificates {
+			if keep {
+				kept[strings.ToLower(strings.TrimSpace(fingerprint))] = true
+			}
+		}
+	}
+
+	for _, fingerprint := range slices.Sorted(maps.Keys(additional)) {
+		if !kept[fingerprint] {
+			return domain.NewErrorf(domain.ErrInvalidArgument, "", "Secure boot certificate %q is not kept by the provided BIOS profiles as they resolve for server %q", fingerprint, name).
+				WithHintf("Keep the certificate in a BIOS profile, which matches the server and is not overridden, or do not provide it.").
+				WithDetail("server", name).
+				WithDetail("fingerprint", fingerprint)
+		}
+
+		delete(kept, fingerprint)
+	}
+
+	if s.secureBootCatalog == nil || len(kept) == 0 {
+		return nil
+	}
+
+	_, unknown := s.secureBootCatalog.CertificatesByFingerprint(slices.Sorted(maps.Keys(kept)))
+	if len(unknown) > 0 {
+		return domain.NewErrorf(domain.ErrInvalidArgument, "", "Secure boot certificate %q is kept by the provided BIOS profiles, but is neither provided nor part of the certificate catalog, so the enrollment media can not enroll it", unknown[0]).
+			WithHintf("Provide the certificate together with the BIOS profiles or do not keep it.").
+			WithDetail("server", name).
+			WithDetail("fingerprint", unknown[0])
+	}
+
+	return nil
+}
+
 // keptSecureBootCertificates resolves the entries, that the resolved BIOS
-// profiles keep in a key database, to the certificates of the catalog.
-func (s *serverService) keptSecureBootCertificates(ctx context.Context, log *slog.Logger, database string, allowList api.BIOSSecureBootDatabase) []string {
-	fingerprints := make([]string, 0, len(allowList.Certificates))
+// profiles keep in a key database, to the additional certificates and the
+// certificates of the catalog.
+func (s *serverService) keptSecureBootCertificates(ctx context.Context, log *slog.Logger, database string, allowList api.BIOSSecureBootDatabase, additional map[string]string) []string {
+	kept := make([]string, 0, len(allowList.Certificates))
 
 	for fingerprint, keep := range allowList.Certificates {
 		if !keep {
 			continue
 		}
 
-		fingerprints = append(fingerprints, strings.ToLower(strings.TrimSpace(fingerprint)))
+		kept = append(kept, strings.ToLower(strings.TrimSpace(fingerprint)))
 	}
 
-	slices.Sort(fingerprints)
+	slices.Sort(kept)
+
+	additionalCertificates := make([]string, 0, len(additional))
+	fingerprints := make([]string, 0, len(kept))
+
+	for _, fingerprint := range kept {
+		pemCertificate, ok := additional[fingerprint]
+		if ok {
+			additionalCertificates = append(additionalCertificates, pemCertificate)
+			continue
+		}
+
+		fingerprints = append(fingerprints, fingerprint)
+	}
 
 	certificates, unknown := s.secureBootCatalog.CertificatesByFingerprint(fingerprints)
+	certificates = append(additionalCertificates, certificates...)
 
 	for _, fingerprint := range unknown {
 		log.WarnContext(ctx, "Secure boot certificate is kept by a BIOS profile, but is not part of the certificate catalog, so the enrollment media can not enroll it", slog.String("database", database), slog.String("fingerprint", fingerprint))
@@ -3245,8 +3299,8 @@ func nonEmptyStrings(values []string) []string {
 // bmcAttachSecureBootMediaByName generates the secure boot enrollment media for
 // the certificates, attaches it and registers it as the boot device for the next
 // boot.
-func (s *serverService) bmcAttachSecureBootMediaByName(ctx context.Context, log *slog.Logger, server provisioning.Server, imageType api.ImageType, architecture images.UpdateFileArchitecture, secureBoot api.BIOSSecureBoot, virtualMediaID string) (bmcAttachedMedia, error) {
-	certificates, err := s.secureBootEnrollmentCertificates(ctx, log, secureBoot)
+func (s *serverService) bmcAttachSecureBootMediaByName(ctx context.Context, log *slog.Logger, server provisioning.Server, imageType api.ImageType, architecture images.UpdateFileArchitecture, secureBoot api.BIOSSecureBoot, additionalCertificates map[string]string, virtualMediaID string) (bmcAttachedMedia, error) {
+	certificates, err := s.secureBootEnrollmentCertificates(ctx, log, secureBoot, additionalCertificates)
 	if err != nil {
 		return bmcAttachedMedia{}, err
 	}

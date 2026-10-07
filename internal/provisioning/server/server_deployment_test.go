@@ -3,9 +3,11 @@ package server_test
 import (
 	"context"
 	"crypto/tls"
+	"encoding/asn1"
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -23,6 +25,7 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -242,6 +245,15 @@ func TestServerService_DeployByName(t *testing.T) {
 		DeferredAttributes: map[string]any{"SecureBoot": "Enabled"},
 	}
 
+	// The certificates are not parsed as X509, any DER sequence does.
+	der, err := asn1.Marshal(struct{ Name string }{Name: "certificate"})
+	require.NoError(t, err)
+
+	pemCertificate := certificate.EncodeToPEM(der)
+
+	certificateFingerprint, err := certificate.DERFingerprint("test", []byte(pemCertificate))
+	require.NoError(t, err)
+
 	tests := []struct {
 		name                             string
 		nameArg                          string
@@ -332,6 +344,197 @@ func TestServerService_DeployByName(t *testing.T) {
 			},
 			wantStatus: api.ServerStatusDeploying,
 			assertErr:  require.NoError,
+		},
+		{
+			name:    "success - the BIOS profiles of the request take the place of the catalog",
+			nameArg: "one",
+			requestArg: func() provisioning.ServerDeploymentRequest {
+				request := validRequest
+				request.BIOSProfiles = provisioning.BIOSProfiles{
+					{
+						Name:       "overlay",
+						Match:      []provisioning.BIOSProfileMatch{{}},
+						Priority:   20,
+						Attributes: map[string]any{"BootMode": "Uefi", "Dropped": nil},
+					},
+					{
+						Name:       "base",
+						Match:      []provisioning.BIOSProfileMatch{{}},
+						Priority:   10,
+						Attributes: map[string]any{"BootMode": "Bios", "Dropped": "value"},
+					},
+					{
+						Name:       "other-vendor",
+						Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "does not match"}},
+						Priority:   30,
+						Attributes: map[string]any{"BootMode": "Other"},
+					},
+				}
+
+				return request
+			}(),
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+
+			wantDeployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateRefreshBMCData,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID:      tokenUUID,
+					Seed:           "default",
+					ImageType:      api.ImageTypeISO,
+					Architecture:   images.UpdateFileArchitecture64BitX86,
+					VirtualMediaID: "system:1",
+				},
+				ForceReboot:            true,
+				BIOSProfiles:           []string{"base", "overlay"},
+				BIOSAttributes:         map[string]any{"BootMode": "Uefi"},
+				BIOSDeferredAttributes: map[string]any{},
+				BIOSPending:            true,
+				MediaBytesRead:         -1,
+				StartedAt:              deploymentTestDate,
+				StateEnteredAt:         deploymentTestDate,
+				History:                []api.ServerDeploymentStep{},
+			},
+			wantStatus: api.ServerStatusDeploying,
+			assertErr:  require.NoError,
+		},
+		{
+			name:    "error - none of the BIOS profiles of the request matches the server",
+			nameArg: "one",
+			requestArg: func() provisioning.ServerDeploymentRequest {
+				request := validRequest
+				request.BIOSProfiles = provisioning.BIOSProfiles{{
+					Name:       "other-vendor",
+					Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "does not match"}},
+					Attributes: map[string]any{"BootMode": "Uefi"},
+				}}
+
+				return request
+			}(),
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve:      validResolution,
+
+			assertErr: errassert.ValidationErrorContains("None of the provided BIOS profiles matches server"),
+		},
+		{
+			name:    "success - a secure boot certificate of the request is kept with the deployment",
+			nameArg: "one",
+			requestArg: func() provisioning.ServerDeploymentRequest {
+				request := deploymentTestSecureBootMediaRequest(validRequest)
+				request.BIOSProfiles = provisioning.BIOSProfiles{
+					{
+						Name:       "matching",
+						Match:      []provisioning.BIOSProfileMatch{{}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{certificateFingerprint: new(true)}}},
+					},
+					{
+						Name:       "other-vendor",
+						Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "does not match"}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{certificateFingerprint: new(true)}}},
+					},
+				}
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			}(),
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCDataSecureBootUserMode(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withSecureBootMediaPort: true,
+
+			wantDeployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateRefreshBMCData,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID:                 tokenUUID,
+					Seed:                      "default",
+					ImageType:                 api.ImageTypeISO,
+					Architecture:              images.UpdateFileArchitecture64BitX86,
+					VirtualMediaID:            "system:1",
+					SecureBootEnrollmentMedia: true,
+				},
+				ForceReboot:            true,
+				BIOSProfiles:           []string{"matching"},
+				BIOSAttributes:         map[string]any{},
+				BIOSDeferredAttributes: map[string]any{},
+				SecureBoot:             api.BIOSSecureBoot{DB: api.BIOSSecureBootDatabase{Certificates: map[string]bool{certificateFingerprint: true}}},
+				SecureBootCertificates: map[string]string{certificateFingerprint: pemCertificate},
+				MediaBytesRead:         -1,
+				StartedAt:              deploymentTestDate,
+				StateEnteredAt:         deploymentTestDate,
+				History:                []api.ServerDeploymentStep{},
+			},
+			wantStatus: api.ServerStatusDeploying,
+			assertErr:  require.NoError,
+		},
+		{
+			name:    "error - a certificate kept by the BIOS profiles of the request can not be enrolled",
+			nameArg: "one",
+			requestArg: func() provisioning.ServerDeploymentRequest {
+				request := deploymentTestSecureBootMediaRequest(validRequest)
+				request.BIOSProfiles = provisioning.BIOSProfiles{
+					{
+						Name:       "matching",
+						Match:      []provisioning.BIOSProfileMatch{{}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{strings.Repeat("0", 64): new(true)}}},
+					},
+					{
+						Name:       "other-vendor",
+						Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "does not match"}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{certificateFingerprint: new(true)}}},
+					},
+				}
+				request.SecureBootCertificates = nil
+
+				return request
+			}(),
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCDataSecureBootUserMode(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withSecureBootMediaPort: true,
+
+			assertErr: errassert.ValidationErrorContains("is neither provided nor part of the certificate catalog"),
+		},
+		{
+			name:    "error - a secure boot certificate of the request is only kept by a BIOS profile, that does not match",
+			nameArg: "one",
+			requestArg: func() provisioning.ServerDeploymentRequest {
+				request := deploymentTestSecureBootMediaRequest(validRequest)
+				request.BIOSProfiles = provisioning.BIOSProfiles{
+					{
+						Name:       "matching",
+						Match:      []provisioning.BIOSProfileMatch{{}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{strings.Repeat("0", 64): new(true)}}},
+					},
+					{
+						Name:       "other-vendor",
+						Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "does not match"}},
+						SecureBoot: provisioning.BIOSSecureBoot{DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{certificateFingerprint: new(true)}}},
+					},
+				}
+				request.SecureBootCertificates = []string{pemCertificate}
+
+				return request
+			}(),
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCDataSecureBootUserMode(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withSecureBootMediaPort: true,
+
+			assertErr: errassert.ValidationErrorContains("is not kept by the provided BIOS profiles as they resolve"),
 		},
 		{
 			name:    "success - an explicitly requested virtual media device",
@@ -1075,7 +1278,11 @@ func TestServerService_DeployByName(t *testing.T) {
 						},
 					},
 					&adapterMock.SecureBootCertificateSourcePortMock{},
-					&adapterMock.SecureBootCertificateCatalogPortMock{},
+					&adapterMock.SecureBootCertificateCatalogPortMock{
+						CertificatesByFingerprintFunc: func(fingerprints []string) ([]string, []string) {
+							return nil, fingerprints
+						},
+					},
 				))
 			}
 

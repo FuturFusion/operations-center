@@ -30,11 +30,13 @@
         "signature-value": true
     dbx:
       certificates:
-        "sha256-fingerprint": true
+        # SHA256 fingerprint of the certificate in hex notation
+        "0000000000000000000000000000000000000000000000000000000000000000": true
       signatures:
         "signature-value": true
     kek:
       certificates:
-        "sha256-fingerprint": true
+        # SHA256 fingerprint of the certificate in hex notation
+        "0000000000000000000000000000000000000000000000000000000000000000": true
       signatures:
         "signature-value": true
