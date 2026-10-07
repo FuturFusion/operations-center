@@ -2,10 +2,13 @@ package redfish
 
 import (
 	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -14,26 +17,28 @@ import (
 const retryDrainLimit = 64 * 1024
 
 // retryTransport issues a request again, when the BMC turned it down with a
-// server side error or asked to slow down. Only requests, that are safe to
-// replay, are retried, see isReplaySafe.
+// server side error, asked to slow down, did not answer in time or dropped the
+// connection. Only requests, that are safe to replay, are retried, see
+// isReplaySafe.
 //
 // The retry sits below the Redfish client on purpose: a BMC, whose data sources
-// are briefly unavailable, answers a handful of reads with 503 and is fine
+// are briefly unavailable, answers a handful of requests with 503 and is fine
 // again seconds later.
 //
 // An outage, that outlasts the budget, still reaches the caller as the answer
-// the BMC actually gave, so nothing is hidden.
+// or the error of the last attempt, so nothing is hidden.
 type retryTransport struct {
 	next     http.RoundTripper
 	attempts int
 	delay    time.Duration
 	delayMax time.Duration
 
-	// budget is the time left for waiting between attempts, in nanoseconds,
-	// shared by every request of the connection.
+	// budget is the time left for retrying, in nanoseconds, shared by every
+	// request of the connection.
 	budget atomic.Int64
 
 	sleep func(ctx context.Context, d time.Duration) error
+	now   func() time.Time
 }
 
 // newRetryTransport returns the retry for one BMC connection. The delay before
@@ -53,6 +58,7 @@ func newRetryTransport(next http.RoundTripper, delay time.Duration) *retryTransp
 		delay:    delay,
 		delayMax: time.Duration(float64(config.BMCRequestRetryDelayMax) * scale),
 		sleep:    sleepUntilDone,
+		now:      time.Now,
 	}
 
 	t.budget.Store(int64(float64(config.BMCRequestRetryBudget) * scale))
@@ -85,16 +91,26 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var err error
 
 	for attempt := 0; ; attempt++ {
+		start := t.now()
+
 		resp, err = t.next.RoundTrip(req)
 
-		if attempt >= t.attempts || !t.isWorthRetrying(resp, err) {
+		if attempt >= t.attempts || !t.isWorthRetrying(req, resp, err) {
 			return resp, err
 		}
 
-		// The deadline is checked before the budget is spent, so a wait, that is
-		// not going to happen, does not cost the connection anything.
 		wait := min(t.retryDelay(resp, delay), t.delayMax)
-		if !t.fitsInDeadline(req.Context(), wait) || !t.spend(wait) {
+
+		// An attempt, that got no answer, is taken to last as long once more, so
+		// a BMC, that lets every attempt time out, does not outlast the budget.
+		cost := wait
+		if err != nil {
+			cost += t.now().Sub(start)
+		}
+
+		// The deadline is checked before the budget is spent, so a retry, that is
+		// not going to happen, does not cost the connection anything.
+		if !t.fitsInDeadline(req.Context(), cost) || !t.spend(cost) {
 			return resp, err
 		}
 
@@ -115,22 +131,48 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // isReplaySafe reports, whether a request can be issued again.
+// A replayed delete can meet a 404, which its caller has to tolerate.
 func isReplaySafe(req *http.Request) bool {
 	if req.Body != nil {
 		return false
 	}
 
-	return req.Method == http.MethodGet || req.Method == http.MethodHead
+	switch req.Method {
+	case http.MethodGet, http.MethodHead, http.MethodDelete:
+		return true
+	}
+
+	return false
 }
 
 // isWorthRetrying reports, whether the outcome of an attempt is one, that asking
 // again can resolve.
-func (t *retryTransport) isWorthRetrying(resp *http.Response, err error) bool {
+func (t *retryTransport) isWorthRetrying(req *http.Request, resp *http.Response, err error) bool {
 	if err != nil {
-		return false
+		// A deadline of the caller, that ran out, shows up as a timeout as well.
+		return req.Context().Err() == nil && isTransientTransportError(err)
 	}
 
 	return isTransientStatus(resp.StatusCode)
+}
+
+// isTransientTransportError reports, whether a request got lost on a BMC, that
+// was reached: it did not answer in time or dropped the connection. A BMC, that
+// can not be reached in the first place, is not asked again, since that is
+// rarely over within the budget and only delays reporting it.
+func isTransientTransportError(err error) bool {
+	opErr, ok := errors.AsType[*net.OpError](err)
+	if ok && opErr.Op == "dial" {
+		return false
+	}
+
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET) {
+		return true
+	}
+
+	netErr, ok := errors.AsType[net.Error](err)
+
+	return ok && netErr.Timeout()
 }
 
 // isTransientStatus reports, whether a status means the BMC has not acted on the
@@ -161,30 +203,30 @@ func (t *retryTransport) retryDelay(resp *http.Response, backoff time.Duration) 
 	return max(backoff, retryAfter)
 }
 
-// spend takes the wait out of the budget of the connection, reporting, whether
-// there was enough left for it.
-func (t *retryTransport) spend(wait time.Duration) bool {
+// spend takes the cost of a retry out of the budget of the connection,
+// reporting, whether there was enough left for it.
+func (t *retryTransport) spend(cost time.Duration) bool {
 	for {
 		left := t.budget.Load()
-		if left < int64(wait) {
+		if left < int64(cost) {
 			return false
 		}
 
-		if t.budget.CompareAndSwap(left, left-int64(wait)) {
+		if t.budget.CompareAndSwap(left, left-int64(cost)) {
 			return true
 		}
 	}
 }
 
-// fitsInDeadline reports, whether waiting leaves the caller time to do anything
+// fitsInDeadline reports, whether a retry leaves the caller time to do anything
 // with the answer.
-func (t *retryTransport) fitsInDeadline(ctx context.Context, wait time.Duration) bool {
+func (t *retryTransport) fitsInDeadline(ctx context.Context, cost time.Duration) bool {
 	deadline, ok := ctx.Deadline()
 	if !ok {
 		return ctx.Err() == nil
 	}
 
-	return time.Until(deadline) > wait
+	return deadline.Sub(t.now()) > cost
 }
 
 // parseRetryAfter parses a Retry-After header in either of the forms RFC 9110

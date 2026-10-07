@@ -6969,6 +6969,33 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - a signature, that is gone already, counts as wiped",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("dbx"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"dbx": withSecureBootSignatures(newSecureBootDatabaseFixture("dbx", http.StatusOK, http.StatusCreated, "1"), "dbx", http.StatusNotFound, "hash1", "hash2"),
+			},
+			secureBootCertificates: testSecureBootCertificates(),
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "dbx/Signatures/hash1",
+				secureBootDatabasesPathPrefix + "dbx/Signatures/hash2",
+				secureBootDatabasesPathPrefix + "dbx/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"dbx": {{CertificateString: testSecureBootPEM("dbxCert"), CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name: "success - a database without certificates to enrol is only wiped",
 
 			serviceRootStatusCode:         http.StatusOK,
@@ -7540,6 +7567,85 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			for dbID, want := range tc.wantUploadedCerts {
 				require.Equal(t, want, gotUploadedCerts[dbID])
 			}
+		})
+	}
+}
+
+func TestRedfish_SecureBootCertificatesApplied(t *testing.T) {
+	tests := []struct {
+		name string
+
+		database mockSecureBootDatabase
+		withKEK  bool
+
+		want bool
+	}{
+		{
+			name: "the key database holds the certificates of IncusOS",
+
+			database: withSecureBootCertificateContents(newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated, "1"), "db", map[string]secureBootCertificateContent{
+				"1": {pemCertificate: catalogCertificate(t, microsoftUEFICA2023)},
+			}),
+
+			want: true,
+		},
+		{
+			name: "the key database lacks the certificates of IncusOS",
+
+			database: newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated),
+
+			want: false,
+		},
+		{
+			name: "the BMC does not provide a key database, IncusOS has certificates for",
+
+			database: withSecureBootCertificateContents(newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated, "1"), "db", map[string]secureBootCertificateContent{
+				"1": {pemCertificate: catalogCertificate(t, microsoftUEFICA2023)},
+			}),
+			withKEK: true,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotDeletedCertPaths []string
+
+			gotPostedCerts := map[string][]string{}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:         http.StatusOK,
+				systemsStatusCode:             http.StatusOK,
+				systemsBody:                   resetSystemsBody,
+				systemStatusCode:              http.StatusOK,
+				systemBody:                    secureBootSystemBody,
+				secureBootStatusCode:          http.StatusOK,
+				secureBootBody:                secureBootBody,
+				secureBootDatabasesStatusCode: http.StatusOK,
+				secureBootDatabasesBody:       secureBootDatabasesCollectionBody("db"),
+				secureBootDatabases:           map[string]mockSecureBootDatabase{"db": tc.database},
+				gotDeletedCertPaths:           &gotDeletedCertPaths,
+				gotPostedCerts:                &gotPostedCerts,
+			}, nil)
+
+			certificates := incusosapi.InternalSecureBootCertificates{
+				DB: []string{catalogCertificate(t, microsoftUEFICA2023)},
+			}
+
+			if tc.withKEK {
+				certificates.KEK = []string{catalogCertificate(t, microsoftUEFICA2023)}
+			}
+
+			client := redfish.New(redfish.WithSecureBootCertificates(secureBootCertificatesEnvStub{certificates: certificates}))
+			applied, err := client.SecureBootCertificatesApplied(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, api.BIOSSecureBoot{})
+			require.NoError(t, err)
+
+			require.Equal(t, tc.want, applied)
+
+			// The verification only reads.
+			require.Empty(t, gotDeletedCertPaths)
+			require.Empty(t, gotPostedCerts)
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -954,6 +955,87 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			},
 		},
 		{
+			name:        "success - the BMC drops the enrolled secure boot certificates once",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.secureBootEnrollDrops = 1 },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBoot,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle[:3],
+				deploymentStatesSecureBootOff,
+				deploymentStatesSecureBoot,
+				deploymentStatesMediaCleared,
+				deploymentStatesSecureBootSettle,
+				deploymentStatesInstall,
+				deploymentStatesFinalize,
+			),
+			wantStatus:           api.ServerStatusPending,
+			wantStatusDetail:     api.ServerStatusDetailPendingRegistering,
+			wantFallbackAttempts: 1,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, 2, world.callCount("ApplySecureBootCertificates"), "the certificates are enrolled again")
+			},
+		},
+		{
+			name:        "failure - the BMC keeps dropping the enrolled secure boot certificates",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.secureBootEnrollDrops = config.ServerDeploymentStepRetries + 1 },
+			},
+
+			wantStates: slices.Concat(
+				deploymentStatesPreparing,
+				deploymentStatesBIOSPass,
+				deploymentStatesBIOSDeferredPass,
+				slices.Repeat(slices.Concat(
+					deploymentStatesSecureBootOff,
+					deploymentStatesSecureBoot,
+					deploymentStatesMediaCleared,
+					deploymentStatesSecureBootSettle[:3],
+				), config.ServerDeploymentStepRetries+1),
+				[]api.ServerDeploymentState{api.ServerDeploymentStateFailed},
+			),
+			wantFallbackAttempts: config.ServerDeploymentStepRetries,
+			wantStatus:           api.ServerStatusUnregistered,
+			wantStatusDetail:     api.ServerStatusDetailUnregisteredDeploymentFailed,
+			wantFailedState:      api.ServerDeploymentStateWaitSecureBootSettled,
+			wantLastError:        "do not hold the expected certificates, even though the BMC accepted them",
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Zero(t, world.callCount("AttachMedia"), "the installation is not started without the certificates")
+			},
+		},
+		{
+			name:        "success - the BMC fails to read the secure boot certificates back once",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.secureBootVerifyErrs = queue.Errs{boom.Error} },
+			},
+
+			wantStates:       deploymentStatesHappyPath(),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertWorld: func(t *testing.T, world *bmcWorld) {
+				t.Helper()
+
+				require.Equal(t, 1, world.callCount("ApplySecureBootCertificates"), "a failed read back does not enroll the certificates again")
+				require.Equal(t, 2, world.callCount("SecureBootCertificatesApplied"))
+			},
+		},
+		{
 			name:        "failure - the server never registers itself",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),
@@ -1328,6 +1410,34 @@ func TestServerService_DeploymentControlLoopKeepsTheSecureBootSettleBootAcrossAR
 	)
 
 	require.Equal(t, api.ServerStatusPending, server.Status)
+}
+
+func TestServerService_DeploymentControlLoopReportsWhatAWaitCouldNotObserve(t *testing.T) {
+	ctx := t.Context()
+
+	w := setupDeploymentWorld(t, ctx, deploymentWorldConfig{
+		forceReboot: true,
+		resolution:  deploymentTestResolution(),
+		worldOptions: []func(*bmcWorld){
+			func(world *bmcWorld) { world.secureBootVerifyBroken = true },
+		},
+	})
+
+	err := w.service.DeployByName(ctx, worldServerName, deploymentTestRequest(w.tokenUUID))
+	require.NoError(t, err)
+
+	server := driveDeployment(t, ctx, w, false)
+
+	deployment := server.StatusInternal.Deployment
+	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State)
+	require.Contains(t, deployment.LastError, "did not complete within "+config.ServerDeploymentStepWaitBIOSAppliedTimeout.String(), "the wait retry budget fails the deployment with the step timeout")
+	require.Contains(t, deployment.LastError, "Failed to verify secure boot certificates")
+
+	timedOut := slices.ContainsFunc(deployment.History, func(step api.ServerDeploymentStep) bool {
+		return step.State == api.ServerDeploymentStateWaitSecureBootSettled &&
+			strings.Contains(step.Error, "did not complete within "+config.ServerDeploymentStepWaitBIOSAppliedTimeout.String()+": Failed to verify secure boot certificates")
+	})
+	require.True(t, timedOut, "the wait runs into its timeout rather than being repeated until the deployment is over")
 }
 
 // TestServerService_DeploymentControlLoopLeavesAFailedDeploymentAlone asserts,
