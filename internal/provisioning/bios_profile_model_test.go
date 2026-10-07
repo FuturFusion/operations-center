@@ -1,7 +1,9 @@
 package provisioning_test
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -583,6 +585,36 @@ func TestBIOSProfile_Validate(t *testing.T) {
 
 			assertErr: errassert.ValidationError,
 		},
+		{
+			name: "valid - deployment settings only",
+			profile: provisioning.BIOSProfile{
+				Name:       "slow-post",
+				Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "Dell"}},
+				Deployment: api.ServerDeploymentSettings{PostSettleDelay: new(api.Duration(3 * time.Minute))},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - deployment setting below the minimum",
+			profile: provisioning.BIOSProfile{
+				Name:       "slow-post",
+				Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "Dell"}},
+				Deployment: api.ServerDeploymentSettings{PostSettleDelay: new(api.Duration(0))}, // invalid
+			},
+
+			assertErr: errassert.ValidationErrorContains("post_settle_delay"),
+		},
+		{
+			name: "error - deployment setting above the maximum",
+			profile: provisioning.BIOSProfile{
+				Name:       "slow-post",
+				Match:      []provisioning.BIOSProfileMatch{{Manufacturer: "Dell"}},
+				Deployment: api.ServerDeploymentSettings{InstallTimeout: new(api.Duration(25 * time.Hour))}, // invalid
+			},
+
+			assertErr: errassert.ValidationErrorContains("install_timeout"),
+		},
 	}
 
 	for _, tc := range tests {
@@ -758,6 +790,46 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, resolution)
 		})
+	}
+}
+
+func TestBIOSProfiles_everyDeploymentSettingIsMergedAndValidated(t *testing.T) {
+	// set fills the given setting, or all of them, with a duration or a number.
+	set := func(settings *api.ServerDeploymentSettings, only int, value int64) {
+		fields := reflect.ValueOf(settings).Elem()
+		for i := range fields.NumField() {
+			if only >= 0 && only != i {
+				continue
+			}
+
+			field := reflect.New(fields.Field(i).Type().Elem())
+			field.Elem().SetInt(value)
+			fields.Field(i).Set(field)
+		}
+	}
+
+	const low, high = 2, 3
+
+	for i := range reflect.TypeFor[api.ServerDeploymentSettings]().NumField() {
+		name := reflect.TypeFor[api.ServerDeploymentSettings]().Field(i).Name
+
+		var lowSettings, highSettings, want, invalid api.ServerDeploymentSettings
+
+		set(&lowSettings, -1, low)
+		set(&highSettings, i, high)
+		set(&want, -1, low)
+		set(&want, i, high)
+		set(&invalid, i, 0)
+
+		resolution, err := provisioning.BIOSProfiles{
+			{Name: "high", Priority: 200, Match: []provisioning.BIOSProfileMatch{{}}, Deployment: highSettings},
+			{Name: "low", Priority: 100, Match: []provisioning.BIOSProfileMatch{{}}, Deployment: lowSettings},
+		}.Resolve(api.BMCData{})
+		require.NoError(t, err)
+		require.Equal(t, want, resolution.Deployment, "setting %q is merged", name)
+
+		err = provisioning.BIOSProfile{Name: "invalid", Match: []provisioning.BIOSProfileMatch{{Manufacturer: "Dell"}}, Deployment: invalid}.Validate()
+		errassert.ValidationErrorContains("deployment setting")(t, err, "setting %q is validated", name)
 	}
 }
 
