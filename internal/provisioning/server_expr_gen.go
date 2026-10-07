@@ -109,6 +109,28 @@ type ExprApiOSVersionData struct {
 	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
 }
 
+type ExprApiServerDeploymentSettings struct {
+	DeploymentTimeout          *api.Duration `json:"deployment_timeout,omitempty" yaml:"deployment_timeout,omitempty" expr:"deployment_timeout"`
+	StepTimeout                *api.Duration `json:"step_timeout,omitempty" yaml:"step_timeout,omitempty" expr:"step_timeout"`
+	BIOSAppliedTimeout         *api.Duration `json:"bios_applied_timeout,omitempty" yaml:"bios_applied_timeout,omitempty" expr:"bios_applied_timeout"`
+	SecureBootEnrollTimeout    *api.Duration `json:"secure_boot_enroll_timeout,omitempty" yaml:"secure_boot_enroll_timeout,omitempty" expr:"secure_boot_enroll_timeout"`
+	InstallTimeout             *api.Duration `json:"install_timeout,omitempty" yaml:"install_timeout,omitempty" expr:"install_timeout"`
+	RebootTimeout              *api.Duration `json:"reboot_timeout,omitempty" yaml:"reboot_timeout,omitempty" expr:"reboot_timeout"`
+	RegistrationTimeout        *api.Duration `json:"registration_timeout,omitempty" yaml:"registration_timeout,omitempty" expr:"registration_timeout"`
+	PostSettleDelay            *api.Duration `json:"post_settle_delay,omitempty" yaml:"post_settle_delay,omitempty" expr:"post_settle_delay"`
+	PowerOffSettleDelay        *api.Duration `json:"power_off_settle_delay,omitempty" yaml:"power_off_settle_delay,omitempty" expr:"power_off_settle_delay"`
+	RebootObservationWindow    *api.Duration `json:"reboot_observation_window,omitempty" yaml:"reboot_observation_window,omitempty" expr:"reboot_observation_window"`
+	SecureBootSettleDuration   *api.Duration `json:"secure_boot_settle_duration,omitempty" yaml:"secure_boot_settle_duration,omitempty" expr:"secure_boot_settle_duration"`
+	InstallMinDuration         *api.Duration `json:"install_min_duration,omitempty" yaml:"install_min_duration,omitempty" expr:"install_min_duration"`
+	InstallRebootFallbackDelay *api.Duration `json:"install_reboot_fallback_delay,omitempty" yaml:"install_reboot_fallback_delay,omitempty" expr:"install_reboot_fallback_delay"`
+	InstallMediaIdlePeriod     *api.Duration `json:"install_media_idle_period,omitempty" yaml:"install_media_idle_period,omitempty" expr:"install_media_idle_period"`
+	InstallMediaMinBytesRead   *int64        `json:"install_media_min_bytes_read,omitempty" yaml:"install_media_min_bytes_read,omitempty" expr:"install_media_min_bytes_read"`
+	StepRetries                *int          `json:"step_retries,omitempty" yaml:"step_retries,omitempty" expr:"step_retries"`
+	CallTimeout                *api.Duration `json:"call_timeout,omitempty" yaml:"call_timeout,omitempty" expr:"call_timeout"`
+	AttachMediaCallTimeout     *api.Duration `json:"attach_media_call_timeout,omitempty" yaml:"attach_media_call_timeout,omitempty" expr:"attach_media_call_timeout"`
+	SecureBootCallTimeout      *api.Duration `json:"secure_boot_call_timeout,omitempty" yaml:"secure_boot_call_timeout,omitempty" expr:"secure_boot_call_timeout"`
+}
+
 type ExprApiServerDeploymentStep struct {
 	State     api.ServerDeploymentState `json:"state" yaml:"state" expr:"state"`
 	EnteredAt time.Time                 `json:"entered_at" yaml:"entered_at" expr:"entered_at"`
@@ -486,6 +508,7 @@ type ExprServerDeployment struct {
 	BIOSDeferredAttributes          map[string]any                    `json:"bios_deferred_attributes" expr:"bios_deferred_attributes"`
 	SecureBoot                      ExprApiBIOSSecureBoot             `json:"secure_boot" expr:"secure_boot"`
 	SecureBootCertificates          map[string]string                 `json:"secure_boot_certificates,omitempty" expr:"secure_boot_certificates"`
+	Settings                        ExprApiServerDeploymentSettings   `json:"settings,omitzero" expr:"settings"`
 	BIOSPending                     bool                              `json:"bios_pending" expr:"bios_pending"`
 	BIOSDeferredPending             bool                              `json:"bios_deferred_pending" expr:"bios_deferred_pending"`
 	BIOSSecureBootPendingAttributes []string                          `json:"bios_secure_boot_pending_attributes" expr:"bios_secure_boot_pending_attributes"`
@@ -675,6 +698,30 @@ func ToExprApiOSVersionData(o api.OSVersionData) ExprApiOSVersionData {
 		AvailableVersion: o.AvailableVersion,
 		NeedsReboot:      o.NeedsReboot,
 		NeedsUpdate:      o.NeedsUpdate,
+	}
+}
+
+func ToExprApiServerDeploymentSettings(s api.ServerDeploymentSettings) ExprApiServerDeploymentSettings {
+	return ExprApiServerDeploymentSettings{
+		DeploymentTimeout:          s.DeploymentTimeout,
+		StepTimeout:                s.StepTimeout,
+		BIOSAppliedTimeout:         s.BIOSAppliedTimeout,
+		SecureBootEnrollTimeout:    s.SecureBootEnrollTimeout,
+		InstallTimeout:             s.InstallTimeout,
+		RebootTimeout:              s.RebootTimeout,
+		RegistrationTimeout:        s.RegistrationTimeout,
+		PostSettleDelay:            s.PostSettleDelay,
+		PowerOffSettleDelay:        s.PowerOffSettleDelay,
+		RebootObservationWindow:    s.RebootObservationWindow,
+		SecureBootSettleDuration:   s.SecureBootSettleDuration,
+		InstallMinDuration:         s.InstallMinDuration,
+		InstallRebootFallbackDelay: s.InstallRebootFallbackDelay,
+		InstallMediaIdlePeriod:     s.InstallMediaIdlePeriod,
+		InstallMediaMinBytesRead:   s.InstallMediaMinBytesRead,
+		StepRetries:                s.StepRetries,
+		CallTimeout:                s.CallTimeout,
+		AttachMediaCallTimeout:     s.AttachMediaCallTimeout,
+		SecureBootCallTimeout:      s.SecureBootCallTimeout,
 	}
 }
 
@@ -1136,6 +1183,7 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		BIOSDeferredAttributes:          s.BIOSDeferredAttributes,
 		SecureBoot:                      ToExprApiBIOSSecureBoot(s.SecureBoot),
 		SecureBootCertificates:          s.SecureBootCertificates,
+		Settings:                        ToExprApiServerDeploymentSettings(s.Settings),
 		BIOSPending:                     s.BIOSPending,
 		BIOSDeferredPending:             s.BIOSDeferredPending,
 		BIOSSecureBootPendingAttributes: s.BIOSSecureBootPendingAttributes,
