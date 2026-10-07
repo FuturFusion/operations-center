@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"syscall"
 	"testing"
 
@@ -65,6 +66,12 @@ func TestRetryableWrapper(t *testing.T) {
 		{
 			name:  "syscall.ECONNREFUSED",
 			inErr: syscall.ECONNREFUSED,
+
+			want: true,
+		},
+		{
+			name:  "wrapped syscall.ECONNRESET",
+			inErr: &net.OpError{Op: "read", Err: syscall.ECONNRESET},
 
 			want: true,
 		},

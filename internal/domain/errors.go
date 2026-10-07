@@ -113,6 +113,7 @@ func RetryableWrapper() func(err error) error {
 
 		// Connection errors are retryable.
 		if errors.Is(err, syscall.ECONNREFUSED) ||
+			errors.Is(err, syscall.ECONNRESET) ||
 			errors.Is(err, io.EOF) ||
 			errors.Is(err, io.ErrUnexpectedEOF) {
 			return NewRetryableErr(err)
