@@ -1192,6 +1192,7 @@ func (s *serverHandler) serverBIOSProfileGet(r *http.Request) response.Response 
 		Attributes:         resolution.Attributes,
 		DeferredAttributes: resolution.DeferredAttributes,
 		SecureBoot:         resolution.SecureBoot,
+		Deployment:         resolution.Deployment,
 	})
 }
 
