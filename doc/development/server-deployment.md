@@ -161,6 +161,15 @@ media is attached. Not every firmware reboots, so the wait settles itself after
 `ServerDeploymentSecureBootSettleDuration`, and it is passed by entirely, where
 the enrollment wrote to no key database at all.
 
+**The key databases are read back before the installation is started.** A BMC
+accepting every request does not tell, that the certificates made it, so the
+settle wait compares the key databases with what was enrolled once more. A
+server, whose key databases do not hold exactly that, goes back to the
+**power off** of the enrollment and has the certificates enrolled again, within
+the `FallbackAttempts` budget. Nothing is read back, where the BMC did not
+enroll the certificates: with `skip_secure_boot_certificates` and with
+`secure_boot_enrollment_media`.
+
 **Not every BMC lets the UEFI key databases be modified through its Redfish
 API.** A deployment for such a server either sets `secure_boot_enrollment_media`,
 which enrolls the certificates by booting a generated image instead, see below,
@@ -485,6 +494,24 @@ every state, its timeout, the trigger a wait falls back to and the successor.
   deadline of its own, so a BMC, that accepts the connection and then stops
   answering, ends the attempt instead of parking the control loop. Running out
   of it is retryable, so a trigger is issued again and a wait is simply
+* **Wait state**: the condition being met advances the deployment and resets the
+  counter. Within the timeout, the deployment simply stays, also when the
+  condition could not be observed. On a timeout the counter is incremented and
+  the deployment falls back to the trigger, reporting what kept the condition
+  from being observed, if anything.
+* **Request**: below the states and not driven by the state table, the Redfish
+  client issues a request, that is safe to replay, again on its own: a read or a
+  delete, that the BMC turned down with a transient status, did not answer in
+  time or whose connection the BMC dropped. It does so `BMCRequestRetries`
+  times, starting with `BMCRequestRetryDelay` and within
+  `BMCRequestRetryBudget` per connection, which an attempt, that got no answer,
+  is charged its duration to. A write is never replayed, it is left to the retry
+  of its trigger state. A delete of a key database entry, that is gone already,
+  counts as done.
+* **Call timeout**: independently of the states, every attempt of a state runs
+  with a deadline of its own, so a BMC, that accepts the connection and then
+  stops answering, ends the attempt instead of parking the control loop. Running
+  out of it is retryable, so a trigger is issued again and a wait is simply
   evaluated again. Four actions get a budget of their own, since their legitimate
   duration is minutes rather than seconds: **attach media** and
   **attach enrollment media**, which a BMC, that uploads the media instead of
@@ -495,10 +522,12 @@ every state, its timeout, the trigger a wait falls back to and the successor.
   value, and a BIOS wait, that times out, both route the deployment back to the
   **power off** of their pass rather than to the application itself, since the
   firmware only picks the staged attributes up on a reset. The verification
-  carries its own budget, `FallbackAttempts`, shared by both passes: the state it
-  returns to succeeds every time, which would reset the per state counter on
-  every round and let the two states hand the deployment back and forth forever.
-* **Global**: the overall duration is checked at the top of every tick.
+  carries its own budget, `FallbackAttempts`, shared by both passes and by the
+  read back of the secure boot certificates: the state it returns to succeeds
+  every time, which would reset the per state counter on every round and let the
+  two states hand the deployment back and forth forever.
+* **Global**: the overall duration is checked at the top of every tick. Running
+  out of it reports the last error of the state the deployment is stuck in.
 
 The defaults live in `internal/config/daemon/consts.go`.
 

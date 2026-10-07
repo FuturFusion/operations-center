@@ -522,6 +522,21 @@ deployed again.
   but the server did not reach Operations Center. Check that the network
   configuration in the token seed is correct and that the server can reach the
   address of Operations Center.
+* **The deployment fails in `wait-secure-boot-settled`.** Look at the reported
+  error. If the key databases do not hold the expected certificates, the BMC
+  accepted the secure boot certificates, but the key databases hold something
+  else than what was enrolled: certificates are missing or unexpected entries
+  are present. Check the key databases through the BMC and consider enrolling
+  the certificates with `--secure-boot-enrollment-media` instead.
+* **The deployment fails in `wait-reboot` or the server ends up failing to boot.**
+  The server did not come back from its disk after the installation.
+  Open the BMC console and check, whether the installation completed and whether
+  the firmware accepts the installed system with secure boot.
+* **A state in the history shows an error, but the deployment went on.** The
+  history records the last error of a state along with its retries. A state,
+  that is followed by another one, either succeeded on a later attempt or sent
+  the deployment back to an earlier state. The deployment only failed, if it
+  ends in `failed`.
 * **Look at the BMC logs** for what the BMC itself has to say about the server:
 
   ```shell
