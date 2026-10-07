@@ -111,6 +111,38 @@ export interface ServerDeploymentPost {
   force: boolean;
   skip_secure_boot_certificates: boolean;
   secure_boot_enrollment_media: boolean;
+  bios_profiles?: BIOSProfile[];
+  secure_boot_certificates?: string[];
+}
+
+export interface BIOSProfileSecureBootDatabase {
+  certificates?: Record<string, boolean | null>;
+  signatures?: Record<string, boolean | null>;
+}
+
+export interface BIOSProfileMatch {
+  manufacturer?: string;
+  model?: string;
+  processor_manufacturer?: string;
+  processor_architecture?: string;
+  processor_instruction_set?: string;
+  cpu_sockets?: number;
+  has_tpm?: boolean;
+  bios_version?: string;
+}
+
+export interface BIOSProfile {
+  name: string;
+  description?: string;
+  match: BIOSProfileMatch[];
+  priority: number;
+  attributes?: Record<string, unknown>;
+  deferred_attributes?: Record<string, unknown>;
+  secure_boot?: {
+    db?: BIOSProfileSecureBootDatabase;
+    dbx?: BIOSProfileSecureBootDatabase;
+    kek?: BIOSProfileSecureBootDatabase;
+  };
 }
 
 export interface ServerDeploymentStep {
