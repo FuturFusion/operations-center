@@ -73,6 +73,20 @@ type ServerDeploymentPost struct {
 	// enrollment media needs.
 	// Example: false
 	SecureBootEnrollmentMedia bool `json:"secure_boot_enrollment_media" yaml:"secure_boot_enrollment_media"`
+
+	// BIOSProfiles holds the BIOS profiles the BIOS configuration of the server
+	// is resolved from, by match and priority, instead of the BIOS profiles
+	// shipped with Operations Center. The request is rejected, if none of them
+	// matches the server. Optional, intended for the development of BIOS
+	// profiles.
+	BIOSProfiles []BIOSProfile `json:"bios_profiles,omitempty" yaml:"bios_profiles,omitempty"`
+
+	// SecureBootCertificates holds additional PEM encoded secure boot
+	// certificates, that the secure boot enrollment media enrolls, where the
+	// provided BIOS profiles keep their SHA256 fingerprint in a secure boot
+	// database. Optional, requires BIOS profiles and the secure boot
+	// enrollment media.
+	SecureBootCertificates []string `json:"secure_boot_certificates,omitempty" yaml:"secure_boot_certificates,omitempty"`
 }
 
 // SecureBootMediaPathSegments returns the path segments addressing one generated
