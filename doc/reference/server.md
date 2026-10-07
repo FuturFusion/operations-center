@@ -39,6 +39,16 @@ a running deployment is stopped with
 installation media and powers the server off. Add `--skip-cleanup` to stop the
 deployment without that clean up, leaving the server untouched.
 
+BIOS profiles under development are provided with `--bios-profiles <file>`, in
+which case the BIOS configuration is resolved from the profiles of the file
+and the BIOS profiles of Operations Center are not consulted for this
+deployment. A certificate, that such a profile keeps in a secure boot database
+and that Operations Center does not know, is provided with
+`--secure-boot-certificate <file>`, a PEM file holding a single certificate.
+This requires `--bios-profiles` and `--secure-boot-enrollment-media`, and at
+most 16 certificates can be provided. A deployment, which could not enroll a
+certificate kept by the provided profiles, is rejected.
+
 A BIOS attribute and a key database, that are correct already, are left alone,
 so a server, that is deployed a second time, is neither power cycled nor has its
 UEFI keys rewritten for nothing.
