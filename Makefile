@@ -264,7 +264,7 @@ clean-e2e-test: clean-e2e-test-soft
 	rm -rf $$HOME/.config/operations-center/
 	incus remove --force OperationsCenter || true
 	incus storage volume delete default IncusOS_OperationsCenter.iso || true
-	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*")) | .name'); do \
+	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'); do \
 		incus storage volume delete default $$i || true; \
 	done
 
@@ -287,11 +287,13 @@ clean-e2e-test-soft:
 	incus remove --force IncusOS04 || true
 	# Remove the preseeded ISO storage volumes, which accumulate over the runs.
 	# This has to happen after the instances using them are gone.
-	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*")) | .name'); do \
+	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'); do \
 		incus storage volume delete default $$i || true; \
 	done
 	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster --force || true
 	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster-after-factory-reset --force || true
+	bin/operations-center.linux.amd64 provisioning server deploy-cancel IncusOS01 --skip-cleanup || true
+	bin/operations-center.linux.amd64 provisioning server deploy-status IncusOS01 --wait || true
 	for i in $$(bin/operations-center.linux.amd64 provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'); do \
 		bin/operations-center.linux.amd64 provisioning server remove $$i || true; \
 	done
@@ -301,6 +303,7 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[].uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster || true; \
 		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster-factory-reset || true; \
+		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-deploy || true; \
 	done
 	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
