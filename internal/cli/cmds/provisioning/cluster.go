@@ -1059,7 +1059,9 @@ func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
 type cmdClusterUpdate struct {
 	ocClient *client.OperationsCenterClient
 
-	flagReboot bool
+	flagReboot       bool
+	flagUpdateOS     bool
+	flagApplications []string
 }
 
 func (c *cmdClusterUpdate) Command() *cobra.Command {
@@ -1069,12 +1071,18 @@ func (c *cmdClusterUpdate) Command() *cobra.Command {
 	cmd.Long = `Description:
   Perform a cluster wide update of all servers.
 
+  Without "--os" and "--application", the OS and all the installed applications
+  are updated. "--application" can be combined neither with "--os" nor with
+  "--reboot". Servers, which do not have the application installed, are skipped.
+
   A cluster can only run a single cluster wide operation at a time, either an
   update or a reboot. Use "cluster cancel-operation" to cancel the ongoing
   operation.
 `
 
 	cmd.Flags().BoolVar(&c.flagReboot, "reboot", false, "perform rolling reboot after applying the update")
+	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger update of the OS only and leave the installed applications untouched")
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", nil, "trigger update for the given application only, can be provided multiple times")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -1089,6 +1097,18 @@ func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []strin
 		return err
 	}
 
+	if cmd.Flags().Changed("application") && len(c.flagApplications) == 0 {
+		return fmt.Errorf(`"--application" requires the name of an application`)
+	}
+
+	if c.flagUpdateOS && len(c.flagApplications) > 0 {
+		return fmt.Errorf(`"--os" and "--application" can not be combined`)
+	}
+
+	if c.flagReboot && len(c.flagApplications) > 0 {
+		return fmt.Errorf(`"--reboot" and "--application" can not be combined`)
+	}
+
 	return nil
 }
 
@@ -1096,7 +1116,9 @@ func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name, api.ClusterUpdatePost{
-		Reboot: c.flagReboot,
+		Reboot:       c.flagReboot,
+		Applications: c.flagApplications,
+		OSOnly:       c.flagUpdateOS,
 	})
 	if err != nil {
 		return err
