@@ -1245,16 +1245,48 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 			}
 		}
 
-		resolution, err := s.resolveBIOSProfile(ctx, *server)
+		var resolution *provisioning.BIOSProfileResolution
+
+		// BIOS profiles provided with the request take the place of the catalog.
+		if len(request.BIOSProfiles) > 0 {
+			resolution, err = request.BIOSProfiles.Resolve(server.BMCData)
+			if err != nil {
+				return err
+			}
+
+			if resolution == nil {
+				return domain.NewErrorf(domain.ErrInvalidArgument, "", "None of the provided BIOS profiles matches server %q", name).
+					WithHintf("Adjust the match of the provided BIOS profiles to what the BMC reports about the server.").
+					WithDetail("server", name)
+			}
+		} else {
+			resolution, err = s.resolveBIOSProfile(ctx, *server)
+			if err != nil {
+				return err
+			}
+
+			if resolution == nil {
+				return domain.NewErrorf(domain.ErrNotFound, "", "No BIOS profile matches server %q", name).
+					WithHintf("Add a BIOS profile which matches the server.").
+					WithDetail("server", name)
+			}
+		}
+
+		secureBootCertificates, err := request.SecureBootCertificatesByFingerprint()
 		if err != nil {
 			return err
 		}
 
-		if resolution == nil {
-			return domain.NewErrorf(domain.ErrNotFound, "", "No BIOS profile matches server %q", name).
-				WithHintf("Add a BIOS profile which matches the server.").
-				WithDetail("server", name)
+		if len(request.BIOSProfiles) > 0 && request.SecureBootEnrollmentMedia {
+			err = s.validateKeptSecureBootCertificates(name, resolution.SecureBoot, secureBootCertificates)
+			if err != nil {
+				return err
+			}
 		}
+
+		// What has been provided for this request only, is not kept with it.
+		request.BIOSProfiles = nil
+		request.SecureBootCertificates = nil
 
 		now := s.now()
 
@@ -1266,6 +1298,7 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 			BIOSAttributes:         maps.Clone(resolution.Attributes),
 			BIOSDeferredAttributes: maps.Clone(resolution.DeferredAttributes),
 			SecureBoot:             resolution.SecureBoot.Clone(),
+			SecureBootCertificates: secureBootCertificates,
 			BIOSPending:            len(resolution.Attributes) > 0,
 			BIOSDeferredPending:    len(resolution.DeferredAttributes) > 0,
 			MediaBytesRead:         -1,
@@ -1901,7 +1934,7 @@ func (s *serverService) attachDeploymentMedia(ctx context.Context, _ *slog.Logge
 func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log *slog.Logger, server provisioning.Server, _ deploymentStateDefinition) (func(*provisioning.ServerDeployment), error) {
 	deployment := server.StatusInternal.Deployment
 
-	attached, err := s.bmcAttachSecureBootMediaByName(ctx, log, server, deployment.Request.ImageType, deployment.Request.Architecture, deployment.SecureBoot, deployment.Request.VirtualMediaID)
+	attached, err := s.bmcAttachSecureBootMediaByName(ctx, log, server, deployment.Request.ImageType, deployment.Request.Architecture, deployment.SecureBoot, deployment.SecureBootCertificates, deployment.Request.VirtualMediaID)
 	if err != nil {
 		return nil, err
 	}

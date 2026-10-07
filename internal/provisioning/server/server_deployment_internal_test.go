@@ -2319,3 +2319,26 @@ func Test_serverService_recordDeploymentFailure_unknownRetryFrom(t *testing.T) {
 	require.Equal(t, api.ServerDeploymentStateFailed, deployment.State, "a step, that has no state to go back to, fails the deployment instead of leaving it in no state at all")
 	require.Equal(t, api.ServerDeploymentStateVerifyBIOS, deployment.FailedState)
 }
+
+func Test_keptSecureBootCertificates_additional(t *testing.T) {
+	s := &serverService{
+		secureBootCatalog: &adapterMock.SecureBootCertificateCatalogPortMock{
+			CertificatesByFingerprintFunc: func(fingerprints []string) ([]string, []string) {
+				require.Equal(t, []string{"catalog"}, fingerprints, "The catalog is only asked for what the request did not provide")
+
+				return []string{"catalog certificate"}, nil
+			},
+		},
+	}
+
+	allowList := api.BIOSSecureBootDatabase{
+		Certificates: map[string]bool{"additional": true, "catalog": true, "removed": false},
+	}
+
+	certificates := s.keptSecureBootCertificates(t.Context(), slog.Default(), api.SecureBootDatabaseDB, allowList, map[string]string{
+		"additional": "additional certificate",
+		"removed":    "removed certificate",
+	})
+
+	require.Equal(t, []string{"additional certificate", "catalog certificate"}, certificates)
+}

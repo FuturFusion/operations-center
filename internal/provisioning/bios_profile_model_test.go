@@ -978,3 +978,23 @@ func TestBIOSProfiles_Sort(t *testing.T) {
 
 	require.Equal(t, []string{"low", "high-a", "high-b"}, names)
 }
+
+func TestBIOSProfiles_ValidateForDeployment(t *testing.T) {
+	profile := func(name string, fingerprint string) provisioning.BIOSProfile {
+		return provisioning.BIOSProfile{
+			Name:  name,
+			Match: []provisioning.BIOSProfileMatch{{}},
+			SecureBoot: provisioning.BIOSSecureBoot{
+				DB: provisioning.BIOSSecureBootDatabase{Certificates: map[string]*bool{fingerprint: new(true)}},
+			},
+		}
+	}
+
+	fingerprint := "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+
+	require.NoError(t, provisioning.BIOSProfiles{profile("one", fingerprint), profile("two", fingerprint)}.ValidateForDeployment())
+
+	errassert.ValidationErrorContains("used more than once")(t, provisioning.BIOSProfiles{profile("one", fingerprint), profile("one", fingerprint)}.ValidateForDeployment())
+	errassert.ValidationErrorContains("is not a SHA256 fingerprint")(t, provisioning.BIOSProfiles{profile("one", "not-a-fingerprint")}.ValidateForDeployment())
+	errassert.ValidationErrorContains("at least one match is required")(t, provisioning.BIOSProfiles{{Name: "one", Attributes: map[string]any{"BootMode": "Uefi"}}}.ValidateForDeployment())
+}

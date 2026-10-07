@@ -1,19 +1,28 @@
 package provisioning
 
 import (
+	"bytes"
+	"encoding/asn1"
+	"encoding/pem"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // serverDeploymentHistoryLimit bounds the number of steps kept on a deployment,
 // so a deployment retrying forever can not grow the server record without end.
 const serverDeploymentHistoryLimit = 200
+
+// serverDeploymentSecureBootCertificatesLimit bounds the additional secure boot certificates of a deployment request.
+const serverDeploymentSecureBootCertificatesLimit = 16
 
 // ServerDeploymentRequest is what an operator asked for, when the automated
 // deployment of a server was triggered.
@@ -27,6 +36,8 @@ type ServerDeploymentRequest struct {
 	Force                      bool                          `json:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates"`
 	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media"`
+	BIOSProfiles               BIOSProfiles                  `json:"-"`
+	SecureBootCertificates     []string                      `json:"-"`
 }
 
 func (r ServerDeploymentRequest) Validate() error {
@@ -51,7 +62,83 @@ func (r ServerDeploymentRequest) Validate() error {
 		return domain.NewValidationErrf("Invalid deployment request, the secure boot certificates can not be enrolled from an enrollment media and be skipped at the same time")
 	}
 
+	err := r.BIOSProfiles.ValidateForDeployment()
+	if err != nil {
+		return err
+	}
+
+	_, err = r.SecureBootCertificatesByFingerprint()
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// SecureBootCertificatesByFingerprint returns the additional secure boot certificates keyed by their SHA256 fingerprint.
+func (r ServerDeploymentRequest) SecureBootCertificatesByFingerprint() (map[string]string, error) {
+	if len(r.SecureBootCertificates) == 0 {
+		return nil, nil
+	}
+
+	if len(r.BIOSProfiles) == 0 {
+		return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificates can only be provided together with BIOS profiles")
+	}
+
+	if !r.SecureBootEnrollmentMedia {
+		return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificates can only be enrolled from the secure boot enrollment media")
+	}
+
+	if len(r.SecureBootCertificates) > serverDeploymentSecureBootCertificatesLimit {
+		return nil, domain.NewValidationErrf("Invalid deployment request, at most %d secure boot certificates can be provided", serverDeploymentSecureBootCertificatesLimit)
+	}
+
+	kept := map[string]bool{}
+	for _, profile := range r.BIOSProfiles {
+		for _, database := range []BIOSSecureBootDatabase{profile.SecureBoot.DB, profile.SecureBoot.DBX, profile.SecureBoot.KEK} {
+			for fingerprint, keep := range database.Certificates {
+				if keep != nil && *keep {
+					kept[strings.ToLower(strings.TrimSpace(fingerprint))] = true
+				}
+			}
+		}
+	}
+
+	certificates := make(map[string]string, len(r.SecureBootCertificates))
+	for i, pemCertificate := range r.SecureBootCertificates {
+		block, rest := pem.Decode([]byte(pemCertificate))
+		if block == nil || block.Type != "CERTIFICATE" || len(bytes.TrimSpace(rest)) > 0 {
+			return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificate %d has to hold exactly one PEM encoded certificate", i+1)
+		}
+
+		// The DER is not parsed as a certificate, see certificate.DERFingerprint.
+		var der asn1.RawValue
+
+		rest, err := asn1.Unmarshal(block.Bytes, &der)
+		if err != nil || len(rest) > 0 || der.Tag != asn1.TagSequence {
+			return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificate %d is not DER encoded", i+1)
+		}
+
+		pemCertificate = certificate.EncodeToPEM(block.Bytes)
+
+		fingerprint, err := certificate.DERFingerprint(strconv.Itoa(i+1), []byte(pemCertificate))
+		if err != nil {
+			return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificate %d is not valid: %v", i+1, err)
+		}
+
+		_, ok := certificates[fingerprint]
+		if ok {
+			return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificate %q is provided more than once", fingerprint)
+		}
+
+		if !kept[fingerprint] {
+			return nil, domain.NewValidationErrf("Invalid deployment request, secure boot certificate %q is not kept by any of the provided BIOS profiles", fingerprint)
+		}
+
+		certificates[fingerprint] = pemCertificate
+	}
+
+	return certificates, nil
 }
 
 // NewServerDeploymentRequest builds a deployment request from its API
@@ -69,7 +156,14 @@ func NewServerDeploymentRequest(request api.ServerDeploymentPost) (ServerDeploym
 
 	architecture := images.UpdateFileArchitecture(request.Architecture)
 
+	var biosProfiles BIOSProfiles
+	for _, profile := range request.BIOSProfiles {
+		biosProfiles = append(biosProfiles, NewBIOSProfileFromAPI(profile))
+	}
+
 	return ServerDeploymentRequest{
+		BIOSProfiles:               biosProfiles,
+		SecureBootCertificates:     slices.Clone(request.SecureBootCertificates),
 		TokenUUID:                  tokenUUID,
 		Seed:                       request.Seed,
 		ImageType:                  imageType,
@@ -149,6 +243,10 @@ type ServerDeployment struct {
 	BIOSAttributes         map[string]any     `json:"bios_attributes"`
 	BIOSDeferredAttributes map[string]any     `json:"bios_deferred_attributes"`
 	SecureBoot             api.BIOSSecureBoot `json:"secure_boot"`
+
+	// SecureBootCertificates holds the additional secure boot certificates of the
+	// request keyed by their fingerprint, for the enrollment media to enroll.
+	SecureBootCertificates map[string]string `json:"secure_boot_certificates,omitempty"`
 
 	// BIOSPending and BIOSDeferredPending report, whether the respective BIOS
 	// pass still has anything to apply. A server, that reports the attributes at
