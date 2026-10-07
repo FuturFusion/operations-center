@@ -21,6 +21,8 @@ type mockRedfishServer struct {
 	systemBody                string
 	systemBodies              []string
 	systemBodyReads           int
+	systemBodyAfterPatch      string
+	systemPatched             bool
 	systemPatch               mockResponses
 	managersStatusCode        int
 	managersBody              string
@@ -432,11 +434,17 @@ func handleSystem(w http.ResponseWriter, r *http.Request, cfg *mockRedfishServer
 			cfg.systemBodyReads++
 		}
 
+		if cfg.systemPatched && cfg.systemBodyAfterPatch != "" {
+			body = cfg.systemBodyAfterPatch
+		}
+
 		w.WriteHeader(cfg.systemStatusCode)
 		_, _ = w.Write([]byte(body))
 
 	case http.MethodPatch:
 		body, _ := io.ReadAll(r.Body)
+
+		cfg.systemPatched = true
 
 		if cfg.gotSystemPatchBody != nil {
 			*cfg.gotSystemPatchBody = body

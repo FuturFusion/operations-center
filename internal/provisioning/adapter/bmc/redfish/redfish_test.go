@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -5441,6 +5442,8 @@ func TestRedfish_AttachMedia(t *testing.T) {
 		virtualMediaPatch mockResponses
 		systemPatch       mockResponses
 
+		systemBodyAfterPatch string
+
 		wantRequests    []mockRequest
 		wantTaskMonitor *provisioning.BMCTaskMonitor
 		assertErr       require.ErrorAssertionFunc
@@ -5951,6 +5954,250 @@ func TestRedfish_AttachMedia(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:           "success - boot device set with the current ETag after the precondition was rejected",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootDeclaredBody, `W/"1"`),
+			systemBodyAfterPatch: withETag(mediaSystemBootDeclaredBody, `W/"2"`),
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed, http.StatusNoContent},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"2"`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - precondition rejected again with the current ETag",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootDeclaredBody, `W/"1"`),
+			systemBodyAfterPatch: withETag(mediaSystemBootDeclaredBody, `W/"2"`),
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed},
+				bodies:      []string{mediaPreconditionFailedBody, mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"2"`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.ErrorContains(t, err, `Failed to set boot device on BMC: PATCH /redfish/v1/Systems/1 {"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}: BMC returned HTTP 412`)
+				require.True(t, domain.IsRetryableError(redfish.ErrorWrapper()(err)), "A stale ETag is left to the caller to retry")
+			},
+		},
+		{
+			name:           "error - current ETag can not be read after the precondition was rejected",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootDeclaredBody, `W/"1"`),
+			systemBodyAfterPatch: "not json",
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.ErrorContains(t, err, "BMC returned HTTP 412")
+				require.ErrorContains(t, err, "reading the current ETag: ")
+			},
+		},
+		{
+			name:           "error - precondition rejected without an ETag is not repeated",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: errassert.Contains("BMC returned HTTP 412"),
+		},
+		{
+			name:           "error - rejected If-Match header is not repeated",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootDeclaredBody, `W/"1"`),
+			systemBodyAfterPatch: withETag(mediaSystemBootDeclaredBody, `W/"2"`),
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{`{"error":{"code":"Base.1.0.GeneralError","@Message.ExtendedInfo":[{"MessageId":"Base.1.0.HeaderInvalid","MessageArgs":["If-Match"]}]}}`},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: errassert.Contains("BMC returned HTTP 400"),
+		},
+		{
+			name:           "success - current ETag is kept for the continuous override",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootDeclaredBody, `W/"1"`),
+			systemBodyAfterPatch: withETag(mediaSystemBootDeclaredBody, `W/"2"`),
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed, http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaPreconditionFailedBody, mediaBootOnceRejectedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"2"`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Continuous","BootSourceOverrideTarget":"Cd"}}`,
+					ifMatch: `W/"2"`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name:           "success - boot device follows the media type the action info narrowed down to",
 			virtualMediaID: "system:1",
 			mediaURL:       "http://example.com/install.raw",
@@ -6454,6 +6701,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				ejectMedia:                          tc.ejectMedia,
 				virtualMediaPatch:                   tc.virtualMediaPatch,
 				systemPatch:                         tc.systemPatch,
+				systemBodyAfterPatch:                tc.systemBodyAfterPatch,
 			}, &gotRequests)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -6490,6 +6738,8 @@ func TestRedfish_DetachMedia(t *testing.T) {
 		ejectMedia        mockResponses
 		virtualMediaPatch mockResponses
 		systemPatch       mockResponses
+
+		systemBodyAfterPatch string
 
 		wantRequests    []mockRequest
 		wantTaskMonitor *provisioning.BMCTaskMonitor
@@ -6552,6 +6802,43 @@ func TestRedfish_DetachMedia(t *testing.T) {
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1",
 					body:   `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - default boot device restored with the current ETag after the precondition was rejected",
+			virtualMediaID: "system:1",
+
+			systemsBody:          mediaSystemsBody,
+			systemBody:           withETag(mediaSystemBootCdOnceBody, `W/"1"`),
+			systemBodyAfterPatch: withETag(mediaSystemBootCdOnceBody, `W/"2"`),
+			systemVMBody:         mediaSystemVMCollectionBody,
+			systemVMMemberBody:   mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed, http.StatusNoContent},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+					ifMatch: `W/"1"`,
+				},
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1",
+					body:    `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+					ifMatch: `W/"2"`,
 				},
 			},
 			assertErr: require.NoError,
@@ -6811,6 +7098,7 @@ func TestRedfish_DetachMedia(t *testing.T) {
 				ejectMedia:                          tc.ejectMedia,
 				virtualMediaPatch:                   tc.virtualMediaPatch,
 				systemPatch:                         tc.systemPatch,
+				systemBodyAfterPatch:                tc.systemBodyAfterPatch,
 				extraRoutes:                         tc.extraRoutes,
 			}, &gotRequests)
 
@@ -6825,6 +7113,10 @@ func TestRedfish_DetachMedia(t *testing.T) {
 			}
 		})
 	}
+}
+
+func withETag(body string, etag string) string {
+	return strings.Replace(body, "{", `{"@odata.etag": `+strconv.Quote(etag)+",", 1)
 }
 
 func requireRequestsEqual(t *testing.T, want []mockRequest, got []mockRequest) {
