@@ -485,6 +485,7 @@ type ExprServerDeployment struct {
 	BIOSAttributes                  map[string]any                    `json:"bios_attributes" expr:"bios_attributes"`
 	BIOSDeferredAttributes          map[string]any                    `json:"bios_deferred_attributes" expr:"bios_deferred_attributes"`
 	SecureBoot                      ExprApiBIOSSecureBoot             `json:"secure_boot" expr:"secure_boot"`
+	SecureBootCertificates          map[string]string                 `json:"secure_boot_certificates,omitempty" expr:"secure_boot_certificates"`
 	BIOSPending                     bool                              `json:"bios_pending" expr:"bios_pending"`
 	BIOSDeferredPending             bool                              `json:"bios_deferred_pending" expr:"bios_deferred_pending"`
 	BIOSSecureBootPendingAttributes []string                          `json:"bios_secure_boot_pending_attributes" expr:"bios_secure_boot_pending_attributes"`
@@ -534,6 +535,8 @@ type ExprServerDeploymentRequest struct {
 	Force                      bool                          `json:"force" expr:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates" expr:"skip_secure_boot_certificates"`
 	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media" expr:"secure_boot_enrollment_media"`
+	BIOSProfiles               BIOSProfiles                  `json:"-" expr:"-"`
+	SecureBootCertificates     []string                      `json:"-" expr:"-"`
 }
 
 type ExprServerStatusInternal struct {
@@ -1132,6 +1135,7 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		BIOSAttributes:                  s.BIOSAttributes,
 		BIOSDeferredAttributes:          s.BIOSDeferredAttributes,
 		SecureBoot:                      ToExprApiBIOSSecureBoot(s.SecureBoot),
+		SecureBootCertificates:          s.SecureBootCertificates,
 		BIOSPending:                     s.BIOSPending,
 		BIOSDeferredPending:             s.BIOSDeferredPending,
 		BIOSSecureBootPendingAttributes: s.BIOSSecureBootPendingAttributes,
@@ -1185,6 +1189,8 @@ func ToExprServerDeploymentRequest(s ServerDeploymentRequest) ExprServerDeployme
 		Force:                      s.Force,
 		SkipSecureBootCertificates: s.SkipSecureBootCertificates,
 		SecureBootEnrollmentMedia:  s.SecureBootEnrollmentMedia,
+		BIOSProfiles:               s.BIOSProfiles,
+		SecureBootCertificates:     s.SecureBootCertificates,
 	}
 }
 
