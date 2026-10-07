@@ -345,6 +345,17 @@ The Operations Center VM reaches the proxy at the address of the end 2 end test
 host on the network the VM is attached to. If this address can not be derived
 automatically, set `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`.
 
+`TestE2E_WithTokenSeed_DeployServer` covers the automated deployment of a
+server. It creates an empty instance, pre-registers it with the proxy as its BMC
+and has Operations Center deploy IncusOS on it. The BIOS attributes of the proxy
+are the config keys of the instance, so the BIOS profile matching it is handed
+in with the deployment (see `redfishProxyBIOSProfileYAMLTemplate`) and is not
+part of the profiles shipped with Operations Center.
+
+The proxy fetches the installation media from Operations Center when it is
+attached, so Operations Center needs to be reachable from the end 2 end test
+host at the address it advertises.
+
 ### Incus images
 
 `TestE2E_WithToken_OCImagesRemoteLaunchInstance` covers the Incus image and the

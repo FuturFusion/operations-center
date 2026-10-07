@@ -29,7 +29,7 @@ func serverBMCPowerOffAndOn(serverName string) func(ctx context.Context, t *test
 		t.Log("Configure the BMC of the server")
 		mustSetServerBMCConfig(ctx, t, tmpDir, serverName, "redfish-v1-generic", endpoint)
 
-		assertBMCConfig(t, serverName, endpoint)
+		assertBMCConfig(t, serverName, endpoint, "On")
 
 		// Run test
 		//
@@ -62,7 +62,7 @@ func serverBMCPowerOffAndOn(serverName string) func(ctx context.Context, t *test
 // assertBMCConfig verifies, that the BMC config has been applied, that the
 // certificate presented by the BMC has been pinned and that Operations Center
 // is able to collect data from the BMC.
-func assertBMCConfig(t *testing.T, serverName string, endpoint string) {
+func assertBMCConfig(t *testing.T, serverName string, endpoint string, powerState string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -84,7 +84,7 @@ func assertBMCConfig(t *testing.T, serverName string, endpoint string) {
 	require.Equal(t, "Redfish", resp.OutputTrimmed(), "expect BMC data to be collected")
 
 	resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.bmc_data.server_power_state'`, cpuArch, serverName)
-	require.Equal(t, "On", resp.OutputTrimmed(), "expect the server to be reported as powered on")
+	require.Equal(t, powerState, resp.OutputTrimmed(), "expect the power state of the server to be reported")
 }
 
 // assertInstanceStatus waits for the Incus instance to reach the wanted status.

@@ -40,6 +40,14 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 		InstanceName: instanceName,
 		Remote:       mustRun(t, `incus remote get-default`).OutputTrimmed(),
 		Project:      mustRun(t, `incus project get-current`).OutputTrimmed(),
+		// Virtual media is served by Operations Center with its own certificate,
+		// the proxy reports VerifyCertificate false for it.
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec // self signed certificate of the Operations Center under test.
+			},
+		},
+		Context: t.Context(),
 	})
 	require.NoErrorf(t, err, "Failed to create Redfish proxy handler for %q", instanceName)
 
