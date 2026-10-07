@@ -14,6 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	api0 "github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
@@ -98,7 +99,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			LaunchClusterRebootFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the LaunchClusterReboot method")
 //			},
-//			LaunchClusterUpdateFunc: func(ctx context.Context, name string, reboot bool) error {
+//			LaunchClusterUpdateFunc: func(ctx context.Context, name string, request api0.ClusterUpdatePost) error {
 //				panic("mock out the LaunchClusterUpdate method")
 //			},
 //			RemoveServerFunc: func(ctx context.Context, name string, removedServerNames []string, force bool) error {
@@ -223,7 +224,7 @@ type ClusterServiceMock struct {
 	LaunchClusterRebootFunc func(ctx context.Context, name string) error
 
 	// LaunchClusterUpdateFunc mocks the LaunchClusterUpdate method.
-	LaunchClusterUpdateFunc func(ctx context.Context, name string, reboot bool) error
+	LaunchClusterUpdateFunc func(ctx context.Context, name string, request api0.ClusterUpdatePost) error
 
 	// RemoveServerFunc mocks the RemoveServer method.
 	RemoveServerFunc func(ctx context.Context, name string, removedServerNames []string, force bool) error
@@ -473,8 +474,8 @@ type ClusterServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
-			// Reboot is the reboot argument value.
-			Reboot bool
+			// Request is the request argument value.
+			Request api0.ClusterUpdatePost
 		}
 		// RemoveServer holds details about calls to the RemoveServer method.
 		RemoveServer []struct {
@@ -1561,23 +1562,23 @@ func (mock *ClusterServiceMock) LaunchClusterRebootCalls() []struct {
 }
 
 // LaunchClusterUpdate calls LaunchClusterUpdateFunc.
-func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
+func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name string, request api0.ClusterUpdatePost) error {
 	if mock.LaunchClusterUpdateFunc == nil {
 		panic("ClusterServiceMock.LaunchClusterUpdateFunc: method is nil but ClusterService.LaunchClusterUpdate was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Name   string
-		Reboot bool
+		Ctx     context.Context
+		Name    string
+		Request api0.ClusterUpdatePost
 	}{
-		Ctx:    ctx,
-		Name:   name,
-		Reboot: reboot,
+		Ctx:     ctx,
+		Name:    name,
+		Request: request,
 	}
 	mock.lockLaunchClusterUpdate.Lock()
 	mock.calls.LaunchClusterUpdate = append(mock.calls.LaunchClusterUpdate, callInfo)
 	mock.lockLaunchClusterUpdate.Unlock()
-	return mock.LaunchClusterUpdateFunc(ctx, name, reboot)
+	return mock.LaunchClusterUpdateFunc(ctx, name, request)
 }
 
 // LaunchClusterUpdateCalls gets all the calls that were made to LaunchClusterUpdate.
@@ -1585,14 +1586,14 @@ func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name st
 //
 //	len(mockedClusterService.LaunchClusterUpdateCalls())
 func (mock *ClusterServiceMock) LaunchClusterUpdateCalls() []struct {
-	Ctx    context.Context
-	Name   string
-	Reboot bool
+	Ctx     context.Context
+	Name    string
+	Request api0.ClusterUpdatePost
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Name   string
-		Reboot bool
+		Ctx     context.Context
+		Name    string
+		Request api0.ClusterUpdatePost
 	}
 	mock.lockLaunchClusterUpdate.RLock()
 	calls = mock.calls.LaunchClusterUpdate

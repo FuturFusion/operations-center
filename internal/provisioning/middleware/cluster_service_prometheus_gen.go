@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	api0 "github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterServiceWithPrometheus implements provisioning.ClusterService interface with all methods wrapped
@@ -375,7 +376,7 @@ func (_d ClusterServiceWithPrometheus) LaunchClusterReboot(ctx context.Context, 
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) (err error) {
+func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, name string, request api0.ClusterUpdatePost) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -385,7 +386,7 @@ func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, 
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LaunchClusterUpdate", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.LaunchClusterUpdate(ctx, name, reboot)
+	return _d.base.LaunchClusterUpdate(ctx, name, request)
 }
 
 // RemoveServer implements provisioning.ClusterService.
