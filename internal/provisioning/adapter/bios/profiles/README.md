@@ -44,6 +44,18 @@ An example of a BIOS profile, showing all the fields available for matching and
 for the values to apply, can be found in
 [`_dummy.yaml.example`](_dummy.yaml.example).
 
+## Development
+
+Profiles under development do not have to be compiled into Operations Center
+to be tried out. `operations-center provisioning server deploy` accepts files
+in the format of this directory with `--bios-profiles <file>` and resolves the
+BIOS configuration from them instead of the profiles in this directory, taking
+their matches and their priorities into account the same way. Such a file is
+checked more strictly: a field with an unknown name is rejected and the
+certificates have to be keyed by their SHA256 fingerprint. A certificate, that
+is not part of the certificate catalog yet, has to be provided with
+`--secure-boot-certificate <file>` for the enrollment media.
+
 ## Tests
 
 If new profiles are added, it is advised to also update
