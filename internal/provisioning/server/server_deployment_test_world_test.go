@@ -146,6 +146,7 @@ type bmcWorld struct {
 	biosTaskSeq     int
 
 	secureBootPending bool
+	secureBootApplied bool
 
 	secureBootEnabled      bool
 	secureBootMode         string
@@ -182,6 +183,7 @@ type bmcWorld struct {
 	ignoredPowerOffsSince         time.Time
 	biosApplyDrops                int
 	secureBootEnrolls             bool
+	secureBootEnrollDrops         int
 	relapsesAfterSecureBootReset  bool
 	biosSecureBootStatusAttribute string
 	biosSecureBootStatusStuck     bool
@@ -209,6 +211,8 @@ type bmcWorld struct {
 	powerOffErrs                  queue.Errs
 	attachMediaErrs               queue.Errs
 	enableSecureBootErrs          queue.Errs
+	secureBootVerifyErrs          queue.Errs
+	secureBootVerifyBroken        bool
 	ejectDelay                    time.Duration
 }
 
@@ -840,7 +844,30 @@ func deploymentBMCClient(t *testing.T, world *bmcWorld) *adapterMock.BMCServerCl
 			world.calls["ApplySecureBootCertificates"]++
 			world.secureBootPending = world.secureBootEnrolls
 
+			world.secureBootApplied = world.secureBootEnrollDrops == 0
+			if !world.secureBootApplied {
+				world.secureBootEnrollDrops--
+			}
+
 			return world.secureBootEnrolls, nil
+		},
+
+		SecureBootCertificatesAppliedFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
+			world.mu.Lock()
+			defer world.mu.Unlock()
+
+			world.calls["SecureBootCertificatesApplied"]++
+
+			if world.secureBootVerifyBroken {
+				return false, boom.Error
+			}
+
+			err := world.secureBootVerifyErrs.PopOrNil(t)
+			if err != nil {
+				return false, err
+			}
+
+			return world.secureBootApplied, nil
 		},
 
 		EnableSecureBootFunc: func(ctx context.Context, server provisioning.Server) (bool, error) {

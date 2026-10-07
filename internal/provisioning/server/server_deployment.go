@@ -455,6 +455,7 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		},
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
+			deployment.SecureBootSnapshot = provisioning.ServerDeploymentBMCSnapshot{}
 		},
 
 		skipReason:   "secure boot certificates skipped",
@@ -1548,7 +1549,13 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 	}
 
 	if !deployment.CancelRequested && now.Sub(deployment.StartedAt) > config.ServerDeploymentTimeout {
-		return false, s.failDeployment(ctx, name, domain.NewErrorf(domain.ErrTerminal, "", "The deployment did not complete within %s", config.ServerDeploymentTimeout).
+		timeoutErr := domain.NewErrorf(domain.ErrTerminal, "", "The deployment did not complete within %s", config.ServerDeploymentTimeout)
+
+		if deployment.LastError != "" {
+			timeoutErr = domain.NewErrorf(domain.ErrTerminal, "", "The deployment did not complete within %s, the step %q last reported: %s", config.ServerDeploymentTimeout, deployment.State, deployment.LastError)
+		}
+
+		return false, s.failDeployment(ctx, name, timeoutErr.
 			WithHintf("Check the server and the BMC, then start the deployment again.").
 			WithDetail("server", name).
 			WithDetail("timeout", config.ServerDeploymentTimeout.String()))
@@ -1641,11 +1648,23 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 			return false, s.failDeployment(ctx, server.Name, fatal)
 		}
 
+		_, ok = errors.AsType[deploymentRetryFromError](err)
+		if ok {
+			return false, s.recordDeploymentFailure(ctx, log, server.Name, definition, err)
+		}
+
 		// Failing to observe the condition is not failing the step, it is simply
 		// repeated on the next tick until the state times out.
 		log.WarnContext(ctx, "Failed to evaluate the deployment wait condition", logger.Err(err))
 
-		return false, nil
+		outcome = deploymentWaitPending
+		mutate = nil
+
+		if deployment.LastError != domain.UserMessage(err) {
+			mutate = func(deployment *provisioning.ServerDeployment) {
+				deployment.LastError = domain.UserMessage(err)
+			}
+		}
 	}
 
 	switch outcome {
@@ -1670,7 +1689,14 @@ func (s *serverService) deploymentWait(ctx context.Context, log *slog.Logger, se
 		return false, s.updateDeployment(ctx, server.Name, mutate)
 	}
 
-	timeoutErr := domain.NewErrorf(domain.ErrTerminal, "", "The deployment step %q did not complete within %s", deployment.State, definition.timeout).
+	timeoutErr := domain.NewErrorf(domain.ErrTerminal, "", "The deployment step %q did not complete within %s", deployment.State, definition.timeout)
+
+	if err != nil {
+		timeoutErr = domain.NewErrorf(domain.ErrTerminal, "", "The deployment step %q did not complete within %s: %s", deployment.State, definition.timeout, domain.UserMessage(err)).
+			WithCause(err)
+	}
+
+	timeoutErr = timeoutErr.
 		WithHintf("Check the server and the BMC, then start the deployment again.").
 		WithDetail("server", server.Name).
 		WithDetail("deployment_state", string(deployment.State)).
@@ -2519,7 +2545,7 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 	if deployment.SecureBootSnapshot.HasRebootedSince(current.BMCData) == api.BMCRebootStateRebooted {
 		log.InfoContext(ctx, "Firmware has picked the enrolled secure boot certificates up, the BMC reports a reboot of the server")
 
-		return deploymentWaitMet, nil, s.verifyDeploymentBIOSSecureBootAttributes(ctx, server)
+		return deploymentWaitMet, nil, s.verifyDeploymentSecureBootSettled(ctx, server)
 	}
 
 	if now.Sub(deployment.StateEnteredAt) < definition.rebootWindow {
@@ -2528,7 +2554,52 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 
 	log.InfoContext(ctx, "Firmware did not reboot after the secure boot certificates were enrolled, continuing with the installation")
 
-	return deploymentWaitMet, nil, s.verifyDeploymentBIOSSecureBootAttributes(ctx, server)
+	return deploymentWaitMet, nil, s.verifyDeploymentSecureBootSettled(ctx, server)
+}
+
+// verifyDeploymentSecureBootSettled verifies, what the settle boot was performed
+// for, before the installation is started on top of it.
+func (s *serverService) verifyDeploymentSecureBootSettled(ctx context.Context, server provisioning.Server) error {
+	err := s.verifyDeploymentSecureBootCertificates(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	return s.verifyDeploymentBIOSSecureBootAttributes(ctx, server)
+}
+
+// verifyDeploymentSecureBootCertificates reads the key databases back, since a
+// BMC accepting every request does not tell, that the certificates made it. A
+// server, whose key databases differ, has them enrolled again from the power off
+// on. Nothing is read back, where the BMC did not enroll the certificates.
+func (s *serverService) verifyDeploymentSecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+	deployment := server.StatusInternal.Deployment
+
+	if deployment.Request.SkipSecureBootCertificates || deployment.Request.SecureBootEnrollmentMedia {
+		return nil
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
+		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	applied, err := client.SecureBootCertificatesApplied(ctx, server, deployment.SecureBoot)
+	if err != nil {
+		return fmt.Errorf("Failed to verify secure boot certificates of server %q via BMC: %w", server.Name, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	return deploymentRetryFromError{
+		state: api.ServerDeploymentStatePowerOffSecureBoot,
+		err: domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Secure boot key databases of server %q do not hold the expected certificates, even though the BMC accepted them", server.Name).
+			WithHintf("Check the secure boot key databases of the server through the BMC.").
+			WithDetail("server", server.Name),
+	}
 }
 
 // checkDeploymentSecureBootEnrolled tells, whether the secure boot enrollment

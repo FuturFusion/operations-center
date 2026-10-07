@@ -1719,6 +1719,9 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 		ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
 			return false, boom.Error
 		},
+		SecureBootCertificatesAppliedFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
+			return false, boom.Error
+		},
 		ServerPowerOnFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 			return nil, boom.Error
 		},
