@@ -40,3 +40,24 @@
         "0000000000000000000000000000000000000000000000000000000000000000": true
       signatures:
         "signature-value": true
+  deployment:
+    # Only what deviates from the defaults has to be set, see README.md.
+    deployment_timeout: "2h"
+    step_timeout: "5m"
+    bios_applied_timeout: "10m"
+    secure_boot_enroll_timeout: "15m"
+    install_timeout: "45m"
+    reboot_timeout: "15m"
+    registration_timeout: "30m"
+    post_settle_delay: "1m"
+    power_off_settle_delay: "1m"
+    reboot_observation_window: "5m"
+    secure_boot_settle_duration: "5m"
+    install_min_duration: "5m"
+    install_reboot_fallback_delay: "10m"
+    install_media_idle_period: "2m"
+    install_media_min_bytes_read: 524288000
+    step_retries: 3
+    call_timeout: "2m"
+    attach_media_call_timeout: "20m"
+    secure_boot_call_timeout: "15m"

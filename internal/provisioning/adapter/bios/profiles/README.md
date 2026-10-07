@@ -38,6 +38,50 @@ deployment, that enrolls the certificates from an enrollment media rather than
 through the Redfish API, starts from wiped key databases, so an allow listed
 entry has to be enrolled again from actual certificate material.
 
+## Deployment settings
+
+The timings of the automated deployment suit most hardware. Where a
+manufacturer, a model or a firmware version needs more time, the `deployment`
+section of a profile overrides them for the servers the profile matches. A
+setting, that is not set, leaves in place what the profiles with a lower priority
+have set, and finally the default. Durations are Go duration strings, e.g. `90s`
+or `1h30m`.
+
+| Setting                         | Default     | Meaning                                                                                               |
+| ---                             | ---         | ---                                                                                                   |
+| `deployment_timeout`            | `2h`        | Bounds the deployment as a whole, the provisioning token has to stay valid for it                     |
+| `step_timeout`                  | `5m`        | Bounds the waits for a power off, for the virtual media and for the cancellation                      |
+| `bios_applied_timeout`          | `10m`       | Bounds the waits for the firmware to apply BIOS and secure boot changes                               |
+| `secure_boot_enroll_timeout`    | `15m`       | Bounds the wait for the enrollment media to enroll the secure boot certificates                       |
+| `install_timeout`               | `45m`       | Bounds the first stage of the installation                                                            |
+| `reboot_timeout`                | `15m`       | Bounds the wait for the server to come back up after the first stage of the installation              |
+| `registration_timeout`          | `30m`       | Bounds the wait for the server to register itself                                                     |
+| `post_settle_delay`             | `1m`        | Time granted to the power on self test, before a wait trusts what the BMC reports                     |
+| `power_off_settle_delay`        | `1m`        | Time the server has to be reported powered off, before the power off counts as settled                |
+| `reboot_observation_window`     | `5m`        | Time the wait for the reboot looks for an actual reboot, before it settles for the power state        |
+| `secure_boot_settle_duration`   | `5m`        | Time the server is left running after the certificates have been enrolled, if it does not reboot      |
+| `install_min_duration`          | `5m`        | Time, that has to have passed, before the first stage of the installation could be done at all        |
+| `install_reboot_fallback_delay` | `10m`       | Time, after which a reboot counts as the end of the first stage, where the BMC reports no progress    |
+| `install_media_idle_period`     | `2m`        | Time without a read, after which the installation media counts as idle                                |
+| `install_media_min_bytes_read`  | `524288000` | Bytes of the installation media, that have to have been read, before the idle period counts (500 MiB) |
+| `step_retries`                  | `3`         | Retries granted to a single step, as well as fallbacks and reverts granted to a single wait           |
+| `call_timeout`                  | `2m`        | Bounds the BMC operations of a single attempt of a step                                               |
+| `attach_media_call_timeout`     | `20m`       | Bounds the BMC operations attaching a virtual media                                                   |
+| `secure_boot_call_timeout`      | `15m`       | Bounds the BMC operations changing the secure boot key databases                                      |
+
+A duration has to be between `1s` and `24h`, `step_retries` between 1 and 10 and
+`install_media_min_bytes_read` at least 1. When a deployment is requested, the
+resolved settings additionally have to fit together: what a wait holds out for
+has to be shorter than its timeout, and no timeout, the call timeouts included,
+may exceed `deployment_timeout`. Lowering `deployment_timeout` below a default,
+e.g. the `45m` of `install_timeout`, therefore requires lowering that setting as
+well.
+
+A setting with an unknown name is rejected. The settings deviating from the
+defaults for a server are shown by
+`operations-center provisioning server bios-profile <name>`, the ones of a
+deployment by `operations-center provisioning server deploy-status <name>`.
+
 ## Example
 
 An example of a BIOS profile, showing all the fields available for matching and

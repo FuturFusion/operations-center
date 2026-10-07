@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -125,6 +126,49 @@ func TestNewFromFS(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
+			name: "a profile with deployment settings only",
+			files: map[string]string{
+				"profiles/a.yaml": `
+- name: slow-post
+  match:
+    - manufacturer: ACME
+  deployment:
+    post_settle_delay: 3m
+`,
+			},
+
+			assertErr:    require.NoError,
+			wantProfiles: []string{"slow-post"},
+		},
+		{
+			name: "error - deployment setting is not a duration",
+			files: map[string]string{
+				"profiles/a.yaml": `
+- name: invalid-duration
+  match:
+    - manufacturer: ACME
+  deployment:
+    step_timeout: 300
+`,
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - deployment setting out of bounds",
+			files: map[string]string{
+				"profiles/a.yaml": `
+- name: invalid-retries
+  match:
+    - manufacturer: ACME
+  deployment:
+    step_retries: 0
+`,
+			},
+
+			assertErr: require.Error,
+		},
+		{
 			name: "error - malformed YAML",
 			files: map[string]string{
 				"profiles/a.yaml": `not: a: list`,
@@ -175,6 +219,10 @@ func TestCatalog_Resolve(t *testing.T) {
       certificates:
         aaaa: true
         bbbb: true
+  deployment:
+    post_settle_delay: 2m
+    install_timeout: 1h
+    step_retries: 5
 
 - name: acme-9000
   match:
@@ -193,6 +241,9 @@ func TestCatalog_Resolve(t *testing.T) {
       certificates:
         bbbb: null
         cccc: false
+  deployment:
+    # Takes the place of the delay of the catch all profile, the rest stays.
+    post_settle_delay: 3m
 
 - name: acme-9000-new-bios
   match:
@@ -236,6 +287,11 @@ func TestCatalog_Resolve(t *testing.T) {
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
 					},
 				},
+				Deployment: api.ServerDeploymentSettings{
+					InstallTimeout:  new(api.Duration(time.Hour)),
+					PostSettleDelay: new(api.Duration(3 * time.Minute)),
+					StepRetries:     new(5),
+				},
 			},
 		},
 		{
@@ -257,6 +313,11 @@ func TestCatalog_Resolve(t *testing.T) {
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
 					},
+				},
+				Deployment: api.ServerDeploymentSettings{
+					InstallTimeout:  new(api.Duration(time.Hour)),
+					PostSettleDelay: new(api.Duration(3 * time.Minute)),
+					StepRetries:     new(5),
 				},
 			},
 		},
@@ -280,6 +341,11 @@ func TestCatalog_Resolve(t *testing.T) {
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
 					},
 				},
+				Deployment: api.ServerDeploymentSettings{
+					InstallTimeout:  new(api.Duration(time.Hour)),
+					PostSettleDelay: new(api.Duration(3 * time.Minute)),
+					StepRetries:     new(5),
+				},
 			},
 		},
 		{
@@ -300,6 +366,11 @@ func TestCatalog_Resolve(t *testing.T) {
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "bbbb": true},
 					},
+				},
+				Deployment: api.ServerDeploymentSettings{
+					InstallTimeout:  new(api.Duration(time.Hour)),
+					PostSettleDelay: new(api.Duration(2 * time.Minute)),
+					StepRetries:     new(5),
 				},
 			},
 		},
