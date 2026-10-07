@@ -3,6 +3,7 @@ package api_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -72,6 +73,10 @@ func TestServerDeploymentStatus_roundTrip(t *testing.T) {
 		BIOSDeferredAttributes: map[string]any{
 			"Tpm2Algorithm": "SHA256",
 		},
+		DeploymentSettings: api.ServerDeploymentSettings{
+			DeploymentTimeout: new(api.Duration(90 * time.Minute)),
+			StepRetries:       new(5),
+		},
 		Retries: 2,
 		History: []api.ServerDeploymentStep{
 			{State: api.ServerDeploymentStateAttachMedia},
@@ -81,6 +86,8 @@ func TestServerDeploymentStatus_roundTrip(t *testing.T) {
 
 	encoded, err := json.Marshal(status)
 	require.NoError(t, err)
+
+	require.Contains(t, string(encoded), `"deployment_timeout":"1h30m"`)
 
 	var decoded api.ServerDeploymentStatus
 

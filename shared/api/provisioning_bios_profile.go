@@ -80,6 +80,10 @@ type BIOSProfileResolution struct {
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
+
+	// Deployment holds the timings of the automated deployment, that deviate
+	// from the defaults.
+	Deployment ServerDeploymentSettings `json:"deployment,omitzero" yaml:"deployment,omitempty"`
 }
 
 // BIOSProfileMatch selects the servers a BIOS profile applies to. An empty
@@ -186,4 +190,8 @@ type BIOSProfile struct {
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot BIOSProfileSecureBoot `json:"secure_boot" yaml:"secure_boot"`
+
+	// Deployment holds the timings of the automated deployment, that deviate
+	// from the defaults for the servers the BIOS profile applies to.
+	Deployment ServerDeploymentSettings `json:"deployment,omitzero" yaml:"deployment,omitempty"`
 }
