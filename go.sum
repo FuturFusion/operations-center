@@ -50,8 +50,8 @@ github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c/go.mod h1:xomTg6
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/FuturFusion/incus-redfish-proxy v0.0.0-20260825170101-8aca873b0966 h1:GG9H9PPR66DYRdXV1dJfSr3Zmxml/3QJ6oSVvoz99+o=
-github.com/FuturFusion/incus-redfish-proxy v0.0.0-20260825170101-8aca873b0966/go.mod h1:byWrAsNsDuYYLSnkCbcGANWWKaRB3axUbzklEinLUPs=
+github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261007040648-a772c26689cb h1:u992lh46spw2IdxJGY3u4D1xAtBunJtwDZoM2PDMrMw=
+github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261007040648-a772c26689cb/go.mod h1:ykhjHyqB1GeCedpm3rjiRcJilQ5g3VlFcsWMN0gOW7g=
 github.com/FuturFusion/migration-manager v0.6.15 h1:FFIG9VfddtZROn4zl1xUcdbkBKlb9YFlSBgjWEQQ28w=
 github.com/FuturFusion/migration-manager v0.6.15/go.mod h1:66zNiPVGWOHOL1WWoE4gmdHyr2lU9HL8Q+l8fT/3bQk=
 github.com/FuturFusion/openfga-sync v0.0.0-20260802043841-c17052a24795 h1:/jyG2XG6lE4b+bQjLJ/wPUDv0WFojrxIdgFI8VCnXH8=
