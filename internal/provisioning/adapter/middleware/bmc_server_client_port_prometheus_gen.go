@@ -221,6 +221,20 @@ func (_d BMCServerClientPortWithPrometheus) ResetSecureBootKeys(ctx context.Cont
 	return _d.base.ResetSecureBootKeys(ctx, server)
 }
 
+// SecureBootCertificatesApplied implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) SecureBootCertificatesApplied(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (b bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SecureBootCertificatesApplied", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SecureBootCertificatesApplied(ctx, server, secureBoot)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()

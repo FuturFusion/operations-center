@@ -156,6 +156,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ResetSecureBootKeys(ctx context.Co
 	return _d._base.ResetSecureBootKeys(ctx, server)
 }
 
+// SecureBootCertificatesApplied implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) SecureBootCertificatesApplied(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (b bool, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.SecureBootCertificatesApplied(ctx, server, secureBoot)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	defer func() {
