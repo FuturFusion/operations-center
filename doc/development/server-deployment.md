@@ -473,7 +473,9 @@ every state, its timeout, the trigger a wait falls back to and the successor.
 * **Trigger state**: on a retryable error within the retry budget, the counter
   is incremented, the state is kept and the next attempt is gated on an
   exponential backoff. The generated error wrapper middleware already marks BMC
-  transport errors as retryable. A non-retryable error or an exhausted budget
+  transport errors as retryable. The same holds for a write, that the BMC
+  turns down over a stale ETag (HTTP 412), since the next attempt reads the
+  resource anew. A non-retryable error or an exhausted budget
   fails the deployment.
 * **Wait state**: the condition being met advances the deployment and resets both
   counters of the wait. Within the timeout, the deployment simply stays. On a

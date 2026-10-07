@@ -2,6 +2,7 @@ package redfish
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -195,9 +196,27 @@ func restoreDefaultBootDevice(system *schemas.ComputerSystem, registry *messageR
 	return true, nil
 }
 
-// setBoot applies a boot configuration to the system resource.
+// setBoot applies a boot configuration to the system resource, once more with
+// the current ETag, if the BMC turned the first one down as stale.
 func setBoot(system *schemas.ComputerSystem, registry *messageRegistry, boot *schemas.Boot) error {
-	err := system.SetBoot(boot)
+	var reloadErr error
 
-	return redfishRequestError(err, registry, http.MethodPatch, system.ODataID, map[string]any{"Boot": boot})
+	err := system.SetBoot(boot)
+	if system.GetETag() != "" && isPreconditionFailed(err) {
+		var current *schemas.ComputerSystem
+
+		current, reloadErr = schemas.Reload(system, nil)
+		if reloadErr == nil {
+			system.SetETag(current.GetETag())
+
+			err = system.SetBoot(boot)
+		}
+	}
+
+	err = redfishRequestError(err, registry, http.MethodPatch, system.ODataID, map[string]any{"Boot": boot})
+	if reloadErr != nil {
+		return fmt.Errorf("%w, reading the current ETag: %w", err, wrapRedfishError(reloadErr))
+	}
+
+	return err
 }

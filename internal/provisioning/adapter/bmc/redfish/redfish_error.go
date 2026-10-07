@@ -41,8 +41,8 @@ func (e redfishError) Unwrap() []error {
 // answered by issuing the request again rather than by giving up on it: a BMC,
 // that turned the request down because the server is not settled yet, and the
 // errors worth retrying, which is everything domain.RetryableWrapper covers,
-// plus a BMC answering a request with a server side error or asking to slow
-// down.
+// plus a BMC answering a request with a server side error, asking to slow down
+// or turning a write down over a stale ETag.
 func ErrorWrapper() func(error) error {
 	wrapDomainError := domain.RetryableWrapper()
 
@@ -98,8 +98,15 @@ func isNotSettledRedfishError(err error) bool {
 	return redfishErrorHasMessageID(err, "UnableToModifyDuringSystemPOST", "ResourceInStandby")
 }
 
+// isRetryableStatus reports, whether issuing the request again can get it
+// done.
 func isRetryableStatus(statusCode int) bool {
-	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+	switch statusCode {
+	case http.StatusTooManyRequests, http.StatusPreconditionFailed:
+		return true
+	}
+
+	return statusCode >= http.StatusInternalServerError
 }
 
 type collectionError struct {
@@ -340,6 +347,14 @@ func isTaskMonitorGone(err error) bool {
 
 	return redfishErr.HTTPReturnedStatusCode == http.StatusNotFound ||
 		redfishErr.HTTPReturnedStatusCode == http.StatusGone
+}
+
+// isPreconditionFailed reports whether the BMC turned the request down because
+// the ETag it carried is stale.
+func isPreconditionFailed(err error) bool {
+	var redfishErr *schemas.Error
+
+	return errors.As(err, &redfishErr) && redfishErr.HTTPReturnedStatusCode == http.StatusPreconditionFailed
 }
 
 func isPreconditionRejected(err error) bool {

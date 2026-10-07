@@ -193,6 +193,15 @@ func TestErrorWrapper(t *testing.T) {
 			wantRetryable: true,
 		},
 		{
+			name:          "precondition failed",
+			err:           schemas.ConstructError(http.StatusPreconditionFailed, []byte(`{"error":{"code":"Base.1.12.PreconditionFailed","message":"The ETag supplied did not match the ETag required to change this resource."}}`)),
+			wantRetryable: true,
+		},
+		{
+			name: "precondition required",
+			err:  schemas.ConstructError(http.StatusPreconditionRequired, []byte(`{"error":{"code":"Base.1.12.PreconditionRequired","message":"A precondition is required."}}`)),
+		},
+		{
 			name: "client error",
 			err:  schemas.ConstructError(http.StatusBadRequest, []byte(`{"error":{"code":"Base.1.0.GeneralError","message":"boom"}}`)),
 		},
