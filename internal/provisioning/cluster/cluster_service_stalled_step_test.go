@@ -71,7 +71,7 @@ func TestClusterService_ClusterUpdateControlLoopRetriggersStalledRestore(t *test
 	env := setupControlLoopEnv(t, ctx, server)
 	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	stalled := false
@@ -112,7 +112,7 @@ func TestClusterService_ClusterUpdateControlLoopRetriggersStalledRestoreAcrossRe
 	env := setupControlLoopEnv(t, ctx, server)
 	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	restarted := false
@@ -156,7 +156,7 @@ func TestClusterService_ClusterUpdateControlLoopRetriesTransientEvacuationFailur
 	env := setupControlLoopEnv(t, ctx, server)
 	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	// The error, an instance migration to a member, whose daemon has not finished
@@ -210,7 +210,7 @@ func TestClusterService_ClusterUpdateControlLoopRebootsWithoutNeedsRebootReporte
 	env := setupControlLoopEnv(t, ctx, server)
 	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	success := driveRollingUpdate(t, ctx, clusterSvc, world, nil)
@@ -238,7 +238,7 @@ func TestClusterService_ClusterUpdateControlLoopRetriggersStalledApplicationUpda
 	env := setupControlLoopEnv(t, ctx, server)
 	clusterSvc, serverSvc := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	stalled := false

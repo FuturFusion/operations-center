@@ -204,7 +204,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	})
 
 	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	var observed []string
@@ -486,7 +486,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	})
 
 	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	var observed []string
@@ -1457,4 +1457,62 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			require.Empty(t, tc.serverSvcUpdateByNameErrs)
 		})
 	}
+}
+
+func TestClusterService_ClusterUpdateControlLoopApplicationsOnlyAcrossRestart(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*100)
+	defer cancel()
+
+	server := clusterMemberServer(t, "one")
+
+	// The OS is named after its update file, so it is reported as outdated as well.
+	versionDataOutdated := versionData("1", "1", false, "1", api.NotInMaintenance)
+	versionDataOutdated.OS.Name = "IncusOS"
+	versionDataApplicationUpdated := versionData("1", "1", false, "2", api.NotInMaintenance)
+	versionDataApplicationUpdated.OS.Name = "IncusOS"
+
+	world := newServerWorld(map[string]api.ServerVersionData{
+		"one": versionDataOutdated,
+	})
+
+	serverClient := rollingUpdateServerClient(world)
+	serverClient.UpdateApplicationFunc = func(ctx context.Context, server provisioning.Server, application string) error {
+		world.deferTransition(serverWorldTransition{
+			server:      server.Name,
+			versionData: versionDataApplicationUpdated,
+		})
+
+		return nil
+	}
+
+	env := setupControlLoopEnv(t, ctx, server)
+	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
+
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Applications: []string{"incus"}})
+	require.NoError(t, err)
+
+	restarted := false
+
+	success := driveRollingUpdate(t, ctx, clusterSvc, world, func(i int) bool {
+		if restarted || world.pendingCount() == 0 {
+			return false
+		}
+
+		// The scope of the run has to survive the restart, it is only kept in the database.
+		clusterSvc, _ = newControlLoopServices(t, env, t.Name()+"Restarted", serverClient, "2")
+		restarted = true
+
+		return false
+	})
+
+	require.True(t, restarted, "the application update was never triggered")
+	require.True(t, success, "the rolling update did not complete")
+
+	require.Empty(t, serverClient.UpdateOSCalls())
+	require.Len(t, serverClient.UpdateApplicationCalls(), 1)
+
+	cluster, err := clusterSvc.GetByName(ctx, "clusterA")
+	require.NoError(t, err)
+	require.Empty(t, cluster.UpdateStatus.InProgressStatus.Applications)
+	require.Contains(t, cluster.UpdateStatus.NeedsUpdate, "one")
 }

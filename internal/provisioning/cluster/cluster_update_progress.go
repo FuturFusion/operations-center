@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -80,15 +81,33 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstSt
 	return min(max(perServerSteps-idx, 0), perServerSteps)
 }
 
+// serverNeedsUpdateInScope reports, whether a component covered by the rolling update needs an update on the server.
+func serverNeedsUpdateInScope(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) bool {
+	if len(inProgressStatus.Applications) > 0 {
+		return slices.ContainsFunc(server.VersionData.Applications, func(application api.ApplicationVersionData) bool {
+			return slices.Contains(inProgressStatus.Applications, application.Name) && ptr.From(application.NeedsUpdate)
+		})
+	}
+
+	if inProgressStatus.OSOnly {
+		return ptr.From(server.VersionData.OS.NeedsUpdate)
+	}
+
+	return ptr.From(server.VersionData.NeedsUpdate)
+}
+
 // serverUpdateStateForRollingUpdate returns the update state of the server as the
 // rolling cluster update in the given phase sees it.
+//
+// During the update phase, only the components the run covers count as a
+// pending update.
 //
 // During the rolling restart and the rolling reboot phase, pending updates are
 // intentionally ignored. All servers of a cluster have been updated to the same
 // version before entering the rolling restart, so a newly published update must
 // not interrupt the ongoing restart cycle.
 //
-// During both phases, the need for a reboot is taken from what the run has
+// During the rolling restart and the rolling reboot phase, the need for a reboot is taken from what the run has
 // recorded about the server, rather than from VersionData.NeedsReboot alone.
 // IncusOS reports the staged version and the need for a reboot from two
 // different endpoints, which do not flip together. A server stops reporting a
@@ -96,6 +115,9 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstSt
 // it advance to the restore step afterwards.
 func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdateState {
 	switch inProgressStatus.InProgress {
+	case api.ClusterUpdateInProgressApplyUpdate, api.ClusterUpdateInProgressApplyUpdateWithReboot:
+		server.VersionData.NeedsUpdate = new(serverNeedsUpdateInScope(inProgressStatus, server))
+
 	case api.ClusterUpdateInProgressRollingRestart, api.ClusterUpdateInProgressRollingReboot:
 		server.VersionData.NeedsUpdate = new(false)
 

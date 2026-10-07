@@ -2,10 +2,12 @@ package cluster
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -186,15 +188,10 @@ var rollingUpdateStates = map[api.ServerUpdateState]rollingUpdateStateDefinition
 func (s *clusterService) rollingUpdateStepTrigger(cluster provisioning.Cluster, server provisioning.Server, step provisioning.ServerUpdateStep) func(context.Context) error {
 	switch step {
 	case provisioning.ServerUpdateStepUpdate:
-		// An update of the OS covers the applications as well, so the whole server
-		// is brought up to date with a single trigger.
+		updateRequest := rollingUpdateRequest(cluster.UpdateStatus.InProgressStatus, server)
+
 		return func(ctx context.Context) error {
-			return s.serverSvc.UpdateSystemByName(ctx, server.Name, api.ServerUpdatePost{
-				OS: api.ServerUpdateApplication{
-					Name:          "os",
-					TriggerUpdate: true,
-				},
-			}, true)
+			return s.serverSvc.UpdateSystemByName(ctx, server.Name, updateRequest, true)
 		}
 
 	case provisioning.ServerUpdateStepEvacuate:
@@ -216,6 +213,34 @@ func (s *clusterService) rollingUpdateStepTrigger(cluster provisioning.Cluster, 
 	}
 
 	return nil
+}
+
+// rollingUpdateRequest returns the update request for what the run covers, empty if the server needs none of it.
+func rollingUpdateRequest(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdatePost {
+	if len(inProgressStatus.Applications) == 0 {
+		// An OS update covers the applications as well, unless restricted with OSOnly.
+		return api.ServerUpdatePost{
+			OS: api.ServerUpdateApplication{
+				Name:          "os",
+				TriggerUpdate: true,
+			},
+			OSOnly: inProgressStatus.OSOnly,
+		}
+	}
+
+	updateRequest := api.ServerUpdatePost{}
+	for _, application := range server.VersionData.Applications {
+		if !slices.Contains(inProgressStatus.Applications, application.Name) || !ptr.From(application.NeedsUpdate) {
+			continue
+		}
+
+		updateRequest.Applications = append(updateRequest.Applications, api.ServerUpdateApplication{
+			Name:          application.Name,
+			TriggerUpdate: true,
+		})
+	}
+
+	return updateRequest
 }
 
 // rollingRestartPostRestoreDelay is the time waited between the restore of a
