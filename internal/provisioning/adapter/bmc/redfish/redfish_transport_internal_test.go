@@ -3,10 +3,12 @@ package redfish
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -127,6 +129,15 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 			wantWaitRange: [2]time.Duration{3 * time.Second, 4 * time.Second},
 		},
 		{
+			name:     "a delete, the BMC turns down transiently, is asked again",
+			method:   http.MethodDelete,
+			statuses: []int{http.StatusServiceUnavailable, http.StatusOK},
+
+			wantRequests: 2,
+			wantStatus:   http.StatusOK,
+			wantWaits:    []time.Duration{1 * time.Second},
+		},
+		{
 			name:     "a write is never replayed",
 			method:   http.MethodPost,
 			body:     `{"Image":"https://oc.example.com/one.iso"}`,
@@ -207,6 +218,145 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 			require.NotEmpty(t, content)
 		})
 	}
+}
+
+type roundTripperFunc func(req *http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+type timeoutError struct{}
+
+func (timeoutError) Error() string { return "net/http: timeout awaiting response headers" }
+
+func (timeoutError) Timeout() bool { return true }
+
+func (timeoutError) Temporary() bool { return true }
+
+func TestRetryTransport_RoundTripTransportErrors(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		body   string
+		err    error
+
+		wantRequests int
+		wantWaits    []time.Duration
+		assertErr    require.ErrorAssertionFunc
+	}{
+		{
+			name:   "a delete, the BMC did not answer in time, is asked again",
+			method: http.MethodDelete,
+			err:    timeoutError{},
+
+			wantRequests: 2,
+			wantWaits:    []time.Duration{1 * time.Second},
+			assertErr:    require.NoError,
+		},
+		{
+			name:   "a read, whose connection the BMC dropped, is asked again",
+			method: http.MethodGet,
+			err:    &net.OpError{Op: "read", Err: syscall.ECONNRESET},
+
+			wantRequests: 2,
+			wantWaits:    []time.Duration{1 * time.Second},
+			assertErr:    require.NoError,
+		},
+		{
+			name:   "a read, whose connection the BMC closed, is asked again",
+			method: http.MethodGet,
+			err:    io.EOF,
+
+			wantRequests: 2,
+			wantWaits:    []time.Duration{1 * time.Second},
+			assertErr:    require.NoError,
+		},
+		{
+			name:   "a BMC, that can not be reached in time, is not asked again",
+			method: http.MethodGet,
+			err:    &net.OpError{Op: "dial", Err: timeoutError{}},
+
+			wantRequests: 1,
+			assertErr:    require.Error,
+		},
+		{
+			name:   "a write, the BMC did not answer in time, is never replayed",
+			method: http.MethodPost,
+			body:   `{"CertificateString":"one"}`,
+			err:    timeoutError{},
+
+			wantRequests: 1,
+			assertErr:    require.Error,
+		},
+		{
+			name:   "a BMC, that can not be reached, is not asked again",
+			method: http.MethodGet,
+			err:    &net.OpError{Op: "dial", Err: syscall.ECONNREFUSED},
+
+			wantRequests: 1,
+			assertErr:    require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+
+			transport, waits := newTestRetryTransport(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				requests++
+				if requests == 1 {
+					return nil, tc.err
+				}
+
+				return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil
+			}))
+
+			var body io.Reader
+			if tc.body != "" {
+				body = strings.NewReader(tc.body)
+			}
+
+			req, err := http.NewRequestWithContext(t.Context(), tc.method, "https://bmc.example.com/redfish/v1", body)
+			require.NoError(t, err)
+
+			resp, err := transport.RoundTrip(req)
+			tc.assertErr(t, err)
+
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+
+			require.Equal(t, tc.wantRequests, requests)
+			require.Equal(t, tc.wantWaits, *waits)
+		})
+	}
+}
+
+func TestRetryTransport_RoundTripChargesUnansweredAttempts(t *testing.T) {
+	now := time.Date(2026, 9, 3, 21, 4, 30, 0, time.UTC)
+	requests := 0
+
+	transport, waits := newTestRetryTransport(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		requests++
+		now = now.Add(20 * time.Second)
+
+		return nil, timeoutError{}
+	}))
+	transport.now = func() time.Time { return now }
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://bmc.example.com/redfish/v1", nil)
+	require.NoError(t, err)
+
+	resp, err := transport.RoundTrip(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	require.ErrorIs(t, err, timeoutError{})
+
+	require.Equal(t, 2, requests, "the second attempt, that got no answer, does not fit in the budget anymore")
+	require.Equal(t, []time.Duration{1 * time.Second}, *waits)
 }
 
 func TestRetryTransport_RoundTripSharesItsBudget(t *testing.T) {

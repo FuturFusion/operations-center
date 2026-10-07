@@ -147,7 +147,7 @@ func TestSecureBootCertificatesByDatabase(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := secureBootCertificatesByDatabase(tc.incusOSCertificates)
+			got, err := secureBootCertificatesByDatabase(tc.incusOSCertificates, "Applying")
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, got)
