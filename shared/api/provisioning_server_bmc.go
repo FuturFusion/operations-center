@@ -324,6 +324,16 @@ func BMCBootProgressHandedOverToOS(state string) bool {
 	return index >= 0 && index >= lateIndex
 }
 
+// BMCBootProgressBeforeOS reports, if a boot progress state is one, that is
+// passed before the firmware hands over to the operating system. A state
+// carrying no ordering information is not one of them.
+func BMCBootProgressBeforeOS(state string) bool {
+	index := slices.Index(bmcBootProgressOrder, state)
+	lateIndex := slices.Index(bmcBootProgressOrder, bmcBootProgressLateState)
+
+	return index >= 0 && index < lateIndex
+}
+
 // BMCHasRebootedSince reports, if the server has rebooted since the given time,
 // by comparing a previous BMC data snapshot with the current one. Since neither
 // of the required properties is supported by every BMC, the outcome is
