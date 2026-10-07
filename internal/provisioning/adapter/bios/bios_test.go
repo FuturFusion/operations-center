@@ -111,6 +111,20 @@ func TestNewFromFS(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
+			name: "error - unknown field",
+			files: map[string]string{
+				"profiles/a.yaml": `
+- name: unknown-field
+  match:
+    - manufacturer: ACME
+  unknown_field:
+    SecureBoot: Enabled
+`,
+			},
+
+			assertErr: require.Error,
+		},
+		{
 			name: "error - malformed YAML",
 			files: map[string]string{
 				"profiles/a.yaml": `not: a: list`,

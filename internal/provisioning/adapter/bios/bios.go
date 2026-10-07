@@ -3,9 +3,12 @@
 package bios
 
 import (
+	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"slices"
 
@@ -50,8 +53,12 @@ func NewFromFS(fsys fs.FS, dir string) (Catalog, error) {
 
 		fileProfiles := provisioning.BIOSProfiles{}
 
-		err = yaml.Unmarshal(body, &fileProfiles)
-		if err != nil {
+		// A misspelled field would otherwise silently not be applied.
+		decoder := yaml.NewDecoder(bytes.NewReader(body))
+		decoder.KnownFields(true)
+
+		err = decoder.Decode(&fileProfiles)
+		if err != nil && !errors.Is(err, io.EOF) {
 			return Catalog{}, fmt.Errorf("Failed to parse BIOS profiles from %q: %w", entry, err)
 		}
 
