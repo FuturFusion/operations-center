@@ -1425,6 +1425,16 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdateInProgressStatus:
         properties:
+            applications:
+                description: |-
+                    Applications holds the names of the applications the ongoing update is
+                    restricted to. If empty, the update is not restricted to applications.
+                example:
+                    - incus
+                items:
+                    type: string
+                type: array
+                x-go-name: Applications
             error:
                 description: Error contains the error description, if the cluster update failed permanently.
                 type: string
@@ -1439,6 +1449,12 @@ definitions:
                 format: date-time
                 type: string
                 x-go-name: LastUpdated
+            os_only:
+                description: |-
+                    OSOnly is true, if the ongoing update is restricted to the operating
+                    system and leaves the installed applications on the version they are on.
+                type: boolean
+                x-go-name: OSOnly
             pending_reboot:
                 description: |-
                     PendingReboot contains the list of server names of the servers, which still
@@ -1460,9 +1476,29 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdatePost:
         properties:
+            applications:
+                description: |-
+                    Applications restricts the update to the given applications and leaves the
+                    operating system untouched. Each application has to be installed on at
+                    least one server, servers without it are skipped. If empty, the update is
+                    not restricted to applications. It can neither be combined with reboot nor
+                    with os_only.
+                example:
+                    - incus
+                items:
+                    type: string
+                type: array
+                x-go-name: Applications
+            os_only:
+                description: |-
+                    OSOnly restricts the update to the operating system and leaves the
+                    installed applications on the version they are on. It can not be combined
+                    with applications.
+                type: boolean
+                x-go-name: OSOnly
             reboot:
                 description: |-
-                    Reboot indicates ifif after the update a rolling reboot of the servers
+                    Reboot indicates if after the update a rolling reboot of the servers
                     should be triggered or not. If reboot is set to true, the servers are
                     rebooted, otherwise only the updates are applied without reboot (OS updates
                     will require a reboot at a later stage).
@@ -11430,6 +11466,7 @@ paths:
                 - application/json
             description: |-
                 Perform a cluster wide update of OS and applications on all servers of the cluster.
+                The update can be restricted to the OS or to individual applications.
                 A cluster can only run a single cluster wide operation at a time, so the request
                 fails, if an update or a reboot is already ongoing.
             operationId: cluster_update_post
