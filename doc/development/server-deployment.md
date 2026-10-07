@@ -396,7 +396,10 @@ comes within the POST cycles of the very boot, that is supposed to start the
 installer, so what separates the two is `BootProgress`: only a boot, that got as
 far as `OSBootStarted`, ran the installer. Where the reboot does not end the
 wait, it re-anchors the snapshot instead, so it is not carried into the next
-comparison. `ServerDeploymentInstallRebootFallbackDelay` stands in for the boot
+comparison. The same holds for a reboot of a boot, that the BMC last reported
+short of the hand over to the operating system, however late it comes: firmware,
+that is still busy with what has been staged for it, can take longer than any
+delay. `ServerDeploymentInstallRebootFallbackDelay` stands in for the boot
 progress where the BMC does not report it, and is the only case, in which time
 decides.
 
