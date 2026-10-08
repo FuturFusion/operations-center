@@ -510,13 +510,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
-		}
-	}()
+	ctx := r.Context()
 
 	currentServer, err := s.service.GetByName(ctx, name)
 	if err != nil {
@@ -547,11 +541,6 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	err = s.service.Update(ctx, *currentServer, false, updateServer, true)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
 	return response.EmptySyncResponse

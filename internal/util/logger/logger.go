@@ -179,6 +179,7 @@ func installHandler(debug bool) error {
 	slog.SetDefault(slog.New(
 		newContextHandler(stacktrace.New(slogHandler, &stacktrace.Options{
 			Mode:                                    stacktrace.ModeAddAttr,
+			KeyForStackTraceEnabled:                 addStacktraceKey,
 			MinimalLevelForStackTraceEnabledEnabled: new(slog.Level(100)), // Disable automatic addition of stack traces
 		})),
 	))
@@ -373,6 +374,9 @@ func Err(err error) slog.Attr {
 	return slog.Any("err", err)
 }
 
+// The stacktrace handler adds a stack trace to records with this attribute key.
+const addStacktraceKey = "add_stacktrace"
+
 func AddStacktrace() slog.Attr {
-	return slog.Bool("add_stacktrace", true)
+	return slog.Bool(addStacktraceKey, true)
 }

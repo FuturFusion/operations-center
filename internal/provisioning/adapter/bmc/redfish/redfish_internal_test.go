@@ -2,6 +2,7 @@ package redfish
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -10,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -148,6 +152,65 @@ func Test_parseTimestamp(t *testing.T) {
 			} else {
 				require.Empty(t, buf.String())
 			}
+		})
+	}
+}
+
+func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
+	tests := []struct {
+		name string
+
+		run func(ctx context.Context, getClient func(ctx context.Context)) error
+
+		assertLog log.MatcherFunc
+	}{
+		{
+			name: "inside of a transaction",
+			run: func(ctx context.Context, getClient func(ctx context.Context)) error {
+				return transaction.Do(ctx, func(ctx context.Context) error {
+					getClient(ctx)
+
+					return nil
+				})
+			},
+
+			assertLog: log.Contains("Redfish API call inside of a transaction"),
+		},
+		{
+			name: "outside of a transaction",
+			run: func(ctx context.Context, getClient func(ctx context.Context)) error {
+				getClient(ctx)
+
+				return nil
+			},
+
+			assertLog: log.NotContains("Redfish API call inside of a transaction"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false, false)
+			require.NoError(t, err, "logger initialization must not fail")
+
+			server := provisioning.Server{
+				Name: "name",
+				BMCConfig: api.BMCConfig{
+					Endpoint: "://invalid",
+				},
+			}
+
+			// Run test
+			err = tc.run(t.Context(), func(ctx context.Context) {
+				_, _, err := New().getClient(ctx, server)
+				require.Error(t, err, "the invalid endpoint makes getClient return before it sends a request")
+			})
+
+			// Assert
+			require.NoError(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

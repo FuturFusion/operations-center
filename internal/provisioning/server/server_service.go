@@ -68,6 +68,9 @@ type serverService struct {
 	meshTunnelMu       sync.Mutex
 	meshTunnelInFlight map[string]struct{}
 
+	registrationMu       sync.Mutex
+	registrationInFlight map[string]struct{}
+
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
 
@@ -663,6 +666,18 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 				WithHintf("Change the update channel of cluster %q instead.", *previousServer.Cluster).
 				WithDetail("server", server.Name).
 				WithDetail("cluster", *previousServer.Cluster)
+		}
+
+		if bmcConnectionTest {
+			// The caller is the API. A poll may have updated the server since the
+			// caller read it. Only apply the fields, that the API allows to change.
+			currentServer := *previousServer
+			currentServer.PublicConnectionURL = server.PublicConnectionURL
+			currentServer.Description = server.Description
+			currentServer.Properties = server.Properties
+			currentServer.BMCConfig = server.BMCConfig
+			currentServer.Channel = server.Channel
+			server = currentServer
 		}
 
 		err = s.repo.Update(ctx, server)
@@ -2310,6 +2325,47 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		serverType, _ = s.client.GetServerType(ctx, server)
 	}
 
+	// The scriptlet calls the server API, so it runs before the transaction.
+	runServerRegistrationScriptlet := server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering
+
+	if runServerRegistrationScriptlet {
+		// Concurrent polls of the same server must not run the scriptlet twice.
+		if !s.beginServerRegistration(server.Name) {
+			return domain.NewRetryableErr(fmt.Errorf("Registration of server %q is in progress", server.Name))
+		}
+
+		defer s.endServerRegistration(server.Name)
+
+		// The passed server may be outdated. Another poll may have completed the registration.
+		currentServer, err := s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q before server registration scriptlet: %w", server.Name, err)
+		}
+
+		runServerRegistrationScriptlet = currentServer.Status == api.ServerStatusPending && currentServer.StatusDetail == api.ServerStatusDetailPendingRegistering
+	}
+
+	var scriptletInput provisioning.Server
+	var scriptedServer provisioning.Server
+	if runServerRegistrationScriptlet {
+		scriptletInput = server
+		scriptletInput.Status = api.ServerStatusReady
+		scriptletInput.StatusDetail = api.ServerStatusDetailNone
+
+		if updateServerConfiguration {
+			scriptletInput.HardwareData = hardwareData
+			scriptletInput.OSData = osData
+			scriptletInput.VersionData = versionData
+			scriptletInput.Type = serverType
+
+			if serverConnectionURL != "" {
+				scriptletInput.ConnectionURL = serverConnectionURL
+			}
+		}
+
+		scriptedServer = s.runServerRegistrationScriptlet(ctx, scriptletInput)
+	}
+
 	var updatedServer provisioning.Server
 
 	// Perform the update of the server in a transaction in order to respect
@@ -2321,8 +2377,9 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			return err
 		}
 
-		// Evaluate, if server registration scriptlet should be run before updating the state
-		runServerRegistrationScriptlet := server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering
+		// Another poll may have completed the registration while the scriptlet was running.
+		applyServerRegistrationScriptlet := runServerRegistrationScriptlet &&
+			server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering
 
 		server.LastSeen = s.now()
 
@@ -2433,26 +2490,36 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			}
 		}
 
-		if runServerRegistrationScriptlet {
-			scope := api.WarningScope{
-				Scope:      "poll_server",
-				EntityType: "server",
-				Entity:     server.Name,
+		if applyServerRegistrationScriptlet {
+			// Only apply the fields changed by the scriptlet. This keeps updates,
+			// that happened while the scriptlet was running.
+			if scriptedServer.Name != scriptletInput.Name {
+				err = s.repo.Rename(ctx, server.Name, scriptedServer.Name)
+				if err != nil {
+					return fmt.Errorf("Failed to rename server %q to %q: %w", server.Name, scriptedServer.Name, err)
+				}
+
+				server.Name = scriptedServer.Name
 			}
 
-			err = s.scriptlet.ServerRegistrationRun(ctx, server)
-			if err != nil {
-				s.warning.Emit(
-					ctx,
-					warning.NewWarningFromError(
-						api.WarningTypeServerRegistrationScriptletFailed,
-						scope,
-						err,
-						"Failed to run server registration scriptlet",
-					),
-				)
-			} else {
-				s.warning.RemoveStale(ctx, scope, nil)
+			if scriptedServer.Description != scriptletInput.Description {
+				server.Description = scriptedServer.Description
+			}
+
+			if !maps.Equal(scriptedServer.Properties, scriptletInput.Properties) {
+				server.Properties = scriptedServer.Properties
+			}
+
+			if scriptedServer.ConnectionURL != scriptletInput.ConnectionURL {
+				server.ConnectionURL = scriptedServer.ConnectionURL
+			}
+
+			if scriptedServer.PublicConnectionURL != scriptletInput.PublicConnectionURL {
+				server.PublicConnectionURL = scriptedServer.PublicConnectionURL
+			}
+
+			if scriptedServer.Channel != scriptletInput.Channel {
+				server.Channel = scriptedServer.Channel
 			}
 		}
 
@@ -2465,7 +2532,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	}
 
 	if signalLifecycle {
-		server.SignalLifecycleEvent()
+		updatedServer.SignalLifecycleEvent()
 	}
 
 	if updateServerConfiguration && updatedServer.Cluster != nil {
@@ -2564,6 +2631,61 @@ func (s *serverService) endMeshTunnelReconcile(server provisioning.Server) {
 	defer s.meshTunnelMu.Unlock()
 
 	delete(s.meshTunnelInFlight, *server.Cluster)
+}
+
+func (s *serverService) beginServerRegistration(name string) bool {
+	s.registrationMu.Lock()
+	defer s.registrationMu.Unlock()
+
+	_, ok := s.registrationInFlight[name]
+	if ok {
+		return false
+	}
+
+	if s.registrationInFlight == nil {
+		s.registrationInFlight = map[string]struct{}{}
+	}
+
+	s.registrationInFlight[name] = struct{}{}
+
+	return true
+}
+
+func (s *serverService) endServerRegistration(name string) {
+	s.registrationMu.Lock()
+	defer s.registrationMu.Unlock()
+
+	delete(s.registrationInFlight, name)
+}
+
+func (s *serverService) runServerRegistrationScriptlet(ctx context.Context, server provisioning.Server) provisioning.Server {
+	scope := api.WarningScope{
+		Scope:      "poll_server",
+		EntityType: "server",
+		Entity:     server.Name,
+	}
+
+	scriptedServer := server
+	scriptedServer.Properties = maps.Clone(server.Properties)
+
+	err := s.scriptlet.ServerRegistrationRun(ctx, &scriptedServer)
+	if err != nil {
+		s.warning.Emit(
+			ctx,
+			warning.NewWarningFromError(
+				api.WarningTypeServerRegistrationScriptletFailed,
+				scope,
+				err,
+				"Failed to run server registration scriptlet",
+			),
+		)
+
+		return server
+	}
+
+	s.warning.RemoveStale(ctx, scope, nil)
+
+	return scriptedServer
 }
 
 func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server provisioning.Server, log *slog.Logger) error {

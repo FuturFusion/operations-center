@@ -47,3 +47,42 @@ func TestSetLevelsRebuildsHandlerOnlyOnRenderingChange(t *testing.T) {
 	require.NoError(t, SetComponentLevels(map[string]slog.Level{"api": slog.LevelDebug}), "setting the component levels must not fail")
 	require.NotSame(t, handler, slog.Default().Handler(), "an override enabling debug adds source information, which is a property of the handler")
 }
+
+func TestAddStacktrace(t *testing.T) {
+	tests := []struct {
+		name string
+
+		attrs []any
+
+		assertStacktrace require.ComparisonAssertionFunc
+	}{
+		{
+			name:  "with stack trace attribute",
+			attrs: []any{AddStacktrace()},
+
+			assertStacktrace: require.Contains,
+		},
+		{
+			name:  "without stack trace attribute",
+			attrs: []any{},
+
+			assertStacktrace: require.NotContains,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+
+			require.NoError(t, InitLogger(logBuf, "", false, false, true), "logger initialization must not fail")
+
+			// Run test
+			slog.WarnContext(t.Context(), "message", tc.attrs...)
+
+			// Assert
+			tc.assertStacktrace(t, logBuf.String(), "stacktrace=", "only the stack trace attribute adds a stack trace")
+			tc.assertStacktrace(t, logBuf.String(), "TestAddStacktrace", "the stack trace names the calling function")
+		})
+	}
+}
