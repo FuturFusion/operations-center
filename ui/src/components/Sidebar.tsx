@@ -27,6 +27,7 @@ import logo from "../assets/logo.png";
 import { isIncusOS } from "api/os";
 import { fetchSettings } from "api/server";
 import { MenuItem, NavItemLink } from "components/NavItemLink";
+import NotificationHistory from "components/NotificationHistory";
 import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
@@ -394,6 +395,7 @@ const Sidebar = () => {
                   <MdOutlineDesktopWindows /> OS
                 </NavItemLink>
               )}
+              <NotificationHistory />
               <NavItemLink
                 item={menuItems["settings"]}
                 isActive={isItemActive("settings")}
