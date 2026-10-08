@@ -86,6 +86,39 @@ seeds:
         - slaac
 `)
 
+	deployIncusOSSeedFileYAMLTemplate = []byte(`---
+applications:
+  version: "1"
+  applications:
+    - name: incus
+    - name: debug
+install:
+  version: "1"
+  force_install: false
+  force_reboot: true
+network:
+  version: "1"
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
+`)
+
+	redfishProxyBIOSProfileYAMLTemplate = []byte(`---
+name: incus-redfish-proxy
+description: Incus instance exposed by incus-redfish-proxy
+match:
+  - manufacturer: "linuxcontainers\\.org"
+    model: "Incus"
+priority: 1000
+attributes:
+  incus.config.user.e2e.bios-profile: "applied"
+`)
+
 	// createCluster templates.
 
 	incusOSClusterServicesConfig = []byte(`---

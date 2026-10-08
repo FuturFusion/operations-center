@@ -193,7 +193,7 @@ require (
 )
 
 require (
-	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20260825170101-8aca873b0966
+	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261007040648-a772c26689cb
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/brianvoe/gofakeit/v7 v7.15.0

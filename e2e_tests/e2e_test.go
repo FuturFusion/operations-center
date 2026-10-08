@@ -181,6 +181,15 @@ func TestE2E_WithToken_ServerBMCPowerOffAndOn(t *testing.T) {
 	)
 }
 
+func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
+	runE2ETest(
+		t,
+		"token seed - pre-register a server and deploy it via BMC",
+		setupEmptyInstance("IncusOS01"),
+		serverDeployment("IncusOS01"),
+	)
+}
+
 func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
