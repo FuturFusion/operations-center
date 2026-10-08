@@ -1,12 +1,15 @@
 package client_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -268,8 +271,27 @@ func Test_GetSystemUpdatesConfig(t *testing.T) {
 func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 	d := daemonSetup(t)
 
+	// A change of the updates source configuration triggers a connection test.
+	// Serve the index locally. The test must not depend on the upstream server.
+	caCert, cert, key := signaturetest.GenerateCertChain(t)
+	signedIndex := signaturetest.SignContent(t, cert, key, []byte(`{"format":"1.0","updates":[]}`))
+
+	updatesSource := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/index.sjson" {
+			http.NotFound(w, r)
+			return
+		}
+
+		_, _ = w.Write(signedIndex)
+	}))
+	t.Cleanup(updatesSource.Close)
+
 	currentConfig, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
 	require.NoError(t, err)
+
+	baseConfig := currentConfig.UpdatesPut
+	baseConfig.Source = updatesSource.URL
+	baseConfig.SignatureVerificationRootCA = string(caCert)
 
 	tests := []struct {
 		name   string
@@ -285,7 +307,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 			client: d.socketClient,
 
 			updatesConfig: func() system.UpdatesPut {
-				cfg := currentConfig.UpdatesPut
+				cfg := baseConfig
 				cfg.FilterExpression = `"stable" in upstream_channels`
 				cfg.ImageServerAuthenticationByQueryParam = true
 
@@ -298,6 +320,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 
 				updatesConfig, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
 				require.NoError(t, err)
+				require.Equal(t, updatesSource.URL, updatesConfig.Source)
 				require.Equal(t, `"stable" in upstream_channels`, updatesConfig.FilterExpression)
 				require.True(t, updatesConfig.ImageServerAuthenticationByQueryParam)
 			},
@@ -306,7 +329,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			updatesConfig: currentConfig.UpdatesPut,
+			updatesConfig: baseConfig,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -318,7 +341,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 			client: d.socketClient,
 
 			updatesConfig: func() system.UpdatesPut {
-				cfg := currentConfig.UpdatesPut
+				cfg := baseConfig
 				cfg.UpdatesDefaultChannel = "unknown"
 
 				return cfg
@@ -334,7 +357,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 			client: d.socketClient,
 
 			updatesConfig: func() system.UpdatesPut {
-				cfg := currentConfig.UpdatesPut
+				cfg := baseConfig
 				cfg.FilterExpression = "this is not a valid expression"
 
 				return cfg
