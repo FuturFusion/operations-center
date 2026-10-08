@@ -1438,6 +1438,24 @@ func TestServerService_Update(t *testing.T) {
 	require.NoError(t, err)
 	certificate := string(certificatePEM)
 
+	validServer := func(mutators ...func(s *provisioning.Server)) provisioning.Server {
+		server := provisioning.Server{
+			Name:          "one",
+			Type:          api.ServerTypeIncus,
+			Cluster:       new("one"),
+			ConnectionURL: "http://one/",
+			Certificate:   new(testCertificate),
+			Status:        api.ServerStatusReady,
+			Channel:       "stable",
+		}
+
+		for _, mutate := range mutators {
+			mutate(&server)
+		}
+
+		return server
+	}
+
 	tests := []struct {
 		name                 string
 		argForce             bool
@@ -1457,16 +1475,8 @@ func TestServerService_Update(t *testing.T) {
 		assertUpdatedServer func(t *testing.T, server provisioning.Server)
 	}{
 		{
-			name: "success",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			name:   "success",
+			server: validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1494,20 +1504,13 @@ func TestServerService_Update(t *testing.T) {
 		},
 		{
 			name: "success - BMC connection test - auto pin certificate - certificate returned",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					AutoPinCertificate: true,
-				},
-			},
+				}
+			}),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1544,21 +1547,14 @@ func TestServerService_Update(t *testing.T) {
 		},
 		{
 			name: "success - BMC connection test - not auto pin certificate - certificate not persisted",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					Certificate:        certificate,
 					AutoPinCertificate: false,
-				},
-			},
+				}
+			}),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1595,22 +1591,16 @@ func TestServerService_Update(t *testing.T) {
 		},
 		{
 			name: "success - BMC connection test - changes made during the connection test are kept",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusPending,
-				Description:   "set by operator",
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.Status = api.ServerStatusPending
+				s.Description = "set by operator"
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					Certificate:        certificate,
 					AutoPinCertificate: false,
-				},
-			},
+				}
+			}),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1651,21 +1641,14 @@ func TestServerService_Update(t *testing.T) {
 		},
 		{
 			name: "success - BMC connection test - auto pin certificate with provided certificate",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					Certificate:        certificate,
 					AutoPinCertificate: true,
-				},
-			},
+				}
+			}),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1703,20 +1686,13 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - BMC connection test - unknown BMC client type",
 			argForce: false,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					AutoPinCertificate: true,
-				},
-			},
+				}
+			}),
 			argBMCConnectionTest: true,
 			registerBMCClient:    false, // client for redfish-v1-generic is not registered
 
@@ -1727,20 +1703,13 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - BMC connection test - ConnectionTest failure",
 			argForce: false,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					AutoPinCertificate: true,
-				},
-			},
+				}
+			}),
 			argBMCConnectionTest: true,
 			registerBMCClient:    true,
 			bmcConnectionTestErr: boom.Error,
@@ -1754,20 +1723,13 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "success - BMC connection test not requested - unreachable BMC does not fail the server state update",
 			argForce: false,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-				BMCConfig: api.BMCConfig{
+			server: validServer(func(s *provisioning.Server) {
+				s.BMCConfig = api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
 					AutoPinCertificate: true,
-				},
-			},
+				}
+			}),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1806,15 +1768,9 @@ func TestServerService_Update(t *testing.T) {
 		},
 		{
 			name: "error - validation",
-			server: provisioning.Server{
-				Name:          "", // invalid
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			server: validServer(func(s *provisioning.Server) {
+				s.Name = "" // invalid
+			}),
 
 			assertErr:           errassert.ValidationError,
 			assertLog:           log.Empty,
@@ -1823,15 +1779,7 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - repo.GetByName - without force",
 			argForce: false,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			server:   validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Err: boom.Error,
@@ -1845,15 +1793,7 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - channel update for clustered server",
 			argForce: false,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			server:   validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1869,16 +1809,8 @@ func TestServerService_Update(t *testing.T) {
 			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
-			name: "error - repo.UpdateByID",
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			name:   "error - repo.UpdateByID",
+			server: validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1898,15 +1830,7 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - repo.GetByName - force", // UpdateSystemUpdate
 			argForce: true,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			server:   validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
@@ -1926,15 +1850,7 @@ func TestServerService_Update(t *testing.T) {
 		{
 			name:     "error - repo.GetByName - force - revert error", // UpdateSystemUpdate
 			argForce: true,
-			server: provisioning.Server{
-				Name:          "one",
-				Type:          api.ServerTypeIncus,
-				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
-				Certificate:   new(testCertificate),
-				Status:        api.ServerStatusReady,
-				Channel:       "stable",
-			},
+			server:   validServer(),
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
