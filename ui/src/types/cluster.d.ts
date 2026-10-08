@@ -1,6 +1,8 @@
 export interface ClusterUpdateStatusProgress {
   in_progress: string;
-  status_description: string;
+  error: string;
+  status_description?: string;
+  last_updated: string;
   pending_reboot?: string[];
 }
 

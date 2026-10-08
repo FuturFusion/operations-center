@@ -2,11 +2,13 @@ import { Badge } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { fetchCluster } from "api/cluster";
+import ClusterStatus from "components/ClusterStatus";
 import { formatDate } from "util/date";
 import { RestoreModeValues } from "util/cluster";
 
 const ClusterOverview = () => {
   const { name } = useParams();
+  const refetchInterval = 10000; // 10 seconds
 
   const {
     data: cluster = null,
@@ -15,6 +17,7 @@ const ClusterOverview = () => {
   } = useQuery({
     queryKey: ["clusters", name],
     queryFn: () => fetchCluster(name || ""),
+    refetchInterval: refetchInterval,
   });
 
   if (isLoading) {
@@ -89,6 +92,12 @@ const ClusterOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Fingerprint</div>
         <div className="col-10 detail-table-cell">{cluster?.fingerprint}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Status</div>
+        <div className="col-10 detail-table-cell">
+          {cluster && <ClusterStatus cluster={cluster} />}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Last updated</div>

@@ -1,24 +1,37 @@
 import { FC } from "react";
 import type { Cluster } from "types/cluster";
+import { MdErrorOutline } from "react-icons/md";
 import { MdSystemUpdateAlt } from "react-icons/md";
 import { MdExitToApp } from "react-icons/md";
 import { MdOutlineReplay } from "react-icons/md";
+import { ClusterUpdateInProgress } from "util/cluster";
 
 interface Props {
   cluster: Cluster;
 }
 
 const ClusterStatus: FC<Props> = ({ cluster }) => {
+  const inProgressStatus = cluster.update_status?.in_progress_status;
+  const inProgress = inProgressStatus?.in_progress ?? "";
+  const isError = inProgress == ClusterUpdateInProgress.Error;
+
   return (
     <div>
       {cluster.status}
-      {cluster.update_status?.in_progress_status?.in_progress != "" && (
-        <>
+      {inProgress != "" && (
+        <span className={isError ? "text-danger" : undefined}>
           {" ("}
-          {cluster.update_status?.in_progress_status?.in_progress}
+          {inProgress}
           {")"}
-        </>
+        </span>
       )}{" "}
+      {isError && (
+        <MdErrorOutline
+          className="text-danger"
+          size={25}
+          title="The cluster update failed"
+        />
+      )}
       {cluster.update_status?.in_maintenance?.length > 0 && (
         <MdExitToApp
           color="orange"
@@ -40,11 +53,14 @@ const ClusterStatus: FC<Props> = ({ cluster }) => {
           title="One or more servers require a reboot"
         />
       )}
-      {cluster.update_status?.in_progress_status?.status_description != "" && (
+      {inProgressStatus?.status_description && (
         <>
           <br />
-          <span style={{ color: "var(--bs-secondary-color)" }}>
-            {cluster.update_status.in_progress_status.status_description}
+          <span
+            className={isError ? "text-danger" : undefined}
+            style={isError ? undefined : { color: "var(--bs-secondary-color)" }}
+          >
+            {inProgressStatus.status_description}
           </span>
         </>
       )}
