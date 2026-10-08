@@ -259,71 +259,13 @@ e2e-test-list:
 	@echo "Run a single test case by running 'make e2e-test GO_TEST_RUN=\"^TestMyTest$$\"'"
 
 .PHONY: clean-e2e-test
-clean-e2e-test: clean-e2e-test-soft
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	rm -rf $$HOME/.config/operations-center/
-	incus remove --force OperationsCenter || true
-	incus storage volume delete default IncusOS_OperationsCenter.iso || true
-	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'); do \
-		incus storage volume delete default $$i || true; \
-	done
+clean-e2e-test:
+	@OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) scripts/e2e/clean.sh full
 
 # Keeps Operations Center but cleans up all the test artifacts, useful if test have been executed with OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP.
 .PHONY: clean-e2e-test-soft
 clean-e2e-test-soft:
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/image-downloads
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/oidc-cli-config
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/openfga-cli-config
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/images
-	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/coverage_*
-	# One preseeded ISO is created per provisioning token, so these accumulate
-	# over the runs. The ISO of Operations Center is kept, it is expensive to
-	# recreate and its name does not match this pattern.
-	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/IncusOS-preseeded-*.iso
-	incus remote remove incus-os-cluster || true
-	incus remote remove incus-os-cluster-after-factory-reset || true
-	incus remove --force IncusOS01 || true
-	incus remove --force IncusOS02 || true
-	incus remove --force IncusOS03 || true
-	incus remove --force IncusOS04 || true
-	# Remove the preseeded ISO storage volumes, which accumulate over the runs.
-	# This has to happen after the instances using them are gone.
-	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'); do \
-		incus storage volume delete default $$i || true; \
-	done
-	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster --force || true
-	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster-after-factory-reset --force || true
-	bin/operations-center.linux.amd64 provisioning server deploy-cancel IncusOS01 --skip-cleanup || true
-	bin/operations-center.linux.amd64 provisioning server deploy-status IncusOS01 --wait || true
-	for i in $$(bin/operations-center.linux.amd64 provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'); do \
-		bin/operations-center.linux.amd64 provisioning server remove $$i || true; \
-	done
-	for i in $$(bin/operations-center.linux.amd64 provisioning update list -f json | jq -r '.[] | .uuid'); do \
-		bin/operations-center.linux.amd64 provisioning update assign-channels $$i --channel stable || true; \
-	done
-	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[].uuid'); do \
-		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster || true; \
-		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster-factory-reset || true; \
-		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-deploy || true; \
-	done
-	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access" or .description == "e2e OpenFGA authorization") | .uuid'); do \
-		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
-	done
-	for i in $$(bin/operations-center.linux.amd64 image incus source list -f json | jq -r '.[].name'); do \
-		bin/operations-center.linux.amd64 image incus source remove $$i || true; \
-	done
-	for i in $$(bin/operations-center.linux.amd64 image incus list -f json | jq -r '.[].name'); do \
-		bin/operations-center.linux.amd64 image incus remove $$i || true; \
-	done
-	# Reset the OIDC part and the OpenFGA part of the security config in a single update.
-	# Both services of the tests are gone. Operations Center rejects an update of one part
-	# if the other part points at a missing service.
-	f=$$(mktemp) ; \
-	{ bin/operations-center.linux.amd64 system security show -f json \
-		| jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" }' > $$f \
-		&& jq -e '.trusted_tls_client_cert_fingerprints | length > 0' $$f > /dev/null \
-		&& bin/operations-center.linux.amd64 system security edit < $$f ; } || true ; \
-	rm -f $$f
+	@OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) scripts/e2e/clean.sh soft
 
 # Removes the accumulated log files of previous test runs.
 .PHONY: clean-e2e-test-logs
