@@ -143,7 +143,10 @@ export interface BIOSProfile {
     dbx?: BIOSProfileSecureBootDatabase;
     kek?: BIOSProfileSecureBootDatabase;
   };
+  deployment?: ServerDeploymentSettings;
 }
+
+export type ServerDeploymentSettings = Record<string, string | number>;
 
 export interface ServerDeploymentStep {
   state: string;
@@ -159,6 +162,7 @@ export interface ServerDeploymentStatus {
   bios_profiles: string[];
   bios_attributes: Record<string, unknown>;
   bios_deferred_attributes: Record<string, unknown>;
+  deployment_settings?: ServerDeploymentSettings;
   media_url: string;
   secure_boot_media_url: string;
   media_bytes_read: number;

@@ -315,6 +315,41 @@ func TestServerService_DeployByName(t *testing.T) {
 			assertErr:  require.NoError,
 		},
 		{
+			name:                    "success - the deployment settings of the BIOS profiles are kept",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve: &provisioning.BIOSProfileResolution{
+				Profiles:   []string{"generic"},
+				Deployment: api.ServerDeploymentSettings{PostSettleDelay: new(api.Duration(3 * time.Minute))},
+			},
+
+			wantDeployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateRefreshBMCData,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID:      tokenUUID,
+					Seed:           "default",
+					ImageType:      api.ImageTypeISO,
+					Architecture:   images.UpdateFileArchitecture64BitX86,
+					VirtualMediaID: "system:1",
+				},
+				ForceReboot:    true,
+				BIOSProfiles:   []string{"generic"},
+				Settings:       api.ServerDeploymentSettings{PostSettleDelay: new(api.Duration(3 * time.Minute))},
+				MediaBytesRead: -1,
+				StartedAt:      deploymentTestDate,
+				StateEnteredAt: deploymentTestDate,
+				History:        []api.ServerDeploymentStep{},
+			},
+			wantStatus: api.ServerStatusDeploying,
+			assertErr:  require.NoError,
+		},
+		{
 			name:                    "success - the BIOS profile resolves to nothing to apply",
 			nameArg:                 "one",
 			requestArg:              validRequest,
@@ -909,8 +944,88 @@ func TestServerService_DeployByName(t *testing.T) {
 				UsesRemaining: 1,
 				ExpireAt:      deploymentTestDate.Add(config.ServerDeploymentTimeout - time.Minute),
 			},
+			tokenSvcGetSeed:     validSeed,
+			withBIOSProfilePort: true,
+			biosProfileResolve:  validResolution,
 
 			assertErr: errassert.OperationNotPermittedErrorContains("does not cover the deployment timeout"),
+		},
+		{
+			name:                    "error - token expires before the deployment timeout of the BIOS profiles",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve: &provisioning.BIOSProfileResolution{
+				Profiles:   []string{"generic"},
+				Deployment: api.ServerDeploymentSettings{DeploymentTimeout: new(api.Duration(25 * time.Hour))},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("does not cover the deployment timeout of 25h"),
+		},
+		{
+			name:                    "error - deployment settings of the BIOS profiles do not fit",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve: &provisioning.BIOSProfileResolution{
+				Profiles:   []string{"generic"},
+				Deployment: api.ServerDeploymentSettings{DeploymentTimeout: new(api.Duration(10 * time.Minute))},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				errassert.DomainError(domain.ErrInvalidArgument, "")(tt, err, a...)
+				errassert.UserMessageContains("exceeds the deployment timeout of 10m")(tt, err, a...)
+			},
+		},
+		{
+			name:                    "error - call timeout of the BIOS profiles exceeds the deployment timeout",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve: &provisioning.BIOSProfileResolution{
+				Profiles:   []string{"generic"},
+				Deployment: api.ServerDeploymentSettings{CallTimeout: new(api.Duration(3 * time.Hour))},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				errassert.DomainError(domain.ErrInvalidArgument, "")(tt, err, a...)
+				errassert.UserMessageContains("grant the BMC operations of state")(tt, err, a...)
+			},
+		},
+		{
+			name:                    "error - delay of the BIOS profiles does not fit into its timeout",
+			nameArg:                 "one",
+			requestArg:              validRequest,
+			operationsCenterAddress: deploymentTestOperationsCenterAddress,
+			server:                  new(deploymentTestServer("one")),
+			bmcGetData:              deploymentTestBMCData(deploymentTestOpticalMedia),
+			tokenSvcGetByUUID:       validToken,
+			tokenSvcGetSeed:         validSeed,
+			withBIOSProfilePort:     true,
+			biosProfileResolve: &provisioning.BIOSProfileResolution{
+				Profiles:   []string{"generic"},
+				Deployment: api.ServerDeploymentSettings{PostSettleDelay: new(api.Duration(time.Hour))},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				errassert.DomainError(domain.ErrInvalidArgument, "")(tt, err, a...)
+				errassert.UserMessageContains("for a post settle delay of 1h, which does not fit into its timeout")(tt, err, a...)
+			},
 		},
 		{
 			name:                    "error - tokenSvc.GetTokenSeedByName",

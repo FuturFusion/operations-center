@@ -452,6 +452,10 @@ type ServerDeploymentStatus struct {
 	// UEFI key databases, that are kept while the databases are reinitialized.
 	SecureBoot BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
 
+	// DeploymentSettings holds the timings deviating from the defaults, that have
+	// been resolved for the server when the deployment was requested.
+	DeploymentSettings ServerDeploymentSettings `json:"deployment_settings,omitzero" yaml:"deployment_settings,omitempty"`
+
 	// MediaURL holds the URL of the installation media attached to the server.
 	MediaURL string `json:"media_url" yaml:"media_url"`
 
@@ -512,4 +516,110 @@ type ServerDeploymentStep struct {
 
 	// Error holds the error reported by the last failed attempt on the state.
 	Error string `json:"error" yaml:"error"`
+}
+
+// ServerDeploymentSettings holds the timings of the automated deployment of a
+// server, that deviate from the defaults. A setting, that is not set, leaves in
+// place what the BIOS profiles with a lower priority have set, and finally the
+// default. Durations are Go duration strings, e.g. "15m".
+//
+// swagger:model
+type ServerDeploymentSettings struct {
+	// DeploymentTimeout bounds the deployment as a whole. The provisioning token
+	// has to stay valid for it.
+	// Example: 2h
+	DeploymentTimeout *Duration `json:"deployment_timeout,omitempty" yaml:"deployment_timeout,omitempty"`
+
+	// StepTimeout bounds the waits for a power off, for the virtual media and for
+	// the cancellation.
+	// Example: 5m
+	StepTimeout *Duration `json:"step_timeout,omitempty" yaml:"step_timeout,omitempty"`
+
+	// BIOSAppliedTimeout bounds the waits for the firmware to apply BIOS and
+	// secure boot changes.
+	// Example: 10m
+	BIOSAppliedTimeout *Duration `json:"bios_applied_timeout,omitempty" yaml:"bios_applied_timeout,omitempty"`
+
+	// SecureBootEnrollTimeout bounds the wait for the enrollment media to enroll
+	// the secure boot certificates.
+	// Example: 15m
+	SecureBootEnrollTimeout *Duration `json:"secure_boot_enroll_timeout,omitempty" yaml:"secure_boot_enroll_timeout,omitempty"`
+
+	// InstallTimeout bounds the first stage of the installation.
+	// Example: 45m
+	InstallTimeout *Duration `json:"install_timeout,omitempty" yaml:"install_timeout,omitempty"`
+
+	// RebootTimeout bounds the wait for the server to come back up after the first
+	// stage of the installation.
+	// Example: 15m
+	RebootTimeout *Duration `json:"reboot_timeout,omitempty" yaml:"reboot_timeout,omitempty"`
+
+	// RegistrationTimeout bounds the wait for the server to register itself.
+	// Example: 30m
+	RegistrationTimeout *Duration `json:"registration_timeout,omitempty" yaml:"registration_timeout,omitempty"`
+
+	// PostSettleDelay is the time the server is granted to run through its power
+	// on self test, before a wait trusts what the BMC reports.
+	// Example: 1m
+	PostSettleDelay *Duration `json:"post_settle_delay,omitempty" yaml:"post_settle_delay,omitempty"`
+
+	// PowerOffSettleDelay is the time the server has to be reported powered off,
+	// before the power off counts as settled.
+	// Example: 1m
+	PowerOffSettleDelay *Duration `json:"power_off_settle_delay,omitempty" yaml:"power_off_settle_delay,omitempty"`
+
+	// RebootObservationWindow is the time the wait for the reboot looks for an
+	// actual reboot, before it settles for the server being powered on.
+	// Example: 5m
+	RebootObservationWindow *Duration `json:"reboot_observation_window,omitempty" yaml:"reboot_observation_window,omitempty"`
+
+	// SecureBootSettleDuration is the time the server is left running after the
+	// secure boot certificates have been enrolled, where the firmware does not
+	// reboot on its own.
+	// Example: 5m
+	SecureBootSettleDuration *Duration `json:"secure_boot_settle_duration,omitempty" yaml:"secure_boot_settle_duration,omitempty"`
+
+	// InstallMinDuration is the time, that has to have passed, before the first
+	// stage of the installation could be done at all.
+	// Example: 5m
+	InstallMinDuration *Duration `json:"install_min_duration,omitempty" yaml:"install_min_duration,omitempty"`
+
+	// InstallRebootFallbackDelay is the time, after which a reboot counts as the
+	// end of the first stage of the installation, where the BMC reports nothing
+	// better.
+	// Example: 10m
+	InstallRebootFallbackDelay *Duration `json:"install_reboot_fallback_delay,omitempty" yaml:"install_reboot_fallback_delay,omitempty"`
+
+	// InstallMediaIdlePeriod is the time without a read, after which the
+	// installation media counts as idle.
+	// Example: 2m
+	InstallMediaIdlePeriod *Duration `json:"install_media_idle_period,omitempty" yaml:"install_media_idle_period,omitempty"`
+
+	// InstallMediaMinBytesRead is the number of bytes of the installation media,
+	// that have to have been read, before the idle period is taken as a signal.
+	// Example: 524288000
+	InstallMediaMinBytesRead *int64 `json:"install_media_min_bytes_read,omitempty" yaml:"install_media_min_bytes_read,omitempty"`
+
+	// StepRetries is the number of retries granted to a single step, as well as
+	// the number of fallbacks and reverts granted to a single wait.
+	// Example: 3
+	StepRetries *int `json:"step_retries,omitempty" yaml:"step_retries,omitempty"`
+
+	// CallTimeout bounds the BMC operations of a single attempt of a step.
+	// Example: 2m
+	CallTimeout *Duration `json:"call_timeout,omitempty" yaml:"call_timeout,omitempty"`
+
+	// AttachMediaCallTimeout bounds the BMC operations attaching a virtual media.
+	// Example: 20m
+	AttachMediaCallTimeout *Duration `json:"attach_media_call_timeout,omitempty" yaml:"attach_media_call_timeout,omitempty"`
+
+	// SecureBootCallTimeout bounds the BMC operations changing the secure boot key
+	// databases.
+	// Example: 15m
+	SecureBootCallTimeout *Duration `json:"secure_boot_call_timeout,omitempty" yaml:"secure_boot_call_timeout,omitempty"`
+}
+
+// IsZero reports, whether no setting is set.
+func (s ServerDeploymentSettings) IsZero() bool {
+	return s == ServerDeploymentSettings{}
 }

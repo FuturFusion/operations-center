@@ -3137,6 +3137,11 @@ func (s *serverService) ValidateBIOSProfileByName(ctx context.Context, name stri
 		return nil, nil
 	}
 
+	err = validateDeploymentSettings(resolution.Deployment)
+	if err != nil {
+		return nil, err
+	}
+
 	biosAttributes, err := client.BIOSAttributes(ctx, *server)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get BIOS attributes of server %q via BMC: %w", server.Name, err)

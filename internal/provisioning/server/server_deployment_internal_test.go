@@ -1581,6 +1581,109 @@ func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
 	}
 }
 
+func Test_deploymentSettingsOverrideOnlyWhatAStateDeclares(t *testing.T) {
+	type timings struct {
+		timeout             time.Duration
+		callTimeout         time.Duration
+		settleDelay         time.Duration
+		powerOffSettleDelay time.Duration
+		rebootWindow        time.Duration
+		install             deploymentInstallThresholds
+		retries             int
+	}
+
+	// The call timeout is read with its default, which lives outside of the table.
+	timingsOf := func(definition deploymentStateDefinition) timings {
+		return timings{
+			timeout:             definition.timeout,
+			callTimeout:         definition.callTimeoutOrDefault(),
+			settleDelay:         definition.settleDelay,
+			powerOffSettleDelay: definition.powerOffSettleDelay,
+			rebootWindow:        definition.rebootWindow,
+			install:             definition.install,
+			retries:             definition.retries,
+		}
+	}
+
+	// A value none of the defaults has, so an override always shows.
+	const override = 7
+
+	defaults := map[string]time.Duration{}
+
+	for state, definition := range deploymentStates {
+		require.Equal(t, definition.timeout > 0, definition.timeoutSetting != nil, "state %q names the setting of its timeout", state)
+		require.Equal(t, definition.rebootWindow > 0, definition.rebootWindowSetting != nil, "state %q names the setting of its reboot window", state)
+		require.Equal(t, definition.callTimeout > 0, definition.callTimeoutSetting != nil, "state %q names the setting of its call timeout", state)
+		require.Equal(t, timingsOf(definition), timingsOf(definition.withSettings(api.ServerDeploymentSettings{})), "state %q keeps its defaults without settings", state)
+
+		// A setting stands for a single default, wherever it is read.
+		declared := map[string]time.Duration{}
+		if definition.timeoutSetting != nil {
+			declared[deploymentTestFuncName(definition.timeoutSetting)] = definition.timeout
+		}
+
+		if definition.rebootWindowSetting != nil {
+			declared[deploymentTestFuncName(definition.rebootWindowSetting)] = definition.rebootWindow
+		}
+
+		if definition.callTimeoutSetting != nil {
+			declared[deploymentTestFuncName(definition.callTimeoutSetting)] = definition.callTimeout
+		}
+
+		for setting, value := range declared {
+			known, ok := defaults[setting]
+			if !ok {
+				defaults[setting] = value
+				continue
+			}
+
+			require.Equal(t, known, value, "state %q declares another default for %s", state, setting)
+		}
+	}
+
+	settingsType := reflect.TypeFor[api.ServerDeploymentSettings]()
+	for i := range settingsType.NumField() {
+		field := settingsType.Field(i)
+
+		t.Run(field.Name, func(t *testing.T) {
+			settings := api.ServerDeploymentSettings{}
+			value := reflect.New(field.Type.Elem())
+			value.Elem().SetInt(override)
+			reflect.ValueOf(&settings).Elem().Field(i).Set(value)
+
+			applied := deploymentTimeout(settings) != deploymentTimeout(api.ServerDeploymentSettings{})
+
+			for state, definition := range deploymentStates {
+				before := timingsOf(definition)
+				after := timingsOf(definition.withSettings(settings))
+
+				if before == after {
+					continue
+				}
+
+				applied = true
+
+				changed := 0
+				for j := range reflect.TypeFor[timings]().NumField() {
+					was := reflect.ValueOf(before).Field(j)
+					is := reflect.ValueOf(after).Field(j)
+					if was.Equal(is) {
+						continue
+					}
+
+					changed++
+
+					require.False(t, was.IsZero(), "state %q got a %s it does not declare", state, reflect.TypeFor[timings]().Field(j).Name)
+				}
+
+				require.Equal(t, 1, changed, "state %q reads the setting more than once", state)
+			}
+
+			require.True(t, applied, "the setting is read by no state")
+		})
+	}
+}
+
 func Test_deploymentStatesDeclareWhatTheirFunctionReliesOn(t *testing.T) {
 	powerOff := deploymentTestFuncName((*serverService).powerOffDeploymentServer)
 	poweredOff := deploymentTestFuncName((*serverService).checkDeploymentPoweredOff)

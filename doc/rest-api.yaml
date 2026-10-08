@@ -224,6 +224,8 @@ definitions:
                     effect, e.g. {"Tpm2Algorithm": "SHA256"}.
                 type: object
                 x-go-name: DeferredAttributes
+            deployment:
+                $ref: '#/definitions/ServerDeploymentSettings'
             description:
                 description: Description of the BIOS profile.
                 example: Lenovo ThinkSystem
@@ -325,6 +327,8 @@ definitions:
                     effect, e.g. {"Tpm2Algorithm": "SHA256"}.
                 type: object
                 x-go-name: DeferredAttributes
+            deployment:
+                $ref: '#/definitions/ServerDeploymentSettings'
             profiles:
                 description: |-
                     Profiles holds the names of the BIOS profiles, that contributed to the
@@ -5645,6 +5649,161 @@ definitions:
                 x-go-name: VirtualMediaID
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerDeploymentSettings:
+        description: |-
+            ServerDeploymentSettings holds the timings of the automated deployment of a
+            server, that deviate from the defaults. A setting, that is not set, leaves in
+            place what the BIOS profiles with a lower priority have set, and finally the
+            default. Durations are Go duration strings, e.g. "15m".
+        properties:
+            attach_media_call_timeout:
+                description: AttachMediaCallTimeout bounds the BMC operations attaching a virtual media.
+                example: 20m
+                type: string
+                x-go-name: AttachMediaCallTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            bios_applied_timeout:
+                description: |-
+                    BIOSAppliedTimeout bounds the waits for the firmware to apply BIOS and
+                    secure boot changes.
+                example: 10m
+                type: string
+                x-go-name: BIOSAppliedTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            call_timeout:
+                description: CallTimeout bounds the BMC operations of a single attempt of a step.
+                example: 2m
+                type: string
+                x-go-name: CallTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            deployment_timeout:
+                description: |-
+                    DeploymentTimeout bounds the deployment as a whole. The provisioning token
+                    has to stay valid for it.
+                example: 2h
+                type: string
+                x-go-name: DeploymentTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            install_media_idle_period:
+                description: |-
+                    InstallMediaIdlePeriod is the time without a read, after which the
+                    installation media counts as idle.
+                example: 2m
+                type: string
+                x-go-name: InstallMediaIdlePeriod
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            install_media_min_bytes_read:
+                description: |-
+                    InstallMediaMinBytesRead is the number of bytes of the installation media,
+                    that have to have been read, before the idle period is taken as a signal.
+                example: 524288000
+                format: int64
+                type: integer
+                x-go-name: InstallMediaMinBytesRead
+            install_min_duration:
+                description: |-
+                    InstallMinDuration is the time, that has to have passed, before the first
+                    stage of the installation could be done at all.
+                example: 5m
+                type: string
+                x-go-name: InstallMinDuration
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            install_reboot_fallback_delay:
+                description: |-
+                    InstallRebootFallbackDelay is the time, after which a reboot counts as the
+                    end of the first stage of the installation, where the BMC reports nothing
+                    better.
+                example: 10m
+                type: string
+                x-go-name: InstallRebootFallbackDelay
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            install_timeout:
+                description: InstallTimeout bounds the first stage of the installation.
+                example: 45m
+                type: string
+                x-go-name: InstallTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            post_settle_delay:
+                description: |-
+                    PostSettleDelay is the time the server is granted to run through its power
+                    on self test, before a wait trusts what the BMC reports.
+                example: 1m
+                type: string
+                x-go-name: PostSettleDelay
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            power_off_settle_delay:
+                description: |-
+                    PowerOffSettleDelay is the time the server has to be reported powered off,
+                    before the power off counts as settled.
+                example: 1m
+                type: string
+                x-go-name: PowerOffSettleDelay
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            reboot_observation_window:
+                description: |-
+                    RebootObservationWindow is the time the wait for the reboot looks for an
+                    actual reboot, before it settles for the server being powered on.
+                example: 5m
+                type: string
+                x-go-name: RebootObservationWindow
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            reboot_timeout:
+                description: |-
+                    RebootTimeout bounds the wait for the server to come back up after the first
+                    stage of the installation.
+                example: 15m
+                type: string
+                x-go-name: RebootTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            registration_timeout:
+                description: RegistrationTimeout bounds the wait for the server to register itself.
+                example: 30m
+                type: string
+                x-go-name: RegistrationTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            secure_boot_call_timeout:
+                description: |-
+                    SecureBootCallTimeout bounds the BMC operations changing the secure boot key
+                    databases.
+                example: 15m
+                type: string
+                x-go-name: SecureBootCallTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            secure_boot_enroll_timeout:
+                description: |-
+                    SecureBootEnrollTimeout bounds the wait for the enrollment media to enroll
+                    the secure boot certificates.
+                example: 15m
+                type: string
+                x-go-name: SecureBootEnrollTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            secure_boot_settle_duration:
+                description: |-
+                    SecureBootSettleDuration is the time the server is left running after the
+                    secure boot certificates have been enrolled, where the firmware does not
+                    reboot on its own.
+                example: 5m
+                type: string
+                x-go-name: SecureBootSettleDuration
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+            step_retries:
+                description: |-
+                    StepRetries is the number of retries granted to a single step, as well as
+                    the number of fallbacks and reverts granted to a single wait.
+                example: 3
+                format: int64
+                type: integer
+                x-go-name: StepRetries
+            step_timeout:
+                description: |-
+                    StepTimeout bounds the waits for a power off, for the virtual media and for
+                    the cancellation.
+                example: 5m
+                type: string
+                x-go-name: StepTimeout
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.Duration
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerDeploymentStatus:
         description: |-
             ServerDeploymentStatus reports the progress of the automated deployment of a
@@ -5676,6 +5835,8 @@ definitions:
                     type: string
                 type: array
                 x-go-name: BIOSProfiles
+            deployment_settings:
+                $ref: '#/definitions/ServerDeploymentSettings'
             failed_state:
                 description: FailedState holds the state the deployment failed in.
                 type: string

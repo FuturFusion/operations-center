@@ -1056,6 +1056,23 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			},
 		},
 		{
+			name:        "success - the BIOS profiles grant a slow server more time to register",
+			forceReboot: true,
+			resolution: func() *provisioning.BIOSProfileResolution {
+				resolution := deploymentTestResolution()
+				resolution.Deployment.RegistrationTimeout = new(api.Duration(2 * config.ServerDeploymentRegistrationTimeout))
+
+				return resolution
+			}(),
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) { w.registrationDelay = config.ServerDeploymentRegistrationTimeout + 10*time.Minute },
+			},
+
+			wantStates:       deploymentStatesHappyPath(),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+		},
+		{
 			name:        "failure - the server never registers itself",
 			forceReboot: true,
 			resolution:  deploymentTestResolution(),

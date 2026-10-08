@@ -69,8 +69,8 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
   Use "server bios-profile" to see what would be applied.
 
   Use --bios-profiles to resolve the BIOS configuration, which is the BIOS
-  attributes and the secure boot allow lists, from the BIOS profiles of a file
-  instead. The file holds BIOS profiles in the format of the ones shipped with
+  attributes, the secure boot allow lists and the deployment settings, from the
+  BIOS profiles of a file instead. The file holds BIOS profiles in the format of the ones shipped with
   Operations Center, they are matched against the server and accumulated by
   priority the same way. Certificates, that such a profile keeps in a secure
   boot database and that Operations Center does not know, have to be provided
@@ -463,6 +463,11 @@ func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 
 	if len(deployment.BIOSDeferredAttributes) > 0 {
 		renderBIOSAttributes("BIOS deferred attributes", deployment.BIOSDeferredAttributes)
+	}
+
+	err = renderDeploymentSettings("Deployment settings", deployment.DeploymentSettings)
+	if err != nil {
+		return err
 	}
 
 	if len(deployment.History) > 0 {

@@ -49,6 +49,12 @@ This requires `--bios-profiles` and `--secure-boot-enrollment-media`, and at
 most 16 certificates can be provided. A deployment, which could not enroll a
 certificate kept by the provided profiles, is rejected.
 
+BIOS profiles are also able to adjust the timings of the deployment, e.g. the
+timeouts, for hardware, that needs more time than the defaults grant. The
+settings deviating from the defaults for a server are shown by
+`operations-center provisioning server bios-profile <name>`, the ones of a
+deployment by `operations-center provisioning server deploy-status <name>`.
+
 A BIOS attribute and a key database, that are correct already, are left alone,
 so a server, that is deployed a second time, is neither power cycled nor has its
 UEFI keys rewritten for nothing.

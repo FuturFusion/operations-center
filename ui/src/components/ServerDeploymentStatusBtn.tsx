@@ -53,6 +53,7 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
   const [areAttributesVisible, setAreAttributesVisible] = useState(false);
   const [areDeferredAttributesVisible, setAreDeferredAttributesVisible] =
     useState(false);
+  const [areSettingsVisible, setAreSettingsVisible] = useState(false);
 
   const actionStyle = {
     cursor: "pointer",
@@ -134,6 +135,12 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
             areDeferredAttributesVisible,
             () =>
               setAreDeferredAttributesVisible(!areDeferredAttributesVisible),
+          )}
+          {attributesRow(
+            "Deployment settings",
+            deployment.deployment_settings ?? {},
+            areSettingsVisible,
+            () => setAreSettingsVisible(!areSettingsVisible),
           )}
           {deployment.history?.length > 0 &&
             detailRow(

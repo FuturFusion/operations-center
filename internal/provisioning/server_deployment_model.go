@@ -248,6 +248,9 @@ type ServerDeployment struct {
 	// request keyed by their fingerprint, for the enrollment media to enroll.
 	SecureBootCertificates map[string]string `json:"secure_boot_certificates,omitempty"`
 
+	// Settings holds the timings deviating from the defaults, as resolved from the BIOS profiles.
+	Settings api.ServerDeploymentSettings `json:"settings,omitzero"`
+
 	// BIOSPending and BIOSDeferredPending report, whether the respective BIOS
 	// pass still has anything to apply. A server, that reports the attributes at
 	// their target values already, spares the deployment the whole pass.
@@ -414,6 +417,7 @@ func (d ServerDeployment) ToAPI() *api.ServerDeploymentStatus {
 		BIOSAttributes:         d.BIOSAttributes,
 		BIOSDeferredAttributes: d.BIOSDeferredAttributes,
 		SecureBoot:             d.SecureBoot,
+		DeploymentSettings:     d.Settings,
 		MediaURL:               d.MediaURL,
 		SecureBootMediaURL:     d.SecureBootMediaURL,
 		MediaBytesRead:         d.MediaBytesRead,

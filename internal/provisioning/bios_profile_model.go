@@ -1,12 +1,14 @@
 package provisioning
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 
@@ -217,6 +219,9 @@ type BIOSProfile struct {
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
+
+	// Deployment holds the timings of the automated deployment, that deviate from the defaults.
+	Deployment api.ServerDeploymentSettings `json:"deployment,omitzero" yaml:"deployment,omitempty"`
 }
 
 // NewBIOSProfileFromAPI builds a BIOS profile from its API representation.
@@ -238,6 +243,7 @@ func NewBIOSProfileFromAPI(profile api.BIOSProfile) BIOSProfile {
 			DBX: BIOSSecureBootDatabase(profile.SecureBoot.DBX).Clone(),
 			KEK: BIOSSecureBootDatabase(profile.SecureBoot.KEK).Clone(),
 		},
+		Deployment: profile.Deployment,
 	}
 }
 
@@ -254,12 +260,17 @@ func (p BIOSProfile) Validate() error {
 		return domain.NewValidationErrf("Invalid BIOS profile %q, at least one match is required", p.Name)
 	}
 
-	if len(p.Attributes) == 0 && len(p.DeferredAttributes) == 0 && p.SecureBoot.IsEmpty() {
-		return domain.NewValidationErrf("Invalid BIOS profile %q, attributes, deferred attributes and secure boot can not all be empty", p.Name)
+	if len(p.Attributes) == 0 && len(p.DeferredAttributes) == 0 && p.SecureBoot.IsEmpty() && p.Deployment.IsZero() {
+		return domain.NewValidationErrf("Invalid BIOS profile %q, attributes, deferred attributes, secure boot and deployment can not all be empty", p.Name)
+	}
+
+	err := validateDeploymentSettings(p.Deployment)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid BIOS profile %q: %v", p.Name, err)
 	}
 
 	for _, match := range p.Match {
-		err := match.Validate()
+		err = match.Validate()
 		if err != nil {
 			return domain.NewValidationErrf("Invalid BIOS profile %q: %v", p.Name, err)
 		}
@@ -313,6 +324,9 @@ type BIOSProfileResolution struct {
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot api.BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
+
+	// Deployment holds the timings of the automated deployment, that deviate from the defaults.
+	Deployment api.ServerDeploymentSettings `json:"deployment,omitzero" yaml:"deployment,omitempty"`
 }
 
 // ValidateAgainstBIOSAttributes checks the attributes of the resolution against
@@ -475,6 +489,8 @@ func (p BIOSProfiles) Resolve(data api.BMCData) (*BIOSProfileResolution, error) 
 		resolution.SecureBoot.DB = mergeSecureBootDatabase(resolution.SecureBoot.DB, profile.SecureBoot.DB)
 		resolution.SecureBoot.DBX = mergeSecureBootDatabase(resolution.SecureBoot.DBX, profile.SecureBoot.DBX)
 		resolution.SecureBoot.KEK = mergeSecureBootDatabase(resolution.SecureBoot.KEK, profile.SecureBoot.KEK)
+
+		resolution.Deployment = mergeDeploymentSettings(resolution.Deployment, profile.Deployment)
 	}
 
 	if len(resolution.Profiles) == 0 {
@@ -524,6 +540,84 @@ func mergeFlags(base map[string]bool, overlay map[string]*bool) map[string]bool 
 func mergeSecureBootDatabase(base api.BIOSSecureBootDatabase, overlay BIOSSecureBootDatabase) api.BIOSSecureBootDatabase {
 	base.Certificates = mergeFlags(base.Certificates, overlay.Certificates)
 	base.Signatures = mergeFlags(base.Signatures, overlay.Signatures)
+
+	return base
+}
+
+// Boundaries of the deployment settings of a BIOS profile.
+const (
+	deploymentSettingMinDuration = time.Second
+	deploymentSettingMaxDuration = 24 * time.Hour
+	deploymentSettingMaxRetries  = 10
+)
+
+// validateDeploymentSettings checks every setting, that is set, against its boundaries.
+func validateDeploymentSettings(settings api.ServerDeploymentSettings) error {
+	durations := []struct {
+		name  string
+		value *api.Duration
+	}{
+		{name: "deployment_timeout", value: settings.DeploymentTimeout},
+		{name: "step_timeout", value: settings.StepTimeout},
+		{name: "bios_applied_timeout", value: settings.BIOSAppliedTimeout},
+		{name: "secure_boot_enroll_timeout", value: settings.SecureBootEnrollTimeout},
+		{name: "install_timeout", value: settings.InstallTimeout},
+		{name: "reboot_timeout", value: settings.RebootTimeout},
+		{name: "registration_timeout", value: settings.RegistrationTimeout},
+		{name: "post_settle_delay", value: settings.PostSettleDelay},
+		{name: "power_off_settle_delay", value: settings.PowerOffSettleDelay},
+		{name: "reboot_observation_window", value: settings.RebootObservationWindow},
+		{name: "secure_boot_settle_duration", value: settings.SecureBootSettleDuration},
+		{name: "install_min_duration", value: settings.InstallMinDuration},
+		{name: "install_reboot_fallback_delay", value: settings.InstallRebootFallbackDelay},
+		{name: "install_media_idle_period", value: settings.InstallMediaIdlePeriod},
+		{name: "call_timeout", value: settings.CallTimeout},
+		{name: "attach_media_call_timeout", value: settings.AttachMediaCallTimeout},
+		{name: "secure_boot_call_timeout", value: settings.SecureBootCallTimeout},
+	}
+
+	for _, duration := range durations {
+		if duration.value == nil {
+			continue
+		}
+
+		value := time.Duration(*duration.value)
+		if value < deploymentSettingMinDuration || value > deploymentSettingMaxDuration {
+			return fmt.Errorf("deployment setting %q has to be between %s and %s", duration.name, api.Duration(deploymentSettingMinDuration), api.Duration(deploymentSettingMaxDuration))
+		}
+	}
+
+	if settings.StepRetries != nil && (*settings.StepRetries < 1 || *settings.StepRetries > deploymentSettingMaxRetries) {
+		return fmt.Errorf("deployment setting %q has to be between 1 and %d", "step_retries", deploymentSettingMaxRetries)
+	}
+
+	if settings.InstallMediaMinBytesRead != nil && *settings.InstallMediaMinBytesRead < 1 {
+		return fmt.Errorf("deployment setting %q has to be at least 1", "install_media_min_bytes_read")
+	}
+
+	return nil
+}
+
+func mergeDeploymentSettings(base api.ServerDeploymentSettings, overlay api.ServerDeploymentSettings) api.ServerDeploymentSettings {
+	base.DeploymentTimeout = cmp.Or(overlay.DeploymentTimeout, base.DeploymentTimeout)
+	base.StepTimeout = cmp.Or(overlay.StepTimeout, base.StepTimeout)
+	base.BIOSAppliedTimeout = cmp.Or(overlay.BIOSAppliedTimeout, base.BIOSAppliedTimeout)
+	base.SecureBootEnrollTimeout = cmp.Or(overlay.SecureBootEnrollTimeout, base.SecureBootEnrollTimeout)
+	base.InstallTimeout = cmp.Or(overlay.InstallTimeout, base.InstallTimeout)
+	base.RebootTimeout = cmp.Or(overlay.RebootTimeout, base.RebootTimeout)
+	base.RegistrationTimeout = cmp.Or(overlay.RegistrationTimeout, base.RegistrationTimeout)
+	base.PostSettleDelay = cmp.Or(overlay.PostSettleDelay, base.PostSettleDelay)
+	base.PowerOffSettleDelay = cmp.Or(overlay.PowerOffSettleDelay, base.PowerOffSettleDelay)
+	base.RebootObservationWindow = cmp.Or(overlay.RebootObservationWindow, base.RebootObservationWindow)
+	base.SecureBootSettleDuration = cmp.Or(overlay.SecureBootSettleDuration, base.SecureBootSettleDuration)
+	base.InstallMinDuration = cmp.Or(overlay.InstallMinDuration, base.InstallMinDuration)
+	base.InstallRebootFallbackDelay = cmp.Or(overlay.InstallRebootFallbackDelay, base.InstallRebootFallbackDelay)
+	base.InstallMediaIdlePeriod = cmp.Or(overlay.InstallMediaIdlePeriod, base.InstallMediaIdlePeriod)
+	base.InstallMediaMinBytesRead = cmp.Or(overlay.InstallMediaMinBytesRead, base.InstallMediaMinBytesRead)
+	base.StepRetries = cmp.Or(overlay.StepRetries, base.StepRetries)
+	base.CallTimeout = cmp.Or(overlay.CallTimeout, base.CallTimeout)
+	base.AttachMediaCallTimeout = cmp.Or(overlay.AttachMediaCallTimeout, base.AttachMediaCallTimeout)
+	base.SecureBootCallTimeout = cmp.Or(overlay.SecureBootCallTimeout, base.SecureBootCallTimeout)
 
 	return base
 }
