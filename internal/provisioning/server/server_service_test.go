@@ -762,10 +762,16 @@ one
 				},
 			}
 
+			runner := &adapterMock.ServerScriptletPortMock{
+				ServerRegistrationRunFunc: func(ctx context.Context, server *provisioning.Server) error {
+					return nil
+				},
+			}
+
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
 			serverSvc := provisioningServer.New(
-				repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
+				repo, client, runner, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
@@ -1651,6 +1657,65 @@ one
 				t.Helper()
 				require.Equal(t, certificate, server.BMCConfig.Certificate)
 				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "success - BMC connection test - changes made during the connection test are kept",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       new("one"),
+				ConnectionURL: "http://one/",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:      api.ServerStatusPending,
+				Description: "set by operator",
+				Channel:     "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					Certificate:        certificate,
+					AutoPinCertificate: false,
+				},
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:     "one",
+						Status:   api.ServerStatusReady,
+						LastSeen: fixedDate,
+						Channel:  "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+			},
+			argBMCConnectionTest: true,
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
+			wantBMCConnectionTestCalled: true,
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, api.ServerStatusReady, server.Status, "the status set by a poll during the connection test must be kept")
+				require.Equal(t, fixedDate, server.LastSeen, "the last seen time set by a poll during the connection test must be kept")
+				require.Equal(t, "set by operator", server.Description, "the description of the request must be applied")
+				require.Equal(t, certificate, server.BMCConfig.Certificate, "the BMC config of the request must be applied")
 			},
 		},
 		{
@@ -5900,6 +5965,8 @@ func TestServerService_PollServer(t *testing.T) {
 
 			runner := &adapterMock.ServerScriptletPortMock{
 				ServerRegistrationRunFunc: func(ctx context.Context, server *provisioning.Server) error {
+					require.False(t, transaction.IsActive(ctx), "the scriptlet must run outside of a transaction")
+
 					return tc.runnerServerRegistrationRunErr
 				},
 			}
