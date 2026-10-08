@@ -819,6 +819,7 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	Perform cluster wide update of servers
 //
 //	Perform a cluster wide update of OS and applications on all servers of the cluster.
+//	The update can be restricted to the OS or to individual applications.
 //	A cluster can only run a single cluster wide operation at a time, so the request
 //	fails, if an update or a reboot is already ongoing.
 //
@@ -858,7 +859,7 @@ func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = c.service.LaunchClusterUpdate(r.Context(), name, request.Reboot)
+	err = c.service.LaunchClusterUpdate(r.Context(), name, request)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to launch cluster wide update: %w", err))
 	}

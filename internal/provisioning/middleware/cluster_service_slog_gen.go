@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	api0 "github.com/FuturFusion/operations-center/shared/api"
 )
 
 // componentClusterService identifies the log records of this decorator and allows the
@@ -817,14 +818,14 @@ func (_d ClusterServiceWithSlog) LaunchClusterReboot(ctx context.Context, name s
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) (err error) {
+func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name string, request api0.ClusterUpdatePost) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
-			slog.Bool("reboot", reboot),
+			slog.Any("request", request),
 		)
 	}
 	log.DebugContext(ctx, "=> calling LaunchClusterUpdate")
@@ -845,7 +846,7 @@ func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name s
 			log.DebugContext(ctx, "<= method LaunchClusterUpdate finished")
 		}
 	}()
-	return _d._base.LaunchClusterUpdate(ctx, name, reboot)
+	return _d._base.LaunchClusterUpdate(ctx, name, request)
 }
 
 // RemoveServer implements provisioning.ClusterService.

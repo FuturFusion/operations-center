@@ -4,6 +4,14 @@ export interface ClusterUpdateStatusProgress {
   status_description?: string;
   last_updated: string;
   pending_reboot?: string[];
+  applications?: string[];
+  os_only?: boolean;
+}
+
+export interface ClusterUpdatePost {
+  reboot: boolean;
+  applications: string[];
+  os_only: boolean;
 }
 
 export interface ClusterUpdateStatus {

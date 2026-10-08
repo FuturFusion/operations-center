@@ -2658,7 +2658,36 @@ func (s *clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Conte
 	return !cluster.IsUpdateInProgress()
 }
 
-func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
+func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, request api.ClusterUpdatePost) error {
+	if len(request.Applications) > 0 && request.OSOnly {
+		return domain.NewValidationErrf("An update restricted to the OS can not be combined with an update of individual applications")
+	}
+
+	if len(request.Applications) > 0 && request.Reboot {
+		return domain.NewValidationErrf("An update of individual applications does not require a reboot and can not be combined with a rolling reboot")
+	}
+
+	restricted := len(request.Applications) > 0 || request.OSOnly
+
+	if len(request.Applications) > 0 {
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+			Cluster: new(name),
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get server details for cluster %q: %w", name, err)
+		}
+
+		// Servers without a requested application are skipped by the run.
+		for _, application := range request.Applications {
+			installed := slices.ContainsFunc(servers, func(server provisioning.Server) bool {
+				return hasApplication(server, images.UpdateFileComponent(application))
+			})
+			if !installed {
+				return domain.NewValidationErrf("Application %q is not installed on any server of cluster %q", application, name)
+			}
+		}
+	}
+
 	// Check, that no update is in progress for this cluster and set cluster
 	// update status to "in progress".
 	var cluster *provisioning.Cluster
@@ -2676,16 +2705,22 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 		}
 
 		if (len(cluster.UpdateStatus.NeedsUpdate) == 0) && (len(cluster.UpdateStatus.NeedsReboot) == 0) {
+			if restricted {
+				return nothingToUpdateInScopeErr(name, request)
+			}
+
 			// Cluster is already up to date, nothing to be done.
 			updateDone = true
 			return nil
 		}
 
 		cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressApplyUpdate
-		if reboot {
+		if request.Reboot {
 			cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressApplyUpdateWithReboot
 		}
 
+		cluster.UpdateStatus.InProgressStatus.Applications = request.Applications
+		cluster.UpdateStatus.InProgressStatus.OSOnly = request.OSOnly
 		cluster.UpdateStatus.InProgressStatus.Error = ""
 		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
 
@@ -2710,9 +2745,9 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	defer reverter.Fail()
 
 	reverter.Add(func() {
-		cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressInactive
-		cluster.UpdateStatus.InProgressStatus.Error = ""
-		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
+		cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
+			LastUpdated: s.now(),
+		}
 
 		err = s.Update(ctx, *cluster, false)
 		if err != nil {
@@ -2747,6 +2782,18 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 		return err
 	}
 
+	if restricted {
+		needsUpdate := slices.ContainsFunc(servers, func(server provisioning.Server) bool {
+			return serverNeedsUpdateInScope(cluster.UpdateStatus.InProgressStatus, server)
+		})
+
+		// A rolling reboot, which is still owed, is a reason to run on its own.
+		rebootOwed := request.Reboot && len(cluster.UpdateStatus.NeedsReboot) > 0
+		if !needsUpdate && !rebootOwed {
+			return nothingToUpdateInScopeErr(name, request)
+		}
+	}
+
 	// Record what the run has decided about every server, before anything is
 	// triggered on them.
 	err = s.serverSvc.BeginUpdateRunByCluster(ctx, name, false)
@@ -2771,6 +2818,15 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	reverter.Success()
 
 	return nil
+}
+
+// nothingToUpdateInScopeErr reports, that a restricted update has nothing to update.
+func nothingToUpdateInScopeErr(name string, request api.ClusterUpdatePost) error {
+	if request.OSOnly {
+		return domain.NewValidationErrf("None of the servers of cluster %q needs an update of the OS", name)
+	}
+
+	return domain.NewValidationErrf("None of the servers of cluster %q needs an update of the requested applications", name)
 }
 
 // clusterReadyForRollingUpdate verifies, that the cluster is in a state, which
@@ -3013,12 +3069,9 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provisioning.Cluster, servers provisioning.Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
-	// Trigger update on each server, applications get updated immediately,
-	// OS is prepared for update on next reboot.
-	// Also verify, that none of the servers is still updating or has pending
-	// updates for the applications and the next OS.
+	// Update the servers one by one, until none of them needs an update for what the run covers.
 	for _, server := range servers {
-		if !ptr.From(server.VersionData.NeedsUpdate) {
+		if !serverNeedsUpdateInScope(cluster.UpdateStatus.InProgressStatus, server) {
 			if provisioning.ServerUpdateStepUpdate.OwnsStatusDetail(server.StatusDetail) {
 				// Server status detail needs to be updated first, not yet ready to proceed.
 				return s.awaitRollingUpdateStep(server, provisioning.ServerUpdateStepUpdate, nil)(ctx)
@@ -3066,7 +3119,7 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 			cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressRollingRestart
 			emitLifecycleSignal = true
 		} else {
-			cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressInactive
+			cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{}
 			runDone = true
 		}
 

@@ -17623,7 +17623,7 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 	tests := []struct {
 		name                      string
-		rebootArg                 bool
+		request                   api.ClusterUpdatePost
 		repoGetByName             *provisioning.Cluster
 		repoGetByNameErr          error
 		repoUpdate                []queue.Item[api.ClusterUpdateInProgressStatus] // api.ClusterUpdateInProgressStatus used for assertions in repo.Update
@@ -17741,8 +17741,8 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:      "success - update servers with reboot",
-			rebootArg: true,
+			name:    "success - update servers with reboot",
+			request: api.ClusterUpdatePost{Reboot: true},
 			repoGetByName: &provisioning.Cluster{
 				Name:    "one",
 				Channel: "stable",
@@ -18384,6 +18384,287 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
+			name: "error - applications combined with os only",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"incus"},
+				OSOnly:       true,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - applications combined with reboot",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"incus"},
+				Reboot:       true,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - application not installed on any server",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"incus-ceph"},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetAllWithFilter, installed applications
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "incus"},
+							}
+						}),
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `is not installed on any server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - applications - cluster already up to date",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"incus"},
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetAllWithFilter, installed applications
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "incus"},
+							}
+						}),
+					},
+				},
+				// GetByName
+				{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `needs an update of the requested applications`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - applications - only OS outdated",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"incus"},
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				// Update
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress:   api.ClusterUpdateInProgressApplyUpdate,
+						Applications: []string{"incus"},
+					},
+				},
+				// Update reverter
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetAllWithFilter, installed applications
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "incus"},
+							}
+						}),
+					},
+				},
+				// GetByName
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.NeedsUpdate = new(true)
+						}),
+					},
+				},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.OS.NeedsUpdate = new(true)
+							server.VersionData.NeedsUpdate = new(true)
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "incus", NeedsUpdate: new(false)},
+							}
+						}),
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `needs an update of the requested applications`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - application installed on a subset of the servers",
+			request: api.ClusterUpdatePost{
+				Applications: []string{"gpu-support"},
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress:   api.ClusterUpdateInProgressApplyUpdate,
+						Applications: []string{"gpu-support"},
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress:   api.ClusterUpdateInProgressApplyUpdate,
+						Applications: []string{"gpu-support"},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetAllWithFilter, installed applications
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "gpu-support"},
+							}
+						}),
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.Name = "B"
+						}),
+					},
+				},
+				// GetByName
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.NeedsUpdate = new(true)
+						}),
+					},
+				},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.NeedsUpdate = new(true)
+							server.VersionData.Applications = []api.ApplicationVersionData{
+								{Name: "gpu-support", NeedsUpdate: new(true)},
+							}
+						}),
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.Name = "B"
+						}),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - os only with reboot",
+			request: api.ClusterUpdatePost{
+				OSOnly: true,
+				Reboot: true,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+						OSOnly:     true,
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+						OSOnly:     true,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.NeedsUpdate = new(true)
+						}),
+					},
+				},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						rebootReadyServer(func(server *provisioning.Server) {
+							server.VersionData.OS.NeedsUpdate = new(true)
+							server.VersionData.NeedsUpdate = new(true)
+						}),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
 			name: "error - repo.Update - after verification",
 			repoGetByName: &provisioning.Cluster{
 				Name:    "one",
@@ -18484,6 +18765,8 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
 					require.Equal(t, inProgressStatus.InProgress, cluster.UpdateStatus.InProgressStatus.InProgress)
+					require.Equal(t, inProgressStatus.Applications, cluster.UpdateStatus.InProgressStatus.Applications)
+					require.Equal(t, inProgressStatus.OSOnly, cluster.UpdateStatus.InProgressStatus.OSOnly)
 					return err
 				},
 			}
@@ -18517,7 +18800,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				ctx = tc.tamperContext(ctx, t)
 			}
 
-			err = clusterSvc.LaunchClusterUpdate(ctx, "one", tc.rebootArg)
+			err = clusterSvc.LaunchClusterUpdate(ctx, "one", tc.request)
 
 			// Assert
 			tc.assertErr(t, err)

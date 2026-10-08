@@ -44,6 +44,31 @@ means the update has been triggered. Operations Center reports the server as
 update. With `--os` only the operating system decides that, so the server
 leaves `updating` while its applications may still need an update.
 
+### Cluster wide update
+
+The same restrictions are available for the rolling update of a cluster, which
+updates the servers of the cluster one by one:
+
+```shell
+operations-center provisioning cluster update <cluster> [--reboot]
+operations-center provisioning cluster update <cluster> --os [--reboot]
+operations-center provisioning cluster update <cluster> --application incus
+```
+
+With `--reboot`, the update is followed by a rolling reboot of the servers,
+which applies the staged update of the operating system. Since an application is
+updated right away, `--reboot` can not be combined with `--application`.
+
+An application given with `--application` has to be installed on at least one
+server of the cluster. Servers, which do not have it installed, are skipped. A
+restricted update is rejected, if none of the servers needs an update of the
+covered components.
+
+The update phase of a restricted update is complete, as soon as none of the
+servers reports the covered components in need of an update. With `--reboot`,
+the rolling reboot follows. The cluster keeps reporting the servers, whose other
+components still need an update.
+
 ## Filtering
 
 The updates, which should be downloaded and be made available for the managed

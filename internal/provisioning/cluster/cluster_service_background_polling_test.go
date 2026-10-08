@@ -97,7 +97,7 @@ func TestClusterService_ClusterUpdateControlLoopWithBackgroundPolling(t *testing
 
 	backgroundPolling := daemonBackgroundPolling(t, serverSvc)
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
+	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 	require.NoError(t, err)
 
 	var observed []string

@@ -6,7 +6,9 @@ A cluster can only ever run a single cluster wide operation at a time. Currently
 two such operations exist:
 
 * `update`, triggered with `POST /1.0/provisioning/clusters/{name}/:update`,
-  which performs a rolling update of OS and applications.
+  which performs a rolling update of OS and applications. The update can be
+  restricted to the OS (`os_only`) or to individual applications
+  (`applications`).
 * `reboot`, triggered with `POST /1.0/provisioning/clusters/{name}/:reboot`,
   which performs a rolling reboot of all servers.
 
@@ -138,10 +140,23 @@ triggered again, and the attempt is counted, so a step, that keeps stalling,
 runs out of attempts and ends the run, naming the server and the step.
 
 The update step covers both of the states, in which a server is updating: the
-one of the OS and the one of an application. A rolling update triggers the OS
-alone, since an IncusOS update covers the applications as well, but a server can
-be left in the application state by an update, which has been requested for it
-directly, and the run waits for that one under the same budget.
+one of the OS and the one of an application. A rolling update, which is not
+restricted to applications, triggers the OS alone: unrestricted, the IncusOS
+update covers the applications as well, with `os_only` it leaves them on their
+version. A rolling update restricted to applications triggers, on each server,
+only those listed applications, which need an update there, and leaves the
+server in the application state. A server can also be left in that state by an
+update, which has been requested for it directly. The run waits for either under
+the same budget.
+
+A rolling update, which is restricted to the OS or to individual applications,
+records its restriction in the cluster update in progress state. Only the
+covered components decide, whether a server still needs to be updated, so the
+run completes, while the components left out may still report a pending update.
+A restricted update is rejected at launch, if a listed application is installed
+on none of the servers or if none of the servers needs an update of the covered
+components. Servers, which do not have a listed application installed, are
+skipped.
 
 The reboot is the exception: a server, that does not come back, can not accept
 another reboot, so the step has no trigger to fall back to and ends the run
