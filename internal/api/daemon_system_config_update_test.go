@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -292,7 +293,83 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-		t.Log(`7. Reset security config with user "admin`)
+		t.Log(`7. Expect bad request for an unreachable OIDC issuer or OpenFGA server`)
+		// Listen and close again to get a port without a listener.
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		unreachableEndpoint := "http://" + listener.Addr().String()
+		err = listener.Close()
+		require.NoError(t, err)
+
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
+  "oidc": {
+    "issuer": "`+unreachableEndpoint+`",
+    "client_id": "`+oidcProvider.ClientID+`",
+    "scopes": "openid,offline_access,email"
+  },
+  "openfga": {
+    "api_token": "dummy",
+    "api_url": "`+openFGAEndpoint+`",
+    "store_id": "`+openFGAStoreID+`"
+  }
+}
+`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expect a validation error for an unreachable OIDC issuer")
+		require.Contains(t, string(body), "Failed to reach OIDC issuer")
+		require.NotContains(t, string(body), "connection refused", "expect the cause to be kept out of the response")
+
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
+  "oidc": {
+    "issuer": "`+oidcProvider.Issuer()+`",
+    "client_id": "`+oidcProvider.ClientID+`",
+    "scopes": "openid,offline_access,email"
+  },
+  "openfga": {
+    "api_token": "dummy",
+    "api_url": "`+unreachableEndpoint+`",
+    "store_id": "`+openFGAStoreID+`"
+  }
+}
+`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		body, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expect a validation error for an unreachable OpenFGA server")
+		require.Contains(t, string(body), "Failed to reach OpenFGA")
+		require.NotContains(t, string(body), "connection refused", "expect the cause to be kept out of the response")
+
+		req, err = http.NewRequest(http.MethodGet, "http://unix.socket/1.0/system/security", http.NoBody)
+		require.NoError(t, err)
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		body, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Contains(t, string(body), oidcProvider.Issuer(), "expect the rejected updates to keep the previous OIDC issuer")
+		require.Contains(t, string(body), openFGAEndpoint, "expect the rejected updates to keep the previous OpenFGA API URL")
+		require.NotContains(t, string(body), unreachableEndpoint, "expect the rejected updates not to be applied")
+
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode, "expect OpenFGA to still authorize the viewer")
+
+		t.Log(`8. Reset security config with user "admin`)
 		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{}`))
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", "application/json")
@@ -302,7 +379,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		t.Log(`8. Reset network config over unix socket`)
+		t.Log(`9. Reset network config over unix socket`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(`{}`))
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", "application/json")
