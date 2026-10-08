@@ -10198,8 +10198,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "error - storage pool special type mismatch",
@@ -10282,8 +10281,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Storage pool configuration mismatch",
+			assertErr: assertInconsistent("Storage pool configuration mismatch", ""),
 		},
 		{
 			// IncusOS does not return the storage pools in a stable order.
