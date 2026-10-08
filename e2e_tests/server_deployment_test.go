@@ -158,6 +158,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 
 		// Assertions
 		assertServerDeployed(t, name)
+		assertVirtualMediaRandomRead(t, name)
 
 		mustWaitIncusOSReady(ctx, t, []string{name})
 		mustWaitInventoryReady(ctx, t, []string{name})
@@ -225,6 +226,8 @@ func assertServerDeployed(t *testing.T, name string) {
 	require.Equal(t, "completed", resp.OutputTrimmed(), "expect the deployment to be completed")
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.bios_profiles == ["%s"]'`, cpuArch, name, deployBIOSProfileName)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.media_bytes_read > 0'`, cpuArch, name)
 
 	resp = mustRun(t, `incus config get %s %s`, name, deployBIOSProfileConfigKey)
 	require.Equal(t, deployBIOSProfileConfigValue, resp.OutputTrimmed(), "expect the BIOS attribute of the profile to be applied")

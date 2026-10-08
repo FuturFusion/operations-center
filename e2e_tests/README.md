@@ -356,6 +356,12 @@ The proxy fetches the installation media from Operations Center when it is
 attached, so Operations Center needs to be reachable from the end 2 end test
 host at the address it advertises.
 
+The proxy fetches the complete installation media with a single request. A BMC
+streaming the media requests byte ranges instead. The test therefore reads the
+installation media a second time, the way such a BMC does: the start
+sequentially, then the end, then random portions (see
+`assertVirtualMediaRandomRead`).
+
 ### Incus images
 
 `TestE2E_WithToken_OCImagesRemoteLaunchInstance` covers the Incus image and the
