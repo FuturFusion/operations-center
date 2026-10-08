@@ -931,13 +931,13 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 			}
 
 			if currentServer.Cluster != nil {
-				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q was not part of a cluster, but is now part of %q", server.Name, *server.Cluster)
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q was not part of a cluster, but is now part of %q", server.Name, *currentServer.Cluster)
 			}
 		}
 
 		// Update Server records in the repo.
 		for _, server := range additionalServers {
-			err = s.serverSvc.Update(ctx, server, true, true, false)
+			err = s.serverSvc.Update(ctx, server, true, false, false)
 			if err != nil {
 				return fmt.Errorf("Failed to update server record for %q: %w", server.Name, err)
 			}
@@ -947,6 +947,24 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	})
 	if err != nil {
 		return err
+	}
+
+	var errs []error
+	for _, server := range additionalServers {
+		err = s.serverSvc.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
+			Config: incusosapi.SystemUpdateConfig{
+				AutoReboot:     false,
+				Channel:        server.Channel,
+				CheckFrequency: "never",
+			},
+		})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Servers joined cluster %q, but setting the update channel failed: %w", name, errors.Join(errs...))
 	}
 
 	if skipPostJoinOperations {

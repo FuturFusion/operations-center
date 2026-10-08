@@ -30,6 +30,7 @@ import (
 	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
@@ -3745,11 +3746,13 @@ func TestClusterService_AddServers(t *testing.T) {
 		clientGetOSDataErr                    error
 		clientSetServerConfigErr              error
 		serverSvcUpdateErr                    error
+		serverSvcUpdateSystemUpdateErr        error
 
 		serverSvcReconcileMeshTunnelLocalAddressErr error
 
-		assertErr           require.ErrorAssertionFunc
-		wantOSServiceConfig []osServiceConfig
+		assertErr                   require.ErrorAssertionFunc
+		wantOSServiceConfig         []osServiceConfig
+		wantUpdateSystemUpdateCalls int
 	}{
 		{
 			name:           "success",
@@ -3877,7 +3880,8 @@ func TestClusterService_AddServers(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:           "success - reconcile mesh tunnel local address fails",
@@ -4007,7 +4011,8 @@ func TestClusterService_AddServers(t *testing.T) {
 
 			serverSvcReconcileMeshTunnelLocalAddressErr: boom.Error,
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:                                "success - mesh tunnel interface only available after retry",
@@ -4155,7 +4160,8 @@ func TestClusterService_AddServers(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:           "error - no network interface for the internal mesh network",
@@ -4296,6 +4302,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Server "new": The server does not have a network interface with the role "cluster" or "management"`)
 			},
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:                      "success - skipPostJoinOperations",
@@ -4397,7 +4404,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			},
 			incusClientGetCluster: &incusapi.Cluster{},
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 
 		{
@@ -4576,7 +4584,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			},
 			incusClientGetCluster: &incusapi.Cluster{},
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 2,
 			// The state of the source server is never copied and the LVM system_id is
 			// derived from the ID of the respective target server.
 			wantOSServiceConfig: []osServiceConfig{
@@ -4661,7 +4670,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			},
 			incusClientGetCluster: &incusapi.Cluster{},
 
-			assertErr: require.NoError,
+			assertErr:                   require.NoError,
+			wantUpdateSystemUpdateCalls: 1,
 			wantOSServiceConfig: []osServiceConfig{
 				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 91}}},
 				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
@@ -6036,6 +6046,106 @@ func TestClusterService_AddServers(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:           "error - serverSvc.UpdateSystemUpdate - all servers are tried",
+			argServerNames: []string{"new-1", "new-2"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new-1")},
+				{Value: readyServerForClustering(12, "new-2")},
+				// Before update.
+				{Value: readyServerForClustering(11, "new-1")},
+				{Value: readyServerForClustering(12, "new-2")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: new("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster:          &incusapi.Cluster{},
+			serverSvcUpdateSystemUpdateErr: boom.Error,
+
+			assertErr:                   boom.ErrorIs,
+			wantUpdateSystemUpdateCalls: 2,
+		},
+		{
+			name:           "error - server joined a cluster meanwhile",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+				// Before update.
+				{
+					Value: func() *provisioning.Server {
+						server := readyServerForClustering(11, "new")
+						server.Cluster = new("other")
+
+						return server
+					}(),
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: new("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				require.ErrorContains(tt, err, `Server "new" was not part of a cluster, but is now part of "other"`, a...)
+			},
+		},
+		{
 			name:           "error - client.GetOSData",
 			argServerNames: []string{"new"},
 			repoGetByName: &provisioning.Cluster{
@@ -6135,7 +6245,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			incusClientGetCluster: &incusapi.Cluster{},
 			clientGetOSDataErr:    boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:           "error - client.IncusClient - 2nd",
@@ -6240,7 +6351,8 @@ func TestClusterService_AddServers(t *testing.T) {
 				boom.Error,
 			},
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:           "error - incusClient.CreateStoragePoolVolume",
@@ -6342,7 +6454,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			incusClientGetCluster:                 &incusapi.Cluster{},
 			incusClientCreateStoragePoolVolumeErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 		{
 			name:           "error - client.SetServerConfig",
@@ -6444,7 +6557,8 @@ func TestClusterService_AddServers(t *testing.T) {
 			incusClientGetCluster:    &incusapi.Cluster{},
 			clientSetServerConfigErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantUpdateSystemUpdateCalls: 1,
 		},
 	}
 
@@ -6575,7 +6689,15 @@ func TestClusterService_AddServers(t *testing.T) {
 					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
+					require.False(t, updateSystem, "the update channel must not be set inside of the transaction")
+
 					return tc.serverSvcUpdateErr
+				},
+				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+					require.False(t, transaction.IsActive(ctx), "the update channel must be set outside of the transaction")
+					require.Equal(t, tc.repoGetByName.Channel, updateConfig.Config.Channel, "the servers must follow the update channel of the cluster")
+
+					return tc.serverSvcUpdateSystemUpdateErr
 				},
 				ReconcileMeshTunnelLocalAddressFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.serverSvcReconcileMeshTunnelLocalAddressErr
@@ -6602,6 +6724,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig)
+			require.Len(t, serverSvc.UpdateSystemUpdateCalls(), tc.wantUpdateSystemUpdateCalls, "the update channel must be set once for each server, which joined the cluster")
 
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.clientIncusClientErr)
