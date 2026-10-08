@@ -191,6 +191,10 @@ Remove the log files accumulated by previous test runs:
 make clean-e2e-test-logs
 ```
 
+`make clean-e2e-test` and `make clean-e2e-test-soft` hide the errors for
+resources that are already gone. They report all other errors, continue with
+the remaining steps and fail at the end.
+
 ## Development
 
 ### Shell commands
