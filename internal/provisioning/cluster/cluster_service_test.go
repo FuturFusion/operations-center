@@ -10098,6 +10098,196 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			wantConsistent: true,
 		},
 		{
+			// Device paths contain the disk serial number.
+			name: "success - storage pools with server specific devices",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/nvme-disk-one-part11"},
+									Cache:   []string{"/dev/disk/by-id/nvme-cache-one"},
+									Log:     []string{"/dev/disk/by-id/nvme-log-one"},
+									Special: &incusosapi.SystemStoragePoolSpecial{
+										Type:    "zfs-raid1",
+										Devices: []string{"/dev/disk/by-id/nvme-special-one"},
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/nvme-disk-two-part11"},
+									Cache:   []string{"/dev/disk/by-id/nvme-cache-two"},
+									Log:     []string{"/dev/disk/by-id/nvme-log-two"},
+									Special: &incusosapi.SystemStoragePoolSpecial{
+										Type:    "zfs-raid1",
+										Devices: []string{"/dev/disk/by-id/nvme-special-two"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			// No ceph and linstor service configuration is fetched.
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "error - storage pool special type mismatch",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/nvme-disk-one-part11"},
+									Cache:   []string{"/dev/disk/by-id/nvme-cache-one"},
+									Log:     []string{"/dev/disk/by-id/nvme-log-one"},
+									Special: &incusosapi.SystemStoragePoolSpecial{
+										Type:    "zfs-raid1",
+										Devices: []string{"/dev/disk/by-id/nvme-special-one"},
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/nvme-disk-two-part11"},
+									Cache:   []string{"/dev/disk/by-id/nvme-cache-two"},
+									Log:     []string{"/dev/disk/by-id/nvme-log-two"},
+									Special: &incusosapi.SystemStoragePoolSpecial{
+										Type:    "zfs-raid0", // mismatch
+										Devices: []string{"/dev/disk/by-id/nvme-special-two"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Storage pool configuration mismatch",
+		},
+		{
 			// IncusOS does not return the storage pools in a stable order.
 			name: "success - storage pools in different order",
 			servers: []provisioning.Server{
@@ -15156,7 +15346,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 }
 
 func TestSystemStoragePool_fieldCount(t *testing.T) {
-	require.Equal(t, 19, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only fields in checkClusteringServerConsistency")
+	require.Equal(t, 19, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only and server specific device fields in checkClusteringServerConsistency")
 }
 
 func TestClusterService_RemoveServer(t *testing.T) {
