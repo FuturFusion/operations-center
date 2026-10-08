@@ -52,6 +52,9 @@ When servers are added to an existing cluster, the service configuration of the
 added servers is required to be consistent with the one of the existing cluster
 members.
 
+The storage pools of all servers are required to have the same names and types.
+The devices of a storage pool can differ between servers.
+
 Instead of configuring the services on the new servers manually, the service
 configuration can be copied from an existing cluster member by adding the
 `--copy-services-config` flag:
