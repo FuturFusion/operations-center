@@ -17,6 +17,7 @@ import (
 
 const (
 	oidcRemoteName       = "e2e-test-oidc"
+	oidcConfDirName      = "oidc-cli-config"
 	oidcTokenDescription = "e2e OIDC write access"
 )
 
@@ -37,16 +38,19 @@ func oidcAuthentication(ctx context.Context, t *testing.T, tmpDir string) {
 	operationsCenterAddress := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '."e2e-test".addr'`, cpuArch).OutputTrimmed()
 	require.NotEmpty(t, operationsCenterAddress, "Failed to determine the address of Operations Center")
 
-	t.Cleanup(systemSecurityOIDCCleanup(t, tmpDir))
-	t.Cleanup(oidcProvisioningTokenCleanup(t))
+	t.Cleanup(systemSecurityOIDCAndOpenFGACleanup(t, tmpDir))
+	t.Cleanup(provisioningTokenCleanup(t, oidcTokenDescription))
 
 	// Setup
+	// A failed run without cleanup leaves its security config behind.
+	mustResetSystemSecurityOIDCAndOpenFGA(ctx, t, tmpDir)
+
 	t.Log("Configure the OIDC issuer of Operations Center")
 	mustSetSystemSecurityOIDC(ctx, t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "")
 
 	assertSystemSecurityOIDCConfig(t, provider.Issuer, provider.ClientID)
 
-	confDir := mustCreateIsolatedCLIConfigDir(t, tmpDir)
+	confDir := mustCreateIsolatedCLIConfigDir(t, tmpDir, oidcConfDirName)
 	tokensFilename := filepath.Join(confDir, "oidc-tokens", oidcRemoteName+".json")
 
 	// Run test
@@ -56,16 +60,11 @@ func oidcAuthentication(ctx context.Context, t *testing.T, tmpDir string) {
 	require.False(t, resp.Success(), "expect the untrusted client certificate to be rejected")
 	require.Contains(t, resp.Output(), "authentication mismatch", "expect the untrusted client certificate to be rejected")
 
-	t.Log("Add the remote using OIDC authentication")
-	resp = mustRunWithTimeout(t, `BROWSER=none OPERATIONS_CENTER_CONF=%[1]s ../bin/operations-center.linux.%[2]s remote add --auth-type oidc --accept-certificate %[3]s %[4]s`, 2*time.Minute, confDir, cpuArch, oidcRemoteName, operationsCenterAddress)
+	resp = mustOIDCLogin(t, confDir, operationsCenterAddress)
 
 	// Assertions
 	require.Contains(t, resp.Output(), "URL: "+provider.Issuer+"device?user_code=", "expect the CLI to print the verification URI of the device authorization grant")
 	require.Contains(t, resp.Output(), "Code: ", "expect the CLI to print the user code of the device authorization grant")
-
-	// The operations-center CLI derives the OIDC tokens file from the default
-	// remote, so the new remote needs to become the default one.
-	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s remote switch %s`, time.Minute, confDir, cpuArch, oidcRemoteName)
 
 	// Run test
 	t.Log("Verify write access of the OIDC authenticated user")
@@ -192,10 +191,28 @@ func assertOIDCBrowserLoginRedirect(t *testing.T, operationsCenterAddress string
 	require.True(t, strings.HasPrefix(resp.OutputTrimmed(), provider.Issuer+"authorize?"), "expect the login endpoint to redirect to the OIDC provider, got: %s", resp.OutputTrimmed())
 }
 
-func mustCreateIsolatedCLIConfigDir(t *testing.T, tmpDir string) string {
+// mustOIDCLogin adds Operations Center as an OIDC remote to the isolated config
+// directory. It returns the output of the login.
+func mustOIDCLogin(t *testing.T, confDir string, operationsCenterAddress string) cmdResponse {
 	t.Helper()
 
-	confDir := filepath.Join(tmpDir, "oidc-cli-config")
+	stop := timeTrack(t)
+	defer stop()
+
+	t.Log("Add the remote using OIDC authentication")
+	resp := mustRunWithTimeout(t, `BROWSER=none OPERATIONS_CENTER_CONF=%[1]s ../bin/operations-center.linux.%[2]s remote add --auth-type oidc --accept-certificate %[3]s %[4]s`, 2*time.Minute, confDir, cpuArch, oidcRemoteName, operationsCenterAddress)
+
+	// The operations-center CLI derives the OIDC tokens file from the default
+	// remote, so the new remote needs to become the default one.
+	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s remote switch %s`, time.Minute, confDir, cpuArch, oidcRemoteName)
+
+	return resp
+}
+
+func mustCreateIsolatedCLIConfigDir(t *testing.T, tmpDir string, name string) string {
+	t.Helper()
+
+	confDir := filepath.Join(tmpDir, name)
 
 	// The temporary directory is reused between runs, so start from scratch.
 	err := os.RemoveAll(confDir)
@@ -238,7 +255,7 @@ func mustDecodeJWTClaims(t *testing.T, token string) map[string]any {
 	return claims
 }
 
-func oidcProvisioningTokenCleanup(t *testing.T) func() {
+func provisioningTokenCleanup(t *testing.T, description string) func() {
 	t.Helper()
 
 	return func() {
@@ -250,10 +267,10 @@ func oidcProvisioningTokenCleanup(t *testing.T) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(60*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t, "OIDC provisioning token cleanup")
+		stop := timeTrack(t, "provisioning token cleanup")
 		defer stop()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description == "%s") | .uuid'`, cpuArch, oidcTokenDescription)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description == "%s") | .uuid'`, cpuArch, description)
 		if !resp.Success() {
 			t.Log(resp.Error())
 			return

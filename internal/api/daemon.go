@@ -222,14 +222,15 @@ func (d *Daemon) Start(ctx context.Context) error {
 		if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" {
 			err := authnoidc.CheckConnectivity(ctx, cfg.OIDC.Issuer)
 			if err != nil {
-				return fmt.Errorf("Failed to reach OIDC issuer %q: %w", cfg.OIDC.Issuer, err)
+				// The cause can contain the response of the remote service. Only log it.
+				return domain.NewErrorf(domain.ErrInvalidArgument, "", "Failed to reach OIDC issuer %q", cfg.OIDC.Issuer).WithCause(err)
 			}
 		}
 
 		if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
 			err := authzopenfga.CheckConnectivity(ctx, cfg.OpenFGA.APIURL, cfg.OpenFGA.APIToken, cfg.OpenFGA.StoreID)
 			if err != nil {
-				return fmt.Errorf("Failed to reach OpenFGA at %q: %w", cfg.OpenFGA.APIURL, err)
+				return domain.NewErrorf(domain.ErrInvalidArgument, "", "Failed to reach OpenFGA at %q", cfg.OpenFGA.APIURL).WithCause(err)
 			}
 		}
 

@@ -30,7 +30,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
-* `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host, at which the services served in-process by the tests (the Redfish proxy and the fake OIDC provider) are reachable from the Operations Center VM. If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
 
 ## Setup
@@ -307,9 +307,12 @@ Examples:
   go away.
 * `t.Cleanup(ocIncusImageSourceCleanup(t, name))`, removes an Incus image
   source, which also removes all the images provided by that source.
-* `t.Cleanup(systemSecurityOIDCCleanup(t, tmpDir))`, resets the OIDC part of the
-  security config, so that Operations Center stops pointing at an OIDC issuer,
-  which is about to go away.
+* `t.Cleanup(systemSecurityOIDCAndOpenFGACleanup(t, tmpDir))`, resets the OIDC
+  part and the OpenFGA part of the security config in a single update. The
+  services behind them are about to go away. Operations Center rejects an
+  update of one part if the other part points at a missing service. A failed
+  run without cleanup leaves the config behind, so the tests also reset it at
+  the start.
 
 For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
@@ -399,3 +402,27 @@ The test uses an isolated config directory for the `operations-center` CLI
 certificate, which is not trusted by Operations Center, so authentication can
 only succeed through OIDC, and the remotes used by the other tests stay
 untouched.
+
+### OpenFGA server
+
+The OpenFGA authorization of Operations Center is tested against a real OpenFGA
+server. The test starts OpenFGA as a Docker container on the end 2 end test
+host (see `startOpenFGA`). The user who runs the tests needs access to Docker.
+
+Docker publishes the port of OpenFGA on the end 2 end test host. Operations
+Center reaches OpenFGA at the address of the host on the network of the
+Operations Center VM. Set `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` to use a
+different address.
+
+OpenFGA only authorizes users who authenticate through OIDC. The test
+therefore also starts the fake OIDC provider. It uses an isolated config
+directory for the `operations-center` CLI, so the remotes used by the other
+tests stay untouched.
+
+The test assigns one role after the other to the OIDC user by writing the
+respective tuple to OpenFGA directly. For each role, it verifies which commands
+of the `operations-center` CLI are allowed and which are denied.
+
+The TLS based authentication keeps its unrestricted access. The test verifies
+this at the end. Finally, the test verifies that Operations Center rejects an
+OpenFGA server it cannot reach.
