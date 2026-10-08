@@ -130,12 +130,12 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 		ClusterAddress:     clusterAddressURL.Host,
 	}, "")
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster during cluster join on %q (%s): %w", endpoint.GetName(), server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to update cluster during cluster join on %q (%s): %w", server.GetName(), server.GetConnectionURL(), err)
 	}
 
 	err = op.WaitContext(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to wait for update operation during cluster join on %q (%s): %w", endpoint.GetName(), server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to wait for update operation during cluster join on %q (%s): %w", server.GetName(), server.GetConnectionURL(), err)
 	}
 
 	return nil
