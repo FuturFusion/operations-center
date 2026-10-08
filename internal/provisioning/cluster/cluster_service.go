@@ -845,13 +845,9 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	}
 
 	// Check configuration consistency.
-	isConsistent, reason, err := s.checkClusteringServerConsistency(ctx, append(currentClusterServers, additionalServers...))
+	err = s.checkClusteringServerConsistency(ctx, append(currentClusterServers, additionalServers...))
 	if err != nil {
 		return fmt.Errorf("Failed to check cluster consistency for %q including the additional servers (%s): %w", name, strings.Join(serverNames, ","), err)
-	}
-
-	if !isConsistent {
-		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Failed to add servers (%s) due to configuration inconsistencies: %s", strings.Join(serverNames, ","), reason)
 	}
 
 	clusterEndpoint := currentClusterServers[0]
@@ -1200,14 +1196,20 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 	return nil
 }
 
-func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) (isConsistent bool, inconsistencyReason string, _ error) {
+const servicesConfigMismatchHint = "Configure the service on all servers or copy the services configuration from an existing cluster member."
+
+func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) error {
+	inconsistent := func(format string, a ...any) *domain.Error {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server configuration is inconsistent: "+format, a...)
+	}
+
 	if len(servers) == 0 {
-		return false, "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Unable to check clustering server consistency for empty servers list")
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Unable to check clustering server consistency for empty servers list")
 	}
 
 	if len(servers) == 1 {
 		// A single server is always consistent with it self.
-		return true, "", nil
+		return nil
 	}
 
 	// Compare OS version, installed applications and their versions.
@@ -1228,12 +1230,12 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	referenceAppVersions := applicationVersions(servers[0].VersionData.Applications)
 	for _, server := range servers[1:] {
 		if referenceOSVersion != server.VersionData.OS.Version {
-			return false, fmt.Sprintf("OS version mismatch, found %q (%s) and %q (%s)", referenceOSVersion, servers[0].Name, server.VersionData.OS.Version, server.Name), nil
+			return inconsistent("OS version mismatch, found %q (%s) and %q (%s)", referenceOSVersion, servers[0].Name, server.VersionData.OS.Version, server.Name)
 		}
 
 		appVersions := applicationVersions(server.VersionData.Applications)
 		if !maps.Equal(referenceAppVersions, appVersions) {
-			return false, fmt.Sprintf("Application list mismatch, found %v (%s) and %v (%s)", referenceAppVersions, servers[0].Name, appVersions, server.Name), nil
+			return inconsistent("Application list mismatch, found %v (%s) and %v (%s)", referenceAppVersions, servers[0].Name, appVersions, server.Name)
 		}
 	}
 
@@ -1254,11 +1256,11 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 
 	referenceNetworkConfig, err := s.client.GetNetworkConfig(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get network configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	if referenceNetworkConfig.Config == nil {
-		return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", servers[0].Name, servers[0].GetConnectionURL())
+		return domain.NewValidationErrf("Server %q (%s) does not have any network config", servers[0].Name, servers[0].GetConnectionURL())
 	}
 
 	referenceNetworkNamesAndVLANTags := networkNamesAndVLANTags(referenceNetworkConfig.Config)
@@ -1266,17 +1268,17 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	for _, server := range servers[1:] {
 		networkConfig, err := s.client.GetNetworkConfig(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
 		}
 
 		if networkConfig.Config == nil {
-			return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
+			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
 		namesAndVLANTags := networkNamesAndVLANTags(networkConfig.Config)
 
 		if !reflect.DeepEqual(referenceNetworkNamesAndVLANTags, namesAndVLANTags) {
-			return false, fmt.Sprintf("Network interface and bond names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkNamesAndVLANTags, servers[0].Name, namesAndVLANTags, server.Name), nil
+			return inconsistent("Network interface and bond names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkNamesAndVLANTags, servers[0].Name, namesAndVLANTags, server.Name)
 		}
 	}
 
@@ -1305,7 +1307,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 
 	referenceStorageConfig, err := s.client.GetStorageConfig(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get storage configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	referenceStoragePools := storagePoolsConfigWithoutReadonlyFields(referenceStorageConfig.Config)
@@ -1313,17 +1315,17 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	for _, server := range servers[1:] {
 		storageConfig, err := s.client.GetStorageConfig(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get storage configuration for server %q: %w", server.Name, err)
 		}
 
 		if referenceStorageConfig.Config.ScrubSchedule != storageConfig.Config.ScrubSchedule {
-			return false, fmt.Sprintf("Storage scrub schedule mismatch, found %q (%s) and %q (%s)", referenceStorageConfig.Config.ScrubSchedule, servers[0].Name, storageConfig.Config.ScrubSchedule, server.Name), nil
+			return inconsistent("Storage scrub schedule mismatch, found %q (%s) and %q (%s)", referenceStorageConfig.Config.ScrubSchedule, servers[0].Name, storageConfig.Config.ScrubSchedule, server.Name)
 		}
 
 		storagePools := storagePoolsConfigWithoutReadonlyFields(storageConfig.Config)
 
 		if !reflect.DeepEqual(referenceStoragePools, storagePools) {
-			return false, fmt.Sprintf("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStoragePools, servers[0].Name, storagePools, server.Name), nil
+			return inconsistent("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStoragePools, servers[0].Name, storagePools, server.Name)
 		}
 	}
 
@@ -1331,7 +1333,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	seenSystemIDs := make([]int, 0, len(servers))
 	referenceLVMConfig, err := s.client.GetOSServiceLVM(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get LVM service configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get LVM service configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	seenSystemIDs = append(seenSystemIDs, referenceLVMConfig.Config.SystemID)
@@ -1339,12 +1341,13 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	for _, server := range servers[1:] {
 		lvmConfig, err := s.client.GetOSServiceLVM(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get LVM service configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get LVM service configuration for server %q: %w", server.Name, err)
 		}
 
 		if !referenceLVMConfig.Config.Enabled {
 			if referenceLVMConfig.Config.Enabled != lvmConfig.Config.Enabled {
-				return false, fmt.Sprintf("LVM enabled mismatch, found enabled %t (%s) and %t (%s)", referenceLVMConfig.Config.Enabled, servers[0].Name, lvmConfig.Config.Enabled, server.Name), nil
+				return inconsistent("LVM enabled mismatch, found enabled %t (%s) and %t (%s)", referenceLVMConfig.Config.Enabled, servers[0].Name, lvmConfig.Config.Enabled, server.Name).
+					WithHintf("%s", servicesConfigMismatchHint)
 			}
 
 			continue
@@ -1354,7 +1357,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		// Set the LVM system_id following the same logic as during cluster creation.
 		if !lvmConfig.Config.Enabled {
 			if server.ID > 2000 {
-				return false, fmt.Sprintf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name), nil
+				return inconsistent(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
 			}
 
 			cfg := map[string]any{
@@ -1364,14 +1367,14 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 
 			err = s.client.UpdateOSService(ctx, server, "lvm", cfg)
 			if err != nil {
-				return false, "", fmt.Errorf(`Failed to enable OS service "lvm" on %q: %w`, server.Name, err)
+				return fmt.Errorf(`Failed to enable OS service "lvm" on %q: %w`, server.Name, err)
 			}
 
 			lvmConfig.Config.SystemID = int(server.ID)
 		}
 
 		if slices.Contains(seenSystemIDs, lvmConfig.Config.SystemID) {
-			return false, fmt.Sprintf("LVM configuration mismatch, found multiple systems with system_id %d", lvmConfig.Config.SystemID), nil
+			return inconsistent("LVM configuration mismatch, found multiple systems with system_id %d", lvmConfig.Config.SystemID)
 		}
 
 		seenSystemIDs = append(seenSystemIDs, lvmConfig.Config.SystemID)
@@ -1380,51 +1383,54 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	// Compare iSCSI service configuration.
 	referenceISCSIConfig, err := s.client.GetOSServiceISCSI(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	for _, server := range servers[1:] {
 		iscsiConfig, err := s.client.GetOSServiceISCSI(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", server.Name, err)
 		}
 
 		if !reflect.DeepEqual(referenceISCSIConfig.Config, iscsiConfig.Config) {
-			return false, fmt.Sprintf("iSCSI configuration mismatch, found %v (%s) and %v (%s)", referenceISCSIConfig.Config, servers[0].Name, iscsiConfig.Config, server.Name), nil
+			return inconsistent("iSCSI configuration mismatch, found %v (%s) and %v (%s)", referenceISCSIConfig.Config, servers[0].Name, iscsiConfig.Config, server.Name).
+				WithHintf("%s", servicesConfigMismatchHint)
 		}
 	}
 
 	// Compare multipath service configuration.
 	referenceMultipathConfig, err := s.client.GetOSServiceMultipath(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get multipath service configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get multipath service configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	for _, server := range servers[1:] {
 		multipathConfig, err := s.client.GetOSServiceMultipath(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get multipath service configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get multipath service configuration for server %q: %w", server.Name, err)
 		}
 
 		if !reflect.DeepEqual(referenceMultipathConfig.Config, multipathConfig.Config) {
-			return false, fmt.Sprintf("Multipath configuration mismatch, found %v (%s) and %v (%s)", referenceMultipathConfig.Config, servers[0].Name, multipathConfig.Config, server.Name), nil
+			return inconsistent("Multipath configuration mismatch, found %v (%s) and %v (%s)", referenceMultipathConfig.Config, servers[0].Name, multipathConfig.Config, server.Name).
+				WithHintf("%s", servicesConfigMismatchHint)
 		}
 	}
 
 	// Compare NVME service configuration.
 	referenceNVMEConfig, err := s.client.GetOSServiceNVME(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get NVME service configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get NVME service configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	for _, server := range servers[1:] {
 		nvmeConfig, err := s.client.GetOSServiceNVME(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get NVME service configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get NVME service configuration for server %q: %w", server.Name, err)
 		}
 
 		if !reflect.DeepEqual(referenceNVMEConfig.Config, nvmeConfig.Config) {
-			return false, fmt.Sprintf("NVME configuration mismatch, found %v (%s) and %v (%s)", referenceNVMEConfig.Config, servers[0].Name, nvmeConfig.Config, server.Name), nil
+			return inconsistent("NVME configuration mismatch, found %v (%s) and %v (%s)", referenceNVMEConfig.Config, servers[0].Name, nvmeConfig.Config, server.Name).
+				WithHintf("%s", servicesConfigMismatchHint)
 		}
 	}
 
@@ -1432,17 +1438,18 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	if hasApplication(servers[0], images.UpdateFileComponentIncusCeph) {
 		referenceCephConfig, err := s.client.GetOSServiceCeph(ctx, servers[0])
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", servers[0].Name, err)
+			return fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", servers[0].Name, err)
 		}
 
 		for _, server := range servers[1:] {
 			cephConfig, err := s.client.GetOSServiceCeph(ctx, server)
 			if err != nil {
-				return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", server.Name, err)
+				return fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", server.Name, err)
 			}
 
 			if !reflect.DeepEqual(referenceCephConfig.Config, cephConfig.Config) {
-				return false, fmt.Sprintf("Ceph configuration mismatch, found %v (%s) and %v (%s)", referenceCephConfig.Config, servers[0].Name, cephConfig.Config, server.Name), nil
+				return inconsistent("Ceph configuration mismatch, found %v (%s) and %v (%s)", referenceCephConfig.Config, servers[0].Name, cephConfig.Config, server.Name).
+					WithHintf("%s", servicesConfigMismatchHint)
 			}
 		}
 	}
@@ -1452,22 +1459,23 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	if hasApplication(servers[0], images.UpdateFileComponentIncusLinstor) {
 		referenceLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, servers[0])
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", servers[0].Name, err)
+			return fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", servers[0].Name, err)
 		}
 
 		for _, server := range servers[1:] {
 			linstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
 			if err != nil {
-				return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", server.Name, err)
+				return fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", server.Name, err)
 			}
 
 			expectedListenAddress, err := memberDependentListenAddress(servers[0], referenceLinstorConfig.Config.ListenAddress, server)
 			if err != nil {
-				return false, fmt.Sprintf("Linstor listen address mismatch, failed to derive the listen address for %s: %v", server.Name, err), nil
+				return inconsistent("Linstor listen address mismatch, failed to derive the listen address for %s: %v", server.Name, err)
 			}
 
 			if expectedListenAddress != linstorConfig.Config.ListenAddress {
-				return false, fmt.Sprintf("Linstor listen address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceLinstorConfig.Config.ListenAddress, servers[0].Name, linstorConfig.Config.ListenAddress, server.Name, expectedListenAddress, server.Name), nil
+				return inconsistent("Linstor listen address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceLinstorConfig.Config.ListenAddress, servers[0].Name, linstorConfig.Config.ListenAddress, server.Name, expectedListenAddress, server.Name).
+					WithHintf("%s", servicesConfigMismatchHint)
 			}
 
 			referenceConfig := referenceLinstorConfig.Config
@@ -1476,7 +1484,8 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			serverConfig.ListenAddress = ""
 
 			if !reflect.DeepEqual(referenceConfig, serverConfig) {
-				return false, fmt.Sprintf("Linstor configuration mismatch, found %v (%s) and %v (%s)", referenceLinstorConfig.Config, servers[0].Name, linstorConfig.Config, server.Name), nil
+				return inconsistent("Linstor configuration mismatch, found %v (%s) and %v (%s)", referenceLinstorConfig.Config, servers[0].Name, linstorConfig.Config, server.Name).
+					WithHintf("%s", servicesConfigMismatchHint)
 			}
 		}
 	}
@@ -1485,22 +1494,23 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	// it is empty, so it is compared separately.
 	referenceOVNConfig, err := s.client.GetOSServiceOVN(ctx, servers[0])
 	if err != nil {
-		return false, "", fmt.Errorf("Failed to get OVN service configuration for server %q: %w", servers[0].Name, err)
+		return fmt.Errorf("Failed to get OVN service configuration for server %q: %w", servers[0].Name, err)
 	}
 
 	for _, server := range servers[1:] {
 		ovnConfig, err := s.client.GetOSServiceOVN(ctx, server)
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get OVN service configuration for server %q: %w", server.Name, err)
+			return fmt.Errorf("Failed to get OVN service configuration for server %q: %w", server.Name, err)
 		}
 
 		expectedTunnelAddress, err := memberDependentAddress(servers[0], referenceOVNConfig.Config.TunnelAddress, server)
 		if err != nil {
-			return false, fmt.Sprintf("OVN tunnel address mismatch, failed to derive the tunnel address for %s: %v", server.Name, err), nil
+			return inconsistent("OVN tunnel address mismatch, failed to derive the tunnel address for %s: %v", server.Name, err)
 		}
 
 		if expectedTunnelAddress != ovnConfig.Config.TunnelAddress {
-			return false, fmt.Sprintf("OVN tunnel address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceOVNConfig.Config.TunnelAddress, servers[0].Name, ovnConfig.Config.TunnelAddress, server.Name, expectedTunnelAddress, server.Name), nil
+			return inconsistent("OVN tunnel address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceOVNConfig.Config.TunnelAddress, servers[0].Name, ovnConfig.Config.TunnelAddress, server.Name, expectedTunnelAddress, server.Name).
+				WithHintf("%s", servicesConfigMismatchHint)
 		}
 
 		referenceConfig := referenceOVNConfig.Config
@@ -1509,11 +1519,12 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		serverConfig.TunnelAddress = ""
 
 		if !reflect.DeepEqual(referenceConfig, serverConfig) {
-			return false, fmt.Sprintf("OVN configuration mismatch, found %v (%s) and %v (%s)", referenceOVNConfig.Config, servers[0].Name, ovnConfig.Config, server.Name), nil
+			return inconsistent("OVN configuration mismatch, found %v (%s) and %v (%s)", referenceOVNConfig.Config, servers[0].Name, ovnConfig.Config, server.Name).
+				WithHintf("%s", servicesConfigMismatchHint)
 		}
 	}
 
-	return true, "", nil
+	return nil
 }
 
 // ocCreatedStorageVolumes are the local storage volumes, operations center
