@@ -141,7 +141,7 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
               deployment.history.map((step) => (
                 <div key={`${step.state}-${step.entered_at}`}>
                   {formatDateTime(step.entered_at)} {step.state}
-                  {step.retries > 0 && ` (retries: ${step.retries})`}
+                  {step.retries > 0 && ` (retried ${step.retries}x)`}
                   {step.error != "" && `: ${step.error}`}
                 </div>
               )),

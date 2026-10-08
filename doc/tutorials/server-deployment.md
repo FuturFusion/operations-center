@@ -373,7 +373,7 @@ the time it entered it:
 2026-09-02T09:13:41Z apply-bios
 ...
 2026-09-02T09:20:33Z verify-bios
-  retries: 1
+2026-09-02T09:21:47Z verify-bios (retried 1x)
 2026-09-02T09:21:47Z wait-install
 2026-09-02T09:48:12Z detach-media
 2026-09-02T09:49:02Z wait-reboot
@@ -382,12 +382,8 @@ the time it entered it:
 2026-09-02T09:58:21Z completed
 ```
 
-A step, that had to be repeated — because the BMC asked for the operation to be
-retried, or because a wait fell back to the trigger it belongs to — reports how
-often underneath the state. What went wrong is not reported here, since the
-deployment recovered from it. It is reported when it ends the deployment: the
-command then exits with the state the deployment failed in and the error, that
-got it there.
+A step, that had to be repeated is printed a second time with the time it was
+left and how often it was retried.
 
 The same information, plus what the deployment is applying, is available at any
 time from another terminal:
