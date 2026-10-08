@@ -273,7 +273,7 @@ func deploymentResultError(name string, deployment api.ServerDeploymentStatus) e
 func deploymentProgressLines(deployment api.ServerDeploymentStatus, reportedUpTo time.Time) ([]string, time.Time) {
 	var lines []string
 
-	for _, step := range deployment.History {
+	for i, step := range deployment.History {
 		if step.EnteredAt.Before(reportedUpTo) {
 			continue
 		}
@@ -287,7 +287,12 @@ func deploymentProgressLines(deployment api.ServerDeploymentStatus, reportedUpTo
 		}
 
 		if step.Retries > 0 {
-			lines = append(lines, fmt.Sprintf("  retries: %d", step.Retries))
+			leftAt := deployment.StateEnteredAt
+			if i+1 < len(deployment.History) {
+				leftAt = deployment.History[i+1].EnteredAt
+			}
+
+			lines = append(lines, deploymentStateLine(leftAt, step.State)+deploymentRetriesSuffix(step.Retries))
 		}
 	}
 
@@ -300,8 +305,12 @@ func deploymentProgressLines(deployment api.ServerDeploymentStatus, reportedUpTo
 	return lines, reportedUpTo
 }
 
-func deploymentStateLine(enteredAt time.Time, state api.ServerDeploymentState) string {
-	return fmt.Sprintf("%s %s", enteredAt.Format(time.RFC3339), state)
+func deploymentStateLine(at time.Time, state api.ServerDeploymentState) string {
+	return fmt.Sprintf("%s %s", at.Format(time.RFC3339), state)
+}
+
+func deploymentRetriesSuffix(retries int) string {
+	return fmt.Sprintf(" (retried %dx)", retries)
 }
 
 // Show the status of the deployment of a server.
@@ -463,7 +472,7 @@ func (c *cmdServerDeployStatus) run(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  %s %s", step.EnteredAt.Format(time.RFC3339), step.State)
 
 			if step.Retries > 0 {
-				fmt.Printf(" (retries: %d)", step.Retries)
+				fmt.Print(deploymentRetriesSuffix(step.Retries))
 			}
 
 			if step.Error != "" {

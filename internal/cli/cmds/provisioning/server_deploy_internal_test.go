@@ -90,7 +90,7 @@ func TestDeploymentProgressLines(t *testing.T) {
 			},
 
 			wantLines: []string{
-				"  retries: 2",
+				"2026-08-31T10:05:00Z wait-power-off-bios (retried 2x)",
 				"2026-08-31T10:05:00Z apply-bios",
 			},
 			wantReportedUpTo: at(5 * time.Minute),
@@ -141,13 +141,18 @@ func TestDeploymentProgressLines(t *testing.T) {
 				State:          api.ServerDeploymentStateWaitInstall,
 				StateEnteredAt: at(time.Minute),
 				History: []api.ServerDeploymentStep{
-					step(0, api.ServerDeploymentStateRefreshBMCData),
+					{
+						State:     api.ServerDeploymentStateRefreshBMCData,
+						EnteredAt: at(0),
+						Retries:   1,
+					},
 					step(30*time.Second, api.ServerDeploymentStatePowerOnInstall),
 				},
 			},
 
 			wantLines: []string{
 				"2026-08-31T10:00:00Z refresh-bmc-data",
+				"2026-08-31T10:00:30Z refresh-bmc-data (retried 1x)",
 				"2026-08-31T10:00:30Z power-on-install",
 				"2026-08-31T10:01:00Z wait-install",
 			},
