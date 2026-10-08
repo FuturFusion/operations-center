@@ -33,6 +33,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
+const testCertificate = `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`
+
 func TestServerService_UpdateCertificate(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 
@@ -339,10 +344,7 @@ func TestServerService_PreRegister(t *testing.T) {
 				Channel: "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr:    errassert.ValidationError,
 			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
@@ -423,10 +425,7 @@ func TestServerService_Register(t *testing.T) {
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
+				Certificate:   new(testCertificate),
 			},
 
 			assertErr: require.NoError,
@@ -436,11 +435,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("1"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
@@ -456,11 +452,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				MachineID: new("1"),
+				Certificate:   new(testCertificate),
+				MachineID:     new("1"),
 			},
 			repoGetByMachineID: &provisioning.Server{
 				ID:        1,
@@ -476,11 +469,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
@@ -497,11 +487,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
 			},
 
 			assertErr:      require.NoError,
@@ -512,11 +499,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				MachineID: new("E9DE436EB94E4AEF8563883AEC84096E"),
+				Certificate:   new(testCertificate),
+				MachineID:     new("E9DE436EB94E4AEF8563883AEC84096E"),
 			},
 
 			assertErr:     require.NoError,
@@ -533,11 +517,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("1"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("1"),
 			},
 			repoGetBySystemUUIDErr: boom.Error,
 
@@ -548,11 +529,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				MachineID: new("1"),
+				Certificate:   new(testCertificate),
+				MachineID:     new("1"),
 			},
 			repoGetByMachineIDErr: boom.Error,
 
@@ -563,10 +541,7 @@ one
 			server: provisioning.Server{
 				Name:          "", // invalid
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
+				Certificate:   new(testCertificate),
 			},
 
 			assertErr: errassert.ValidationError,
@@ -576,11 +551,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Type: api.ServerTypeOperationsCenter,
+				Certificate:   new(testCertificate),
+				Type:          api.ServerTypeOperationsCenter,
 			},
 
 			assertErr: errassert.ValidationErrorContains("Remote operations centers can not be registered"),
@@ -590,10 +562,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
+				Certificate:   new(testCertificate),
 			},
 			repoCreateErr: boom.Error,
 
@@ -604,11 +573,8 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("1"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
@@ -617,20 +583,15 @@ one
 				SystemUUID: new("1"),
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name: "error - repo.Update - pre registered server by system UUID",
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-		`),
-				SystemUUID: new("1"),
+				Certificate:   new(testCertificate),
+				SystemUUID:    new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
 				ID:         1,
@@ -647,10 +608,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
+				Certificate:   new(testCertificate),
 			},
 			repoUpdateErr: boom.Error,
 
@@ -1505,12 +1463,9 @@ func TestServerService_Update(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -1544,12 +1499,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1597,12 +1549,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1651,13 +1600,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:      api.ServerStatusPending,
-				Description: "set by operator",
-				Channel:     "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusPending,
+				Description:   "set by operator",
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1710,12 +1656,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1765,12 +1708,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1792,12 +1732,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1822,12 +1759,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,
 					Endpoint:           "https://bmc.example.com/",
@@ -1877,12 +1811,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 
 			assertErr:           errassert.ValidationError,
@@ -1897,12 +1828,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -1922,12 +1850,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -1950,12 +1875,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -1981,12 +1903,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -2012,12 +1931,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -2469,9 +2385,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoGetByCertificateErr: domain.ErrNotFound,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrNotAuthorized)
-			},
+			assertErr: errassert.Is(domain.ErrNotAuthorized),
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{

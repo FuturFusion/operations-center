@@ -18,6 +18,7 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -48,12 +49,9 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -81,12 +79,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
-		`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -112,12 +107,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -133,9 +125,7 @@ one
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, context.Canceled)
-			},
+			assertErr: errassert.Is(context.Canceled),
 		},
 		{
 			name: "error - client.UpdateNetworkConfig",
@@ -145,12 +135,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -177,12 +164,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -279,12 +263,9 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -312,12 +293,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
-		`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -343,12 +321,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -364,9 +339,7 @@ one
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, context.Canceled)
-			},
+			assertErr: errassert.Is(context.Canceled),
 		},
 		{
 			name: "error - client.UpdateStorageConfig",
@@ -376,12 +349,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -408,12 +378,9 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -496,11 +463,8 @@ func TestServerService_GetSystemProvider(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetProviderConfig: provisioning.ServerSystemProvider{
 				Config: incusosapi.SystemProviderConfig{
@@ -534,11 +498,8 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetProviderConfigErr: boom.Error,
 
@@ -596,11 +557,8 @@ func TestServerService_UpdateSystemProvider(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -618,11 +576,8 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
-		`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientUpdateProviderConfigErr: boom.Error,
 
@@ -686,11 +641,8 @@ func TestServerService_GetSystemUpdate(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: provisioning.ServerSystemUpdate{
 				Config: incusosapi.SystemUpdateConfig{
@@ -732,11 +684,8 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetUpdateConfigErr: boom.Error,
 
@@ -796,11 +745,8 @@ func TestServerService_UpdateSystemUpdate(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: incusosapi.SystemUpdate{
 				Config: incusosapi.SystemUpdateConfig{
@@ -836,11 +782,8 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
-		`),
-				Status: api.ServerStatusReady,
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: incusosapi.SystemUpdate{
 				Config: incusosapi.SystemUpdateConfig{
@@ -943,12 +886,9 @@ func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: new(`-----BEGIN CERTIFICATE-----
-one
------END CERTIFICATE-----
-`),
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
