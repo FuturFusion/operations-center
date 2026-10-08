@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
+	"maps"
 	"reflect"
 	"sync"
 	"testing"
@@ -110,6 +111,7 @@ func TestClusterService_Create(t *testing.T) {
 		trustedClientCertificates                         []string
 		wantProvisionedClientCertificates                 []string
 		wantKnownClientCertificates                       []string
+		wantOSServiceConfig                               []osServiceConfig
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
@@ -235,6 +237,411 @@ func TestClusterService_Create(t *testing.T) {
 			clientGetOSData:                api.OSData{},
 			provisionerApply: []queue.Item[struct{}]{
 				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+				{serverName: "server2", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:                              "success - ovn tunnel address is member dependent",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"ovn": map[string]any{
+						"enabled":        true,
+						"database":       "tcp:10.0.0.1:6642",
+						"tunnel_address": "10.0.0.1",
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.1",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.2",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData:                api.OSData{},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "ovn", config: map[string]any{"enabled": true, "database": "tcp:10.0.0.1:6642", "tunnel_address": "10.0.0.1"}},
+				{serverName: "server2", name: "ovn", config: map[string]any{"enabled": true, "database": "tcp:10.0.0.1:6642", "tunnel_address": "10.0.0.2"}},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:                              "success - linstor listen address is member dependent",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"linstor": map[string]any{
+						"enabled":        true,
+						"listen_address": "10.0.0.1:3366",
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.1",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.2",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData:                api.OSData{},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "linstor", config: map[string]any{"enabled": true, "listen_address": "10.0.0.1:3366"}},
+				{serverName: "server2", name: "linstor", config: map[string]any{"enabled": true, "listen_address": "10.0.0.2:3366"}},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:                              "success - empty ovn tunnel address is kept",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"ovn": map[string]any{
+						"enabled":        true,
+						"database":       "tcp:10.0.0.1:6642",
+						"tunnel_address": "",
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.1",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"10.0.0.2",
+											},
+											Roles: []string{
+												"management",
+												"cluster",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData:                api.OSData{},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "ovn", config: map[string]any{"enabled": true, "database": "tcp:10.0.0.1:6642", "tunnel_address": ""}},
+				{serverName: "server2", name: "ovn", config: map[string]any{"enabled": true, "database": "tcp:10.0.0.1:6642", "tunnel_address": ""}},
 			},
 
 			assertErr:     require.NoError,
@@ -808,6 +1215,165 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name:                      "error - ovn tunnel address not string",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"ovn": map[string]any{
+						"tunnel_address": 1, // invalid, not string
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", "tunnel_address" is not a string`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                      "error - ovn tunnel address not assigned to any server",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"ovn": map[string]any{
+						"tunnel_address": "10.0.0.1", // invalid, not assigned to a server
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", the "tunnel_address" "10.0.0.1" is not assigned to a network interface with a role on any of the servers`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                      "error - linstor listen address not assigned to any server",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"linstor": map[string]any{
+						"listen_address": "10.0.0.1:3366", // invalid, not assigned to a server
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "linstor", the host of the "listen_address" "10.0.0.1:3366" is not assigned to a network interface with a role on any of the servers`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name:                      "error - invalid os service config",
 			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
@@ -909,6 +1475,9 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientUpdateOSServiceErr: boom.Error,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+			},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -3552,11 +4121,22 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
+			var gotOSServiceConfig []osServiceConfig
+
 			client := &adapterMock.ClusterClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					cfg, ok := config.(map[string]any)
+					require.True(t, ok, "expect the service config to be a map")
+
+					gotOSServiceConfig = append(gotOSServiceConfig, osServiceConfig{
+						serverName: server.Name,
+						name:       name,
+						config:     maps.Clone(cfg),
+					})
+
 					return tc.clientUpdateOSServiceErr
 				},
 				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
@@ -3663,6 +4243,7 @@ func TestClusterService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig, "expect the service config pushed to each server")
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.provisionerApply)
