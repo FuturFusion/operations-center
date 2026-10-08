@@ -958,10 +958,9 @@ func waitForTCPPort(ctx context.Context, t *testing.T, hostPort string, interval
 	}
 }
 
-// e2eHostAddress returns the address of the e2e host on the network, the
-// OperationsCenter VM is attached to. This is the address, at which services,
-// which are served in-process by the tests, are reachable from inside the
-// OperationsCenter VM.
+// e2eHostAddress returns the address of the end 2 end test host on the network
+// of the Operations Center VM. The Operations Center VM reaches the services
+// of the tests at this address.
 func e2eHostAddress(t *testing.T) string {
 	t.Helper()
 
@@ -1503,12 +1502,51 @@ func setSystemSecurityOIDCWithContext(ctx context.Context, t *testing.T, tmpDir 
 		return fmt.Errorf("Failed to assemble the security config: %w", err)
 	}
 
+	return applySystemSecurityWithContext(ctx, t, securityPutFilename)
+}
+
+func setSystemSecurityOpenFGAWithContext(ctx context.Context, t *testing.T, tmpDir string, apiURL string, apiToken string, storeID string) error {
+	t.Helper()
+
+	securityPutFilename := filepath.Join(tmpDir, "system_security_put.json")
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s system security show -f json | jq -ce --arg api_url '%[2]s' --arg api_token '%[3]s' --arg store_id '%[4]s' '.openfga = { api_url: $api_url, api_token: $api_token, store_id: $store_id }' > %[5]s`, cpuArch, apiURL, apiToken, storeID, securityPutFilename)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return fmt.Errorf("Failed to assemble the security config: %w", err)
+	}
+
+	return applySystemSecurityWithContext(ctx, t, securityPutFilename)
+}
+
+// resetSystemSecurityOIDCAndOpenFGAWithContext resets the OIDC part and the
+// OpenFGA part of the security config in a single update. Operations Center
+// rejects an update of one part if the other part points at a missing service.
+func resetSystemSecurityOIDCAndOpenFGAWithContext(ctx context.Context, t *testing.T, tmpDir string) error {
+	t.Helper()
+
+	securityPutFilename := filepath.Join(tmpDir, "system_security_put.json")
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s system security show -f json | jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" }' > %s`, cpuArch, securityPutFilename)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return fmt.Errorf("Failed to assemble the security config: %w", err)
+	}
+
+	return applySystemSecurityWithContext(ctx, t, securityPutFilename)
+}
+
+func applySystemSecurityWithContext(ctx context.Context, t *testing.T, securityPutFilename string) error {
+	t.Helper()
+
 	// `length > 0 guards against applying a truncated security config, which
 	// would drop the trusted TLS client certificate fingerprints and therefore
 	// lock the remaining tests out of Operations Center.
-	resp = runWithContext(ctx, t, `jq -e '.trusted_tls_client_cert_fingerprints | length > 0' %s > /dev/null`, securityPutFilename)
+	resp := runWithContext(ctx, t, `jq -e '.trusted_tls_client_cert_fingerprints | length > 0' %s > /dev/null`, securityPutFilename)
 
-	err = fmtRunErr(resp)
+	err := fmtRunErr(resp)
 	if err != nil {
 		return fmt.Errorf("Refusing to apply a security config without trusted TLS client certificate fingerprints: %w", err)
 	}
@@ -1528,7 +1566,27 @@ func mustSetSystemSecurityOIDC(ctx context.Context, t *testing.T, tmpDir string,
 	require.NoErrorf(t, err, "Failed to set the OIDC security config with issuer %q", issuer)
 }
 
-func systemSecurityOIDCCleanup(t *testing.T, tmpDir string) func() {
+func mustSetSystemSecurityOpenFGA(ctx context.Context, t *testing.T, tmpDir string, apiURL string, apiToken string, storeID string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	err := setSystemSecurityOpenFGAWithContext(ctx, t, tmpDir, apiURL, apiToken, storeID)
+	require.NoErrorf(t, err, "Failed to set the OpenFGA security config with API URL %q", apiURL)
+}
+
+func mustResetSystemSecurityOIDCAndOpenFGA(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	err := resetSystemSecurityOIDCAndOpenFGAWithContext(ctx, t, tmpDir)
+	require.NoError(t, err, "Failed to reset the OIDC and OpenFGA security config")
+}
+
+func systemSecurityOIDCAndOpenFGACleanup(t *testing.T, tmpDir string) func() {
 	t.Helper()
 
 	return func() {
@@ -1540,12 +1598,12 @@ func systemSecurityOIDCCleanup(t *testing.T, tmpDir string) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(60*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t, "system security OIDC config cleanup")
+		stop := timeTrack(t, "system security OIDC and OpenFGA config cleanup")
 		defer stop()
 
-		err := setSystemSecurityOIDCWithContext(ctx, t, tmpDir, "", "", "", "")
+		err := resetSystemSecurityOIDCAndOpenFGAWithContext(ctx, t, tmpDir)
 		if err != nil {
-			t.Logf("Failed to reset the OIDC security config: %v", err)
+			t.Logf("Failed to reset the OIDC and OpenFGA security config: %v", err)
 		}
 	}
 }

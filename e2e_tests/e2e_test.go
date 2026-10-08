@@ -62,6 +62,17 @@ func TestE2E_OIDCAuthentication(t *testing.T) {
 	)
 }
 
+func TestE2E_OpenFGAAuthorization(t *testing.T) {
+	runE2ETest(
+		t,
+		"authorize OIDC users of operations center using OpenFGA",
+		func(ctx context.Context, t *testing.T, tmpDir string) {
+			t.Helper()
+		},
+		openFGAAuthorization,
+	)
+}
+
 func TestE2E_WithToken_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
