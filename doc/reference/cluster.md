@@ -46,6 +46,21 @@ nvme:
       port: 8009
 ```
 
+### Member Dependent Addresses
+
+The `tunnel_address` of the `ovn` service and the `listen_address` of the
+`linstor` service are different for each server.
+
+If such an address is set to a concrete IP address, this address needs to be
+assigned to one of the servers of the cluster. For the other servers, Operations
+Center takes the address from the network interface with the same role and of
+the same IP family. The port of the `listen_address` is kept as it is.
+
+Empty and wildcard addresses (e.g. `[::]:3366`) are applied as they are on each
+server. If the `tunnel_address` is empty, IncusOS uses the address of the
+network interface with the `cluster` role on each server. This is the
+recommended setting.
+
 ### Copying the Service Configuration when Adding Servers
 
 When servers are added to an existing cluster, the service configuration of the
@@ -71,7 +86,9 @@ The `listen_address` of the `linstor` service and the `tunnel_address` of the
 For those, the address of the added server is used, which is taken from the
 network interface with the same role and of the same IP family as the address of
 the cluster member the configuration is copied from. Empty and wildcard
-addresses (e.g. `[::]:3366`) are copied as they are.
+addresses (e.g. `[::]:3366`) are copied as they are. If the `tunnel_address` is
+empty, IncusOS uses the address of the network interface with the `cluster` role
+of the added server.
 
 The configuration is copied before the servers join the cluster. If one of the
 steps up to the join fails, Operations Center tries to restore the previous
