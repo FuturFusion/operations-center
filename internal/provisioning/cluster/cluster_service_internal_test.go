@@ -338,6 +338,259 @@ func Test_memberDependentAddress(t *testing.T) {
 	}
 }
 
+func Test_memberDependentOVNTunnelAddresses(t *testing.T) {
+	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
+		return provisioning.Server{
+			Name: name,
+			OSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: interfaces,
+					},
+				},
+			},
+		}
+	}
+
+	serverOne := serverWithInterfaces("one", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.1", "fd00::1"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.1"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	serverTwo := serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.2", "fd00::2"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.2"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	tests := []struct {
+		name             string
+		serversArg       []provisioning.Server
+		tunnelAddressArg string
+
+		want      map[string]string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:             "empty address is not member dependent",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "",
+
+			want:      map[string]string{"one": "", "two": ""},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "wildcard address is not member dependent",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "::",
+
+			want:      map[string]string{"one": "::", "two": "::"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "IPv4 address of the cluster role",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "10.0.0.1",
+
+			want:      map[string]string{"one": "10.0.0.1", "two": "10.0.0.2"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "IPv6 address of the cluster role of the second server",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "fd00::2",
+
+			want:      map[string]string{"one": "fd00::1", "two": "fd00::2"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "address of the storage role",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "10.1.0.1",
+
+			want:      map[string]string{"one": "10.1.0.1", "two": "10.1.0.2"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - address not assigned to any server",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			tunnelAddressArg: "10.2.0.1",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `the "tunnel_address" "10.2.0.1" is not assigned to a network interface with a role on any of the servers`)
+			},
+		},
+		{
+			name: "error - server without an address of the same IP family",
+			serversArg: []provisioning.Server{
+				serverOne,
+				serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+					"eth0": {
+						Addresses: []string{"10.0.0.2"},
+						Roles:     []string{"cluster"},
+					},
+				}),
+			},
+			tunnelAddressArg: "fd00::1",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to derive the ovn tunnel address for server "two" ()`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := memberDependentOVNTunnelAddresses(tc.serversArg, tc.tunnelAddressArg)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_memberDependentLinstorListenAddresses(t *testing.T) {
+	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
+		return provisioning.Server{
+			Name: name,
+			OSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: interfaces,
+					},
+				},
+			},
+		}
+	}
+
+	serverOne := serverWithInterfaces("one", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.1", "fd00::1"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.1"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	serverTwo := serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.2", "fd00::2"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.2"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	tests := []struct {
+		name             string
+		serversArg       []provisioning.Server
+		listenAddressArg string
+
+		want      map[string]string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:             "empty address is not member dependent",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "",
+
+			want:      map[string]string{"one": "", "two": ""},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "wildcard address is not member dependent",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "[::]:3366",
+
+			want:      map[string]string{"one": "[::]:3366", "two": "[::]:3366"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "IPv4 address of the cluster role",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "10.0.0.1:3366",
+
+			want:      map[string]string{"one": "10.0.0.1:3366", "two": "10.0.0.2:3366"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "IPv6 address of the cluster role of the second server",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "[fd00::2]:3366",
+
+			want:      map[string]string{"one": "[fd00::1]:3366", "two": "[fd00::2]:3366"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "address of the storage role",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "10.1.0.1:3366",
+
+			want:      map[string]string{"one": "10.1.0.1:3366", "two": "10.1.0.2:3366"},
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - address not assigned to any server",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "10.2.0.1:3366",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `the host of the "listen_address" "10.2.0.1:3366" is not assigned to a network interface with a role on any of the servers`)
+			},
+		},
+		{
+			name: "error - server without an address of the same IP family",
+			serversArg: []provisioning.Server{
+				serverOne,
+				serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+					"eth0": {
+						Addresses: []string{"10.0.0.2"},
+						Roles:     []string{"cluster"},
+					},
+				}),
+			},
+			listenAddressArg: "[fd00::1]:3366",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to derive the linstor listen address for server "two" ()`)
+			},
+		},
+		{
+			name:             "error - listen address without port",
+			serversArg:       []provisioning.Server{serverOne, serverTwo},
+			listenAddressArg: "10.0.0.1",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid configuration for OS service "linstor", invalid "listen_address" "10.0.0.1"`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := memberDependentLinstorListenAddresses(tc.serversArg, tc.listenAddressArg)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func Test_memberDependentListenAddress(t *testing.T) {
 	referenceServer := provisioning.Server{
 		Name: "one",

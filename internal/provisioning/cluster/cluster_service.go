@@ -333,6 +333,35 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		}
 	}
 
+	// Some service addresses are member dependent. Derive them for all servers before
+	// the first configuration is pushed.
+	memberDependentConfigs := map[string]struct {
+		key    string
+		derive func(servers []provisioning.Server, address string) (map[string]string, error)
+	}{
+		"ovn":     {key: "tunnel_address", derive: memberDependentOVNTunnelAddresses},
+		"linstor": {key: "listen_address", derive: memberDependentLinstorListenAddresses},
+	}
+
+	memberDependentAddresses := map[string]map[string]string{}
+
+	for service, memberDependentConfig := range memberDependentConfigs {
+		serviceConfig, ok := newCluster.ServicesConfig[service].(map[string]any)
+		if !ok || serviceConfig[memberDependentConfig.key] == nil {
+			continue
+		}
+
+		address, ok := serviceConfig[memberDependentConfig.key].(string)
+		if !ok {
+			return newCluster, domain.NewValidationErrf("Invalid configuration for OS service %q, %q is not a string", service, memberDependentConfig.key)
+		}
+
+		memberDependentAddresses[service], err = memberDependentConfig.derive(servers, address)
+		if err != nil {
+			return newCluster, err
+		}
+	}
+
 	// Push pre-clustering configuration to the servers.
 	for i, server := range servers {
 		for service, configAny := range newCluster.ServicesConfig {
@@ -358,6 +387,12 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 
 					cfg["system_id"] = server.ID
 				}
+			}
+
+			addresses, ok := memberDependentAddresses[service]
+			if ok {
+				cfg = maps.Clone(cfg)
+				cfg[memberDependentConfigs[service].key] = addresses[server.Name]
 			}
 
 			err = s.client.UpdateOSService(ctx, server, service, cfg)
@@ -710,6 +745,80 @@ func memberDependentAddress(referenceServer provisioning.Server, referenceAddres
 	}
 
 	return "", domain.NewValidationErrf("Server %q (%s) does not have an address of the same IP family as %q on a network interface with any of the roles %v", targetServer.Name, targetServer.GetConnectionURL(), referenceAddress, roles)
+}
+
+// memberDependentOVNTunnelAddresses returns the OVN tunnel address for each of the servers,
+// keyed by the server name.
+func memberDependentOVNTunnelAddresses(servers []provisioning.Server, tunnelAddress string) (map[string]string, error) {
+	referenceServer, ok := referenceServerForAddress(servers, tunnelAddress)
+	if !ok {
+		return nil, domain.NewValidationErrf(`Invalid configuration for OS service "ovn", the "tunnel_address" %q is not assigned to a network interface with a role on any of the servers`, tunnelAddress)
+	}
+
+	tunnelAddresses := make(map[string]string, len(servers))
+	for _, server := range servers {
+		serverTunnelAddress, err := memberDependentAddress(referenceServer, tunnelAddress, server)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to derive the ovn tunnel address for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		tunnelAddresses[server.Name] = serverTunnelAddress
+	}
+
+	return tunnelAddresses, nil
+}
+
+// memberDependentLinstorListenAddresses returns the "host:port" linstor listen address for
+// each of the servers, keyed by the server name.
+func memberDependentLinstorListenAddresses(servers []provisioning.Server, listenAddress string) (map[string]string, error) {
+	var referenceServer provisioning.Server
+
+	if listenAddress != "" {
+		host, _, err := net.SplitHostPort(listenAddress)
+		if err != nil {
+			return nil, domain.NewValidationErrf(`Invalid configuration for OS service "linstor", invalid "listen_address" %q: %v`, listenAddress, err)
+		}
+
+		var ok bool
+
+		referenceServer, ok = referenceServerForAddress(servers, host)
+		if !ok {
+			return nil, domain.NewValidationErrf(`Invalid configuration for OS service "linstor", the host of the "listen_address" %q is not assigned to a network interface with a role on any of the servers`, listenAddress)
+		}
+	}
+
+	listenAddresses := make(map[string]string, len(servers))
+	for _, server := range servers {
+		serverListenAddress, err := memberDependentListenAddress(referenceServer, listenAddress, server)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to derive the linstor listen address for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		listenAddresses[server.Name] = serverListenAddress
+	}
+
+	return listenAddresses, nil
+}
+
+// referenceServerForAddress returns the first of the servers, which has the given address
+// assigned to a network interface with a role. It reports false, if there is none.
+//
+// An empty address, a hostname and a wildcard address are not member dependent. For those,
+// no reference server is needed and the zero value is returned.
+func referenceServerForAddress(servers []provisioning.Server, address string) (provisioning.Server, bool) {
+	ip := net.ParseIP(address)
+	if ip == nil || ip.IsUnspecified() {
+		return provisioning.Server{}, true
+	}
+
+	idx := slices.IndexFunc(servers, func(server provisioning.Server) bool {
+		return len(interfaceRolesForAddress(server, ip)) > 0
+	})
+	if idx == -1 {
+		return provisioning.Server{}, false
+	}
+
+	return servers[idx], true
 }
 
 // memberDependentListenAddress returns the "host:port" listen address of targetServer,
