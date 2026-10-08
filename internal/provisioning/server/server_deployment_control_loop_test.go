@@ -692,6 +692,26 @@ func TestServerService_DeploymentControlLoopDrivesDeploymentToATerminalState(t *
 			assertLog:        log.Contains("Server rebooted before the installation could have completed, waiting for the installation"),
 		},
 		{
+			// The firmware is busy for longer than the reboot fallback delay, so
+			// only the boot progress tells its reboot from the one of the installer.
+			name:        "success - the firmware reboots late before the installer even started",
+			forceReboot: true,
+			resolution:  deploymentTestResolution(),
+			worldOptions: []func(*bmcWorld){
+				func(w *bmcWorld) {
+					w.rebootsEarly = true
+					w.rebootsLate = true
+					w.postDuration = worldLateRebootDelay + worldBootDuration
+					w.installDuration = 2*worldLateRebootDelay + worldInstallDuration
+				},
+			},
+
+			wantStates:       deploymentStatesHappyPath(),
+			wantStatus:       api.ServerStatusPending,
+			wantStatusDetail: api.ServerStatusDetailPendingRegistering,
+			assertLog:        log.Contains("Server rebooted before the installation could have completed, waiting for the installation"),
+		},
+		{
 			name:       "success - the server shuts down instead of rebooting after the installation",
 			resolution: deploymentTestResolution(),
 			trackMedia: true,

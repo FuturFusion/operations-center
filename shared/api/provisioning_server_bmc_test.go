@@ -31,6 +31,27 @@ func TestBMCBootProgressHandedOverToOS(t *testing.T) {
 	}
 }
 
+func TestBMCBootProgressBeforeOS(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+
+		want bool
+	}{
+		{name: "no state reported", state: "", want: false},
+		{name: "the firmware is still initializing", state: "PrimaryProcessorInitializationStarted", want: true},
+		{name: "the last state before the hand over", state: "SetupEntered", want: true},
+		{name: "the operating system is being started", state: "OSBootStarted", want: false},
+		{name: "a state carrying no ordering information", state: "OEM", want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, api.BMCBootProgressBeforeOS(tc.state), "only a state, that can be placed before the hand over, tells, that the installer has not run")
+		})
+	}
+}
+
 func TestBMCHasRebootedSince(t *testing.T) {
 	since := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
 

@@ -72,6 +72,7 @@ const (
 	worldFirmwareRebootDelay    = config.ServerDeploymentSettleDelay + time.Minute
 	worldInstallDuration        = config.ServerDeploymentMinInstallDuration + 2*time.Minute
 	worldEarlyRebootDelay       = 4 * time.Minute
+	worldLateRebootDelay        = config.ServerDeploymentInstallRebootFallbackDelay + 2*time.Minute
 	worldMediaReadDuration      = 5 * time.Minute
 	worldRegistrationDelay      = 2 * time.Minute
 	worldEjectDelay             = 30 * time.Second
@@ -203,6 +204,7 @@ type bmcWorld struct {
 	forgetsBIOSTask               bool
 	slowSecureBootReset           bool
 	rebootsEarly                  bool
+	rebootsLate                   bool
 	haltsAfterInstall             bool
 	awaitingPowerOn               bool
 	powerOnDelay                  time.Duration
@@ -449,7 +451,12 @@ func (w *bmcWorld) startInstall() {
 	// A firmware, that still has something to pick up, reboots the server within
 	// the first POST cycles, long before the installation could be done.
 	if w.rebootsEarly {
-		w.schedule(worldEarlyRebootDelay, "firmware rebooted before the installer started", func(ctx context.Context, w *bmcWorld) error {
+		rebootDelay := worldEarlyRebootDelay
+		if w.rebootsLate {
+			rebootDelay = worldLateRebootDelay
+		}
+
+		w.schedule(rebootDelay, "firmware rebooted before the installer started", func(ctx context.Context, w *bmcWorld) error {
 			w.mu.Lock()
 			defer w.mu.Unlock()
 
