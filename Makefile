@@ -273,6 +273,7 @@ clean-e2e-test: clean-e2e-test-soft
 clean-e2e-test-soft:
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/image-downloads
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/oidc-cli-config
+	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/openfga-cli-config
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/images
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/coverage_*
 	# One preseeded ISO is created per provisioning token, so these accumulate
@@ -305,7 +306,7 @@ clean-e2e-test-soft:
 		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster-factory-reset || true; \
 		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-deploy || true; \
 	done
-	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access") | .uuid'); do \
+	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access" or .description == "e2e OpenFGA authorization") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
 	done
 	for i in $$(bin/operations-center.linux.amd64 image incus source list -f json | jq -r '.[].name'); do \
@@ -314,11 +315,12 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 image incus list -f json | jq -r '.[].name'); do \
 		bin/operations-center.linux.amd64 image incus remove $$i || true; \
 	done
-	# Reset the OIDC part of the security config, so Operations Center stops pointing at the
-	# fake OIDC provider of the tests, which is gone.
+	# Reset the OIDC part and the OpenFGA part of the security config in a single update.
+	# Both services of the tests are gone. Operations Center rejects an update of one part
+	# if the other part points at a missing service.
 	f=$$(mktemp) ; \
 	{ bin/operations-center.linux.amd64 system security show -f json \
-		| jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" }' > $$f \
+		| jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" }' > $$f \
 		&& jq -e '.trusted_tls_client_cert_fingerprints | length > 0' $$f > /dev/null \
 		&& bin/operations-center.linux.amd64 system security edit < $$f ; } || true ; \
 	rm -f $$f
