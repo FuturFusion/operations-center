@@ -5350,7 +5350,7 @@ func TestClusterService_AddServers(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "configuration inconsistencies")
+				require.ErrorContains(tt, err, "Server configuration is inconsistent")
 			},
 			// The server does not join the cluster, so the copied services config is
 			// restored in reverse order to not leave the server attached to the
@@ -5893,7 +5893,7 @@ func TestClusterService_AddServers(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Failed to add servers (new) due to configuration inconsistencies")
+				require.ErrorContains(tt, err, "Server configuration is inconsistent: OS version mismatch")
 			},
 		},
 		{
@@ -8518,6 +8518,16 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 }
 
 func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
+	const servicesConfigMismatchHint = "Configure the service on all servers or copy the services configuration from an existing cluster member."
+
+	assertInconsistent := func(message string, hint string) require.ErrorAssertionFunc {
+		return func(tt require.TestingT, err error, a ...any) {
+			errassert.DomainError(domain.ErrOperationNotPermitted, "")(tt, err, a...)
+			errassert.UserMessageContains("Server configuration is inconsistent: "+message)(tt, err, a...)
+			errassert.HintIs(hint)(tt, err, a...)
+		}
+	}
+
 	tests := []struct {
 		name                        string
 		servers                     []provisioning.Server
@@ -8532,9 +8542,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 		clientGetOSServiceOVN       []queue.Item[incusosapi.ServiceOVN]
 		clientUpdateOSServiceErrs   queue.Errs
 
-		assertErr               require.ErrorAssertionFunc
-		wantConsistent          bool
-		wantInconsistencyReason string
+		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success - single server",
@@ -8542,8 +8550,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "success - no LVM",
@@ -8791,8 +8798,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			// The ceph and linstor services are not available on servers without the
@@ -8860,8 +8866,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "success - auto fix LVM",
@@ -9112,8 +9117,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 
 		{
@@ -9174,8 +9178,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "OS version mismatch",
+			assertErr: assertInconsistent("OS version mismatch", ""),
 		},
 		{
 			name: "error - application list mismatch",
@@ -9218,8 +9221,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Application list mismatch",
+			assertErr: assertInconsistent("Application list mismatch", ""),
 		},
 		{
 			name: "error - client.GetNetworkConfig - reference",
@@ -9566,8 +9568,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
+			assertErr: assertInconsistent("Network interface and bond names and vlans configuration mismatch", ""),
 		},
 		{
 			name: "error - network config bond mismatch",
@@ -9666,8 +9667,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
+			assertErr: assertInconsistent("Network interface and bond names and vlans configuration mismatch", ""),
 		},
 		{
 			name: "error - client.GetStorageConfig - reference",
@@ -9963,8 +9963,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Storage pool configuration mismatch",
+			assertErr: assertInconsistent("Storage pool configuration mismatch", ""),
 		},
 		{
 			name: "success - storage config only differs in read-only pool state",
@@ -10094,8 +10093,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			// Device paths contain the disk serial number.
@@ -10384,8 +10382,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "error - storage scrub schedule mismatch",
@@ -10444,8 +10441,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Storage scrub schedule mismatch",
+			assertErr: assertInconsistent("Storage scrub schedule mismatch", ""),
 		},
 		{
 			name: "error - client.GetOSServiceLVM - reference",
@@ -10813,8 +10809,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "LVM enabled mismatch",
+			assertErr: assertInconsistent("LVM enabled mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "error - service LVM on servers with internal ID > 2000",
@@ -10945,8 +10940,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: `can not enable LVM on servers with internal ID > 2000`,
+			assertErr: assertInconsistent(`Failed to enable OS service "lvm" on "two": can not enable LVM on servers with internal ID > 2000`, ""),
 		},
 		{
 			name: "error - client.UpdateOSService",
@@ -11080,8 +11074,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				boom.Error,
 			},
 
-			assertErr:               boom.ErrorIs,
-			wantInconsistencyReason: ``,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - service LVM system ID conflict",
@@ -11210,8 +11203,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "LVM configuration mismatch, found multiple systems with system_id 1",
+			assertErr: assertInconsistent("LVM configuration mismatch, found multiple systems with system_id 1", ""),
 		},
 		{
 			name: "error - client.GetOSServiceMultipath - reference",
@@ -11651,8 +11643,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Multipath configuration mismatch",
+			assertErr: assertInconsistent("Multipath configuration mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "error - client.GetOSServiceNVME - reference",
@@ -12170,8 +12161,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "NVME configuration mismatch",
+			assertErr: assertInconsistent("NVME configuration mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "error - client.GetOSServiceCeph - reference",
@@ -12778,8 +12768,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Ceph configuration mismatch",
+			assertErr: assertInconsistent("Ceph configuration mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "error - client.GetOSServiceLinstor - reference",
@@ -13461,8 +13450,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: `Linstor listen address mismatch, found "[::]:3366" (one) and "10.0.0.2:3366" (two), expected "[::]:3366" for two`,
+			assertErr: assertInconsistent(`Linstor listen address mismatch, found "[::]:3366" (one) and "10.0.0.2:3366" (two), expected "[::]:3366" for two`, servicesConfigMismatchHint),
 		},
 		{
 			name: "success - member dependent Linstor listen address",
@@ -13713,8 +13701,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641"}}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "error - Linstor listen address of another member",
@@ -13959,8 +13946,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.3:3366"}}}, // not the address of "two"
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: `Linstor listen address mismatch, found "10.0.0.1:3366" (one) and "10.0.0.3:3366" (two), expected "10.0.0.2:3366" for two`,
+			assertErr: assertInconsistent(`Linstor listen address mismatch, found "10.0.0.1:3366" (one) and "10.0.0.3:3366" (two), expected "10.0.0.2:3366" for two`, servicesConfigMismatchHint),
 		},
 		{
 			name: "error - Linstor listen address without network state",
@@ -14181,8 +14167,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.2:3366"}}},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Linstor listen address mismatch, failed to derive the listen address for two",
+			assertErr: assertInconsistent("Linstor listen address mismatch, failed to derive the listen address for two", ""),
 		},
 		{
 			name: "error - service Linstor not equal",
@@ -14403,8 +14388,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366", TLSServerKey: "key-two"}}}, // key mismatch
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "Linstor configuration mismatch",
+			assertErr: assertInconsistent("Linstor configuration mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "success - member dependent OVN tunnel address",
@@ -14655,8 +14639,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.2"}}},
 			},
 
-			assertErr:      require.NoError,
-			wantConsistent: true,
+			assertErr: require.NoError,
 		},
 		{
 			name: "error - OVN tunnel address of another member",
@@ -14907,8 +14890,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.3"}}},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: `OVN tunnel address mismatch, found "10.0.0.1" (one) and "10.0.0.3" (two), expected "10.0.0.2" for two`,
+			assertErr: assertInconsistent(`OVN tunnel address mismatch, found "10.0.0.1" (one) and "10.0.0.3" (two), expected "10.0.0.2" for two`, servicesConfigMismatchHint),
 		},
 		{
 			name: "error - service OVN not equal",
@@ -15135,8 +15117,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::2]:6641"}}},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "OVN configuration mismatch",
+			assertErr: assertInconsistent("OVN configuration mismatch", servicesConfigMismatchHint),
 		},
 		{
 			name: "error - service iSCSI not equal",
@@ -15271,8 +15252,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.two"}}}}},
 			},
 
-			assertErr:               require.NoError,
-			wantInconsistencyReason: "iSCSI configuration mismatch",
+			assertErr: assertInconsistent("iSCSI configuration mismatch", servicesConfigMismatchHint),
 		},
 	}
 
@@ -15324,12 +15304,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			)
 
 			// Run test
-			isConsistent, reason, err := clusterSvc.CheckClusteringServerConsistency(t.Context(), tc.servers)
+			err := clusterSvc.CheckClusteringServerConsistency(t.Context(), tc.servers)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.wantConsistent, isConsistent)
-			require.Contains(t, reason, tc.wantInconsistencyReason)
 
 			require.Empty(t, tc.clientGetNetworkConfig)
 			require.Empty(t, tc.clientGetStorageConfig)

@@ -8,7 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s *clusterService) CheckClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) (isConsistent bool, inconsistencyReason string, _ error) {
+func (s *clusterService) CheckClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) error {
 	return s.checkClusteringServerConsistency(ctx, servers)
 }
 
