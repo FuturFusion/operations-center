@@ -1281,9 +1281,21 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	}
 
 	// Compare storage pools.
-	storagePoolsConfigWithoutReadonlyFields := func(storageConfig incusosapi.SystemStorageConfig) map[string]incusosapi.SystemStoragePool {
+	storagePoolsComparableConfig := func(storageConfig incusosapi.SystemStorageConfig) map[string]incusosapi.SystemStoragePool {
 		pools := make(map[string]incusosapi.SystemStoragePool, len(storageConfig.Pools))
 		for _, pool := range storageConfig.Pools {
+			// Device paths contain the disk serial number. They differ for each server.
+			pool.Devices = nil
+			pool.Cache = nil
+			pool.Log = nil
+			if pool.Special != nil {
+				// Copy to not modify the storage configuration of the caller.
+				special := *pool.Special
+				special.Devices = nil
+				pool.Special = &special
+			}
+
+			// Read-only fields.
 			pool.Managed = false
 			pool.State = ""
 			pool.LastScrub = nil
@@ -1308,7 +1320,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", servers[0].Name, err)
 	}
 
-	referenceStoragePools := storagePoolsConfigWithoutReadonlyFields(referenceStorageConfig.Config)
+	referenceStoragePools := storagePoolsComparableConfig(referenceStorageConfig.Config)
 
 	for _, server := range servers[1:] {
 		storageConfig, err := s.client.GetStorageConfig(ctx, server)
@@ -1320,7 +1332,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			return false, fmt.Sprintf("Storage scrub schedule mismatch, found %q (%s) and %q (%s)", referenceStorageConfig.Config.ScrubSchedule, servers[0].Name, storageConfig.Config.ScrubSchedule, server.Name), nil
 		}
 
-		storagePools := storagePoolsConfigWithoutReadonlyFields(storageConfig.Config)
+		storagePools := storagePoolsComparableConfig(storageConfig.Config)
 
 		if !reflect.DeepEqual(referenceStoragePools, storagePools) {
 			return false, fmt.Sprintf("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStoragePools, servers[0].Name, storagePools, server.Name), nil
