@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -25,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
@@ -83,7 +86,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, nil, nil)
+			systemSvc := system.NewSystemService(env, nil, nil, nil, nil, nil, nil)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -801,7 +804,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, nil)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -930,6 +933,10 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			systemSvc := system.NewSystemService(
 				env,
 				serverSvc,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				system.WithACMEUpdateCertificateFunc(
 					func(
@@ -1318,7 +1325,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.NetworkPut)
@@ -1362,7 +1369,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err := config.UpdateNetwork(t.Context(), networkConfig.NetworkPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1474,7 +1481,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1537,7 +1544,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SettingsPut)
@@ -1615,7 +1622,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1657,13 +1664,127 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, cacheRepo)
+			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestSystemService_Restore(t *testing.T) {
+	tests := []struct {
+		name               string
+		servers            provisioning.Servers
+		validBackup        bool
+		backupRepoExtract  error
+		wantDiscardCalls   int
+		wantStageCalls     int
+		wantRestartRequest bool
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:               "success",
+			validBackup:        true,
+			wantStageCalls:     1,
+			wantRestartRequest: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - server operation in progress",
+			servers: provisioning.Servers{
+				{
+					Name:         "one",
+					StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:              "error - backupRepo.Extract",
+			backupRepoExtract: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - invalid backup is discarded",
+			wantDiscardCalls: 1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrInvalidArgument, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			dir := t.TempDir()
+
+			if tc.validBackup {
+				err := incustls.FindOrGenCert(filepath.Join(dir, config.ServerCertificateFilename), filepath.Join(dir, config.ServerKeyFilename), false, false)
+				require.NoError(t, err)
+
+				err = incustls.FindOrGenCert(filepath.Join(dir, config.ClientCertificateFilename), filepath.Join(dir, config.ClientKeyFilename), true, false)
+				require.NoError(t, err)
+			}
+
+			env := &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			serverSvc := &mock.ProvisioningServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.servers, nil
+				},
+			}
+
+			clusterSvc := &mock.ProvisioningClusterServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return nil, nil
+				},
+			}
+
+			databaseRepo := &repoMock.DatabaseRepoMock{
+				SchemaVersionFunc: func(ctx context.Context, dir string) (int, int, error) {
+					return 1, 1, nil
+				},
+			}
+
+			backupRepo := &repoMock.BackupRepoMock{
+				ExtractFunc: func(ctx context.Context, archive io.Reader) (string, error) {
+					return dir, tc.backupRepoExtract
+				},
+				StageFunc: func(ctx context.Context) error {
+					return nil
+				},
+				DiscardFunc: func(ctx context.Context) error {
+					return nil
+				},
+			}
+
+			restartRequested := false
+
+			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, func() {
+				restartRequested = true
+			})
+
+			// Run test
+			err := systemSvc.Restore(t.Context(), strings.NewReader("archive"))
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, backupRepo.DiscardCalls(), tc.wantDiscardCalls)
+			require.Len(t, backupRepo.StageCalls(), tc.wantStageCalls)
+			require.Equal(t, tc.wantRestartRequest, restartRequested)
 		})
 	}
 }

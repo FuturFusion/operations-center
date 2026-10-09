@@ -9,6 +9,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -81,6 +82,20 @@ func (_d UpdateFilesRepoWithPrometheus) Delete(ctx context.Context, update provi
 		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Delete", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Delete(ctx, update)
+}
+
+// DeleteUnknown implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithPrometheus) DeleteUnknown(ctx context.Context, known []uuid.UUID) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteUnknown", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteUnknown(ctx, known)
 }
 
 // Exists implements provisioning.UpdateFilesRepo.

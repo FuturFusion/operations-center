@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -358,7 +360,10 @@ func RequestsGzipFile(r *http.Request) bool {
 
 func (r readCloserResponse) Render(w http.ResponseWriter) error {
 	defer func() {
-		_ = r.rc.Close()
+		err := r.rc.Close()
+		if err != nil {
+			slog.WarnContext(r.req.Context(), "Failed to close response content", slog.String("filename", r.filename), logger.Err(err))
+		}
 	}()
 
 	if r.headers != nil {

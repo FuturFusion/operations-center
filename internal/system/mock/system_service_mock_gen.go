@@ -6,39 +6,46 @@ package mock
 
 import (
 	"context"
+	"io"
 	"sync"
 
-	system0 "github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/shared/api/system"
+	"github.com/FuturFusion/operations-center/internal/system"
+	system0 "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-// Ensure that SystemServiceMock does implement system0.SystemService.
+// Ensure that SystemServiceMock does implement system.SystemService.
 // If this is not the case, regenerate this file with mockery.
-var _ system0.SystemService = &SystemServiceMock{}
+var _ system.SystemService = &SystemServiceMock{}
 
-// SystemServiceMock is a mock implementation of system0.SystemService.
+// SystemServiceMock is a mock implementation of system.SystemService.
 //
 //	func TestSomethingThatUsesSystemService(t *testing.T) {
 //
-//		// make and configure a mocked system0.SystemService
+//		// make and configure a mocked system.SystemService
 //		mockedSystemService := &SystemServiceMock{
+//			BackupFunc: func(ctx context.Context, options system.BackupOptions) (io.ReadCloser, error) {
+//				panic("mock out the Backup method")
+//			},
 //			CleanCacheFunc: func(ctx context.Context) error {
 //				panic("mock out the CleanCache method")
 //			},
-//			GetCertificateFunc: func(ctx context.Context) (system.Certificate, error) {
+//			GetCertificateFunc: func(ctx context.Context) (system0.Certificate, error) {
 //				panic("mock out the GetCertificate method")
 //			},
-//			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
+//			GetNetworkConfigFunc: func(ctx context.Context) system0.Network {
 //				panic("mock out the GetNetworkConfig method")
 //			},
-//			GetSecurityConfigFunc: func(ctx context.Context) system.Security {
+//			GetSecurityConfigFunc: func(ctx context.Context) system0.Security {
 //				panic("mock out the GetSecurityConfig method")
 //			},
-//			GetSettingsConfigFunc: func(ctx context.Context) system.Settings {
+//			GetSettingsConfigFunc: func(ctx context.Context) system0.Settings {
 //				panic("mock out the GetSettingsConfig method")
 //			},
-//			GetUpdatesConfigFunc: func(ctx context.Context) system.Updates {
+//			GetUpdatesConfigFunc: func(ctx context.Context) system0.Updates {
 //				panic("mock out the GetUpdatesConfig method")
+//			},
+//			RestoreFunc: func(ctx context.Context, archive io.Reader) error {
+//				panic("mock out the Restore method")
 //			},
 //			TriggerCertificateRenewFunc: func(ctx context.Context, force bool) (bool, error) {
 //				panic("mock out the TriggerCertificateRenew method")
@@ -46,42 +53,48 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			UpdateCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
-//			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system.NetworkPut) error {
+//			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system0.NetworkPut) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
-//			UpdateSecurityConfigFunc: func(ctx context.Context, cfg system.SecurityPut) error {
+//			UpdateSecurityConfigFunc: func(ctx context.Context, cfg system0.SecurityPut) error {
 //				panic("mock out the UpdateSecurityConfig method")
 //			},
-//			UpdateSettingsConfigFunc: func(ctx context.Context, cfg system.SettingsPut) error {
+//			UpdateSettingsConfigFunc: func(ctx context.Context, cfg system0.SettingsPut) error {
 //				panic("mock out the UpdateSettingsConfig method")
 //			},
-//			UpdateUpdatesConfigFunc: func(ctx context.Context, cfg system.UpdatesPut) error {
+//			UpdateUpdatesConfigFunc: func(ctx context.Context, cfg system0.UpdatesPut) error {
 //				panic("mock out the UpdateUpdatesConfig method")
 //			},
 //		}
 //
-//		// use mockedSystemService in code that requires system0.SystemService
+//		// use mockedSystemService in code that requires system.SystemService
 //		// and then make assertions.
 //
 //	}
 type SystemServiceMock struct {
+	// BackupFunc mocks the Backup method.
+	BackupFunc func(ctx context.Context, options system.BackupOptions) (io.ReadCloser, error)
+
 	// CleanCacheFunc mocks the CleanCache method.
 	CleanCacheFunc func(ctx context.Context) error
 
 	// GetCertificateFunc mocks the GetCertificate method.
-	GetCertificateFunc func(ctx context.Context) (system.Certificate, error)
+	GetCertificateFunc func(ctx context.Context) (system0.Certificate, error)
 
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
-	GetNetworkConfigFunc func(ctx context.Context) system.Network
+	GetNetworkConfigFunc func(ctx context.Context) system0.Network
 
 	// GetSecurityConfigFunc mocks the GetSecurityConfig method.
-	GetSecurityConfigFunc func(ctx context.Context) system.Security
+	GetSecurityConfigFunc func(ctx context.Context) system0.Security
 
 	// GetSettingsConfigFunc mocks the GetSettingsConfig method.
-	GetSettingsConfigFunc func(ctx context.Context) system.Settings
+	GetSettingsConfigFunc func(ctx context.Context) system0.Settings
 
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
-	GetUpdatesConfigFunc func(ctx context.Context) system.Updates
+	GetUpdatesConfigFunc func(ctx context.Context) system0.Updates
+
+	// RestoreFunc mocks the Restore method.
+	RestoreFunc func(ctx context.Context, archive io.Reader) error
 
 	// TriggerCertificateRenewFunc mocks the TriggerCertificateRenew method.
 	TriggerCertificateRenewFunc func(ctx context.Context, force bool) (bool, error)
@@ -90,19 +103,26 @@ type SystemServiceMock struct {
 	UpdateCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
-	UpdateNetworkConfigFunc func(ctx context.Context, cfg system.NetworkPut) error
+	UpdateNetworkConfigFunc func(ctx context.Context, cfg system0.NetworkPut) error
 
 	// UpdateSecurityConfigFunc mocks the UpdateSecurityConfig method.
-	UpdateSecurityConfigFunc func(ctx context.Context, cfg system.SecurityPut) error
+	UpdateSecurityConfigFunc func(ctx context.Context, cfg system0.SecurityPut) error
 
 	// UpdateSettingsConfigFunc mocks the UpdateSettingsConfig method.
-	UpdateSettingsConfigFunc func(ctx context.Context, cfg system.SettingsPut) error
+	UpdateSettingsConfigFunc func(ctx context.Context, cfg system0.SettingsPut) error
 
 	// UpdateUpdatesConfigFunc mocks the UpdateUpdatesConfig method.
-	UpdateUpdatesConfigFunc func(ctx context.Context, cfg system.UpdatesPut) error
+	UpdateUpdatesConfigFunc func(ctx context.Context, cfg system0.UpdatesPut) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Backup holds details about calls to the Backup method.
+		Backup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Options is the options argument value.
+			Options system.BackupOptions
+		}
 		// CleanCache holds details about calls to the CleanCache method.
 		CleanCache []struct {
 			// Ctx is the ctx argument value.
@@ -133,6 +153,13 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// Restore holds details about calls to the Restore method.
+		Restore []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Archive is the archive argument value.
+			Archive io.Reader
+		}
 		// TriggerCertificateRenew holds details about calls to the TriggerCertificateRenew method.
 		TriggerCertificateRenew []struct {
 			// Ctx is the ctx argument value.
@@ -154,42 +181,80 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.NetworkPut
+			Cfg system0.NetworkPut
 		}
 		// UpdateSecurityConfig holds details about calls to the UpdateSecurityConfig method.
 		UpdateSecurityConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.SecurityPut
+			Cfg system0.SecurityPut
 		}
 		// UpdateSettingsConfig holds details about calls to the UpdateSettingsConfig method.
 		UpdateSettingsConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.SettingsPut
+			Cfg system0.SettingsPut
 		}
 		// UpdateUpdatesConfig holds details about calls to the UpdateUpdatesConfig method.
 		UpdateUpdatesConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.UpdatesPut
+			Cfg system0.UpdatesPut
 		}
 	}
+	lockBackup                  sync.RWMutex
 	lockCleanCache              sync.RWMutex
 	lockGetCertificate          sync.RWMutex
 	lockGetNetworkConfig        sync.RWMutex
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
 	lockGetUpdatesConfig        sync.RWMutex
+	lockRestore                 sync.RWMutex
 	lockTriggerCertificateRenew sync.RWMutex
 	lockUpdateCertificate       sync.RWMutex
 	lockUpdateNetworkConfig     sync.RWMutex
 	lockUpdateSecurityConfig    sync.RWMutex
 	lockUpdateSettingsConfig    sync.RWMutex
 	lockUpdateUpdatesConfig     sync.RWMutex
+}
+
+// Backup calls BackupFunc.
+func (mock *SystemServiceMock) Backup(ctx context.Context, options system.BackupOptions) (io.ReadCloser, error) {
+	if mock.BackupFunc == nil {
+		panic("SystemServiceMock.BackupFunc: method is nil but SystemService.Backup was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Options system.BackupOptions
+	}{
+		Ctx:     ctx,
+		Options: options,
+	}
+	mock.lockBackup.Lock()
+	mock.calls.Backup = append(mock.calls.Backup, callInfo)
+	mock.lockBackup.Unlock()
+	return mock.BackupFunc(ctx, options)
+}
+
+// BackupCalls gets all the calls that were made to Backup.
+// Check the length with:
+//
+//	len(mockedSystemService.BackupCalls())
+func (mock *SystemServiceMock) BackupCalls() []struct {
+	Ctx     context.Context
+	Options system.BackupOptions
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Options system.BackupOptions
+	}
+	mock.lockBackup.RLock()
+	calls = mock.calls.Backup
+	mock.lockBackup.RUnlock()
+	return calls
 }
 
 // CleanCache calls CleanCacheFunc.
@@ -225,7 +290,7 @@ func (mock *SystemServiceMock) CleanCacheCalls() []struct {
 }
 
 // GetCertificate calls GetCertificateFunc.
-func (mock *SystemServiceMock) GetCertificate(ctx context.Context) (system.Certificate, error) {
+func (mock *SystemServiceMock) GetCertificate(ctx context.Context) (system0.Certificate, error) {
 	if mock.GetCertificateFunc == nil {
 		panic("SystemServiceMock.GetCertificateFunc: method is nil but SystemService.GetCertificate was just called")
 	}
@@ -257,7 +322,7 @@ func (mock *SystemServiceMock) GetCertificateCalls() []struct {
 }
 
 // GetNetworkConfig calls GetNetworkConfigFunc.
-func (mock *SystemServiceMock) GetNetworkConfig(ctx context.Context) system.Network {
+func (mock *SystemServiceMock) GetNetworkConfig(ctx context.Context) system0.Network {
 	if mock.GetNetworkConfigFunc == nil {
 		panic("SystemServiceMock.GetNetworkConfigFunc: method is nil but SystemService.GetNetworkConfig was just called")
 	}
@@ -289,7 +354,7 @@ func (mock *SystemServiceMock) GetNetworkConfigCalls() []struct {
 }
 
 // GetSecurityConfig calls GetSecurityConfigFunc.
-func (mock *SystemServiceMock) GetSecurityConfig(ctx context.Context) system.Security {
+func (mock *SystemServiceMock) GetSecurityConfig(ctx context.Context) system0.Security {
 	if mock.GetSecurityConfigFunc == nil {
 		panic("SystemServiceMock.GetSecurityConfigFunc: method is nil but SystemService.GetSecurityConfig was just called")
 	}
@@ -321,7 +386,7 @@ func (mock *SystemServiceMock) GetSecurityConfigCalls() []struct {
 }
 
 // GetSettingsConfig calls GetSettingsConfigFunc.
-func (mock *SystemServiceMock) GetSettingsConfig(ctx context.Context) system.Settings {
+func (mock *SystemServiceMock) GetSettingsConfig(ctx context.Context) system0.Settings {
 	if mock.GetSettingsConfigFunc == nil {
 		panic("SystemServiceMock.GetSettingsConfigFunc: method is nil but SystemService.GetSettingsConfig was just called")
 	}
@@ -353,7 +418,7 @@ func (mock *SystemServiceMock) GetSettingsConfigCalls() []struct {
 }
 
 // GetUpdatesConfig calls GetUpdatesConfigFunc.
-func (mock *SystemServiceMock) GetUpdatesConfig(ctx context.Context) system.Updates {
+func (mock *SystemServiceMock) GetUpdatesConfig(ctx context.Context) system0.Updates {
 	if mock.GetUpdatesConfigFunc == nil {
 		panic("SystemServiceMock.GetUpdatesConfigFunc: method is nil but SystemService.GetUpdatesConfig was just called")
 	}
@@ -381,6 +446,42 @@ func (mock *SystemServiceMock) GetUpdatesConfigCalls() []struct {
 	mock.lockGetUpdatesConfig.RLock()
 	calls = mock.calls.GetUpdatesConfig
 	mock.lockGetUpdatesConfig.RUnlock()
+	return calls
+}
+
+// Restore calls RestoreFunc.
+func (mock *SystemServiceMock) Restore(ctx context.Context, archive io.Reader) error {
+	if mock.RestoreFunc == nil {
+		panic("SystemServiceMock.RestoreFunc: method is nil but SystemService.Restore was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Archive io.Reader
+	}{
+		Ctx:     ctx,
+		Archive: archive,
+	}
+	mock.lockRestore.Lock()
+	mock.calls.Restore = append(mock.calls.Restore, callInfo)
+	mock.lockRestore.Unlock()
+	return mock.RestoreFunc(ctx, archive)
+}
+
+// RestoreCalls gets all the calls that were made to Restore.
+// Check the length with:
+//
+//	len(mockedSystemService.RestoreCalls())
+func (mock *SystemServiceMock) RestoreCalls() []struct {
+	Ctx     context.Context
+	Archive io.Reader
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Archive io.Reader
+	}
+	mock.lockRestore.RLock()
+	calls = mock.calls.Restore
+	mock.lockRestore.RUnlock()
 	return calls
 }
 
@@ -461,13 +562,13 @@ func (mock *SystemServiceMock) UpdateCertificateCalls() []struct {
 }
 
 // UpdateNetworkConfig calls UpdateNetworkConfigFunc.
-func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) error {
+func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg system0.NetworkPut) error {
 	if mock.UpdateNetworkConfigFunc == nil {
 		panic("SystemServiceMock.UpdateNetworkConfigFunc: method is nil but SystemService.UpdateNetworkConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.NetworkPut
+		Cfg system0.NetworkPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -484,11 +585,11 @@ func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg syst
 //	len(mockedSystemService.UpdateNetworkConfigCalls())
 func (mock *SystemServiceMock) UpdateNetworkConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.NetworkPut
+	Cfg system0.NetworkPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.NetworkPut
+		Cfg system0.NetworkPut
 	}
 	mock.lockUpdateNetworkConfig.RLock()
 	calls = mock.calls.UpdateNetworkConfig
@@ -497,13 +598,13 @@ func (mock *SystemServiceMock) UpdateNetworkConfigCalls() []struct {
 }
 
 // UpdateSecurityConfig calls UpdateSecurityConfigFunc.
-func (mock *SystemServiceMock) UpdateSecurityConfig(ctx context.Context, cfg system.SecurityPut) error {
+func (mock *SystemServiceMock) UpdateSecurityConfig(ctx context.Context, cfg system0.SecurityPut) error {
 	if mock.UpdateSecurityConfigFunc == nil {
 		panic("SystemServiceMock.UpdateSecurityConfigFunc: method is nil but SystemService.UpdateSecurityConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.SecurityPut
+		Cfg system0.SecurityPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -520,11 +621,11 @@ func (mock *SystemServiceMock) UpdateSecurityConfig(ctx context.Context, cfg sys
 //	len(mockedSystemService.UpdateSecurityConfigCalls())
 func (mock *SystemServiceMock) UpdateSecurityConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.SecurityPut
+	Cfg system0.SecurityPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.SecurityPut
+		Cfg system0.SecurityPut
 	}
 	mock.lockUpdateSecurityConfig.RLock()
 	calls = mock.calls.UpdateSecurityConfig
@@ -533,13 +634,13 @@ func (mock *SystemServiceMock) UpdateSecurityConfigCalls() []struct {
 }
 
 // UpdateSettingsConfig calls UpdateSettingsConfigFunc.
-func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) error {
+func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg system0.SettingsPut) error {
 	if mock.UpdateSettingsConfigFunc == nil {
 		panic("SystemServiceMock.UpdateSettingsConfigFunc: method is nil but SystemService.UpdateSettingsConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.SettingsPut
+		Cfg system0.SettingsPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -556,11 +657,11 @@ func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg sys
 //	len(mockedSystemService.UpdateSettingsConfigCalls())
 func (mock *SystemServiceMock) UpdateSettingsConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.SettingsPut
+	Cfg system0.SettingsPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.SettingsPut
+		Cfg system0.SettingsPut
 	}
 	mock.lockUpdateSettingsConfig.RLock()
 	calls = mock.calls.UpdateSettingsConfig
@@ -569,13 +670,13 @@ func (mock *SystemServiceMock) UpdateSettingsConfigCalls() []struct {
 }
 
 // UpdateUpdatesConfig calls UpdateUpdatesConfigFunc.
-func (mock *SystemServiceMock) UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error {
+func (mock *SystemServiceMock) UpdateUpdatesConfig(ctx context.Context, cfg system0.UpdatesPut) error {
 	if mock.UpdateUpdatesConfigFunc == nil {
 		panic("SystemServiceMock.UpdateUpdatesConfigFunc: method is nil but SystemService.UpdateUpdatesConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.UpdatesPut
+		Cfg system0.UpdatesPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -592,11 +693,11 @@ func (mock *SystemServiceMock) UpdateUpdatesConfig(ctx context.Context, cfg syst
 //	len(mockedSystemService.UpdateUpdatesConfigCalls())
 func (mock *SystemServiceMock) UpdateUpdatesConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.UpdatesPut
+	Cfg system0.UpdatesPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.UpdatesPut
+		Cfg system0.UpdatesPut
 	}
 	mock.lockUpdateUpdatesConfig.RLock()
 	calls = mock.calls.UpdateUpdatesConfig

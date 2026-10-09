@@ -2,8 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/system"
@@ -32,6 +35,8 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("GET /updates", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /updates", response.With(handler.updatesPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /:clean-cache", response.With(handler.cleanCachePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /:backup", response.With(handler.backupPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /:restore", response.With(handler.restorePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 }
 
 // swagger:operation GET /1.0/system/certificate system system_certificate_get
@@ -415,6 +420,107 @@ func (s *systemHandler) cleanCachePost(r *http.Request) response.Response {
 	err := s.service.CleanCache(r.Context())
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to clean operations-center's cache: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/system/:backup system system_backup_post
+//
+//	Create a system backup
+//
+//	Create and return a `gzip` compressed tar archive backup of the state and
+//	configuration of Operations Center. The inventory is not part of the
+//	backup, it is synced again from the clusters after a restore. The images
+//	and the cached update files are only included on request.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	  - application/gzip
+//	parameters:
+//	  - in: body
+//	    name: system_backup_post
+//	    description: Backup options
+//	    required: false
+//	    schema:
+//	      $ref: "#/definitions/BackupPost"
+//	responses:
+//	  "200":
+//	    description: gzip compressed tar archive
+//	    schema:
+//	      type: string
+//	      format: binary
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) backupPost(r *http.Request) response.Response {
+	var request apisystem.BackupPost
+
+	// The body is optional.
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return response.BadRequest(err)
+	}
+
+	rc, err := s.service.Backup(r.Context(), system.BackupOptions{
+		Images:  request.Complete || request.WithImages,
+		Updates: request.Complete || request.WithUpdates,
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to create backup: %w", err))
+	}
+
+	filename := fmt.Sprintf("operations-center-backup-%s.tar.gz", time.Now().UTC().Format("20060102-150405"))
+
+	return response.ReadCloserResponse(r, rc, false, filename, -1, map[string]string{
+		"Content-Type": "application/gzip",
+	})
+}
+
+// swagger:operation POST /1.0/system/:restore system system_restore_post
+//
+//	Restore a system backup
+//
+//	Restore a `gzip` compressed tar archive backup created by
+//	`POST /1.0/system/:backup`. The backup is validated, before Operations
+//	Center restarts to apply it. Operations, which have been in progress when
+//	the backup was created, are aborted after the restore.
+//
+//	A restore is refused, while a server is being deployed, updated, evacuated
+//	or restored or while a cluster update is in progress.
+//
+//	---
+//	consumes:
+//	  - application/gzip
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: gzip tar archive
+//	    description: System backup to restore
+//	    required: true
+//	    schema:
+//	      type: string
+//	      format: binary
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) restorePost(r *http.Request) response.Response {
+	err := s.service.Restore(r.Context(), r.Body)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to restore backup: %w", err))
 	}
 
 	return response.EmptySyncResponse

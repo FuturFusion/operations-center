@@ -1,16 +1,23 @@
 package client_test
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -462,5 +469,36 @@ func Test_CleanSystemCache(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 
 	err = d.socketClient.CleanSystemCache(t.Context())
+	require.NoError(t, err)
+}
+
+func Test_SystemBackupRestore(t *testing.T) {
+	d := daemonSetup(t)
+
+	err := os.WriteFile(filepath.Join(d.varDir, config.ConfigFilename), nil, 0o600)
+	require.NoError(t, err)
+
+	err = incustls.FindOrGenCert(filepath.Join(d.varDir, config.ClientCertificateFilename), filepath.Join(d.varDir, config.ClientKeyFilename), true, false)
+	require.NoError(t, err)
+
+	_, err = d.unauthorizedHTTPClient.GetSystemBackup(t.Context(), system.BackupPost{})
+	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
+
+	rc, err := d.socketClient.GetSystemBackup(t.Context(), system.BackupPost{})
+	require.NoError(t, err)
+
+	backup, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	require.NoError(t, rc.Close())
+
+	err = d.unauthorizedHTTPClient.RestoreSystemBackup(t.Context(), bytes.NewReader(backup))
+	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
+
+	err = d.socketClient.RestoreSystemBackup(t.Context(), bytes.NewBufferString("not a backup"))
+	var serverErr *client.ServerError
+	require.ErrorAs(t, err, &serverErr)
+	require.Equal(t, api.ErrorReasonInvalidArgument, serverErr.Reason)
+
+	err = d.socketClient.RestoreSystemBackup(t.Context(), bytes.NewReader(backup))
 	require.NoError(t, err)
 }

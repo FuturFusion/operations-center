@@ -5,19 +5,20 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	system0 "github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/shared/api/system"
+	"github.com/FuturFusion/operations-center/internal/system"
+	system0 "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-// SystemServiceWithPrometheus implements system0.SystemService interface with all methods wrapped
+// SystemServiceWithPrometheus implements system.SystemService interface with all methods wrapped
 // with Prometheus metrics.
 type SystemServiceWithPrometheus struct {
-	base         system0.SystemService
+	base         system.SystemService
 	instanceName string
 }
 
@@ -31,15 +32,29 @@ var systemServiceDurationSummaryVec = promauto.NewSummaryVec(
 	[]string{"instance_name", "method", "result"},
 )
 
-// NewSystemServiceWithPrometheus returns an instance of the system0.SystemService decorated with prometheus summary metric.
-func NewSystemServiceWithPrometheus(base system0.SystemService, instanceName string) SystemServiceWithPrometheus {
+// NewSystemServiceWithPrometheus returns an instance of the system.SystemService decorated with prometheus summary metric.
+func NewSystemServiceWithPrometheus(base system.SystemService, instanceName string) SystemServiceWithPrometheus {
 	return SystemServiceWithPrometheus{
 		base:         base,
 		instanceName: instanceName,
 	}
 }
 
-// CleanCache implements system0.SystemService.
+// Backup implements system.SystemService.
+func (_d SystemServiceWithPrometheus) Backup(ctx context.Context, options system.BackupOptions) (readCloser io.ReadCloser, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Backup", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Backup(ctx, options)
+}
+
+// CleanCache implements system.SystemService.
 func (_d SystemServiceWithPrometheus) CleanCache(ctx context.Context) (err error) {
 	_since := time.Now()
 	defer func() {
@@ -53,8 +68,8 @@ func (_d SystemServiceWithPrometheus) CleanCache(ctx context.Context) (err error
 	return _d.base.CleanCache(ctx)
 }
 
-// GetCertificate implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certificate system.Certificate, err error) {
+// GetCertificate implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certificate system0.Certificate, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -67,8 +82,8 @@ func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certi
 	return _d.base.GetCertificate(ctx)
 }
 
-// GetNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (network system.Network) {
+// GetNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (network system0.Network) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -77,8 +92,8 @@ func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (net
 	return _d.base.GetNetworkConfig(ctx)
 }
 
-// GetSecurityConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (security system.Security) {
+// GetSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (security system0.Security) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -87,8 +102,8 @@ func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (se
 	return _d.base.GetSecurityConfig(ctx)
 }
 
-// GetSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (settings system.Settings) {
+// GetSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (settings system0.Settings) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -97,8 +112,8 @@ func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (se
 	return _d.base.GetSettingsConfig(ctx)
 }
 
-// GetUpdatesConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (updates system.Updates) {
+// GetUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (updates system0.Updates) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -107,7 +122,21 @@ func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (upd
 	return _d.base.GetUpdatesConfig(ctx)
 }
 
-// TriggerCertificateRenew implements system0.SystemService.
+// Restore implements system.SystemService.
+func (_d SystemServiceWithPrometheus) Restore(ctx context.Context, archive io.Reader) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Restore", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Restore(ctx, archive)
+}
+
+// TriggerCertificateRenew implements system.SystemService.
 func (_d SystemServiceWithPrometheus) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
 	_since := time.Now()
 	defer func() {
@@ -121,7 +150,7 @@ func (_d SystemServiceWithPrometheus) TriggerCertificateRenew(ctx context.Contex
 	return _d.base.TriggerCertificateRenew(ctx, force)
 }
 
-// UpdateCertificate implements system0.SystemService.
+// UpdateCertificate implements system.SystemService.
 func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	_since := time.Now()
 	defer func() {
@@ -135,8 +164,8 @@ func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, cer
 	return _d.base.UpdateCertificate(ctx, certificatePEM, keyPEM)
 }
 
-// UpdateNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) (err error) {
+// UpdateNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg system0.NetworkPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -149,8 +178,8 @@ func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, c
 	return _d.base.UpdateNetworkConfig(ctx, cfg)
 }
 
-// UpdateSecurityConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, cfg system.SecurityPut) (err error) {
+// UpdateSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, cfg system0.SecurityPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -163,8 +192,8 @@ func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, 
 	return _d.base.UpdateSecurityConfig(ctx, cfg)
 }
 
-// UpdateSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) (err error) {
+// UpdateSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, cfg system0.SettingsPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -177,8 +206,8 @@ func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, 
 	return _d.base.UpdateSettingsConfig(ctx, cfg)
 }
 
-// UpdateUpdatesConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) (err error) {
+// UpdateUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateUpdatesConfig(ctx context.Context, cfg system0.UpdatesPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

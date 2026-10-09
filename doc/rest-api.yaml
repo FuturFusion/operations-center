@@ -787,6 +787,26 @@ definitions:
                 x-go-name: WriteProtected
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BackupPost:
+        properties:
+            complete:
+                description: Complete includes the images and the cached update files in the backup.
+                example: false
+                type: boolean
+                x-go-name: Complete
+            with_images:
+                description: WithImages includes the images in the backup.
+                example: false
+                type: boolean
+                x-go-name: WithImages
+            with_updates:
+                description: WithUpdates includes the cached update files in the backup.
+                example: false
+                type: boolean
+                x-go-name: WithUpdates
+        title: BackupPost represents the options for the creation of a system backup.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     Certificate:
         description: The corresponding private key is never part of this representation.
         properties:
@@ -13987,6 +14007,40 @@ paths:
             summary: Get the updates
             tags:
                 - updates
+    /1.0/system/:backup:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Create and return a `gzip` compressed tar archive backup of the state and
+                configuration of Operations Center. The inventory is not part of the
+                backup, it is synced again from the clusters after a restore. The images
+                and the cached update files are only included on request.
+            operationId: system_backup_post
+            parameters:
+                - description: Backup options
+                  in: body
+                  name: system_backup_post
+                  schema:
+                    $ref: '#/definitions/BackupPost'
+            produces:
+                - application/json
+                - application/gzip
+            responses:
+                "200":
+                    description: gzip compressed tar archive
+                    schema:
+                        format: binary
+                        type: string
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Create a system backup
+            tags:
+                - system
     /1.0/system/:clean-cache:
         post:
             description: Remove reproducible, cached content.
@@ -14001,6 +14055,41 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Clean operations-center's cache
+            tags:
+                - system
+    /1.0/system/:restore:
+        post:
+            consumes:
+                - application/gzip
+            description: |-
+                Restore a `gzip` compressed tar archive backup created by
+                `POST /1.0/system/:backup`. The backup is validated, before Operations
+                Center restarts to apply it. Operations, which have been in progress when
+                the backup was created, are aborted after the restore.
+
+                A restore is refused, while a server is being deployed, updated, evacuated
+                or restored or while a cluster update is in progress.
+            operationId: system_restore_post
+            parameters:
+                - description: System backup to restore
+                  in: body
+                  name: gzip tar archive
+                  required: true
+                  schema:
+                    format: binary
+                    type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Restore a system backup
             tags:
                 - system
     /1.0/system/certificate:

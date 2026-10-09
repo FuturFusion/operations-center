@@ -290,18 +290,20 @@ func TestUpdateService_Prune(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                    string
-		repoGetAllWithFilter    provisioning.Updates
-		repoGetAllWithFilterErr error
-		filesRepoGet            []queue.Item[fileDetail]
-		filesRepoDelete         queue.Errs
-		repoDeleteByUUID        queue.Errs
+		name             string
+		repoGetAll       provisioning.Updates
+		repoGetAllErr    error
+		filesRepoGet     []queue.Item[fileDetail]
+		filesRepoDelete  queue.Errs
+		repoDeleteByUUID queue.Errs
+		deleteUnknownErr error
 
 		assertErr require.ErrorAssertionFunc
+		wantKnown []uuid.UUID
 	}{
 		{
 			name: "success",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuidgen.FromPattern(t, "1"),
 					Status: api.UpdateStatusPending,
@@ -340,16 +342,23 @@ func TestUpdateService_Prune(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantKnown: []uuid.UUID{uuidgen.FromPattern(t, "2")},
 		},
 		{
-			name:                    "error - repo.GetAll",
-			repoGetAllWithFilterErr: boom.Error,
+			name:             "error - filesRepo.DeleteUnknown",
+			deleteUnknownErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - filesRepo.Delete",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
 					Status: api.UpdateStatusPending,
@@ -367,7 +376,7 @@ func TestUpdateService_Prune(t *testing.T) {
 		},
 		{
 			name: "error - repo.DeleteByID",
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAll: provisioning.Updates{
 				{
 					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
 					Status: api.UpdateStatusPending,
@@ -389,8 +398,8 @@ func TestUpdateService_Prune(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
 				},
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 					return tc.repoDeleteByUUID.PopOrNil(t)
@@ -405,6 +414,9 @@ func TestUpdateService_Prune(t *testing.T) {
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.filesRepoDelete.PopOrNil(t)
 				},
+				DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
+					return tc.deleteUnknownErr
+				},
 			}
 
 			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
@@ -416,6 +428,11 @@ func TestUpdateService_Prune(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Empty(t, tc.repoDeleteByUUID)
+
+			if tc.wantKnown != nil {
+				require.Len(t, repoUpdateFiles.DeleteUnknownCalls(), 1)
+				require.Equal(t, tc.wantKnown, repoUpdateFiles.DeleteUnknownCalls()[0].Known)
+			}
 		})
 	}
 }
