@@ -289,7 +289,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_delete
