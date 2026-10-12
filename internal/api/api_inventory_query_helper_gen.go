@@ -18,6 +18,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, image := range inventoryAggregate.Images {
 			resultItem.Images = append(resultItem.Images, api.Image{
+				UUID:        image.UUID,
 				Cluster:     image.Cluster,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
@@ -27,6 +28,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, instance := range inventoryAggregate.Instances {
 			resultItem.Instances = append(resultItem.Instances, api.Instance{
+				UUID:        instance.UUID,
 				Cluster:     instance.Cluster,
 				Server:      instance.Server,
 				ProjectName: instance.ProjectName,
@@ -37,6 +39,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, network := range inventoryAggregate.Networks {
 			resultItem.Networks = append(resultItem.Networks, api.Network{
+				UUID:        network.UUID,
 				Cluster:     network.Cluster,
 				ProjectName: network.ProjectName,
 				Name:        network.Name,
@@ -46,6 +49,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkACL := range inventoryAggregate.NetworkACLs {
 			resultItem.NetworkACLs = append(resultItem.NetworkACLs, api.NetworkACL{
+				UUID:        networkACL.UUID,
 				Cluster:     networkACL.Cluster,
 				ProjectName: networkACL.ProjectName,
 				Name:        networkACL.Name,
@@ -55,6 +59,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkAddressSet := range inventoryAggregate.NetworkAddressSets {
 			resultItem.NetworkAddressSets = append(resultItem.NetworkAddressSets, api.NetworkAddressSet{
+				UUID:        networkAddressSet.UUID,
 				Cluster:     networkAddressSet.Cluster,
 				ProjectName: networkAddressSet.ProjectName,
 				Name:        networkAddressSet.Name,
@@ -64,6 +69,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkForward := range inventoryAggregate.NetworkForwards {
 			resultItem.NetworkForwards = append(resultItem.NetworkForwards, api.NetworkForward{
+				UUID:        networkForward.UUID,
 				Cluster:     networkForward.Cluster,
 				ProjectName: networkForward.ProjectName,
 				NetworkName: networkForward.NetworkName,
@@ -74,6 +80,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkIntegration := range inventoryAggregate.NetworkIntegrations {
 			resultItem.NetworkIntegrations = append(resultItem.NetworkIntegrations, api.NetworkIntegration{
+				UUID:    networkIntegration.UUID,
 				Cluster: networkIntegration.Cluster,
 				Name:    networkIntegration.Name,
 				Object:  networkIntegration.Object.NetworkIntegration,
@@ -82,6 +89,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkLoadBalancer := range inventoryAggregate.NetworkLoadBalancers {
 			resultItem.NetworkLoadBalancers = append(resultItem.NetworkLoadBalancers, api.NetworkLoadBalancer{
+				UUID:        networkLoadBalancer.UUID,
 				Cluster:     networkLoadBalancer.Cluster,
 				ProjectName: networkLoadBalancer.ProjectName,
 				NetworkName: networkLoadBalancer.NetworkName,
@@ -92,6 +100,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkPeer := range inventoryAggregate.NetworkPeers {
 			resultItem.NetworkPeers = append(resultItem.NetworkPeers, api.NetworkPeer{
+				UUID:        networkPeer.UUID,
 				Cluster:     networkPeer.Cluster,
 				ProjectName: networkPeer.ProjectName,
 				NetworkName: networkPeer.NetworkName,
@@ -102,6 +111,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, networkZone := range inventoryAggregate.NetworkZones {
 			resultItem.NetworkZones = append(resultItem.NetworkZones, api.NetworkZone{
+				UUID:        networkZone.UUID,
 				Cluster:     networkZone.Cluster,
 				ProjectName: networkZone.ProjectName,
 				Name:        networkZone.Name,
@@ -111,6 +121,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, profile := range inventoryAggregate.Profiles {
 			resultItem.Profiles = append(resultItem.Profiles, api.Profile{
+				UUID:        profile.UUID,
 				Cluster:     profile.Cluster,
 				ProjectName: profile.ProjectName,
 				Name:        profile.Name,
@@ -120,6 +131,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, project := range inventoryAggregate.Projects {
 			resultItem.Projects = append(resultItem.Projects, api.Project{
+				UUID:    project.UUID,
 				Cluster: project.Cluster,
 				Name:    project.Name,
 				Object:  project.Object.Project,
@@ -128,6 +140,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, storageBucket := range inventoryAggregate.StorageBuckets {
 			resultItem.StorageBuckets = append(resultItem.StorageBuckets, api.StorageBucket{
+				UUID:            storageBucket.UUID,
 				Cluster:         storageBucket.Cluster,
 				Server:          ptr.From(storageBucket.Server),
 				ProjectName:     storageBucket.ProjectName,
@@ -139,6 +152,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, storagePool := range inventoryAggregate.StoragePools {
 			resultItem.StoragePools = append(resultItem.StoragePools, api.StoragePool{
+				UUID:    storagePool.UUID,
 				Cluster: storagePool.Cluster,
 				Name:    storagePool.Name,
 				Object:  storagePool.Object.StoragePool,
@@ -147,6 +161,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 
 		for _, storageVolume := range inventoryAggregate.StorageVolumes {
 			resultItem.StorageVolumes = append(resultItem.StorageVolumes, api.StorageVolume{
+				UUID:            storageVolume.UUID,
 				Cluster:         storageVolume.Cluster,
 				Server:          ptr.From(storageVolume.Server),
 				ProjectName:     storageVolume.ProjectName,

@@ -104,3 +104,21 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 	require.Equal(t, identifiers{}, got[2], "the identifiers of the duplicate row are cleared, so the server can be matched again on its next registration")
 	require.Equal(t, identifiers{}, got[3], "rows without identifiers are left untouched")
 }
+
+func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db, 42)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`SELECT uuid FROM resources`)
+	require.Error(t, err, "the resources view has no uuid column before v43")
+
+	_, err = dbschema.Ensure(context.Background(), db, tmpDir)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`SELECT uuid FROM resources`)
+	require.NoError(t, err, "the resources view has the uuid column from v43 onwards")
+}
