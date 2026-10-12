@@ -871,6 +871,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			RawQueryFunc: func(method string, path string, data any, queryETag string) (*api.Response, string, error) {
 //				panic("mock out the RawQuery method")
 //			},
+//			RawQueryWithHeadersFunc: func(method string, path string, data any, queryETag string, headers http.Header) (*api.Response, string, error) {
+//				panic("mock out the RawQueryWithHeaders method")
+//			},
 //			RawWebsocketFunc: func(path string) (*websocket.Conn, error) {
 //				panic("mock out the RawWebsocket method")
 //			},
@@ -1897,6 +1900,9 @@ type InstanceServerMock struct {
 
 	// RawQueryFunc mocks the RawQuery method.
 	RawQueryFunc func(method string, path string, data any, queryETag string) (*api.Response, string, error)
+
+	// RawQueryWithHeadersFunc mocks the RawQueryWithHeaders method.
+	RawQueryWithHeadersFunc func(method string, path string, data any, queryETag string, headers http.Header) (*api.Response, string, error)
 
 	// RawWebsocketFunc mocks the RawWebsocket method.
 	RawWebsocketFunc func(path string) (*websocket.Conn, error)
@@ -3776,6 +3782,19 @@ type InstanceServerMock struct {
 			// QueryETag is the queryETag argument value.
 			QueryETag string
 		}
+		// RawQueryWithHeaders holds details about calls to the RawQueryWithHeaders method.
+		RawQueryWithHeaders []struct {
+			// Method is the method argument value.
+			Method string
+			// Path is the path argument value.
+			Path string
+			// Data is the data argument value.
+			Data any
+			// QueryETag is the queryETag argument value.
+			QueryETag string
+			// Headers is the headers argument value.
+			Headers http.Header
+		}
 		// RawWebsocket holds details about calls to the RawWebsocket method.
 		RawWebsocket []struct {
 			// Path is the path argument value.
@@ -4577,6 +4596,7 @@ type InstanceServerMock struct {
 	lockMoveStoragePoolVolume                          sync.RWMutex
 	lockRawOperation                                   sync.RWMutex
 	lockRawQuery                                       sync.RWMutex
+	lockRawQueryWithHeaders                            sync.RWMutex
 	lockRawWebsocket                                   sync.RWMutex
 	lockRebuildInstance                                sync.RWMutex
 	lockRebuildInstanceFromImage                       sync.RWMutex
@@ -14165,6 +14185,54 @@ func (mock *InstanceServerMock) RawQueryCalls() []struct {
 	mock.lockRawQuery.RLock()
 	calls = mock.calls.RawQuery
 	mock.lockRawQuery.RUnlock()
+	return calls
+}
+
+// RawQueryWithHeaders calls RawQueryWithHeadersFunc.
+func (mock *InstanceServerMock) RawQueryWithHeaders(method string, path string, data any, queryETag string, headers http.Header) (*api.Response, string, error) {
+	if mock.RawQueryWithHeadersFunc == nil {
+		panic("InstanceServerMock.RawQueryWithHeadersFunc: method is nil but InstanceServer.RawQueryWithHeaders was just called")
+	}
+	callInfo := struct {
+		Method    string
+		Path      string
+		Data      any
+		QueryETag string
+		Headers   http.Header
+	}{
+		Method:    method,
+		Path:      path,
+		Data:      data,
+		QueryETag: queryETag,
+		Headers:   headers,
+	}
+	mock.lockRawQueryWithHeaders.Lock()
+	mock.calls.RawQueryWithHeaders = append(mock.calls.RawQueryWithHeaders, callInfo)
+	mock.lockRawQueryWithHeaders.Unlock()
+	return mock.RawQueryWithHeadersFunc(method, path, data, queryETag, headers)
+}
+
+// RawQueryWithHeadersCalls gets all the calls that were made to RawQueryWithHeaders.
+// Check the length with:
+//
+//	len(mockedInstanceServer.RawQueryWithHeadersCalls())
+func (mock *InstanceServerMock) RawQueryWithHeadersCalls() []struct {
+	Method    string
+	Path      string
+	Data      any
+	QueryETag string
+	Headers   http.Header
+} {
+	var calls []struct {
+		Method    string
+		Path      string
+		Data      any
+		QueryETag string
+		Headers   http.Header
+	}
+	mock.lockRawQueryWithHeaders.RLock()
+	calls = mock.calls.RawQueryWithHeaders
+	mock.lockRawQueryWithHeaders.RUnlock()
 	return calls
 }
 
