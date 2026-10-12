@@ -119,7 +119,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 	certFingerprint, err := incustls.CertFingerprintStr(string(certPEM))
 	require.NoError(t, err)
 
-	_, intermediatePEM, leafPEM, leafKeyPEM := certs.GenerateChain(t)
+	rootPEM, intermediatePEM, leafPEM, leafKeyPEM := certs.GenerateChain(t)
 
 	leafFingerprint, err := incustls.CertFingerprintStr(string(leafPEM))
 	require.NoError(t, err)
@@ -304,6 +304,21 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				t.Helper()
 			},
 			certPEM: string(leafPEM) + string(otherLeafPEM),
+			keyPEM:  string(leafKeyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var validationErr domain.ErrValidation
+				require.ErrorAs(tt, err, &validationErr)
+				require.ErrorContains(tt, err, "Invalid certificate chain")
+			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+		},
+		{
+			name: "error - duplicated issuer certificates",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(leafPEM) + string(intermediatePEM) + string(rootPEM) + string(intermediatePEM) + string(rootPEM),
 			keyPEM:  string(leafKeyPEM),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
