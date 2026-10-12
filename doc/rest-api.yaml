@@ -8685,7 +8685,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -8880,7 +8880,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -10822,7 +10822,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -10995,7 +10995,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -11075,7 +11075,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -11178,7 +11178,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -11406,7 +11406,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -11840,7 +11840,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/ServerRegistrationResultResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -11978,7 +11978,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -13218,7 +13218,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -13338,7 +13338,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/TokenImageResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -13459,7 +13459,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -13783,7 +13783,7 @@ paths:
             produces:
                 - application/json
             responses:
-                "200":
+                "201":
                     $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -13796,7 +13796,14 @@ paths:
                 - updates
     /1.0/provisioning/updates/:refresh:
         post:
-            description: Refresh the updates provided by Operations Center.
+            description: |-
+                Refresh the updates provided by Operations Center.
+
+                With `wait=true`, the response is sent after the refresh has completed.
+                The status code is 200.
+
+                Without `wait`, the refresh runs in the background.
+                The status code is 202.
             operationId: updates_refresh_post
             parameters:
                 - description: If set, refresh operation is executed synchronously and waited for the result.
@@ -13809,6 +13816,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/EmptySyncResponse'
+                "202":
+                    $ref: '#/responses/AsyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
                 "403":
@@ -14467,6 +14476,25 @@ responses:
                     x-go-name: StatusCode
                 type:
                     example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    AsyncResponse:
+        description: The operation has started and runs in the background.
+        schema:
+            properties:
+                status:
+                    example: Started
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    description: StatusCode is not set for this response.
+                    example: 0
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: async
                     type: string
                     x-go-name: Type
             type: object
