@@ -46,6 +46,18 @@ jobs:
           echo "setting zfs sync to disabled for better performance in CI environment"
           sudo zfs set sync=disabled default
 
+      - name: Setup Docker
+        run: |
+          # The OpenFGA end 2 end test starts OpenFGA as a Docker container.
+          curl -fsSL https://get.docker.com | sudo sh
+          sudo chmod 666 /var/run/docker.sock
+
+          # Docker can drop forwarded traffic of the Incus bridge. Allow it.
+          sudo iptables -I DOCKER-USER -i incusbr0 -j ACCEPT
+          sudo iptables -I DOCKER-USER -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+          docker version
+
       - name: Install opentofu
         run: |
           curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
