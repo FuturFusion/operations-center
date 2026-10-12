@@ -70,6 +70,14 @@ var updates = map[int]update{
 	40: updateFromV39,
 	41: updateFromV40,
 	42: updateFromV41,
+	43: updateFromV42,
+}
+
+func updateFromV42(ctx context.Context, tx *sql.Tx) error {
+	// v42..v43 add uuid to the resources view.
+	stmt := withResourcesView(``)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV41(ctx context.Context, tx *sql.Tx) error {
@@ -97,7 +105,7 @@ UPDATE servers SET machine_id = lower(machine_id) WHERE machine_id IS NOT NULL;
 func updateFromV40(ctx context.Context, tx *sql.Tx) error {
 	// v40..v41 allow NULL for servers.certificate to make the absence of a
 	// certificate not breaking the UNIQUE constraint.
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -167,7 +175,7 @@ func updateFromV38(ctx context.Context, tx *sql.Tx) error {
 
 func updateFromV37(ctx context.Context, tx *sql.Tx) error {
 	// v37..v38 add BMC related fields to servers table.
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -402,7 +410,7 @@ ALTER TABLE tokens ADD COLUMN auto_remove BOOLEAN NOT NULL DEFAULT 0;
 
 func updateFromV25(ctx context.Context, tx *sql.Tx) error {
 	// v25..v26 add project column for inventory entities, where project is derived from their parent
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 -- Drop existing inventory tables, the data will be fetched by Operations Center upon start
 -- anyway and there is no way to fill the added project_name column with the correct value.
 DROP TABLE network_forwards;
@@ -481,7 +489,7 @@ ALTER TABLE tokens_new RENAME TO tokens;
 
 func updateFromV23(ctx context.Context, tx *sql.Tx) error {
 	// v23..v24 add channel_id foreign key to servers and clusters
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -602,7 +610,7 @@ ALTER TABLE servers ADD COLUMN version_data TEXT NOT NULL DEFAULT '';
 
 func updateFromV18(ctx context.Context, tx *sql.Tx) error {
 	// v18..v19 make server relation for storage buckets optional
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE storage_buckets_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
@@ -631,7 +639,7 @@ func updateFromV17(ctx context.Context, tx *sql.Tx) error {
 	// certificate not breaking the UNIQUE constraint:
 	// https://www.sqlite.org/lang_createindex.html#unique_indexes
 	// Replace all empty string certificates with NULL.
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE clusters_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
@@ -673,7 +681,7 @@ CREATE TABLE cluster_artifacts (
 
 func updateFromV15(ctx context.Context, tx *sql.Tx) error {
 	// v15..v16 remove server_id from unique key constraint on instances
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE instances_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
@@ -717,7 +725,7 @@ CREATE TABLE cluster_templates (
 
 func updateFromV13(ctx context.Context, tx *sql.Tx) error {
 	// v13..v14 add check constraint on name for servers and clusters
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -826,7 +834,7 @@ ALTER TABLE updates ADD COLUMN "status" NOT NULL DEFAULT 'ready';
 
 func updateFromV6(ctx context.Context, tx *sql.Tx) error {
 	// v6..v7 add `DELETE CASCADE` to foreign keys
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -1126,7 +1134,7 @@ ALTER TABLE servers ADD COLUMN last_seen DATETIME NOT NULL DEFAULT '0000-01-01 0
 
 func updateFromV2(ctx context.Context, tx *sql.Tx) error {
 	// v2..v3 add columns certificate and status for clusters; add column cluster_certificate for servers
-	stmt := withResourcesView(`
+	stmt := withResourcesViewPreV43(`
 CREATE TABLE clusters_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
@@ -1478,7 +1486,85 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 	return MapDBError(err)
 }
 
+// withResourcesView wraps stmt with the drop and the restore of the resources view.
+// Use it for schema updates from v43 onwards.
 func withResourcesView(stmt string) string {
+	return fmt.Sprintf(`
+DROP VIEW resources;
+
+-- Update statement
+%s
+
+-- Restore resources view and re-enable foreign key enforcing
+CREATE VIEW resources AS
+    SELECT 'image' AS kind, images.id, images.uuid, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
+    FROM images
+    INNER JOIN clusters ON images.cluster_id = clusters.id
+  UNION
+    SELECT 'instance' AS kind, instances.id, instances.uuid, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
+    FROM instances
+    INNER JOIN clusters ON instances.cluster_id = clusters.id
+    LEFT JOIN servers ON instances.server_id = servers.id
+  UNION
+    SELECT 'network' AS kind, networks.id, networks.uuid, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
+    FROM networks
+    INNER JOIN clusters ON networks.cluster_id = clusters.id
+  UNION
+    SELECT 'network_acl' AS kind, network_acls.id, network_acls.uuid, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
+    FROM network_acls
+    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
+  UNION
+    SELECT 'network_forward' AS kind, network_forwards.id, network_forwards.uuid, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+    FROM network_forwards
+    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
+    LEFT JOIN networks ON network_forwards.network_name = networks.name
+  UNION
+    SELECT 'network_integration' AS kind, network_integrations.id, network_integrations.uuid, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+    FROM network_integrations
+    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+  UNION
+    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+    FROM network_load_balancers
+    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
+  UNION
+    SELECT 'network_peer' AS kind, network_peers.id, network_peers.uuid, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
+    FROM network_peers
+    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_peers.network_name = networks.name
+  UNION
+    SELECT 'network_zone' AS kind, network_zones.id, network_zones.uuid, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
+    FROM network_zones
+    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
+  UNION
+    SELECT 'profile' AS kind, profiles.id, profiles.uuid, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
+    FROM profiles
+    INNER JOIN clusters ON profiles.cluster_id = clusters.id
+  UNION
+    SELECT 'project' AS kind, projects.id, projects.uuid, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
+    FROM projects
+    INNER JOIN clusters ON projects.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_bucket' AS kind, storage_buckets.id, storage_buckets.uuid, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+    FROM storage_buckets
+    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_buckets.server_id = servers.id
+  UNION
+    SELECT 'storage_pool' AS kind, storage_pools.id, storage_pools.uuid, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+    FROM storage_pools
+    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_volume' AS kind, storage_volumes.id, storage_volumes.uuid, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
+    FROM storage_volumes
+    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_volumes.server_id = servers.id
+;
+`, stmt)
+}
+
+// withResourcesViewPreV43 wraps stmt with the drop and the restore of the resources view
+// without the uuid column. Schema updates before v43 use it. Do not change it.
+func withResourcesViewPreV43(stmt string) string {
 	return fmt.Sprintf(`
 DROP VIEW resources;
 
