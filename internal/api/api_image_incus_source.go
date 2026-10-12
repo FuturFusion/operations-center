@@ -127,7 +127,7 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 //	    schema:
 //	      $ref: "#/definitions/ImageSourcePost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -284,7 +284,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/sources/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/images/incus/sources/{name} image_sources image_source_delete

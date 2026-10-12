@@ -165,7 +165,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/ClusterPost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -330,7 +330,7 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/provisioning/clusters/{name} clusters cluster_delete
@@ -447,7 +447,7 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/Cluster"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -550,7 +550,7 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 		return response.SmartError(fmt.Errorf("Failed adding servers %v to cluster %q: %w", addServersRequest.ServerNames, name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation POST /1.0/provisioning/clusters/{name}/:remove-servers clusters clusters_remove_servers_post
@@ -602,7 +602,7 @@ func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Respo
 		return response.SmartError(fmt.Errorf("Failed to remove servers %v from cluster %q: %w", removeServersRequest.ServerNames, name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation POST /1.0/provisioning/clusters/{name}/:bulk-update clusters cluster_bulk_update_inventory_post

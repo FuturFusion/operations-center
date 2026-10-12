@@ -219,5 +219,5 @@ func (t *warningHandler) warningPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/warnings/"+UUID.String())
+	return response.SyncResponse(true, nil)
 }

@@ -194,7 +194,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -248,6 +248,12 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //
 //	Refresh the updates provided by Operations Center.
 //
+//	With `wait=true`, the response is sent after the refresh has completed.
+//	The status code is 200.
+//
+//	Without `wait`, the refresh runs in the background.
+//	The status code is 202.
+//
 //	---
 //	parameters:
 //	  - in: query
@@ -260,6 +266,8 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
+//	  "202":
+//	    $ref: "#/responses/AsyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":

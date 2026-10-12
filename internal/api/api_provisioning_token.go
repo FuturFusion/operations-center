@@ -147,7 +147,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/TokenPut"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -317,7 +317,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String())
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/provisioning/tokens/{uuid} tokens token_delete
@@ -388,7 +388,7 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/TokenImagePost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/TokenImageResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -556,7 +556,7 @@ func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response
 //	    schema:
 //	      $ref: "#/definitions/TokenSeedPost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -1165,7 +1165,7 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/images/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/provisioning/tokens/{uuid}/seeds/{name} tokens token_seed_delete

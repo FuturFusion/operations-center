@@ -358,7 +358,7 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/images/incus/{name} incus_images incus_image_delete
@@ -431,7 +431,7 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	      is ignored.
 //	    type: file
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

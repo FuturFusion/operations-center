@@ -128,7 +128,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesGet(r *http.Request) resp
 //	    schema:
 //	      $ref: "#/definitions/ClusterTemplatePost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -289,7 +289,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+name)
+	return response.SyncResponse(true, nil)
 }
 
 // swagger:operation DELETE /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_delete
@@ -353,7 +353,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 //	    schema:
 //	      $ref: "#/definitions/ClusterTemplate"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

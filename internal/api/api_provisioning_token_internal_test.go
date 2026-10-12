@@ -134,6 +134,56 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 	}
 }
 
+func Test_tokenHandler_tokenPut(t *testing.T) {
+	tests := []struct {
+		name        string
+		requestBody string
+
+		wantStatus              int
+		wantResponseBodyContain string
+		wantServiceCalled       bool
+	}{
+		{
+			name:        "success",
+			requestBody: `{"description": "some description"}`,
+
+			wantStatus:              http.StatusOK,
+			wantResponseBodyContain: `"status_code":200`,
+			wantServiceCalled:       true,
+		},
+		{
+			name:        "error - invalid request body",
+			requestBody: `{`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: "Failed to decode token",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var serviceCalled bool
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return &provisioning.Token{UUID: id}, nil
+				},
+				UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
+					serviceCalled = true
+
+					return nil
+				},
+			}
+
+			body, status := doTokenRequest(t, tokenService, http.MethodPut, "/"+tokenUUID, tc.requestBody)
+
+			require.Equal(t, tc.wantStatus, status)
+			require.Equal(t, tc.wantServiceCalled, serviceCalled)
+			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
 func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -141,7 +191,16 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 
 		wantStatus              int
 		wantResponseBodyContain string
+		wantServiceCalled       bool
 	}{
+		{
+			name:        "success",
+			requestBody: `{"description": "some description"}`,
+
+			wantStatus:              http.StatusOK,
+			wantResponseBodyContain: `"status_code":200`,
+			wantServiceCalled:       true,
+		},
 		{
 			name: "error - network seed nested in config block",
 			requestBody: `{
@@ -201,12 +260,15 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 
 					return &provisioning.TokenSeed{}, nil
 				},
+				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+					return nil
+				},
 			}
 
 			body, status := doTokenRequest(t, tokenService, http.MethodPut, "/"+tokenUUID+"/seeds/test", tc.requestBody)
 
 			require.Equal(t, tc.wantStatus, status)
-			require.False(t, serviceCalled)
+			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
 		})
 	}
