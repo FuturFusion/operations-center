@@ -225,6 +225,6 @@ var registerOIDCClientsOnce sync.Once
 
 func registerOIDCClients() {
 	registerOIDCClientsOnce.Do(func() {
-		storage.RegisterClients(storage.IncusDeviceClient(oidcClientID))
+		storage.RegisterClients(storage.IncusDeviceClient(oidcClientID, op.AccessTokenTypeJWT))
 	})
 }
