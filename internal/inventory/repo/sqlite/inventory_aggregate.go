@@ -9,6 +9,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -32,6 +33,7 @@ func NewInventoryAggregate(db sqlite.DBTX) *inventoryAggregate {
 
 type InventoryResource struct {
 	Kind        string
+	UUID        uuid.UUID
 	ClusterName string
 	ServerName  *string
 	ProjectName *string
@@ -42,7 +44,7 @@ type InventoryResource struct {
 
 func (r inventoryAggregate) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
 	const sqlStmt = `
-SELECT kind, cluster_name, server_name, project_name, parent_name, name, object FROM resources
+SELECT kind, uuid, cluster_name, server_name, project_name, parent_name, name, object FROM resources
 WHERE true
 %s
 ORDER BY cluster_name, project_name, parent_name, name, server_name
@@ -206,6 +208,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			image := inventory.Image{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
@@ -224,6 +227,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			instance := inventory.Instance{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Server:      ptr.From(inventoryResource.ServerName),
@@ -243,6 +247,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			network := inventory.Network{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
@@ -261,6 +266,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkACL := inventory.NetworkACL{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
@@ -279,6 +285,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkForward := inventory.NetworkForward{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
@@ -297,6 +304,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkIntegration := inventory.NetworkIntegration{
+				UUID:    inventoryResource.UUID,
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
 				Object: inventory.IncusNetworkIntegrationWrapper{
@@ -314,6 +322,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkLoadBalancer := inventory.NetworkLoadBalancer{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
@@ -332,6 +341,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkPeer := inventory.NetworkPeer{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
@@ -350,6 +360,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			networkZone := inventory.NetworkZone{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
@@ -368,6 +379,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			profile := inventory.Profile{
+				UUID:        inventoryResource.UUID,
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
@@ -386,6 +398,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			project := inventory.Project{
+				UUID:    inventoryResource.UUID,
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
 				Object: inventory.IncusProjectWrapper{
@@ -403,6 +416,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			storageBucket := inventory.StorageBucket{
+				UUID:            inventoryResource.UUID,
 				Cluster:         inventoryResource.ClusterName,
 				ProjectName:     ptr.From(inventoryResource.ProjectName),
 				StoragePoolName: ptr.From(inventoryResource.ParentName),
@@ -423,6 +437,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			storagePool := inventory.StoragePool{
+				UUID:    inventoryResource.UUID,
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
 				Object: inventory.IncusStoragePoolWrapper{
@@ -440,6 +455,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			}
 
 			storageVolume := inventory.StorageVolume{
+				UUID:            inventoryResource.UUID,
 				Cluster:         inventoryResource.ClusterName,
 				ProjectName:     ptr.From(inventoryResource.ProjectName),
 				StoragePoolName: ptr.From(inventoryResource.ParentName),
@@ -482,6 +498,7 @@ func scanInventoryResource(row interface{ Scan(dest ...any) error }) (InventoryR
 
 	err := row.Scan(
 		&resourceItem.Kind,
+		&resourceItem.UUID,
 		&resourceItem.ClusterName,
 		&resourceItem.ServerName,
 		&resourceItem.ProjectName,
