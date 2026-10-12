@@ -549,6 +549,24 @@ type swaggerEmptySyncResponse struct {
 	}
 }
 
+// The operation has started and runs in the background.
+//
+// swagger:response AsyncResponse
+type swaggerAsyncResponse struct {
+	// in: body
+	Body struct {
+		// Example: async
+		Type string `json:"type"`
+
+		// Example: Started
+		Status string `json:"status"`
+
+		// StatusCode is not set for this response.
+		// Example: 0
+		StatusCode int `json:"status_code"`
+	}
+}
+
 // Error responses
 
 // swaggerErrorResponseBody holds the envelope every error response shares.
