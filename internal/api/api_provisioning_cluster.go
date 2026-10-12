@@ -165,7 +165,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/ClusterPost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -447,7 +447,7 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/Cluster"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

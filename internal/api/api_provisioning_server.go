@@ -292,7 +292,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/ServerPost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/ServerRegistrationResultResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -725,7 +725,7 @@ func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/Server"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

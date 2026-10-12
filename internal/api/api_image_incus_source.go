@@ -127,7 +127,7 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 //	    schema:
 //	      $ref: "#/definitions/ImageSourcePost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

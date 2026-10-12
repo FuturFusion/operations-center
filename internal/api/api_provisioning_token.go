@@ -147,7 +147,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/TokenPut"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

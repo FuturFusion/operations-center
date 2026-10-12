@@ -128,7 +128,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesGet(r *http.Request) resp
 //	    schema:
 //	      $ref: "#/definitions/ClusterTemplatePost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -353,7 +353,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 //	    schema:
 //	      $ref: "#/definitions/ClusterTemplate"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

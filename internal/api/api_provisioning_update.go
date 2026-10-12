@@ -194,7 +194,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

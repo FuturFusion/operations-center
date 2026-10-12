@@ -431,7 +431,7 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	      is ignored.
 //	    type: file
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"

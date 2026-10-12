@@ -126,7 +126,7 @@ func (u *channelsHandler) channelsGet(r *http.Request) response.Response {
 //	    schema:
 //	      $ref: "#/definitions/ChannelPost"
 //	responses:
-//	  "200":
+//	  "201":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
