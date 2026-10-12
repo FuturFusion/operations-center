@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/lxc/incus/v7/shared/tls"
 	"github.com/lxc/incus/v7/shared/validate"
@@ -107,8 +106,8 @@ func UpdateCertificate(
 		return nil, fmt.Errorf("Failed to parse certificate: %w", err)
 	}
 
-	if !force && !tls.CertificateNeedsUpdate(cfg.Domain, cert, 30*24*time.Hour) {
-		log.Debug("Skipping renewal for certificate that is valid for more than 30 days")
+	if !force && !tls.CertificateNeedsUpdate(cfg.Domain, cert) {
+		log.Debug("Skipping renewal for certificate that has not reached 80% of its validity period")
 		return nil, nil
 	}
 
