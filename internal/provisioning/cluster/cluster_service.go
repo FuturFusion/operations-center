@@ -1428,6 +1428,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			pool.Managed = false
 			pool.State = ""
 			pool.LastScrub = nil
+			pool.LastTrim = nil
 			pool.EncryptionKeyStatus = ""
 			pool.DevicesDegraded = nil
 			pool.CacheDegraded = nil

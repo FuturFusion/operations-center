@@ -2367,6 +2367,15 @@ definitions:
                 x-go-name: Status
             status_code:
                 $ref: '#/definitions/StatusCode'
+            tpm:
+                additionalProperties:
+                    $ref: '#/definitions/InstanceStateTPM'
+                description: |-
+                    TPM devices information.
+
+                    API extension: instances_state_tpm.
+                type: object
+                x-go-name: TPM
         title: InstanceState represents an instance's state.
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
@@ -2392,6 +2401,8 @@ definitions:
         x-go-package: github.com/lxc/incus/v7/shared/api
     InstanceStateDisk:
         properties:
+            counters:
+                $ref: '#/definitions/InstanceStateDiskCounters'
             total:
                 description: |-
                     Total size in bytes
@@ -2408,6 +2419,37 @@ definitions:
                 type: integer
                 x-go-name: Usage
         title: InstanceStateDisk represents the disk information section of an instance's state.
+        type: object
+        x-go-package: github.com/lxc/incus/v7/shared/api
+    InstanceStateDiskCounters:
+        description: |-
+            InstanceStateDiskCounters represents I/O counters as part of the disk section of an
+            instance's state.
+        properties:
+            bytes_read:
+                description: Number of bytes read
+                example: 3567021
+                format: int64
+                type: integer
+                x-go-name: BytesRead
+            bytes_written:
+                description: Number of bytes written
+                example: 1748969
+                format: int64
+                type: integer
+                x-go-name: BytesWritten
+            reads_completed:
+                description: Number of read operations completed
+                example: 3844
+                format: int64
+                type: integer
+                x-go-name: ReadsCompleted
+            writes_completed:
+                description: Number of write operations completed
+                example: 2071
+                format: int64
+                type: integer
+                x-go-name: WritesCompleted
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
     InstanceStateMemory:
@@ -2597,6 +2639,42 @@ definitions:
                 type: string
                 x-go-name: OSVersion
         title: InstanceStateOSInfo represents the operating system information section of an instance's state.
+        type: object
+        x-go-package: github.com/lxc/incus/v7/shared/api
+    InstanceStateTPM:
+        properties:
+            endorsement_keys:
+                description: Endorsement keys, when known.
+                items:
+                    $ref: '#/definitions/InstanceStateTPMKey'
+                type: array
+                x-go-name: EndorsementKeys
+        title: InstanceStateTPM represents the state of a TPM device.
+        type: object
+        x-go-package: github.com/lxc/incus/v7/shared/api
+    InstanceStateTPMKey:
+        properties:
+            fingerprint:
+                description: SHA-256 fingerprint of the DER encoded public key.
+                example: 9ba3cb7ba7ac7f6a45cf0d21c8b5ebc0d1f9e1d3d1d7a4e0f1c1e7d1c3a2b5c6
+                type: string
+                x-go-name: Fingerprint
+            public_key:
+                description: PEM encoded public key.
+                type: string
+                x-go-name: PublicKey
+            size:
+                description: Key size in bits.
+                example: 2048
+                format: int64
+                type: integer
+                x-go-name: Size
+            type:
+                description: Key type (`rsa` or `ecc`).
+                example: rsa
+                type: string
+                x-go-name: Type
+        title: InstanceStateTPMKey represents a TPM key.
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
     InventoryAggregate:
@@ -6316,6 +6394,24 @@ definitions:
                     type: string
                 type: array
                 x-go-name: TrustedTLSClientCertFingerprints
+            trusted_tls_client_certificates:
+                description: An array of X509 PEM encoded certificates that belong to trusted TLS clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertificates
+            trusted_tls_metrics_client_cert_fingerprints:
+                description: An array of SHA256 certificate fingerprints that belong to trusted TLS metrics clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertFingerprints
+            trusted_tls_metrics_client_certificates:
+                description: An array of X509 PEM encoded certificates that belong to trusted TLS metrics clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertificates
         title: SystemSecurity represents the system's security configuration.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -6817,11 +6913,6 @@ definitions:
             SystemCertificatePost represents the fields available for an update of the
             system certificate (server certificate), key, and CA.
         properties:
-            ca:
-                description: The new certificate CA (X509 PEM encoded) for the system (server CA).
-                example: X509 PEM certificate CA
-                type: string
-                x-go-name: CA
             certificate:
                 description: The new certificate (X509 PEM encoded) for the system (server certificate).
                 example: X509 PEM certificate
@@ -6854,6 +6945,8 @@ definitions:
                     type: string
                 type: array
                 x-go-name: Addresses
+            bridge:
+                $ref: '#/definitions/SystemNetworkBridge'
             ethernet:
                 $ref: '#/definitions/SystemNetworkEthernet'
             firewall_rules:
@@ -6882,6 +6975,8 @@ definitions:
             name:
                 type: string
                 x-go-name: Name
+            options:
+                $ref: '#/definitions/SystemNetworkBondOptions'
             required_for_online:
                 type: string
                 x-go-name: RequiredForOnline
@@ -6902,6 +6997,49 @@ definitions:
                 type: array
                 x-go-name: VLANTags
         title: SystemNetworkBond contains information about a network bond.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkBondOptions:
+        properties:
+            arp_interval:
+                format: int64
+                type: integer
+                x-go-name: ARPInterval
+            arp_ip_targets:
+                items:
+                    type: string
+                type: array
+                x-go-name: ARPIPTargets
+            down_delay:
+                format: int64
+                type: integer
+                x-go-name: DownDelay
+            lacp_rate:
+                type: string
+                x-go-name: LACPRate
+            mii_monitor_interval:
+                format: int64
+                type: integer
+                x-go-name: MIIMonitorInterval
+            transmit_hash_policy:
+                type: string
+                x-go-name: TransmitHashPolicy
+            up_delay:
+                format: int64
+                type: integer
+                x-go-name: UpDelay
+        title: SystemNetworkBondOptions contains link monitoring and tuning options for a network bond.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkBridge:
+        properties:
+            disable_multicast_snooping:
+                type: boolean
+                x-go-name: DisableMulticastSnooping
+            stp:
+                type: boolean
+                x-go-name: STP
+        title: SystemNetworkBridge contains configuration for the bridge that is automatically created on top of an interface or bond.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetworkConfig:
@@ -6982,6 +7120,18 @@ definitions:
             disable_ipv6_tso:
                 type: boolean
                 x-go-name: DisableIPv6TSO
+            rx_buffer_size:
+                type: string
+                x-go-name: RxBufferSize
+            rx_jumbo_buffer_size:
+                type: string
+                x-go-name: RxJumboBufferSize
+            rx_mini_buffer_size:
+                type: string
+                x-go-name: RxMiniBufferSize
+            tx_buffer_size:
+                type: string
+                x-go-name: TxBufferSize
             wakeonlan:
                 type: boolean
                 x-go-name: WakeOnLAN
@@ -7021,6 +7171,8 @@ definitions:
                     type: string
                 type: array
                 x-go-name: Addresses
+            bridge:
+                $ref: '#/definitions/SystemNetworkBridge'
             ethernet:
                 $ref: '#/definitions/SystemNetworkEthernet'
             firewall_rules:
@@ -7218,6 +7370,9 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetworkRoute:
         properties:
+            onlink:
+                type: boolean
+                x-go-name: OnLink
             to:
                 type: string
                 x-go-name: To
@@ -7607,6 +7762,9 @@ definitions:
             scrub_schedule:
                 type: string
                 x-go-name: ScrubSchedule
+            trim_schedule:
+                type: string
+                x-go-name: TrimSchedule
         title: SystemStorageConfig represents additional configuration for the system's local storage.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -7711,6 +7869,13 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePool:
         properties:
+            alignment:
+                description: |-
+                    Optionally, configure the sector alignment size for the pool; defaults to 4096 byte sectors.
+                    Must be a power of two. Can only be specified when initially creating the pool.
+                format: int64
+                type: integer
+                x-go-name: Alignment
             allow_mixed_dev_sizes:
                 description: If true, allow creation of a pool with devices of different sizes.
                 type: boolean
@@ -7741,6 +7906,8 @@ definitions:
                 x-go-name: EncryptionKeyStatus
             last_scrub:
                 $ref: '#/definitions/SystemStoragePoolScrubStatus'
+            last_trim:
+                $ref: '#/definitions/SystemStoragePoolTrimStatus'
             log:
                 items:
                     type: string
@@ -7839,6 +8006,28 @@ definitions:
         title: SystemStoragePoolSpecial defines a struct that is used to create or update a pool's special vdev.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolTrimState:
+        title: SystemStoragePoolTrimState represents the state of a trim in a pool.
+        type: string
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolTrimStatus:
+        properties:
+            errors:
+                format: int64
+                type: integer
+                x-go-name: Errors
+            last_action_time:
+                format: date-time
+                type: string
+                x-go-name: LastActionTime
+            progress:
+                type: string
+                x-go-name: Progress
+            state:
+                $ref: '#/definitions/SystemStoragePoolTrimState'
+        title: SystemStoragePoolTrimStatus represents the status of a trim in a pool.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePoolVolume:
         properties:
             name:
@@ -7878,11 +8067,6 @@ definitions:
                     $ref: '#/definitions/SystemStorageDrive'
                 type: array
                 x-go-name: Drives
-            pools:
-                items:
-                    $ref: '#/definitions/SystemStoragePool'
-                type: array
-                x-go-name: Pools
             root_partition:
                 $ref: '#/definitions/SystemStorageRootPartition'
         title: SystemStorageState represents additional state for the system's local storage.
@@ -8008,7 +8192,12 @@ definitions:
             and are therefore not accepted as part of the provided configuration.
         properties:
             architecture:
-                $ref: '#/definitions/UpdateFileArchitecture'
+                description: |-
+                    Architecture contains the CPU architecture the image should be generated
+                    for.
+                type: string
+                x-go-name: Architecture
+                x-go-type: github.com/lxc/incus-os/incus-osd/api/images.UpdateFileArchitecture
             seeds:
                 $ref: '#/definitions/TokenSeedConfigs'
             type:
@@ -8223,7 +8412,11 @@ definitions:
                 type: string
                 x-go-name: PublishedAt
             severity:
-                $ref: '#/definitions/UpdateSeverity'
+                description: 'Severity of the Update. Allowed values: none, low, medium, high, critical'
+                example: none
+                type: string
+                x-go-name: Severity
+                x-go-type: github.com/lxc/incus-os/incus-osd/api/images.UpdateSeverity
             update_status:
                 description: |-
                     Status contains the status the update is currently in.
@@ -8304,9 +8497,17 @@ definitions:
     UpdateFile:
         properties:
             architecture:
-                $ref: '#/definitions/UpdateFileArchitecture'
+                description: Architecture of the file. E.g. x86_64, aarch64
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+                x-go-type: github.com/lxc/incus-os/incus-osd/api/images.UpdateFileArchitecture
             component:
-                $ref: '#/definitions/UpdateFileComponent'
+                description: 'Component the file provides. One of: os, incus, debug'
+                example: os
+                type: string
+                x-go-name: Component
+                x-go-type: github.com/lxc/incus-os/incus-osd/api/images.UpdateFileComponent
             filename:
                 description: Filename of the File.
                 example: IncusOS_202501311418.efi.gz
@@ -8324,22 +8525,14 @@ definitions:
                 type: integer
                 x-go-name: Size
             type:
-                $ref: '#/definitions/UpdateFileType'
+                description: 'Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature'
+                example: image-raw
+                type: string
+                x-go-name: Type
+                x-go-type: github.com/lxc/incus-os/incus-osd/api/images.UpdateFileType
         title: UpdateFile defines an update file.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    UpdateFileArchitecture:
-        title: UpdateFileArchitecture represents the architecture for a given file.
-        type: string
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/images
-    UpdateFileComponent:
-        title: UpdateFileComponent represents the component affected by an update.
-        type: string
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/images
-    UpdateFileType:
-        title: UpdateFileType represents the type in an update file.
-        type: string
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/images
     UpdatePut:
         properties:
             channels:
@@ -8353,10 +8546,6 @@ definitions:
         title: UpdatePut defines the updateable part of an update.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    UpdateSeverity:
-        title: UpdateSeverity represents the severity field in an update.
-        type: string
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/images
     Updates:
         properties:
             file_filter_expression:

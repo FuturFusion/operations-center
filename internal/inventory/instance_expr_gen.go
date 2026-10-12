@@ -82,6 +82,7 @@ type ExprApiInstanceState struct {
 	CPU        ExprApiInstanceStateCPU                `json:"cpu" yaml:"cpu" expr:"cpu"`
 	StartedAt  time.Time                              `json:"started_at" yaml:"started_at" expr:"started_at"`
 	OSInfo     *ExprApiInstanceStateOSInfo            `json:"os_info" yaml:"os_info" expr:"os_info"`
+	TPM        map[string]ExprApiInstanceStateTPM     `json:"tpm" yaml:"tpm" expr:"tpm"`
 }
 
 type ExprApiInstanceStateCPU struct {
@@ -90,8 +91,16 @@ type ExprApiInstanceStateCPU struct {
 }
 
 type ExprApiInstanceStateDisk struct {
-	Usage int64 `json:"usage" yaml:"usage" expr:"usage"`
-	Total int64 `json:"total" yaml:"total" expr:"total"`
+	Usage    int64                             `json:"usage" yaml:"usage" expr:"usage"`
+	Total    int64                             `json:"total" yaml:"total" expr:"total"`
+	Counters *ExprApiInstanceStateDiskCounters `json:"counters,omitempty" yaml:"counters,omitempty" expr:"counters"`
+}
+
+type ExprApiInstanceStateDiskCounters struct {
+	BytesRead       int64 `json:"bytes_read" yaml:"bytes_read" expr:"bytes_read"`
+	BytesWritten    int64 `json:"bytes_written" yaml:"bytes_written" expr:"bytes_written"`
+	ReadsCompleted  int64 `json:"reads_completed" yaml:"reads_completed" expr:"reads_completed"`
+	WritesCompleted int64 `json:"writes_completed" yaml:"writes_completed" expr:"writes_completed"`
 }
 
 type ExprApiInstanceStateMemory struct {
@@ -136,6 +145,17 @@ type ExprApiInstanceStateOSInfo struct {
 	KernelVersion string `json:"kernel_version" yaml:"kernel_version" expr:"kernel_version"`
 	Hostname      string `json:"hostname" yaml:"hostname" expr:"hostname"`
 	FQDN          string `json:"fqdn" yaml:"fqdn" expr:"fqdn"`
+}
+
+type ExprApiInstanceStateTPM struct {
+	EndorsementKeys []ExprApiInstanceStateTPMKey `json:"endorsement_keys" yaml:"endorsement_keys" expr:"endorsement_keys"`
+}
+
+type ExprApiInstanceStateTPMKey struct {
+	Type        string `json:"type" yaml:"type" expr:"type"`
+	Size        int    `json:"size" yaml:"size" expr:"size"`
+	Fingerprint string `json:"fingerprint" yaml:"fingerprint" expr:"fingerprint"`
+	PublicKey   string `json:"public_key" yaml:"public_key" expr:"public_key"`
 }
 
 type ExprIncusInstanceFullWrapper struct {
@@ -239,6 +259,7 @@ func ToExprApiInstanceState(i api.InstanceState) ExprApiInstanceState {
 		CPU:        ToExprApiInstanceStateCPU(i.CPU),
 		StartedAt:  i.StartedAt,
 		OSInfo:     toPtr(ToExprApiInstanceStateOSInfo(fromPtr(i.OSInfo))),
+		TPM:        mapConvert(i.TPM, ToExprApiInstanceStateTPM),
 	}
 }
 
@@ -251,8 +272,18 @@ func ToExprApiInstanceStateCPU(i api.InstanceStateCPU) ExprApiInstanceStateCPU {
 
 func ToExprApiInstanceStateDisk(i api.InstanceStateDisk) ExprApiInstanceStateDisk {
 	return ExprApiInstanceStateDisk{
-		Usage: i.Usage,
-		Total: i.Total,
+		Usage:    i.Usage,
+		Total:    i.Total,
+		Counters: toPtr(ToExprApiInstanceStateDiskCounters(fromPtr(i.Counters))),
+	}
+}
+
+func ToExprApiInstanceStateDiskCounters(i api.InstanceStateDiskCounters) ExprApiInstanceStateDiskCounters {
+	return ExprApiInstanceStateDiskCounters{
+		BytesRead:       i.BytesRead,
+		BytesWritten:    i.BytesWritten,
+		ReadsCompleted:  i.ReadsCompleted,
+		WritesCompleted: i.WritesCompleted,
 	}
 }
 
@@ -307,6 +338,21 @@ func ToExprApiInstanceStateOSInfo(i api.InstanceStateOSInfo) ExprApiInstanceStat
 		KernelVersion: i.KernelVersion,
 		Hostname:      i.Hostname,
 		FQDN:          i.FQDN,
+	}
+}
+
+func ToExprApiInstanceStateTPM(i api.InstanceStateTPM) ExprApiInstanceStateTPM {
+	return ExprApiInstanceStateTPM{
+		EndorsementKeys: sliceConvert(i.EndorsementKeys, ToExprApiInstanceStateTPMKey),
+	}
+}
+
+func ToExprApiInstanceStateTPMKey(i api.InstanceStateTPMKey) ExprApiInstanceStateTPMKey {
+	return ExprApiInstanceStateTPMKey{
+		Type:        i.Type,
+		Size:        i.Size,
+		Fingerprint: i.Fingerprint,
+		PublicKey:   i.PublicKey,
 	}
 }
 

@@ -57,7 +57,7 @@ it is removed from their trust store as well.
 
 ### ACME
 
-Certificate renewal will be re-attempted every 24 hours, The certificate will be replaced if there are fewer than 30 days remaining until expiry.
+Certificate renewal will be re-attempted every 24 hours, The certificate will be replaced after 80% of its validity period has passed.
 
 | Configuration             | Description                                                         | Value(s)          | Default                                          |
 | :---                      | :---                                                                | :---              | :---                                             |

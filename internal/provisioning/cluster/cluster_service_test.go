@@ -10019,10 +10019,15 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 									Managed: true,
 									State:   "ONLINE",
 									LastScrub: &incusosapi.SystemStoragePoolScrubStatus{
-										State:     incusosapi.ScrubFinished,
+										State:     incusosapi.SystemStoragePoolScrubFinished,
 										StartTime: time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC),
 										EndTime:   time.Date(2026, 9, 1, 9, 1, 0, 0, time.UTC),
 										Progress:  "100.00%",
+									},
+									LastTrim: &incusosapi.SystemStoragePoolTrimStatus{
+										State:          incusosapi.SystemStoragePoolTrimFinished,
+										LastActionTime: time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC),
+										Progress:       "100.00%",
 									},
 									EncryptionKeyStatus:       "available",
 									RawPoolSizeInBytes:        17716740096,
@@ -15322,7 +15327,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 }
 
 func TestSystemStoragePool_fieldCount(t *testing.T) {
-	require.Equal(t, 19, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only and server specific device fields in checkClusteringServerConsistency")
+	require.Equal(t, 21, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only and server specific device fields in checkClusteringServerConsistency")
 }
 
 func TestClusterService_RemoveServer(t *testing.T) {

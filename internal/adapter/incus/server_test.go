@@ -3291,16 +3291,17 @@ func TestClientServer(t *testing.T) {
 								statusCode: http.StatusOK,
 								responseBody: []byte(`{
   "metadata": {
-    "config": {},
+    "config": {
+      "pools": [
+        {
+          "name": "local"
+        }
+      ]
+    },
     "state": {
       "drives": [
         {
           "id": "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root"
-        }
-      ],
-      "pools": [
-        {
-          "name": "local"
         }
       ]
     }
@@ -3318,16 +3319,17 @@ func TestClientServer(t *testing.T) {
 						t.Helper()
 
 						wantStorageConfig := provisioning.ServerSystemStorage{
-							Config: incusosapi.SystemStorageConfig{},
+							Config: incusosapi.SystemStorageConfig{
+								Pools: []incusosapi.SystemStoragePool{
+									{
+										Name: "local",
+									},
+								},
+							},
 							State: incusosapi.SystemStorageState{
 								Drives: []incusosapi.SystemStorageDrive{
 									{
 										ID: "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root",
-									},
-								},
-								Pools: []incusosapi.SystemStoragePool{
-									{
-										Name: "local",
 									},
 								},
 							},
