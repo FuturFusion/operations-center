@@ -10,6 +10,8 @@ import (
 )
 
 func TestChannel_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		channel provisioning.Channel
@@ -39,6 +41,8 @@ func TestChannel_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.channel.Validate()
 
 			tc.assertErr(t, err)

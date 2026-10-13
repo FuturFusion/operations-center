@@ -21,6 +21,8 @@ import (
 )
 
 func TestChannelService_Create(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		channel              provisioning.Channel
@@ -60,6 +62,8 @@ func TestChannelService_Create(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				CreateFunc: func(ctx context.Context, newChannel provisioning.Channel) (int64, error) {
@@ -80,6 +84,8 @@ func TestChannelService_Create(t *testing.T) {
 }
 
 func TestChannelService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		repoGetAllChannels    provisioning.Channels
@@ -113,6 +119,8 @@ func TestChannelService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Channels, error) {
@@ -134,6 +142,8 @@ func TestChannelService_GetAll(t *testing.T) {
 }
 
 func TestChannelService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		repoGetAllChannelNames    []string
@@ -163,6 +173,8 @@ func TestChannelService_GetAllNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
@@ -184,6 +196,8 @@ func TestChannelService_GetAllNames(t *testing.T) {
 }
 
 func TestUpdateService_GetChannelByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		nameArg                 string
@@ -218,6 +232,8 @@ func TestUpdateService_GetChannelByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
@@ -239,6 +255,8 @@ func TestUpdateService_GetChannelByName(t *testing.T) {
 }
 
 func TestChannelService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		channel              provisioning.Channel
@@ -278,6 +296,8 @@ func TestChannelService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				UpdateFunc: func(ctx context.Context, newChannel provisioning.Channel) error {
@@ -298,6 +318,8 @@ func TestChannelService_Update(t *testing.T) {
 }
 
 func TestChannelService_DeleteByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                        string
 		nameArg                                     string
@@ -377,6 +399,8 @@ func TestChannelService_DeleteByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ChannelRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -410,6 +434,8 @@ func TestChannelService_DeleteByName(t *testing.T) {
 }
 
 func TestChannelService_GetChangelog(t *testing.T) {
+	t.Parallel()
+
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
 	updateV3UUID := uuidgen.FromPattern(t, "3")
@@ -611,6 +637,8 @@ func TestChannelService_GetChangelog(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
