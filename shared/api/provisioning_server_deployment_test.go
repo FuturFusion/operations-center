@@ -11,6 +11,8 @@ import (
 )
 
 func TestServerDeploymentState_UnmarshalText(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		text string
@@ -45,6 +47,8 @@ func TestServerDeploymentState_UnmarshalText(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var state api.ServerDeploymentState
 
 			err := state.UnmarshalText([]byte(tc.text))
@@ -60,6 +64,8 @@ func TestServerDeploymentState_UnmarshalText(t *testing.T) {
 }
 
 func TestServerDeploymentStatus_roundTrip(t *testing.T) {
+	t.Parallel()
+
 	status := api.ServerDeploymentStatus{
 		State:       api.ServerDeploymentStateWaitInstall,
 		FailedState: "",
@@ -98,6 +104,8 @@ func TestServerDeploymentStatus_roundTrip(t *testing.T) {
 }
 
 func TestServerDeploymentState_IsTerminal(t *testing.T) {
+	t.Parallel()
+
 	terminal := []api.ServerDeploymentState{
 		api.ServerDeploymentStateCompleted,
 		api.ServerDeploymentStateFailed,

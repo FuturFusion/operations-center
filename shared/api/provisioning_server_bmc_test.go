@@ -10,6 +10,8 @@ import (
 )
 
 func TestBMCBootProgressHandedOverToOS(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		state string
@@ -26,12 +28,16 @@ func TestBMCBootProgressHandedOverToOS(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, api.BMCBootProgressHandedOverToOS(tc.state), "only a boot, that got as far as starting the operating system, has run the installer")
 		})
 	}
 }
 
 func TestBMCBootProgressBeforeOS(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		state string
@@ -47,12 +53,16 @@ func TestBMCBootProgressBeforeOS(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, api.BMCBootProgressBeforeOS(tc.state), "only a state, that can be placed before the hand over, tells, that the installer has not run")
 		})
 	}
 }
 
 func TestBMCHasRebootedSince(t *testing.T) {
+	t.Parallel()
+
 	since := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -337,6 +347,8 @@ func TestBMCHasRebootedSince(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := api.BMCHasRebootedSince(tc.previous, tc.current, since)
 
 			require.Equal(t, tc.want, got)
@@ -345,6 +357,8 @@ func TestBMCHasRebootedSince(t *testing.T) {
 }
 
 func TestBMCData_Missing(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		data api.BMCData
@@ -400,12 +414,16 @@ func TestBMCData_Missing(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.data.Missing(tc.ask...))
 		})
 	}
 }
 
 func TestBMCData_DescribeMissing(t *testing.T) {
+	t.Parallel()
+
 	data := api.BMCData{Unavailable: map[api.BMCDataPart]string{
 		api.BMCDataPartVirtualMedia: "BMC returned HTTP 503",
 	}}
@@ -419,6 +437,8 @@ func TestBMCData_DescribeMissing(t *testing.T) {
 // constants without being added to BMCDataParts, which Missing iterates and
 // which would silently never report the new part as missing.
 func TestBMCDataParts_areComplete(t *testing.T) {
+	t.Parallel()
+
 	declared := []api.BMCDataPart{
 		api.BMCDataPartSystem,
 		api.BMCDataPartManager,
@@ -432,6 +452,8 @@ func TestBMCDataParts_areComplete(t *testing.T) {
 
 	for _, part := range api.BMCDataParts {
 		t.Run(part.String(), func(t *testing.T) {
+			t.Parallel()
+
 			require.NotEmpty(t, part.String())
 
 			data := api.BMCData{Unavailable: map[api.BMCDataPart]string{part: "boom"}}
@@ -441,6 +463,8 @@ func TestBMCDataParts_areComplete(t *testing.T) {
 }
 
 func TestBMCData_CarryOver(t *testing.T) {
+	t.Parallel()
+
 	previous := api.BMCData{
 		BMCModel:         "iDRAC9",
 		ServerModel:      "PowerEdge R770",
@@ -492,6 +516,8 @@ func TestBMCData_CarryOver(t *testing.T) {
 }
 
 func TestBMCData_CarryOverCoversEveryField(t *testing.T) {
+	t.Parallel()
+
 	previous := api.BMCData{
 		BMCModel:                      "iDRAC9",
 		BMCFirmwareVersion:            "1.30.20.10",

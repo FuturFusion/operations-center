@@ -12,6 +12,8 @@ import (
 )
 
 func TestTokenSeedImagePathSegments(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -51,6 +53,8 @@ func TestTokenSeedImagePathSegments(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			segments := api.TokenSeedImagePathSegments(tc.imageType, tc.architecture, tc.channel)
 
 			require.Equal(t, tc.wantPath, path.Join(segments...))
@@ -64,6 +68,8 @@ func TestTokenSeedImagePathSegments(t *testing.T) {
 }
 
 func TestTokenSeedPreparedImagePathSegments(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -105,6 +111,8 @@ func TestTokenSeedPreparedImagePathSegments(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			segments := api.TokenSeedPreparedImagePathSegments(tc.imageType, tc.architecture, tc.channel, tc.deploymentID, "a1B2c3D4e5F6")
 
 			require.Equal(t, tc.wantPath, path.Join(segments...))
