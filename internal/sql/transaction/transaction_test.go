@@ -13,6 +13,8 @@ import (
 )
 
 func TestRollback(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -63,6 +65,8 @@ func TestRollback(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -122,6 +126,8 @@ func TestCommit(t *testing.T) {
 }
 
 func TestTransactionInTransaction(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -173,6 +179,8 @@ func TestTransactionInTransaction(t *testing.T) {
 }
 
 func TestDo_commit(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -202,6 +210,8 @@ func TestDo_commit(t *testing.T) {
 }
 
 func TestDo_rollback(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 

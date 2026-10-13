@@ -12,6 +12,8 @@ import (
 )
 
 func TestForceTx_inStartedTransacationRollback(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -69,6 +71,8 @@ func TestForceTx_inStartedTransacationRollback(t *testing.T) {
 }
 
 func TestForceTx_firstInTransacationRollback(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -126,6 +130,8 @@ func TestForceTx_firstInTransacationRollback(t *testing.T) {
 }
 
 func TestForceTx_withoutTransacationRollback(t *testing.T) {
+	t.Parallel()
+
 	// Setup DB.
 	tmpDir := t.TempDir()
 
@@ -169,6 +175,8 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 }
 
 func TestIsActive(t *testing.T) {
+	t.Parallel()
+
 	ctx := t.Context()
 
 	require.False(t, transaction.IsActive(ctx))
