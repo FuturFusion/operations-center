@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/FuturFusion/operations-center/internal/util/component"
 )
 
 const componentContextKey = "component"
@@ -31,7 +32,7 @@ var (
 // It is meant to be called from package level variable declarations, so the set
 // of known components is complete before any configuration is applied.
 func RegisterComponent(name string) Component {
-	err := ValidateComponent(name)
+	err := component.ValidateName(name)
 	if err != nil {
 		panic(err)
 	}
@@ -39,10 +40,10 @@ func RegisterComponent(name string) Component {
 	componentsMu.Lock()
 	defer componentsMu.Unlock()
 
-	component := Component(name)
-	components[component] = struct{}{}
+	c := Component(name)
+	components[c] = struct{}{}
 
-	return component
+	return c
 }
 
 // Components returns all registered components in lexical order.
@@ -53,24 +54,11 @@ func Components() []Component {
 	return slices.Sorted(maps.Keys(components))
 }
 
-// componentNameRegexp matches a valid component name: dot separated levels of
-// lower case alphanumeric characters and underscores.
-var componentNameRegexp = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+)*$`)
-
-// ValidateComponent checks the given component name for valid syntax.
-func ValidateComponent(name string) error {
-	if !componentNameRegexp.MatchString(name) {
-		return fmt.Errorf("Component %q is invalid, must be dot separated levels of lower case alphanumeric characters and underscores", name)
-	}
-
-	return nil
-}
-
 // ValidateComponentLevels checks the given log levels per component. The keys
 // are component names, the values are string representations of a log level.
 func ValidateComponentLevels(componentLevels map[string]string) error {
 	for _, name := range slices.Sorted(maps.Keys(componentLevels)) {
-		err := ValidateComponent(name)
+		err := component.ValidateName(name)
 		if err != nil {
 			return err
 		}
@@ -122,25 +110,12 @@ func unknownComponents(names []string) []string {
 }
 
 func filterUnknownComponents(known []Component, names []string) []string {
-	if len(known) == 0 {
-		return nil
+	knownNames := make([]string, 0, len(known))
+	for _, c := range known {
+		knownNames = append(knownNames, string(c))
 	}
 
-	var unknown []string
-
-	for _, name := range names {
-		prefix := name + "."
-
-		isKnown := slices.ContainsFunc(known, func(component Component) bool {
-			return string(component) == name || strings.HasPrefix(string(component), prefix)
-		})
-
-		if !isKnown {
-			unknown = append(unknown, name)
-		}
-	}
-
-	return unknown
+	return component.UnknownNames(knownNames, names)
 }
 
 type componentKey struct{}
@@ -148,15 +123,15 @@ type componentKey struct{}
 // ContextWithComponent returns a copy of parent, which is scoped to the given
 // component. Log records emitted with the returned context are attributed to
 // the component and are filtered using the log level configured for it.
-func ContextWithComponent(parent context.Context, component Component) context.Context {
-	return context.WithValue(parent, componentKey{}, component)
+func ContextWithComponent(parent context.Context, c Component) context.Context {
+	return context.WithValue(parent, componentKey{}, c)
 }
 
 // ComponentFromContext returns the component the given context is scoped to.
 func ComponentFromContext(ctx context.Context) (Component, bool) {
-	component, ok := ctx.Value(componentKey{}).(Component)
+	c, ok := ctx.Value(componentKey{}).(Component)
 
-	return component, ok
+	return c, ok
 }
 
 // levelSet holds the log levels currently in effect. It is only ever replaced
@@ -201,21 +176,12 @@ func newLevelSet(defaultLevel slog.Level, overrides map[string]slog.Level) *leve
 // levelFor returns the log level in effect for the given component. The most
 // specific configuration wins, a level configured for a parent applies to all
 // of its children.
-func (ls *levelSet) levelFor(component Component) slog.Level {
-	name := string(component)
-
-	for name != "" {
+func (ls *levelSet) levelFor(c Component) slog.Level {
+	for name := range component.Lineage(string(c)) {
 		level, ok := ls.overrides[name]
 		if ok {
 			return level
 		}
-
-		idx := strings.LastIndexByte(name, '.')
-		if idx < 0 {
-			break
-		}
-
-		name = name[:idx]
 	}
 
 	return ls.defaultLevel
@@ -230,7 +196,7 @@ func (ls *levelSet) enabled(ctx context.Context, level slog.Level) bool {
 		return level >= ls.defaultLevel
 	}
 
-	component, _ := ComponentFromContext(ctx)
+	c, _ := ComponentFromContext(ctx)
 
-	return level >= ls.levelFor(component)
+	return level >= ls.levelFor(c)
 }
