@@ -12,6 +12,8 @@ import (
 )
 
 func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -32,6 +34,8 @@ func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.{{ .ObjectType | camelcase }}.Value()
 
 			tc.assertErr(t, err)
@@ -40,6 +44,8 @@ func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Value(t *testing.T) {
 }
 
 func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -77,6 +83,8 @@ func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -87,6 +95,8 @@ func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Scan(t *testing.T) {
 }
 
 func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		{{ .Name | camelcase }} *inventory.{{ .Name | pascalcase }}
@@ -272,6 +282,8 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.{{ .Name | camelcase }}.Validate()
 
 			tc.assertErr(t, err)
@@ -280,6 +292,8 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 }
 
 func Test{{ .Name | pascalcase }}_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		filter inventory.{{ .Name | pascalcase }}Filter
@@ -316,6 +330,8 @@ func Test{{ .Name | pascalcase }}_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
