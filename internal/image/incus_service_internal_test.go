@@ -16,6 +16,8 @@ import (
 )
 
 func Test_filterImageVersionFilesByFilterExpression(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		in               IncusImages
@@ -167,6 +169,8 @@ func Test_filterImageVersionFilesByFilterExpression(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := filterImageVersionFilesByFilterExpression(tc.in, tc.filterExpression)
 			tc.assertErr(t, err)
 
@@ -176,6 +180,8 @@ func Test_filterImageVersionFilesByFilterExpression(t *testing.T) {
 }
 
 func Test_metadataFromRequestJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		multipartReader *multipart.Reader
@@ -209,6 +215,8 @@ func Test_metadataFromRequestJSON(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			part, err := tc.multipartReader.NextPart()
 			require.NoError(t, err)
 
@@ -295,6 +303,8 @@ func multipartReaderRequestJSON(t *testing.T, jsonBody string) *multipart.Reader
 }
 
 func Test_metadataFromIncusTarXZ(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		multipartReader *multipart.Reader
@@ -335,6 +345,8 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			part, err := tc.multipartReader.NextPart()
 			require.NoError(t, err)
 
@@ -414,6 +426,8 @@ func multipartReaderRawPart(t *testing.T, filename string, content []byte) *mult
 }
 
 func Test_fixArchitectureMapping(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		architecture string
@@ -442,6 +456,8 @@ func Test_fixArchitectureMapping(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := fixArchitectureMapping(tc.architecture)
 
 			require.Equal(t, tc.want, got)

@@ -13,6 +13,8 @@ import (
 )
 
 func TestImageSource_Validate(t *testing.T) {
+	t.Parallel()
+
 	returnMockImageSourcers := func() image.IncusImageSourcePort {
 		return &mock.IncusImageSourcePortMock{
 			ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
@@ -113,6 +115,8 @@ func TestImageSource_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			imageSourcers := tc.setupImageSourcers()
 
 			err := tc.source.Validate(t.Context(), imageSourcers)
