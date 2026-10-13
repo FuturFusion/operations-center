@@ -106,23 +106,6 @@ curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.
 chmod +x install-opentofu.sh
 ./install-opentofu.sh --install-method deb
 rm -f install-opentofu.sh
-
-# Add Docker's official GPG key:
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-
-# Add the repository to Apt sources:
-tee /etc/apt/sources.list.d/docker.sources <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/debian
-Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
-Components: stable
-Architectures: $(dpkg --print-architecture)
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 Initialize Incus with ZFS storage backend using the ZFS block device:
@@ -410,13 +393,27 @@ untouched.
 ### OpenFGA server
 
 The OpenFGA authorization of Operations Center is tested against a real OpenFGA
-server. The test starts OpenFGA as a Docker container on the end 2 end test
-host (see `startOpenFGA`). The user who runs the tests needs access to Docker.
+server. The test starts OpenFGA as a process on the end 2 end test host (see
+`startOpenFGA`).
 
-Docker publishes the port of OpenFGA on the end 2 end test host. Operations
-Center reaches OpenFGA at the address of the host on the network of the
-Operations Center VM. Set `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` to use a
-different address.
+The test downloads the OpenFGA release into the `openfga` folder of the
+temporary directory (see `ensureOpenFGABinary`). It verifies the SHA-256 sum of
+the download. The version and the SHA-256 sums are pinned in
+`openfga_binary_test.go`. The test reuses an existing binary if it has the
+pinned version. OpenFGA writes its log to `openfga.log` in the temporary
+directory.
+
+The download needs access to `github.com`. Only Linux hosts on amd64 and arm64
+are supported. The pinned version is independent of the OpenFGA module version
+in `go.mod`.
+
+A test run without cleanup leaves OpenFGA running. Run
+`make clean-e2e-test-soft` to stop it.
+
+The HTTP API of OpenFGA listens on a free port on all the IPv4 addresses of
+the end 2 end test host. Operations Center reaches OpenFGA at the address of the host on the
+network of the Operations Center VM. Set
+`OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` to use a different address.
 
 OpenFGA only authorizes users who authenticate through OIDC. The test
 therefore also starts the fake OIDC provider. It uses an isolated config
