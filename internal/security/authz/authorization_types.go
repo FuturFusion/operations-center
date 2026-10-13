@@ -5,11 +5,12 @@ type Entitlement string
 
 const (
 	// Entitlements that apply to all resources.
-	EntitlementCanCreate Entitlement = "can_create"
-	EntitlementCanDebug  Entitlement = "can_debug"
-	EntitlementCanDelete Entitlement = "can_delete"
-	EntitlementCanEdit   Entitlement = "can_edit"
-	EntitlementCanView   Entitlement = "can_view"
+	EntitlementCanCreate      Entitlement = "can_create"
+	EntitlementCanDebug       Entitlement = "can_debug"
+	EntitlementCanDelete      Entitlement = "can_delete"
+	EntitlementCanEdit        Entitlement = "can_edit"
+	EntitlementCanView        Entitlement = "can_view"
+	EntitlementCanViewMetrics Entitlement = "can_view_metrics"
 )
 
 // String implements fmt.Stringer for Entitlement.
