@@ -22,6 +22,8 @@ func TestMain0Version(t *testing.T) {
 }
 
 func TestFormatError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -56,6 +58,8 @@ func TestFormatError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, formatError(tc.err))
 		})
 	}
