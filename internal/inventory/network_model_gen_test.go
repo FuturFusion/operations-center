@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusNetworkWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusNetworkWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.network.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusNetworkWrapper_Value(t *testing.T) {
 }
 
 func TestIncusNetworkWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusNetworkWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusNetworkWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusNetworkWrapper_Scan(t *testing.T) {
 }
 
 func TestNetwork_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		network *inventory.Network
@@ -166,6 +176,8 @@ func TestNetwork_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.network.Validate()
 
 			tc.assertErr(t, err)
@@ -174,6 +186,8 @@ func TestNetwork_Validate(t *testing.T) {
 }
 
 func TestNetwork_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.NetworkFilter
@@ -202,6 +216,8 @@ func TestNetwork_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

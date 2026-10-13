@@ -26,6 +26,8 @@ import (
 )
 
 func TestInstanceService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) (inventory.Instances, error) {
@@ -123,6 +127,8 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestInstanceService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestInstanceService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestInstanceService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestInstanceService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		idArg                 uuid.UUID
@@ -241,6 +251,8 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
@@ -263,6 +275,8 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 }
 
 func TestInstanceService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                               string
 		clusterSvcGetEndpoint              provisioning.Endpoint
@@ -553,6 +567,8 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
@@ -596,6 +612,8 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 }
 
 func TestInstanceService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                               string
 		argClusterName                     string
@@ -1095,6 +1113,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {

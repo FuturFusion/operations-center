@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusStoragePoolWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusStoragePoolWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.storagePool.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusStoragePoolWrapper_Value(t *testing.T) {
 }
 
 func TestIncusStoragePoolWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusStoragePoolWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusStoragePoolWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusStoragePoolWrapper_Scan(t *testing.T) {
 }
 
 func TestStoragePool_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		storagePool *inventory.StoragePool
@@ -148,6 +158,8 @@ func TestStoragePool_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.storagePool.Validate()
 
 			tc.assertErr(t, err)
@@ -156,6 +168,8 @@ func TestStoragePool_Validate(t *testing.T) {
 }
 
 func TestStoragePool_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.StoragePoolFilter
@@ -183,6 +197,8 @@ func TestStoragePool_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

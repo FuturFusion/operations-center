@@ -26,6 +26,8 @@ import (
 )
 
 func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
@@ -123,6 +127,8 @@ func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestNetworkForwardService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestNetworkForwardService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestNetworkForwardService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestNetworkForwardService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		idArg                       uuid.UUID
@@ -242,6 +252,8 @@ func TestNetworkForwardService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkForward, error) {
@@ -264,6 +276,8 @@ func TestNetworkForwardService_GetByUUID(t *testing.T) {
 }
 
 func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                           string
 		clusterSvcGetEndpoint                          provisioning.Endpoint
@@ -552,6 +566,8 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkForward, error) {
@@ -595,6 +611,8 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 }
 
 func TestNetworkForwardService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                           string
 		argClusterName                                 string
@@ -1077,6 +1095,8 @@ func TestNetworkForwardService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {

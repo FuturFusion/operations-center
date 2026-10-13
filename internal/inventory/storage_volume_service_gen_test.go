@@ -26,6 +26,8 @@ import (
 )
 
 func TestStorageVolumeService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestStorageVolumeService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
@@ -123,6 +127,8 @@ func TestStorageVolumeService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestStorageVolumeService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestStorageVolumeService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestStorageVolumeService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestStorageVolumeService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                       string
 		idArg                      uuid.UUID
@@ -242,6 +252,8 @@ func TestStorageVolumeService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StorageVolume, error) {
@@ -264,6 +276,8 @@ func TestStorageVolumeService_GetByUUID(t *testing.T) {
 }
 
 func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                         string
 		clusterSvcGetEndpoint                        provisioning.Endpoint
@@ -567,6 +581,8 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StorageVolume, error) {
@@ -610,6 +626,8 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 }
 
 func TestStorageVolumeService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                         string
 		argClusterName                               string
@@ -1145,6 +1163,8 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]uuid.UUID, error) {
