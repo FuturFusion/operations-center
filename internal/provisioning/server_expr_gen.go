@@ -186,14 +186,15 @@ type ExprOsapiSystemNetworkBridge struct {
 }
 
 type ExprOsapiSystemNetworkConfig struct {
-	ConfirmationTimeout string                            `json:"confirmation_timeout,omitempty" yaml:"confirmation_timeout,omitempty" expr:"confirmation_timeout"`
-	DNS                 *ExprOsapiSystemNetworkDNS        `json:"dns,omitempty"   yaml:"dns,omitempty" expr:"dns"`
-	Time                *ExprOsapiSystemNetworkTime       `json:"time,omitempty"  yaml:"time,omitempty" expr:"time"`
-	Proxy               *ExprOsapiSystemNetworkProxy      `json:"proxy,omitempty" yaml:"proxy,omitempty" expr:"proxy"`
-	Interfaces          []ExprOsapiSystemNetworkInterface `json:"interfaces,omitempty" yaml:"interfaces,omitempty" expr:"interfaces"`
-	Bonds               []ExprOsapiSystemNetworkBond      `json:"bonds,omitempty"      yaml:"bonds,omitempty" expr:"bonds"`
-	VLANs               []ExprOsapiSystemNetworkVLAN      `json:"vlans,omitempty"      yaml:"vlans,omitempty" expr:"vlans"`
-	Wireguard           []ExprOsapiSystemNetworkWireguard `json:"wireguard,omitempty"  yaml:"wireguard,omitempty" expr:"wireguard"`
+	ConfirmationTimeout        string                            `json:"confirmation_timeout,omitempty" yaml:"confirmation_timeout,omitempty" expr:"confirmation_timeout"`
+	DefaultConfirmationTimeout string                            `json:"default_confirmation_timeout,omitempty" yaml:"default_confirmation_timeout,omitempty" expr:"default_confirmation_timeout"`
+	DNS                        *ExprOsapiSystemNetworkDNS        `json:"dns,omitempty"   yaml:"dns,omitempty" expr:"dns"`
+	Time                       *ExprOsapiSystemNetworkTime       `json:"time,omitempty"  yaml:"time,omitempty" expr:"time"`
+	Proxy                      *ExprOsapiSystemNetworkProxy      `json:"proxy,omitempty" yaml:"proxy,omitempty" expr:"proxy"`
+	Interfaces                 []ExprOsapiSystemNetworkInterface `json:"interfaces,omitempty" yaml:"interfaces,omitempty" expr:"interfaces"`
+	Bonds                      []ExprOsapiSystemNetworkBond      `json:"bonds,omitempty"      yaml:"bonds,omitempty" expr:"bonds"`
+	VLANs                      []ExprOsapiSystemNetworkVLAN      `json:"vlans,omitempty"      yaml:"vlans,omitempty" expr:"vlans"`
+	Wireguard                  []ExprOsapiSystemNetworkWireguard `json:"wireguard,omitempty"  yaml:"wireguard,omitempty" expr:"wireguard"`
 }
 
 type ExprOsapiSystemNetworkDNS struct {
@@ -826,14 +827,15 @@ func ToExprOsapiSystemNetworkBridge(s osapi.SystemNetworkBridge) ExprOsapiSystem
 
 func ToExprOsapiSystemNetworkConfig(s osapi.SystemNetworkConfig) ExprOsapiSystemNetworkConfig {
 	return ExprOsapiSystemNetworkConfig{
-		ConfirmationTimeout: s.ConfirmationTimeout,
-		DNS:                 toPtr(ToExprOsapiSystemNetworkDNS(fromPtr(s.DNS))),
-		Time:                toPtr(ToExprOsapiSystemNetworkTime(fromPtr(s.Time))),
-		Proxy:               toPtr(ToExprOsapiSystemNetworkProxy(fromPtr(s.Proxy))),
-		Interfaces:          sliceConvert(s.Interfaces, ToExprOsapiSystemNetworkInterface),
-		Bonds:               sliceConvert(s.Bonds, ToExprOsapiSystemNetworkBond),
-		VLANs:               sliceConvert(s.VLANs, ToExprOsapiSystemNetworkVLAN),
-		Wireguard:           sliceConvert(s.Wireguard, ToExprOsapiSystemNetworkWireguard),
+		ConfirmationTimeout:        s.ConfirmationTimeout,
+		DefaultConfirmationTimeout: s.DefaultConfirmationTimeout,
+		DNS:                        toPtr(ToExprOsapiSystemNetworkDNS(fromPtr(s.DNS))),
+		Time:                       toPtr(ToExprOsapiSystemNetworkTime(fromPtr(s.Time))),
+		Proxy:                      toPtr(ToExprOsapiSystemNetworkProxy(fromPtr(s.Proxy))),
+		Interfaces:                 sliceConvert(s.Interfaces, ToExprOsapiSystemNetworkInterface),
+		Bonds:                      sliceConvert(s.Bonds, ToExprOsapiSystemNetworkBond),
+		VLANs:                      sliceConvert(s.VLANs, ToExprOsapiSystemNetworkVLAN),
+		Wireguard:                  sliceConvert(s.Wireguard, ToExprOsapiSystemNetworkWireguard),
 	}
 }
 
