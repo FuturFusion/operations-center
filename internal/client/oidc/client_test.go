@@ -24,6 +24,8 @@ import (
 var bearerAccessTokenRe = regexp.MustCompile(`^Bearer [^.]+\.[^.]+\.[^.]+$`)
 
 func TestOIDCClient_Do(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		accessTokenExpiration time.Duration
@@ -46,6 +48,8 @@ func TestOIDCClient_Do(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			serverAddr := setupMiniOIDC(t, tc.accessTokenExpiration)
 
