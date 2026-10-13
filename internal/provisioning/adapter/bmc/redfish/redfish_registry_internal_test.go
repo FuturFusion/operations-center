@@ -8,6 +8,8 @@ import (
 )
 
 func Test_registryFileURI(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		locations []schemas.MessageRegistryFileLocation
@@ -111,12 +113,16 @@ func Test_registryFileURI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, registryFileURI(&schemas.MessageRegistryFile{Location: tc.locations}))
 		})
 	}
 }
 
 func Test_splitMessageID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		messageID string
@@ -179,6 +185,8 @@ func Test_splitMessageID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			prefix, key, ok := splitMessageID(tc.messageID)
 
 			require.Equal(t, tc.wantOK, ok)
@@ -189,6 +197,8 @@ func Test_splitMessageID(t *testing.T) {
 }
 
 func Test_expandMessageArgs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		message string
@@ -244,6 +254,8 @@ func Test_expandMessageArgs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, expandMessageArgs(tc.message, tc.args))
 		})
 	}

@@ -11,6 +11,8 @@ import (
 )
 
 func TestBootSourcesForMediaTypes(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		mediaTypes []schemas.VirtualMediaType
@@ -45,12 +47,16 @@ func TestBootSourcesForMediaTypes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, bootSourcesForMediaTypes(tc.mediaTypes))
 		})
 	}
 }
 
 func TestBootableMediaTypes(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		systemBody string
@@ -143,6 +149,8 @@ func TestBootableMediaTypes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			system := parseComputerSystem(t, tc.systemBody)
 			virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{MediaTypes: tc.mediaTypes}}
 
@@ -155,6 +163,8 @@ func TestBootableMediaTypes(t *testing.T) {
 }
 
 func TestBootSourceOverrideEnabledCandidates(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		systemBody string
@@ -193,6 +203,8 @@ func TestBootSourceOverrideEnabledCandidates(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := bootSourceOverrideEnabledCandidates(parseComputerSystem(t, tc.systemBody))
 
 			tc.assertErr(t, err)
@@ -202,6 +214,8 @@ func TestBootSourceOverrideEnabledCandidates(t *testing.T) {
 }
 
 func TestIsValueRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		body     string
@@ -254,6 +268,8 @@ func TestIsValueRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(400, []byte(tc.body))
 
 			require.Equal(t, tc.want, isValueRejected(err, tc.property, tc.value))
@@ -262,6 +278,8 @@ func TestIsValueRejected(t *testing.T) {
 }
 
 func TestRestoreDefaultBootDevice_leavesUnrelatedOverridesAlone(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		systemBody string
@@ -282,6 +300,8 @@ func TestRestoreDefaultBootDevice_leavesUnrelatedOverridesAlone(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			restored, err := restoreDefaultBootDevice(parseComputerSystem(t, tc.systemBody), nil, []schemas.BootSource{schemas.CdBootSource})
 
 			require.NoError(t, err)

@@ -19,6 +19,8 @@ import (
 )
 
 func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		certificate string
@@ -34,6 +36,8 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			server := provisioning.Server{
 				BMCConfig: api.BMCConfig{
 					Endpoint:    "https://bmc.local:8443",
@@ -61,6 +65,8 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 }
 
 func Test_parseTimestamp(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		timestamps []string
@@ -140,6 +146,8 @@ func Test_parseTimestamp(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			buf := &bytes.Buffer{}
 			log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 

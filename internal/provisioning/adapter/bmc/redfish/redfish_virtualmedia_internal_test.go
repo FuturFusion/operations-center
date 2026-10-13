@@ -11,6 +11,8 @@ import (
 )
 
 func TestVirtualMediaHasMedia(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		virtualMedia schemas.VirtualMedia
@@ -67,12 +69,16 @@ func TestVirtualMediaHasMedia(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, virtualMediaHasMedia(virtualMediaSlot{VirtualMedia: &tc.virtualMedia}))
 		})
 	}
 }
 
 func TestTransferProtocolTypeForURL(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		mediaURL string
 
@@ -87,12 +93,16 @@ func TestTransferProtocolTypeForURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.mediaURL, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, transferProtocolTypeForURL(tc.mediaURL))
 		})
 	}
 }
 
 func TestMediaTypesForURL(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		mediaURL string
 
@@ -122,12 +132,16 @@ func TestMediaTypesForURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.mediaURL, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, mediaTypesForURL(tc.mediaURL))
 		})
 	}
 }
 
 func TestMediaTypeForInsert(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		slotMediaTypes  []schemas.VirtualMediaType
@@ -197,6 +211,8 @@ func TestMediaTypeForInsert(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{MediaTypes: tc.slotMediaTypes}}
 
 			require.Equal(t, tc.want, mediaTypeForInsert(tc.mediaURL, mediaTypesForImage(virtualMedia, tc.mediaURL), tc.allowableValues))
@@ -205,6 +221,8 @@ func TestMediaTypeForInsert(t *testing.T) {
 }
 
 func TestIsParameterMissing(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		body      string
@@ -261,6 +279,8 @@ func TestIsParameterMissing(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(400, []byte(tc.body))
 
 			require.Equal(t, tc.want, isParameterMissing(err, tc.parameter))
@@ -269,6 +289,8 @@ func TestIsParameterMissing(t *testing.T) {
 }
 
 func TestIsHintRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		body      string
@@ -366,6 +388,8 @@ func TestIsHintRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(400, []byte(tc.body))
 
 			require.Equal(t, tc.want, isHintRejected(err, tc.parameter))
@@ -374,6 +398,8 @@ func TestIsHintRejected(t *testing.T) {
 }
 
 func TestIsPropertyRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		body     string
@@ -413,6 +439,8 @@ func TestIsPropertyRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(400, []byte(tc.body))
 
 			require.Equal(t, tc.want, isPropertyRejected(err, tc.property))
@@ -421,6 +449,8 @@ func TestIsPropertyRejected(t *testing.T) {
 }
 
 func TestIsParameterMissing_nonRedfishError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("connection refused")
 
 	require.False(t, isParameterMissing(err, "TransferProtocolType"))
@@ -431,6 +461,8 @@ func TestIsParameterMissing_nonRedfishError(t *testing.T) {
 }
 
 func TestIsPreconditionRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		statusCode int
@@ -484,6 +516,8 @@ func TestIsPreconditionRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(tc.statusCode, []byte(tc.body))
 
 			require.Equal(t, tc.want, isPreconditionRejected(err))
@@ -492,6 +526,8 @@ func TestIsPreconditionRejected(t *testing.T) {
 }
 
 func TestIsRequestRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		statusCode int
@@ -556,6 +592,8 @@ func TestIsRequestRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(tc.statusCode, []byte(tc.body))
 
 			require.Equal(t, tc.want, isRequestRejected(err))
@@ -564,6 +602,8 @@ func TestIsRequestRejected(t *testing.T) {
 }
 
 func TestFindOEMActionTarget(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		oem    string
@@ -619,6 +659,8 @@ func TestFindOEMActionTarget(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var oem map[string]any
 
 			require.NoError(t, json.Unmarshal([]byte(tc.oem), &oem))
@@ -628,6 +670,8 @@ func TestFindOEMActionTarget(t *testing.T) {
 }
 
 func TestOEMActionTarget(t *testing.T) {
+	t.Parallel()
+
 	virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{
 		RawData: []byte(`{
   "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/2",

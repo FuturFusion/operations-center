@@ -18,6 +18,8 @@ import (
 )
 
 func TestWrapRedfishError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		statusCode int
@@ -83,6 +85,8 @@ func TestWrapRedfishError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := wrapRedfishError(schemas.ConstructError(tc.statusCode, []byte(tc.body)))
 
 			require.EqualError(t, err, tc.want)
@@ -113,6 +117,8 @@ func newCollectionError(failures map[string]error) error {
 }
 
 func TestWrapRedfishError_collection(t *testing.T) {
+	t.Parallel()
+
 	err := wrapRedfishError(newCollectionError(map[string]error{
 		"/redfish/v1/Systems/System.Embedded.1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(serviceUnavailableBody)),
 	}))
@@ -128,6 +134,8 @@ func TestWrapRedfishError_collection(t *testing.T) {
 }
 
 func TestWrapRedfishError_collectionOrder(t *testing.T) {
+	t.Parallel()
+
 	failures := map[string]error{
 		"/redfish/v1/Systems/2": schemas.ConstructError(http.StatusNotFound, []byte(`{"error":{"code":"Base.1.0.ResourceMissingAtURI","message":"gone"}}`)),
 		"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(`{"error":{"code":"Base.1.0.ServiceTemporarilyUnavailable","message":"busy"}}`)),
@@ -141,6 +149,8 @@ func TestWrapRedfishError_collectionOrder(t *testing.T) {
 }
 
 func TestWrapRedfishError_collectionWithoutRedfishError(t *testing.T) {
+	t.Parallel()
+
 	err := wrapRedfishError(newCollectionError(map[string]error{
 		"/redfish/v1/Systems/1": io.ErrUnexpectedEOF,
 	}))
@@ -150,6 +160,8 @@ func TestWrapRedfishError_collectionWithoutRedfishError(t *testing.T) {
 }
 
 func TestErrorWrapper(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -244,6 +256,8 @@ func TestErrorWrapper(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := ErrorWrapper()(tc.err)
 
 			require.Equal(t, tc.wantRetryable, domain.IsRetryableError(err))
@@ -264,6 +278,8 @@ func TestErrorWrapper(t *testing.T) {
 }
 
 func TestWrapRedfishError_passthrough(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("boom")
 
 	require.Equal(t, err, wrapRedfishError(err))
@@ -271,6 +287,8 @@ func TestWrapRedfishError_passthrough(t *testing.T) {
 }
 
 func TestWrapRedfishError_wrapped(t *testing.T) {
+	t.Parallel()
+
 	// A Redfish error nested in a wrapping error is rendered as well.
 	err := wrapRedfishError(fmt.Errorf("Failed to attach media: %w", schemas.ConstructError(400, []byte(`{"error":{"@Message.ExtendedInfo":[{"MessageId":"Base.0.10.PropertyUnknown","MessageArgs":["Inserted"]}]}}`))))
 
@@ -278,6 +296,8 @@ func TestWrapRedfishError_wrapped(t *testing.T) {
 }
 
 func TestWrapRedfishError_status(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		statusCode int
@@ -315,6 +335,8 @@ func TestWrapRedfishError_status(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := wrapRedfishError(schemas.ConstructError(tc.statusCode, []byte(`{"error":{"code":"Base.1.0.GeneralError","message":"boom"}}`)))
 
 			statusCode, found := api.StatusErrorMatch(err)
@@ -329,6 +351,8 @@ func TestWrapRedfishError_status(t *testing.T) {
 }
 
 func TestRedfishRequestError(t *testing.T) {
+	t.Parallel()
+
 	err := redfishRequestError(
 		schemas.ConstructError(400, []byte(`{"error":{"@Message.ExtendedInfo":[{"MessageID":"Base.0.10.PropertyUnknown","MessageArgs":["Inserted"]}]}}`)),
 		nil,
@@ -346,6 +370,8 @@ func TestRedfishRequestError(t *testing.T) {
 }
 
 func TestRedactAuthorization(t *testing.T) {
+	t.Parallel()
+
 	dump := strings.Join([]string{
 		"POST /redfish/v1/Managers/1/VirtualMedia/2 HTTP/1.1",
 		"Host: bmc.example.com:8443",
@@ -374,6 +400,8 @@ func TestRedactAuthorization(t *testing.T) {
 }
 
 func TestIsApplyTimeRejected(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		body string
@@ -414,6 +442,8 @@ func TestIsApplyTimeRejected(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := schemas.ConstructError(400, []byte(tc.body))
 
 			require.Equal(t, tc.want, isApplyTimeRejected(err))
@@ -422,5 +452,7 @@ func TestIsApplyTimeRejected(t *testing.T) {
 }
 
 func TestIsApplyTimeRejected_nonRedfishError(t *testing.T) {
+	t.Parallel()
+
 	require.False(t, isApplyTimeRejected(errors.New("connection refused")))
 }
