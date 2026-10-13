@@ -21,6 +21,8 @@ import (
 )
 
 func TestWarningService_DeleteByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		repoDeleteByUUIDErr error
@@ -42,6 +44,8 @@ func TestWarningService_DeleteByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.WarningRepoMock{
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -249,6 +253,8 @@ func TestWarningService_Emit(t *testing.T) {
 }
 
 func TestWarningService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		repoGetAllErr error
@@ -270,6 +276,8 @@ func TestWarningService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.WarningRepoMock{
 				GetAllFunc: func(ctx context.Context) (warning.Warnings, error) {
@@ -289,6 +297,8 @@ func TestWarningService_GetAll(t *testing.T) {
 }
 
 func TestWarningService_GetByScopeAndType(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		repoGetByScopeAndTypeErr error
@@ -310,6 +320,8 @@ func TestWarningService_GetByScopeAndType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.WarningRepoMock{
 				GetByScopeAndTypeFunc: func(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warning.Warnings, error) {
@@ -329,6 +341,8 @@ func TestWarningService_GetByScopeAndType(t *testing.T) {
 }
 
 func TestWarningService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		repoGetByUUIDErr error
@@ -350,6 +364,8 @@ func TestWarningService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.WarningRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*warning.Warning, error) {
@@ -565,6 +581,8 @@ func TestWarningService_RemoveStale(t *testing.T) {
 }
 
 func TestWarningService_UpdateStatusByUUID(t *testing.T) {
+	t.Parallel()
+
 	testWarning := func() *warning.Warning {
 		now := time.Now().UTC()
 		w := newTestWarning(t, "1", api.WarningTypeUnreachable, "src", "msg")
