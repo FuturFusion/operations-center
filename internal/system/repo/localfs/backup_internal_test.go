@@ -44,6 +44,8 @@ func writeStateFiles(t *testing.T, dir string, content string) {
 }
 
 func TestBackup_WriteAndExtract(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "state")
 
@@ -74,6 +76,8 @@ func TestBackup_WriteAndExtract(t *testing.T) {
 }
 
 func TestBackup_WriteOptionalEntries(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "state")
 
@@ -90,8 +94,12 @@ func TestBackup_WriteOptionalEntries(t *testing.T) {
 }
 
 func TestBackup_ExtractRejectsForeignEntries(t *testing.T) {
+	t.Parallel()
+
 	for _, name := range []string{"../escape", "unknown.txt", "artifacts/../../escape"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			buf := &bytes.Buffer{}
 			gzw := gzip.NewWriter(buf)
 			tw := tar.NewWriter(gzw)
@@ -115,6 +123,8 @@ func TestBackup_ExtractRejectsForeignEntries(t *testing.T) {
 }
 
 func TestBackup_ExtractRejectsUnsupportedManifest(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		manifest *backupManifest
@@ -134,6 +144,8 @@ func TestBackup_ExtractRejectsUnsupportedManifest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			buf := &bytes.Buffer{}
 			gzw := gzip.NewWriter(buf)
 			tw := tar.NewWriter(gzw)
@@ -163,6 +175,8 @@ func TestBackup_ExtractRejectsUnsupportedManifest(t *testing.T) {
 }
 
 func TestBackup_ExtractRejectsCorruptArchive(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "state")
 
@@ -179,6 +193,8 @@ func TestBackup_ExtractRejectsCorruptArchive(t *testing.T) {
 }
 
 func TestBackup_ExtractRejectsWithoutSpace(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "state")
 
@@ -192,6 +208,8 @@ func TestBackup_ExtractRejectsWithoutSpace(t *testing.T) {
 }
 
 func TestBackup_ApplyRestore(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "old")
 
@@ -245,6 +263,8 @@ func TestBackup_ApplyRestore(t *testing.T) {
 }
 
 func TestBackup_ApplyRestoreRollbackRetried(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "old")
 
@@ -273,6 +293,8 @@ func TestBackup_ApplyRestoreRollbackRetried(t *testing.T) {
 }
 
 func TestBackup_CompleteRestore(t *testing.T) {
+	t.Parallel()
+
 	varDir := t.TempDir()
 	writeStateFiles(t, varDir, "old")
 
