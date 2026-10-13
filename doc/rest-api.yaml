@@ -6342,7 +6342,7 @@ definitions:
                 type: boolean
                 x-go-name: MetricsEnabled
             pprof_enabled:
-                description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
                 example: false
                 type: boolean
                 x-go-name: PprofEnabled
@@ -6390,7 +6390,7 @@ definitions:
                 type: boolean
                 x-go-name: MetricsEnabled
             pprof_enabled:
-                description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
                 example: false
                 type: boolean
                 x-go-name: PprofEnabled
