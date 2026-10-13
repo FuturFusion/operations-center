@@ -10,6 +10,8 @@ import (
 )
 
 func TestPop(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		items []queue.Item[int]
@@ -60,6 +62,8 @@ func TestPop(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tt := &mockT{}
 
 			var item int
@@ -81,6 +85,8 @@ func TestPop(t *testing.T) {
 }
 
 func TestPopRetainLast(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		items []queue.Item[int]
@@ -132,6 +138,8 @@ func TestPopRetainLast(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tt := &mockT{}
 
 			var item int

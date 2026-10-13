@@ -10,6 +10,8 @@ import (
 )
 
 func TestClone_string(t *testing.T) {
+	t.Parallel()
+
 	original := new("string")
 	clone, err := ptr.Clone(original)
 	require.NoError(t, err)
@@ -22,6 +24,8 @@ func TestClone_string(t *testing.T) {
 }
 
 func TestClone_struct(t *testing.T) {
+	t.Parallel()
+
 	type somestruct struct {
 		Int    int
 		String string
@@ -56,12 +60,16 @@ func TestClone_struct(t *testing.T) {
 }
 
 func TestClone_error_marshal(t *testing.T) {
+	t.Parallel()
+
 	original := new(func() {})
 	_, err := ptr.Clone(original)
 	require.Error(t, err)
 }
 
 func TestClone_error_unmarshal(t *testing.T) {
+	t.Parallel()
+
 	original := new(errors.New("err"))
 	_, err := ptr.Clone(original)
 	require.Error(t, err)

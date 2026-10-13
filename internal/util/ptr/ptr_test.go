@@ -10,6 +10,8 @@ import (
 )
 
 func TestToInt64_int(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -46,12 +48,16 @@ func TestToInt64_int(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, ptr.ToInt64(tc.value))
 		})
 	}
 }
 
 func TestToInt64_uint64(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -93,6 +99,8 @@ func TestToInt64_uint64(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, ptr.ToInt64(tc.value))
 		})
 	}

@@ -14,6 +14,8 @@ import (
 )
 
 func TestNew_NoFiles(t *testing.T) {
+	t.Parallel()
+
 	mr := multipartstreamer.New()
 
 	buf := bytes.NewBuffer(nil)
@@ -25,6 +27,8 @@ func TestNew_NoFiles(t *testing.T) {
 }
 
 func TestNew_WithFilesAndFields(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 
 	file1 := filepath.Join(tmpDir, "file1.txt")
@@ -62,6 +66,8 @@ func TestNew_WithFilesAndFields(t *testing.T) {
 }
 
 func TestNew_WithInvalidFile(t *testing.T) {
+	t.Parallel()
+
 	var err error
 
 	mr := multipartstreamer.New("this-file-does-not-exist")

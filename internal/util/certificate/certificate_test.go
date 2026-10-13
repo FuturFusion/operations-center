@@ -40,6 +40,8 @@ func newCertPEM(t *testing.T, notBefore time.Time, notAfter time.Time) string {
 }
 
 func TestDecode(t *testing.T) {
+	t.Parallel()
+
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -73,6 +75,8 @@ func TestDecode(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			cert, err := certificate.Decode([]byte(tc.certPEM))
 
 			tc.assertErr(t, err)
@@ -86,6 +90,8 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDERFingerprint(t *testing.T) {
+	t.Parallel()
+
 	leafPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -141,6 +147,8 @@ func TestDERFingerprint(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := certificate.DERFingerprint("test", []byte(tc.pemCertificate))
 
 			tc.assertErr(t, err)
@@ -150,6 +158,8 @@ func TestDERFingerprint(t *testing.T) {
 }
 
 func TestDERFingerprintDoesNotParse(t *testing.T) {
+	t.Parallel()
+
 	unparseable := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("not-a-real-der-certificate")}))
 
 	_, err := certificate.Decode([]byte(unparseable))
@@ -163,6 +173,8 @@ func TestDERFingerprintDoesNotParse(t *testing.T) {
 }
 
 func TestEncodeToPEM(t *testing.T) {
+	t.Parallel()
+
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -179,6 +191,8 @@ func TestEncodeToPEM(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 
 	tests := []struct {

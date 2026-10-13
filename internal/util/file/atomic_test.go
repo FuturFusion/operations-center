@@ -11,6 +11,8 @@ import (
 )
 
 func TestWriteFileAtomic(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	filename := filepath.Join(dir, "target")
 

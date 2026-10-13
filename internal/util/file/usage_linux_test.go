@@ -12,6 +12,8 @@ import (
 )
 
 func TestUsageInformationForPath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		path string
@@ -34,6 +36,8 @@ func TestUsageInformationForPath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			gotUI, err := file.UsageInformationForPath(tc.path)
 
 			tc.assertErr(t, err)

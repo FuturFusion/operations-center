@@ -8,6 +8,8 @@ import (
 
 // Based on test from https://pkg.go.dev/io#TeeReader
 func Test_teeReadCloserer(t *testing.T) {
+	t.Parallel()
+
 	src := []byte("hello, world")
 	dst := make([]byte, len(src))
 	rb := io.NopCloser(bytes.NewBuffer(src))

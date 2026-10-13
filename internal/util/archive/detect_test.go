@@ -14,6 +14,8 @@ import (
 )
 
 func TestDetectType(t *testing.T) {
+	t.Parallel()
+
 	squashfs := append([]byte("hsqs"), bytes.Repeat([]byte("s"), 512)...)
 	qcow2 := append([]byte{'Q', 'F', 'I', 0xfb}, bytes.Repeat([]byte("q"), 512)...)
 	tarXZ := append([]byte{0xfd, '7', 'z', 'X', 'Z', 0x00}, bytes.Repeat([]byte("x"), 512)...)
@@ -92,6 +94,8 @@ func TestDetectType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			extension, content, err := archive.DetectType(tc.reader)
 
 			tc.assertErr(t, err)

@@ -16,6 +16,8 @@ type TestStruct struct {
 }
 
 func TestDeepCopy_Success(t *testing.T) {
+	t.Parallel()
+
 	src := TestStruct{
 		Str:    "foobar",
 		Number: 10,
@@ -38,6 +40,8 @@ func TestDeepCopy_Success(t *testing.T) {
 }
 
 func TestDeepCopy_EncodeError(t *testing.T) {
+	t.Parallel()
+
 	type Bad struct {
 		C chan int
 	}
@@ -50,6 +54,8 @@ func TestDeepCopy_EncodeError(t *testing.T) {
 }
 
 func TestDeepCopy_DecodeTypeMismatch(t *testing.T) {
+	t.Parallel()
+
 	src := TestStruct{Str: "foobar"}
 	var dst struct {
 		Foo string
@@ -60,6 +66,8 @@ func TestDeepCopy_DecodeTypeMismatch(t *testing.T) {
 }
 
 func TestDeepCopy_DecodeNonPointer(t *testing.T) {
+	t.Parallel()
+
 	src := TestStruct{Str: "foobar"}
 	var dst TestStruct
 

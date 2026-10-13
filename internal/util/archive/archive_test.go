@@ -12,6 +12,8 @@ import (
 )
 
 func TestXZ_roundtrip(t *testing.T) {
+	t.Parallel()
+
 	const content = "foobar"
 
 	buf := bytes.NewBuffer(nil)

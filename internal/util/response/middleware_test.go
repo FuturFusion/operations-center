@@ -15,6 +15,8 @@ import (
 )
 
 func TestWith_abortsStartedResponse(t *testing.T) {
+	t.Parallel()
+
 	// The content is large enough, for the response to be on the wire before the failure.
 	content := io.MultiReader(strings.NewReader(strings.Repeat("x", 1<<20)), iotest.ErrReader(errors.New("boom")))
 
