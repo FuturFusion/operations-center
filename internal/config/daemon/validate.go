@@ -12,6 +12,7 @@ import (
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -83,6 +84,11 @@ func validate(oldCfg, newCfg config, isIncusOS bool) error {
 	err = logger.ValidateComponentLevels(newCfg.Settings.LogLevels)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
+	}
+
+	err = metrics.ValidateComponents(newCfg.Settings.MetricsComponents)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.metrics_components" property is invalid: %v`, err)
 	}
 
 	return nil

@@ -45,6 +45,14 @@ func Test_isSettingsChanged(t *testing.T) {
 			field:  "PprofEnabled",
 			mutate: func(settings *system.SettingsPut) { settings.PprofEnabled = true },
 		},
+		{
+			field:  "MetricsEnabled",
+			mutate: func(settings *system.SettingsPut) { settings.MetricsEnabled = true },
+		},
+		{
+			field:  "MetricsComponents",
+			mutate: func(settings *system.SettingsPut) { settings.MetricsComponents = []string{"runtime"} },
+		},
 	}
 
 	require.False(t, isSettingsChanged(newConfig(base), newConfig(base)), "identical settings are not reported as changed")
@@ -70,4 +78,64 @@ func Test_isSettingsChanged(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, fields, covered, "a field added to system.SettingsPut needs a case here, so it is known to be covered by isSettingsChanged")
+}
+
+func Test_isMetricsChanged(t *testing.T) {
+	tests := []struct {
+		name        string
+		oldSettings system.SettingsPut
+		newSettings system.SettingsPut
+
+		want bool
+	}{
+		{
+			name:        "equal",
+			oldSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+			newSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+
+			want: false,
+		},
+		{
+			name:        "nil and empty components",
+			oldSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: nil},
+			newSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{}},
+
+			want: false,
+		},
+		{
+			name:        "other setting differs",
+			oldSettings: system.SettingsPut{LogLevel: "WARN", MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+			newSettings: system.SettingsPut{LogLevel: "DEBUG", MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+
+			want: false,
+		},
+		{
+			name:        "only enabled differs",
+			oldSettings: system.SettingsPut{MetricsEnabled: false, MetricsComponents: []string{"runtime"}},
+			newSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+
+			want: true,
+		},
+		{
+			name:        "only components differ",
+			oldSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{"runtime"}},
+			newSettings: system.SettingsPut{MetricsEnabled: true, MetricsComponents: []string{"runtime", "api"}},
+
+			want: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			oldCfg := config{Settings: system.Settings{SettingsPut: tc.oldSettings}}
+			newCfg := config{Settings: system.Settings{SettingsPut: tc.newSettings}}
+
+			// Run test
+			got := isMetricsChanged(oldCfg, newCfg)
+
+			// Assert
+			require.Equal(t, tc.want, got)
+		})
+	}
 }

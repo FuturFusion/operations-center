@@ -19,7 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestRunner_ServerRegistrationRun(t *testing.T) {
@@ -670,9 +669,11 @@ def server_registration(candidate):
 			defer lifecycle.SettingsValidateSignal.Reset()
 
 			// Load script
-			err = config.UpdateSettings(t.Context(), system.SettingsPut{
-				ServerRegistrationScriptlet: tc.script,
-			})
+			// Keep the other settings. A change of the metrics settings is logged.
+			settings := config.GetSettings().SettingsPut
+			settings.ServerRegistrationScriptlet = tc.script
+
+			err = config.UpdateSettings(t.Context(), settings)
 			tc.assertSetScriptletErr(t, err)
 			if err != nil {
 				return

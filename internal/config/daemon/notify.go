@@ -6,6 +6,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 )
 
 var componentConfig = logger.RegisterComponent("config")
@@ -61,6 +62,12 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 
 	if isPprofEnabledChanged(oldCfg, newCfg) {
 		slog.WarnContext(logCtx, "Updated pprof debug endpoints setting", slog.Bool("enabled", newCfg.Settings.PprofEnabled))
+	}
+
+	if isMetricsChanged(oldCfg, newCfg) {
+		slog.WarnContext(logCtx, "Updated metrics settings", slog.Bool("enabled", newCfg.Settings.MetricsEnabled), slog.Any("components", newCfg.Settings.MetricsComponents))
+
+		metrics.Apply(newCfg.Settings.MetricsEnabled, newCfg.Settings.MetricsComponents)
 	}
 
 	if updated == sectionSettings || isSettingsChanged(oldCfg, newCfg) {
