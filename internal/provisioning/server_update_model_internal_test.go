@@ -7,8 +7,12 @@ import (
 )
 
 func Test_serverUpdateSteps(t *testing.T) {
+	t.Parallel()
+
 	for step, definition := range serverUpdateSteps {
 		t.Run(string(step), func(t *testing.T) {
+			t.Parallel()
+
 			require.NotEmpty(t, definition.details, "a step records a status detail, while it waits for its outcome")
 			require.NotZero(t, definition.timeout, "a step without a timeout is never in flight")
 			require.NotZero(t, definition.retries, "a step without attempts fails on its first trigger")

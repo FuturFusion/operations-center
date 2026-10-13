@@ -206,6 +206,8 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 }
 
 func TestServerService_PreRegister(t *testing.T) {
+	t.Parallel()
+
 	certificatePEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 	certificate := string(certificatePEM)
@@ -732,6 +734,8 @@ func TestServerService_Register(t *testing.T) {
 }
 
 func TestServerService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		repoGetAllServers provisioning.Servers
@@ -795,6 +799,8 @@ func TestServerService_GetAll(t *testing.T) {
 }
 
 func TestServerService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filter                       provisioning.ServerFilter
@@ -924,6 +930,8 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestServerService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllNames    []string
@@ -972,6 +980,8 @@ func TestServerService_GetAllNames(t *testing.T) {
 }
 
 func TestServerService_GetAllNamesWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filter                       provisioning.ServerFilter
@@ -1063,6 +1073,8 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 }
 
 func TestServerService_GetByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		nameArg                      string
@@ -2657,6 +2669,8 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 }
 
 func TestServerService_Rename(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -2760,6 +2774,8 @@ func TestServerService_Rename(t *testing.T) {
 }
 
 func TestServerService_DeleteByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		nameArg             string
@@ -2840,6 +2856,8 @@ func TestServerService_DeleteByName(t *testing.T) {
 }
 
 func TestServerService_DetachFromCluster(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		nameArg             string
@@ -2960,12 +2978,16 @@ func TestServerService_DetachFromCluster(t *testing.T) {
 }
 
 func TestServerService_SyncCluster(t *testing.T) {
+	t.Parallel()
+
 	s := provisioningServer.New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")
 	require.NoError(t, err)
 }
 
 func TestServerService_ReconcileMeshTunnelLocalAddress(t *testing.T) {
+	t.Parallel()
+
 	osData := func(addresses ...string) api.OSData {
 		return api.OSData{
 			Network: incusosapi.SystemNetwork{

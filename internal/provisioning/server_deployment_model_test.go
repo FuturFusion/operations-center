@@ -17,6 +17,8 @@ import (
 )
 
 func TestServerDeploymentRequest_Validate(t *testing.T) {
+	t.Parallel()
+
 	valid := provisioning.ServerDeploymentRequest{
 		TokenUUID:    uuid.MustParse("e9de436e-b94e-4aef-8563-883aec84096e"),
 		Seed:         "default",
@@ -205,12 +207,16 @@ func TestServerDeploymentRequest_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tc.assertErr(t, tc.request(valid).Validate())
 		})
 	}
 }
 
 func TestNewServerDeploymentRequest(t *testing.T) {
+	t.Parallel()
+
 	request, err := provisioning.NewServerDeploymentRequest(api.ServerDeploymentPost{
 		TokenUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
 		Seed:      "default",
@@ -256,6 +262,8 @@ func TestNewServerDeploymentRequest(t *testing.T) {
 }
 
 func TestServerDeployment_IsActive(t *testing.T) {
+	t.Parallel()
+
 	var missing *provisioning.ServerDeployment
 
 	require.False(t, missing.IsActive())
@@ -264,6 +272,8 @@ func TestServerDeployment_IsActive(t *testing.T) {
 }
 
 func TestServerDeployment_ToAPI(t *testing.T) {
+	t.Parallel()
+
 	deployment := provisioning.ServerDeployment{
 		State:        api.ServerDeploymentStateVerifyBIOS,
 		BIOSProfiles: []string{"dell", "dell-with-tpm"},
@@ -284,6 +294,8 @@ func TestServerDeployment_ToAPI(t *testing.T) {
 }
 
 func TestServerDeployment_EnterState(t *testing.T) {
+	t.Parallel()
+
 	entered := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 
 	deployment := provisioning.ServerDeployment{
@@ -323,6 +335,8 @@ func TestServerDeployment_EnterState(t *testing.T) {
 }
 
 func TestServerDeploymentBMCSnapshot(t *testing.T) {
+	t.Parallel()
+
 	taken := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 	reset := taken.Add(-time.Hour)
 

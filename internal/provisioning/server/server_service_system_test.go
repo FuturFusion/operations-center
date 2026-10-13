@@ -24,6 +24,8 @@ import (
 )
 
 func TestServerService_UpdateSystemNetwork(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	type repoUpdateFuncItem struct {
@@ -238,6 +240,8 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemStorage(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	type repoUpdateFuncItem struct {
@@ -446,6 +450,8 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 }
 
 func TestServerService_GetSystemProvider(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                       string
 		repoGetByNameServer        provisioning.Server
@@ -541,6 +547,8 @@ func TestServerService_GetSystemProvider(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemProvider(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                          string
 		repoGetByNameServer           provisioning.Server
@@ -624,6 +632,8 @@ func TestServerService_UpdateSystemProvider(t *testing.T) {
 }
 
 func TestServerService_GetSystemUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		repoGetByNameServer      provisioning.Server
@@ -727,6 +737,8 @@ func TestServerService_GetSystemUpdate(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		repoGetByNameServer         provisioning.Server
@@ -863,6 +875,8 @@ func TestServerService_UpdateSystemUpdate(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	type repoUpdateFuncItem struct {
@@ -977,6 +991,8 @@ func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
 }
 
 func TestServerService_GetSystemLogging(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		argName                   string
@@ -1064,6 +1080,8 @@ func TestServerService_GetSystemLogging(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemLogging(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		argName                      string
@@ -1136,6 +1154,8 @@ func TestServerService_UpdateSystemLogging(t *testing.T) {
 }
 
 func TestServerService_GetSystemKernel(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		argName                  string
@@ -1219,6 +1239,8 @@ func TestServerService_GetSystemKernel(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemKernel(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		argName                     string
@@ -1291,6 +1313,8 @@ func TestServerService_UpdateSystemKernel(t *testing.T) {
 }
 
 func TestServerService_AddApplication(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		argName                 string
@@ -1363,6 +1387,8 @@ func TestServerService_AddApplication(t *testing.T) {
 }
 
 func TestServerService_RestartApplication(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		argName                     string

@@ -29,6 +29,8 @@ import (
 const testSeedImageID = "a1B2c3D4e5F6"
 
 func TestServerService_ResyncBMCData(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -243,6 +245,8 @@ func TestServerService_ResyncBMCData(t *testing.T) {
 }
 
 func TestServerService_BMCServerPowerOnByName(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	taskMonitor := &provisioning.BMCTaskMonitor{
@@ -420,6 +424,8 @@ func TestServerService_BMCServerPowerOnByName(t *testing.T) {
 }
 
 func TestServerService_BMCServerPowerOffByName(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	taskMonitor := &provisioning.BMCTaskMonitor{
@@ -597,6 +603,8 @@ func TestServerService_BMCServerPowerOffByName(t *testing.T) {
 }
 
 func TestServerService_BMCServerRestartByName(t *testing.T) {
+	t.Parallel()
+
 	taskMonitor := &provisioning.BMCTaskMonitor{
 		URI: "https://bmc.local/task/1",
 	}
@@ -692,6 +700,8 @@ func TestServerService_BMCServerRestartByName(t *testing.T) {
 }
 
 func TestServerService_BMCServerSetLocationIndicatorByName(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -851,6 +861,8 @@ func TestServerService_BMCServerSetLocationIndicatorByName(t *testing.T) {
 }
 
 func TestServerService_ApplyBIOSAttributesByName(t *testing.T) {
+	t.Parallel()
+
 	taskMonitor := &provisioning.BMCTaskMonitor{
 		URI: "https://bmc.local/task/1",
 	}
@@ -994,6 +1006,8 @@ func TestServerService_ApplyBIOSAttributesByName(t *testing.T) {
 }
 
 func TestServerService_BMCBIOSAttributesByName(t *testing.T) {
+	t.Parallel()
+
 	attributes := []api.BIOSAttribute{
 		{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4"},
 		{Name: "SecureBoot", Type: "Enumeration", CurrentValue: "Enabled"},
@@ -1093,6 +1107,8 @@ func TestServerService_BMCBIOSAttributesByName(t *testing.T) {
 }
 
 func TestServerService_BIOSProfileByName(t *testing.T) {
+	t.Parallel()
+
 	resolution := provisioning.BIOSProfileResolution{
 		Profiles: []string{"dell-poweredge"},
 		Attributes: map[string]any{
@@ -1202,6 +1218,8 @@ func TestServerService_BIOSProfileByName(t *testing.T) {
 }
 
 func TestServerService_ValidateBIOSProfileByName(t *testing.T) {
+	t.Parallel()
+
 	resolution := provisioning.BIOSProfileResolution{
 		Profiles: []string{"dell-poweredge"},
 		Attributes: map[string]any{
@@ -1318,6 +1336,8 @@ func TestServerService_ValidateBIOSProfileByName(t *testing.T) {
 }
 
 func TestServerService_BMCBIOSAttributeAcceptableValuesByNameAndAttribute(t *testing.T) {
+	t.Parallel()
+
 	values := api.BIOSAttribute{
 		CurrentValue:     "Enabled",
 		AcceptableValues: []string{"Enabled", "Disabled"},
@@ -1422,6 +1442,8 @@ func TestServerService_BMCBIOSAttributeAcceptableValuesByNameAndAttribute(t *tes
 }
 
 func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                    string
 		nameArg                                 string
@@ -1513,6 +1535,8 @@ func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
 }
 
 func TestServerService_BMCLogSourcesByName(t *testing.T) {
+	t.Parallel()
+
 	logSources := []string{"chassis/Logs", "manager/SEL", "system/Logs"}
 
 	tests := []struct {
@@ -1609,6 +1633,8 @@ func TestServerService_BMCLogSourcesByName(t *testing.T) {
 }
 
 func TestServerService_BMCLogEntriesByNameAndLogSource(t *testing.T) {
+	t.Parallel()
+
 	logEntries := []api.BMCLogEvent{
 		{
 			EntryType: "SEL",
@@ -1745,6 +1771,8 @@ func TestServerService_BMCLogEntriesByNameAndLogSource(t *testing.T) {
 }
 
 func TestServerService_BMCDumpByName(t *testing.T) {
+	t.Parallel()
+
 	dump := api.BMCDump{
 		"/redfish/v1/": api.BMCDumpEntry{
 			Response: json.RawMessage(`{"Id":"RootService"}`),
@@ -1856,6 +1884,8 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 }
 
 func TestServerService_BMCRefreshByName(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -2772,6 +2802,8 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 }
 
 func TestServerService_BMCDetachMediaByName(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	taskMonitor := &provisioning.BMCTaskMonitor{

@@ -1430,6 +1430,8 @@ func TestServerService_DeployByName(t *testing.T) {
 }
 
 func TestServerService_CancelDeploymentByName(t *testing.T) {
+	t.Parallel()
+
 	activeServer := func() provisioning.Server {
 		server := deploymentTestServer("one")
 		server.Status = api.ServerStatusDeploying
@@ -1595,6 +1597,8 @@ func TestServerService_CancelDeploymentByName(t *testing.T) {
 }
 
 func TestServerService_DeploymentControlLoopCandidates(t *testing.T) {
+	t.Parallel()
+
 	deploying := func(name string) provisioning.Server {
 		server := deploymentTestServer(name)
 		server.Status = api.ServerStatusDeploying
@@ -1775,6 +1779,8 @@ func TestServerService_DeploymentControlLoopCandidates(t *testing.T) {
 }
 
 func TestServerService_DeploymentControlLoopFailsATerminallyBrokenDeployment(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		deployment *provisioning.ServerDeployment
@@ -1853,6 +1859,8 @@ func TestServerService_DeploymentControlLoopFailsATerminallyBrokenDeployment(t *
 }
 
 func TestServerService_DeploymentControlLoopPicksUpATriggerArrivingWhileAdvancing(t *testing.T) {
+	t.Parallel()
+
 	server := deploymentTestServer("one")
 	server.Status = api.ServerStatusDeploying
 	server.StatusInternal.Deployment = &provisioning.ServerDeployment{

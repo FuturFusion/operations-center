@@ -13,6 +13,8 @@ import (
 )
 
 func TestBIOSProfileMatch_Matches(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		match provisioning.BIOSProfileMatch
@@ -342,6 +344,8 @@ func TestBIOSProfileMatch_Matches(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			matches, err := tc.match.Matches(tc.data)
 
 			tc.assertErr(t, err)
@@ -351,6 +355,8 @@ func TestBIOSProfileMatch_Matches(t *testing.T) {
 }
 
 func TestBIOSProfile_Matches(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		matches []provisioning.BIOSProfileMatch
@@ -425,6 +431,8 @@ func TestBIOSProfile_Matches(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			profile := provisioning.BIOSProfile{
 				Name:  "dell-poweredge",
 				Match: tc.matches,
@@ -439,6 +447,8 @@ func TestBIOSProfile_Matches(t *testing.T) {
 }
 
 func TestBIOSProfile_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		profile provisioning.BIOSProfile
@@ -619,6 +629,8 @@ func TestBIOSProfile_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.profile.Validate()
 
 			tc.assertErr(t, err)
@@ -627,6 +639,8 @@ func TestBIOSProfile_Validate(t *testing.T) {
 }
 
 func TestBIOSProfiles_Resolve(t *testing.T) {
+	t.Parallel()
+
 	profiles := provisioning.BIOSProfiles{
 		{
 			Name:     "vendor",
@@ -785,6 +799,8 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			resolution, err := tc.profiles.Resolve(tc.data)
 
 			tc.assertErr(t, err)
@@ -794,6 +810,8 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 }
 
 func TestBIOSProfiles_everyDeploymentSettingIsMergedAndValidated(t *testing.T) {
+	t.Parallel()
+
 	// set fills the given setting, or all of them, with a duration or a number.
 	set := func(settings *api.ServerDeploymentSettings, only int, value int64) {
 		fields := reflect.ValueOf(settings).Elem()
@@ -834,6 +852,8 @@ func TestBIOSProfiles_everyDeploymentSettingIsMergedAndValidated(t *testing.T) {
 }
 
 func TestBIOSProfiles_ResolveDoesNotMutateTheProfiles(t *testing.T) {
+	t.Parallel()
+
 	profiles := provisioning.BIOSProfiles{
 		{
 			Name:     "high",
@@ -868,6 +888,8 @@ func TestBIOSProfiles_ResolveDoesNotMutateTheProfiles(t *testing.T) {
 }
 
 func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		attributes         map[string]any
@@ -1021,6 +1043,8 @@ func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			resolution := provisioning.BIOSProfileResolution{
 				Profiles:           []string{"dell-poweredge"},
 				Attributes:         tc.attributes,
@@ -1035,6 +1059,8 @@ func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
 }
 
 func TestBIOSProfiles_Sort(t *testing.T) {
+	t.Parallel()
+
 	profiles := provisioning.BIOSProfiles{
 		{Name: "high-b", Priority: 100},
 		{Name: "low", Priority: 10},
@@ -1052,6 +1078,8 @@ func TestBIOSProfiles_Sort(t *testing.T) {
 }
 
 func TestBIOSProfiles_ValidateForDeployment(t *testing.T) {
+	t.Parallel()
+
 	profile := func(name string, fingerprint string) provisioning.BIOSProfile {
 		return provisioning.BIOSProfile{
 			Name:  name,
