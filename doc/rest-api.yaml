@@ -6325,6 +6325,22 @@ definitions:
                     provisioning: DEBUG
                 type: object
                 x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
             pprof_enabled:
                 description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
                 example: false
@@ -6357,6 +6373,22 @@ definitions:
                     provisioning: DEBUG
                 type: object
                 x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
             pprof_enabled:
                 description: PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
                 example: false
@@ -10994,6 +11026,32 @@ paths:
             summary: Get the storage volumes
             tags:
                 - storage_volumes
+    /1.0/metrics:
+        get:
+            description: |-
+                Gets the metrics of Operations Center in the OpenMetrics or the Prometheus
+                text format. The format depends on the Accept header of the request.
+
+                Returns a bad request error if the "metrics_enabled" system setting is
+                false.
+            operationId: metrics_get
+            produces:
+                - application/openmetrics-text
+                - text/plain
+            responses:
+                "200":
+                    description: Metrics
+                    schema:
+                        type: file
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the metrics
+            tags:
+                - metrics
     /1.0/provisioning/channels:
         get:
             description: Returns a list of channels for updates (URLs).

@@ -64,6 +64,15 @@ settings:
   #   provisioning: DEBUG
   #   provisioning.server_repo: TRACE
 
+  # Enable the metrics endpoint /1.0/metrics. If false, no metrics are
+  # collected.
+  metrics_enabled: true
+
+  # Components that expose metrics, for example "runtime". Enabling a
+  # component also enables all of its children.
+  metrics_components:
+    - runtime
+
 updates:
   # URL of the server providing updates for incus-os.
   source: https://images.linuxcontainers.org/os/

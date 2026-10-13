@@ -459,6 +459,35 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "valid metrics components",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						MetricsEnabled:    true,
+						MetricsComponents: []string{"runtime", "provisioning.server_service"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "invalid metrics components - invalid component name",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						MetricsComponents: []string{"Runtime."}, // invalid component name.
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {

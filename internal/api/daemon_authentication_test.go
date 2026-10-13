@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	testingopenfga "github.com/FuturFusion/operations-center/internal/util/testing/openfga"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -87,8 +88,9 @@ func TestAuthentication(t *testing.T) {
 		headers  map[string]string
 		body     io.Reader
 
-		wantStatusCode int
-		wantAuth       string // Only used in tests for /1.0 route.
+		wantStatusCode   int
+		wantBodyContains string
+		wantAuth         string // Only used in tests for /1.0 route.
 	}{
 		{
 			name: "plain http GET /",
@@ -199,6 +201,81 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusOK,
 			wantAuth:       api.AuthenticationMethodOIDC,
+		},
+		{
+			name: "plain http GET /1.0/metrics - unauthorized",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/metrics",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name: "socket GET /1.0/metrics",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+							return net.Dial("unix", filepath.Join(tmpDir, "unix.socket"))
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "http://unix.socket/1.0/metrics",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: "operations_center_build_info",
+		},
+		{
+			name: "client cert http GET /1.0/metrics",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/metrics",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: "operations_center_build_info",
+		},
+		{
+			name: "oidc http GET /1.0/metrics as viewer",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/metrics",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[viewer],
+			},
+			body: http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: "operations_center_build_info",
 		},
 		{
 			name: "plain http GET /1.0/provisioning/servers - unauthorized",
@@ -809,6 +886,10 @@ func TestAuthentication(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// The daemon command applies the metrics settings at startup.
+	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
+	t.Cleanup(func() { metrics.Apply(false, nil) })
+
 	d := restapi.NewDaemon(
 		ctx,
 		env,
@@ -843,6 +924,7 @@ func TestAuthentication(t *testing.T) {
 			body := readBody(t, resp.Body)
 
 			require.Equal(t, tc.wantStatusCode, resp.StatusCode, body)
+			require.Contains(t, body, tc.wantBodyContains)
 
 			if tc.wantAuth == "" {
 				return

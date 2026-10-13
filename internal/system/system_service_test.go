@@ -1551,7 +1551,9 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			assertErr: require.Error,
 			wantSettingsConfig: systemapi.Settings{
 				SettingsPut: systemapi.SettingsPut{
-					LogLevel: "",
+					LogLevel:          "",
+					MetricsEnabled:    true,
+					MetricsComponents: []string{"runtime"},
 				},
 			},
 		},

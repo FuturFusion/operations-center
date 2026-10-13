@@ -228,6 +228,15 @@ type SettingsPut struct {
 	// PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
 	// Example: false
 	PprofEnabled bool `json:"pprof_enabled" yaml:"pprof_enabled"`
+
+	// MetricsEnabled enables the metrics endpoint /1.0/metrics.
+	// Example: true
+	MetricsEnabled bool `json:"metrics_enabled" yaml:"metrics_enabled"`
+
+	// MetricsComponents is the list of components, which expose metrics.
+	// Enabling a component enables all of its children as well.
+	// Example: ["runtime", "api"]
+	MetricsComponents []string `json:"metrics_components" yaml:"metrics_components"`
 }
 
 // Updates represents the system's updates configuration.
