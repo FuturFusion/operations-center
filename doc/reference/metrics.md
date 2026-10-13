@@ -74,6 +74,7 @@ See [system settings](settings.md) for details.
 | Component | Metrics                                                        | Enabled by default |
 | :---      | :---                                                           | :---               |
 | `runtime` | Go runtime, process, build information and the metrics handler | yes                |
+| `api`     | Rate, errors and duration of all HTTP requests                 | yes                |
 
 ## Metrics of the `runtime` component
 
@@ -84,3 +85,31 @@ See [system settings](settings.md) for details.
 | `promhttp_metric_handler_*`        | mixed | Requests served by the metrics endpoint                                    |
 | `operations_center_build_info`     | gauge | Version of Operations Center in the `version` label. The value is always 1 |
 | `operations_center_uptime_seconds` | gauge | Time in seconds since the start of Operations Center                       |
+
+## Metrics of the `api` component
+
+| Metric                                            | Type      | Labels                    | Description                                          |
+| :---                                              | :---      | :---                      | :---                                                 |
+| `operations_center_http_requests_total`           | counter   | `method`, `route`, `code` | Number of HTTP requests                              |
+| `operations_center_http_request_errors_total`     | counter   | `method`, `route`         | Number of HTTP requests answered with a server error |
+| `operations_center_http_requests_aborted_total`   | counter   | `method`, `route`         | Number of HTTP requests with an aborted response     |
+| `operations_center_http_request_duration_seconds` | histogram | `method`, `route`         | Duration of the HTTP requests in seconds             |
+
+The labels have the following values:
+
+| Label    | Value                                                                                                                                               |
+| :---     | :---                                                                                                                                                |
+| `method` | HTTP method of the request. The value is `other` for an unknown HTTP method                                                                         |
+| `route`  | Path pattern of the matched API route, for example `/1.0/provisioning/servers/{name}`. The value is `unmatched` for a request that matches no route |
+| `code`   | HTTP status code of the response                                                                                                                    |
+
+The metrics cover all HTTP requests to Operations Center. This includes requests to the web UI and to the metrics endpoint.
+
+A request matches no route if the path is unknown. A request also matches no route if the route does not support the method of the request.
+
+A server error is a response with a status code of 500 or higher.
+A request that fails before Operations Center starts the response also counts as a server error with the code 500.
+A response that aborts after it started keeps its status code and does not count as a server error.
+It counts as an aborted response. A response also aborts if the client closes the connection, for example during a download.
+
+The histogram uses the buckets 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5 and 10 seconds.

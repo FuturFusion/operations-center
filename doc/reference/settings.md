@@ -79,14 +79,14 @@ certificates are available.
 
 ## System settings
 
-| Configuration                   | Description                                                                                                   | Value(s)             | Default   |
-| :---                            | :---                                                                                                          | :---                 | :---      |
-| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`    |
-| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |           |
-| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |           |
-| `pprof_enabled`                 | Enable the pprof debug endpoints, see *pprof debug endpoints* below for details                               | true/false           | false     |
-| `metrics_enabled`               | Enable the metrics endpoint, see *Metrics components* below for details                                       | true/false           | true      |
-| `metrics_components`            | Components that expose metrics, see *Metrics components* below for details                                    | list of strings      | `runtime` |
+| Configuration                   | Description                                                                                                   | Value(s)             | Default          |
+| :---                            | :---                                                                                                          | :---                 | :---             |
+| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`           |
+| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |                  |
+| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |                  |
+| `pprof_enabled`                 | Enable the pprof debug endpoints, see *pprof debug endpoints* below for details                               | true/false           | false            |
+| `metrics_enabled`               | Enable the metrics endpoint, see *Metrics components* below for details                                       | true/false           | true             |
+| `metrics_components`            | Components that expose metrics, see *Metrics components* below for details                                    | list of strings      | `runtime`, `api` |
 
 The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
 
@@ -162,6 +162,7 @@ settings:
   metrics_enabled: true
   metrics_components:
     - runtime
+    - api
 ```
 
 Operations Center rejects an unknown component.
