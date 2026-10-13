@@ -59,6 +59,7 @@ nvme
 NVMe
 OIDC
 OpenFGA
+OpenMetrics
 OpenSSL
 OpenTofu
 OVN
@@ -69,6 +70,7 @@ PowerEdge
 pprof
 pre
 preseed
+protobuf
 Redfish
 resolvers
 resync
