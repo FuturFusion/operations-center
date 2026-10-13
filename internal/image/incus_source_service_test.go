@@ -14,6 +14,8 @@ import (
 )
 
 func TestSourceService_Create(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                   string
 		source                 image.IncusImageSource
@@ -59,6 +61,8 @@ func TestSourceService_Create(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				CreateFunc: func(ctx context.Context, source image.IncusImageSource) (int64, error) {
@@ -84,6 +88,8 @@ func TestSourceService_Create(t *testing.T) {
 }
 
 func TestSourceService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		repoGetAll    image.IncusImageSources
@@ -107,6 +113,8 @@ func TestSourceService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {
@@ -127,6 +135,8 @@ func TestSourceService_GetAll(t *testing.T) {
 }
 
 func TestSourceService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllNames    []string
@@ -153,6 +163,8 @@ func TestSourceService_GetAllNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
@@ -173,6 +185,8 @@ func TestSourceService_GetAllNames(t *testing.T) {
 }
 
 func TestSourceService_GetByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		nameArg          string
@@ -208,6 +222,8 @@ func TestSourceService_GetByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
@@ -228,6 +244,8 @@ func TestSourceService_GetByName(t *testing.T) {
 }
 
 func TestSourceService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		incusImage    image.IncusImageSource
@@ -271,6 +289,8 @@ func TestSourceService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				UpdateFunc: func(ctx context.Context, source image.IncusImageSource) error {
@@ -296,6 +316,8 @@ func TestSourceService_Update(t *testing.T) {
 }
 
 func TestSourceService_DeleteByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                          string
 		argName                       string
@@ -337,6 +359,8 @@ func TestSourceService_DeleteByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -362,6 +386,8 @@ func TestSourceService_DeleteByName(t *testing.T) {
 }
 
 func TestSourceService_RefreshByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                             string
 		repoGetByName                    image.IncusImageSource
@@ -397,6 +423,8 @@ func TestSourceService_RefreshByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
@@ -422,6 +450,8 @@ func TestSourceService_RefreshByName(t *testing.T) {
 }
 
 func TestSourceService_RefreshAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                             string
 		repoGetAll                       image.IncusImageSources
@@ -461,6 +491,8 @@ func TestSourceService_RefreshAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.IncusImageSourceRepoMock{
 				GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {

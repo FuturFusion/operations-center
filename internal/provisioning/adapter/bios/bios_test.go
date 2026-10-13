@@ -14,6 +14,8 @@ import (
 )
 
 func TestNewFromFS(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		files map[string]string
@@ -180,6 +182,8 @@ func TestNewFromFS(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			fsys := fstest.MapFS{}
 			for name, content := range tc.files {
 				fsys[name] = &fstest.MapFile{Data: []byte(content)}
@@ -206,6 +210,8 @@ func TestNewFromFS(t *testing.T) {
 }
 
 func TestCatalog_Resolve(t *testing.T) {
+	t.Parallel()
+
 	const profilesYAML = `
 - name: any-acme
   match:
@@ -392,6 +398,8 @@ func TestCatalog_Resolve(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			resolution, err := catalog.Resolve(context.Background(), provisioning.Server{
 				Name:    "one",
 				BMCData: tc.data,

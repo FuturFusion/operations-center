@@ -9,6 +9,8 @@ import (
 )
 
 func TestColumnsSorter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		columnSorters []sort.ColumnSorter
@@ -135,6 +137,8 @@ func TestColumnsSorter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			data := [][]string{
 				{"a", "1", "foobar"},
 				{"a", "2", "foobar"},

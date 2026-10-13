@@ -13,6 +13,8 @@ import (
 )
 
 func TestInventoryTables(t *testing.T) {
+	t.Parallel()
+
 	content, err := os.ReadFile("../../../../generate-inventory.yaml")
 	require.NoError(t, err)
 
@@ -26,6 +28,8 @@ func TestInventoryTables(t *testing.T) {
 }
 
 func TestDatabase_SnapshotAndSchemaVersion(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	db, err := dbdriver.Open(dir)

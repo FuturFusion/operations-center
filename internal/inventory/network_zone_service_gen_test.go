@@ -26,6 +26,8 @@ import (
 )
 
 func TestNetworkZoneService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestNetworkZoneService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) (inventory.NetworkZones, error) {
@@ -123,6 +127,8 @@ func TestNetworkZoneService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestNetworkZoneService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestNetworkZoneService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestNetworkZoneService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestNetworkZoneService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		idArg                    uuid.UUID
@@ -241,6 +251,8 @@ func TestNetworkZoneService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkZone, error) {
@@ -263,6 +275,8 @@ func TestNetworkZoneService_GetByUUID(t *testing.T) {
 }
 
 func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		clusterSvcGetEndpoint                    provisioning.Endpoint
@@ -541,6 +555,8 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkZone, error) {
@@ -584,6 +600,8 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 }
 
 func TestNetworkZoneService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		argClusterName                           string
@@ -1056,6 +1074,8 @@ func TestNetworkZoneService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) ([]uuid.UUID, error) {

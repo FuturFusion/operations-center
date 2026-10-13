@@ -12,6 +12,8 @@ import (
 )
 
 func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		event incusapi.Event
@@ -252,6 +254,8 @@ func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
 }
 
 func Test_firstNonEmpty(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		inputs []string

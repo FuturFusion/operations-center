@@ -133,6 +133,8 @@ func TestTokenService_Create(t *testing.T) {
 }
 
 func TestTokenService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		repoGetAllTokens provisioning.Tokens
@@ -172,6 +174,8 @@ func TestTokenService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
@@ -192,6 +196,8 @@ func TestTokenService_GetAll(t *testing.T) {
 }
 
 func TestTokenService_GetAllUUIDs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllUUIDs    []uuid.UUID
@@ -221,6 +227,8 @@ func TestTokenService_GetAllUUIDs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
@@ -241,6 +249,8 @@ func TestTokenService_GetAllUUIDs(t *testing.T) {
 }
 
 func TestTokenService_GetByID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		idArg              uuid.UUID
@@ -272,6 +282,8 @@ func TestTokenService_GetByID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, uuid uuid.UUID) (*provisioning.Token, error) {
@@ -292,6 +304,8 @@ func TestTokenService_GetByID(t *testing.T) {
 }
 
 func TestTokenService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		token         provisioning.Token
@@ -343,6 +357,8 @@ func TestTokenService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Token) error {
@@ -362,6 +378,8 @@ func TestTokenService_Update(t *testing.T) {
 }
 
 func TestTokenService_DeleteByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		idArg               uuid.UUID
@@ -386,6 +404,8 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -405,6 +425,8 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 }
 
 func TestTokenService_Consume(t *testing.T) {
+	t.Parallel()
+
 	token := uuid.MustParse(`755d4021-c5c7-47f7-a0f7-4732ffd99dc4`)
 
 	tests := []struct {
@@ -540,6 +562,8 @@ func TestTokenService_Consume(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
@@ -568,6 +592,8 @@ func TestTokenService_Consume(t *testing.T) {
 }
 
 func TestTokenService_PreparePreSeededImage(t *testing.T) {
+	t.Parallel()
+
 	type image struct {
 		imageUUID    uuid.UUID
 		tokenID      uuid.UUID
@@ -664,6 +690,8 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
@@ -1350,6 +1378,8 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 }
 
 func TestTokenService_GetTokenProviderConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		flasherGetProviderConfig    *api.TokenProviderConfig
@@ -1382,6 +1412,8 @@ func TestTokenService_GetTokenProviderConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			flasher := &adapterMock.FlasherPortMock{
 				GetProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
@@ -1402,6 +1434,8 @@ func TestTokenService_GetTokenProviderConfig(t *testing.T) {
 }
 
 func TestTokenService_CreateTokenSeed(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                   string
 		tokenSeed              provisioning.TokenSeed
@@ -1441,6 +1475,8 @@ func TestTokenService_CreateTokenSeed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				CreateTokenSeedFunc: func(ctx context.Context, seedConfig provisioning.TokenSeed) (int64, error) {
@@ -1460,6 +1496,8 @@ func TestTokenService_CreateTokenSeed(t *testing.T) {
 }
 
 func TestTokenService_GetTokenSeedsAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		repoGetTokenSeedAllTokens provisioning.TokenSeeds
@@ -1497,6 +1535,8 @@ func TestTokenService_GetTokenSeedsAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetTokenSeedAllFunc: func(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error) {
@@ -1517,6 +1557,8 @@ func TestTokenService_GetTokenSeedsAll(t *testing.T) {
 }
 
 func TestTokenService_GetTokenSeedAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		idArg                       uuid.UUID
@@ -1549,6 +1591,8 @@ func TestTokenService_GetTokenSeedAllNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetTokenSeedAllNamesFunc: func(ctx context.Context, id uuid.UUID) ([]string, error) {
@@ -1569,6 +1613,8 @@ func TestTokenService_GetTokenSeedAllNames(t *testing.T) {
 }
 
 func TestTokenService_GetTokenSeedByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		idArg                     uuid.UUID
@@ -1602,6 +1648,8 @@ func TestTokenService_GetTokenSeedByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
@@ -1622,6 +1670,8 @@ func TestTokenService_GetTokenSeedByName(t *testing.T) {
 }
 
 func TestTokenService_UpdateTokenSeed(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                   string
 		token                  provisioning.TokenSeed
@@ -1667,6 +1717,8 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) error {
@@ -1686,6 +1738,8 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 }
 
 func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		idArg                        uuid.UUID
@@ -1713,6 +1767,8 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.TokenRepoMock{
 				DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) error {
@@ -2131,6 +2187,8 @@ func TestTokenService_GetCompressedTokenImageFromTokenSeed(t *testing.T) {
 }
 
 func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
+	t.Parallel()
+
 	const isoGzFilename = "IncusOS_1.iso.gz"
 
 	tokenUUID := uuidgen.FromPattern(t, "1")
@@ -2262,6 +2320,8 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 					return &provisioning.Token{}, tc.repoGetByUUIDErr

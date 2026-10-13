@@ -19,6 +19,8 @@ import (
 )
 
 func TestSmartError(t *testing.T) {
+	t.Parallel()
+
 	tt := []struct {
 		name string
 		err  error
@@ -164,6 +166,8 @@ func TestSmartError(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			resp := response.SmartError(tc.err)
 
 			require.Equal(t, tc.wantCode, resp.Code())
@@ -194,10 +198,14 @@ func TestSmartError(t *testing.T) {
 }
 
 func TestSmartError_nil(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, response.EmptySyncResponse, response.SmartError(nil), "no error is reported as empty sync response")
 }
 
 func TestErrorResponseFromError(t *testing.T) {
+	t.Parallel()
+
 	resp := response.BadRequest(fmt.Errorf("Invalid request body: %w", errors.New("unexpected EOF")))
 
 	require.Equal(t, http.StatusBadRequest, resp.Code())

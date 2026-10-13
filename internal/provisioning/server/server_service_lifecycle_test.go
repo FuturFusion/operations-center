@@ -32,6 +32,8 @@ import (
 )
 
 func TestServerService_GetChangelogByName(t *testing.T) {
+	t.Parallel()
+
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
 
@@ -1644,6 +1646,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 }
 
 func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		argRestoreModeSkip bool

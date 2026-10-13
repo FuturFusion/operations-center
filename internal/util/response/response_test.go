@@ -16,6 +16,8 @@ import (
 )
 
 func TestReadCloserResponse(t *testing.T) {
+	t.Parallel()
+
 	const content = "file-content"
 
 	tests := []struct {
@@ -126,6 +128,8 @@ func TestReadCloserResponse(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			req := httptest.NewRequest(tc.method, "/image.iso", nil)
 			if tc.accept != "" {
 				req.Header.Set("Accept", tc.accept)
@@ -182,6 +186,8 @@ func (c *countingReadSeeker) Seek(offset int64, whence int) (int64, error) {
 func (c *countingReadSeeker) Close() error { return nil }
 
 func TestServeContentResponse_sizeProbeDoesNotSeek(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789"
 
 	rs := &countingReadSeeker{ReadSeeker: strings.NewReader(content)}
@@ -206,6 +212,8 @@ func TestServeContentResponse_sizeProbeDoesNotSeek(t *testing.T) {
 }
 
 func TestServeContentResponse_closesContent(t *testing.T) {
+	t.Parallel()
+
 	closed := false
 
 	rs := &closeRecordingReadSeeker{ReadSeeker: strings.NewReader("data"), closed: &closed}

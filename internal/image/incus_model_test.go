@@ -11,6 +11,8 @@ import (
 )
 
 func TestIncusImage_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		image image.IncusImage
@@ -180,6 +182,8 @@ func TestIncusImage_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.image.Validate()
 
 			tc.assertErr(t, err)
@@ -188,6 +192,8 @@ func TestIncusImage_Validate(t *testing.T) {
 }
 
 func TestValidateIncusImageArchitecture(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		architecture string
@@ -210,6 +216,8 @@ func TestValidateIncusImageArchitecture(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := image.ValidateIncusImageArchitecture(tc.architecture)
 			tc.assertErr(t, err)
 		})
@@ -217,6 +225,8 @@ func TestValidateIncusImageArchitecture(t *testing.T) {
 }
 
 func TestValidateIncusImageVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		version string
@@ -245,6 +255,8 @@ func TestValidateIncusImageVersion(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := image.ValidateIncusImageVersion(tc.version)
 
 			tc.assertErr(t, err)
@@ -253,6 +265,8 @@ func TestValidateIncusImageVersion(t *testing.T) {
 }
 
 func TestIncusImage_FilePath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		image image.IncusImage
@@ -274,6 +288,8 @@ func TestIncusImage_FilePath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			path := tc.image.FilePath()
 
 			require.Equal(t, tc.wantPath, path)

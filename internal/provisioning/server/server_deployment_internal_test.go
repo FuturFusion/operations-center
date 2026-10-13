@@ -34,6 +34,8 @@ import (
 var deploymentTestNow = time.Date(2026, 3, 12, 10, 57, 43, 0, time.UTC)
 
 func Test_deploymentNextState(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		deployment provisioning.ServerDeployment
@@ -118,6 +120,8 @@ func Test_deploymentNextState(t *testing.T) {
 }
 
 func Test_deploymentStatesBIOSPass(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		state api.ServerDeploymentState
@@ -187,6 +191,8 @@ func deploymentTestRanks(t *testing.T) map[api.ServerDeploymentState]int {
 // names a state further along the happy path. That is what makes the loop in
 // deploymentNextState settle, whatever the deployment looks like.
 func Test_deploymentStatesSkipForward(t *testing.T) {
+	t.Parallel()
+
 	ranks := deploymentTestRanks(t)
 
 	for state, definition := range deploymentStates {
@@ -213,6 +219,8 @@ func Test_deploymentStatesSkipForward(t *testing.T) {
 // Test_deploymentNextStateSettles asserts, that the chain of skips always comes
 // to rest, from every state and for every deployment.
 func Test_deploymentNextStateSettles(t *testing.T) {
+	t.Parallel()
+
 	for state := range deploymentStates {
 		t.Run(state.String(), func(t *testing.T) {
 			for _, deployment := range deploymentDiagramSkipFlags() {
@@ -283,6 +291,8 @@ func deploymentTestSetNonZero(t *testing.T, path string, field reflect.Value) {
 }
 
 func Test_deploymentDiagramSkipFlagsCoverWhatEnterStateReads(t *testing.T) {
+	t.Parallel()
+
 	combinations := deploymentDiagramSkipFlags()
 
 	enumerated := map[string]bool{}
@@ -326,6 +336,8 @@ func Test_deploymentDiagramSkipFlagsCoverWhatEnterStateReads(t *testing.T) {
 }
 
 func Test_deploymentStatesEnterStateOutcomes(t *testing.T) {
+	t.Parallel()
+
 	for state, definition := range deploymentStates {
 		if definition.enterState == nil {
 			require.Empty(t, definition.branches, "state %q declares branches, but has nothing routing to them", state)
@@ -357,6 +369,8 @@ func Test_deploymentStatesEnterStateOutcomes(t *testing.T) {
 }
 
 func Test_deploymentBackoff(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		retries int
@@ -383,6 +397,8 @@ func Test_deploymentBackoff(t *testing.T) {
 }
 
 func Test_deploymentStateDefinition_callTimeoutOrDefault(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		state api.ServerDeploymentState
@@ -414,12 +430,16 @@ func Test_deploymentStateDefinition_callTimeoutOrDefault(t *testing.T) {
 }
 
 func Test_deploymentStates_callTimeoutIsAlwaysPositive(t *testing.T) {
+	t.Parallel()
+
 	for state, definition := range deploymentStates {
 		require.Positive(t, definition.callTimeoutOrDefault(), "state %q leaves the BMC operations of an attempt unbounded", state)
 	}
 }
 
 func Test_deploymentInstallOSObserved(t *testing.T) {
+	t.Parallel()
+
 	anchored := deploymentTestNow
 
 	tests := []struct {
@@ -469,6 +489,8 @@ func Test_deploymentInstallOSObserved(t *testing.T) {
 }
 
 func Test_biosAttributeMatches(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		currentValue any
@@ -496,6 +518,8 @@ func Test_biosAttributeMatches(t *testing.T) {
 }
 
 func Test_deploymentBIOSPassPending(t *testing.T) {
+	t.Parallel()
+
 	current := map[string]api.BIOSAttribute{
 		"one": {Name: "one", CurrentValue: "Enabled"},
 		"two": {Name: "two", CurrentValue: 4},
@@ -523,6 +547,8 @@ func Test_deploymentBIOSPassPending(t *testing.T) {
 }
 
 func Test_deploymentBIOSAttributes(t *testing.T) {
+	t.Parallel()
+
 	deployment := provisioning.ServerDeployment{
 		BIOSAttributes:         map[string]any{"one": "Enabled"},
 		BIOSDeferredAttributes: map[string]any{"two": "Disabled"},
@@ -550,6 +576,8 @@ func Test_deploymentBIOSAttributes(t *testing.T) {
 }
 
 func Test_deploymentMediaBytesRequired(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		size int64
@@ -572,6 +600,8 @@ func Test_deploymentMediaBytesRequired(t *testing.T) {
 }
 
 func Test_deploymentMediaReadOut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		progress provisioning.SeedImageProgress
@@ -624,6 +654,8 @@ func Test_deploymentMediaReadOut(t *testing.T) {
 }
 
 func Test_deploymentMediaIdle(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		progress provisioning.SeedImageProgress
@@ -666,6 +698,8 @@ func Test_deploymentMediaIdle(t *testing.T) {
 }
 
 func Test_deploymentInstallCouldBeDone(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		stateEnteredAt time.Time
@@ -702,6 +736,8 @@ func Test_deploymentInstallCouldBeDone(t *testing.T) {
 }
 
 func Test_deploymentRebootObserved(t *testing.T) {
+	t.Parallel()
+
 	snapshotTaken := deploymentTestNow.Add(-config.ServerDeploymentRebootObservationWindow)
 
 	rebootedSnapshot := provisioning.ServerDeploymentBMCSnapshot{
@@ -783,6 +819,8 @@ func Test_deploymentRebootObserved(t *testing.T) {
 }
 
 func Test_serverHasRegistered(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		status api.ServerStatus
@@ -805,6 +843,8 @@ func Test_serverHasRegistered(t *testing.T) {
 }
 
 func Test_deploymentSettleSnapshot(t *testing.T) {
+	t.Parallel()
+
 	current := api.BMCData{
 		ServerPowerState:    bmcPowerStateOn,
 		ServerLastResetTime: deploymentTestNow.Add(-time.Hour),
@@ -971,6 +1011,8 @@ func Test_checkDeploymentPoweredOff(t *testing.T) {
 }
 
 func Test_deploymentBMCConditions(t *testing.T) {
+	t.Parallel()
+
 	deployment := provisioning.ServerDeployment{
 		Request:  provisioning.ServerDeploymentRequest{VirtualMediaID: "system:1"},
 		MediaURL: "https://oc.example.com:8443/one.iso",
@@ -1074,6 +1116,8 @@ func Test_deploymentBMCConditions(t *testing.T) {
 }
 
 func Test_deploymentBMCConditionsDeclareTheirParts(t *testing.T) {
+	t.Parallel()
+
 	conditions := map[string]deploymentBMCCondition{
 		"power is off":                  deploymentPowerIsOff,
 		"cancel settled":                deploymentCancelSettled,
@@ -1097,6 +1141,8 @@ func Test_deploymentBMCConditionsDeclareTheirParts(t *testing.T) {
 }
 
 func Test_deploymentMediaHoldsImage(t *testing.T) {
+	t.Parallel()
+
 	deployment := provisioning.ServerDeployment{
 		Request:  provisioning.ServerDeploymentRequest{VirtualMediaID: "system:1"},
 		MediaURL: "https://oc.example.com:8443/one.iso",
@@ -1148,6 +1194,8 @@ func Test_deploymentMediaHoldsImage(t *testing.T) {
 }
 
 func Test_selectVirtualMediaID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		data             api.BMCData
@@ -1319,6 +1367,8 @@ func Test_selectVirtualMediaID(t *testing.T) {
 }
 
 func Test_describeVirtualMedia(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		data api.BMCData
@@ -1350,6 +1400,8 @@ func Test_describeVirtualMedia(t *testing.T) {
 }
 
 func Test_deploymentRetryFromError(t *testing.T) {
+	t.Parallel()
+
 	wrapped := domain.NewRetryableErr(boom.Error)
 
 	err := error(deploymentRetryFromError{
@@ -1370,6 +1422,8 @@ func Test_deploymentRetryFromError(t *testing.T) {
 }
 
 func Test_deploymentFatalError(t *testing.T) {
+	t.Parallel()
+
 	err := error(deploymentFatalError{err: boom.Error})
 
 	require.Equal(t, boom.Error.Error(), err.Error(), "the sentinel reports the message of the error it carries")
@@ -1386,6 +1440,8 @@ func Test_deploymentFatalError(t *testing.T) {
 // Test_deploymentStates asserts the invariants of the deployment state machine,
 // which the dispatcher relies on but can not check itself.
 func Test_deploymentStates(t *testing.T) {
+	t.Parallel()
+
 	for state, definition := range deploymentStates {
 		t.Run(state.String(), func(t *testing.T) {
 			var unmarshalled api.ServerDeploymentState
@@ -1488,6 +1544,8 @@ func deploymentTestLeadsTo(from api.ServerDeploymentState, to api.ServerDeployme
 // is what tells a re-issued enrollment, that an earlier attempt may have written
 // the key databases already, which the BMC does not report anymore.
 func Test_deploymentStatesSecureBootRecordsItsAttempt(t *testing.T) {
+	t.Parallel()
+
 	prepare := deploymentStates[api.ServerDeploymentStateSecureBoot].prepare
 	require.NotNil(t, prepare, "the enrollment does not record its attempt")
 
@@ -1502,6 +1560,8 @@ func Test_deploymentStatesSecureBootRecordsItsAttempt(t *testing.T) {
 // a cancelled deployment up, are exempt from being preempted by a cancellation.
 // A state marked wrongly either never cancels or never finishes cancelling.
 func Test_deploymentStatesCancelPhase(t *testing.T) {
+	t.Parallel()
+
 	want := []api.ServerDeploymentState{
 		api.ServerDeploymentStateCancel,
 		api.ServerDeploymentStateWaitCancel,
@@ -1522,6 +1582,8 @@ func deploymentTestFuncName(fn any) string {
 }
 
 func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
+	t.Parallel()
+
 	type tuning struct {
 		wait                deploymentWaitFunc
 		settleDelay         bool
@@ -1582,6 +1644,8 @@ func Test_deploymentStatesTuningIsDeclaredWhereItIsRead(t *testing.T) {
 }
 
 func Test_deploymentSettingsOverrideOnlyWhatAStateDeclares(t *testing.T) {
+	t.Parallel()
+
 	type timings struct {
 		timeout             time.Duration
 		callTimeout         time.Duration
@@ -1685,6 +1749,8 @@ func Test_deploymentSettingsOverrideOnlyWhatAStateDeclares(t *testing.T) {
 }
 
 func Test_deploymentStatesDeclareWhatTheirFunctionReliesOn(t *testing.T) {
+	t.Parallel()
+
 	powerOff := deploymentTestFuncName((*serverService).powerOffDeploymentServer)
 	poweredOff := deploymentTestFuncName((*serverService).checkDeploymentPoweredOff)
 	applyBIOS := deploymentTestFuncName((*serverService).applyDeploymentBIOSAttributes)
@@ -1729,6 +1795,8 @@ func Test_deploymentStatesDeclareWhatTheirFunctionReliesOn(t *testing.T) {
 }
 
 func Test_deploymentStatesAreAllReachable(t *testing.T) {
+	t.Parallel()
+
 	reached := map[api.ServerDeploymentState]struct{}{}
 
 	var walk func(state api.ServerDeploymentState)
@@ -1900,6 +1968,8 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 }
 
 func Test_deploymentBMCData_requiresParts(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		data     api.BMCData
@@ -1976,6 +2046,8 @@ func Test_deploymentBMCData_requiresParts(t *testing.T) {
 // the generated state diagram needs, so a state can not be added to the table
 // without showing up in the documentation.
 func Test_deploymentStatesDiagramMetadata(t *testing.T) {
+	t.Parallel()
+
 	for state, definition := range deploymentStates {
 		t.Run(state.String(), func(t *testing.T) {
 			require.NotEmpty(t, definition.label, "state %q has no label to draw it by", state)
@@ -2004,6 +2076,8 @@ func Test_deploymentStatesDiagramMetadata(t *testing.T) {
 }
 
 func Test_deploymentDiagramDuration(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		duration time.Duration
@@ -2030,6 +2104,8 @@ func Test_deploymentDiagramDuration(t *testing.T) {
 // table and nothing but the table, and that it does not depend on the iteration
 // order of the map.
 func Test_DeploymentStateDiagram(t *testing.T) {
+	t.Parallel()
+
 	diagram, err := DeploymentStateDiagram()
 	require.NoError(t, err)
 
@@ -2074,6 +2150,8 @@ func Test_DeploymentStateDiagram(t *testing.T) {
 }
 
 func Test_deploymentDiagramEdges(t *testing.T) {
+	t.Parallel()
+
 	edges, err := deploymentDiagramEdges(deploymentDiagramOrder())
 	require.NoError(t, err)
 
@@ -2121,6 +2199,8 @@ func Test_deploymentDiagramEdges(t *testing.T) {
 }
 
 func Test_checkDeploymentRebooted(t *testing.T) {
+	t.Parallel()
+
 	settleDelay := deploymentStates[api.ServerDeploymentStateWaitReboot].settleDelay
 
 	tests := []struct {
@@ -2207,6 +2287,8 @@ func Test_checkDeploymentRebooted(t *testing.T) {
 }
 
 func Test_serverService_deploymentWait(t *testing.T) {
+	t.Parallel()
+
 	const otherWaitRetries = 2
 
 	timedOut := deploymentTestNow.Add(-config.ServerDeploymentStepTimeout - time.Second)
@@ -2367,6 +2449,8 @@ func Test_serverService_deploymentWait(t *testing.T) {
 }
 
 func Test_serverService_checkBoundedDeploymentWait_notAWait(t *testing.T) {
+	t.Parallel()
+
 	server := provisioning.Server{
 		Name: "one",
 		StatusInternal: provisioning.ServerStatusInternal{
@@ -2383,6 +2467,8 @@ func Test_serverService_checkBoundedDeploymentWait_notAWait(t *testing.T) {
 }
 
 func Test_serverService_recordDeploymentFailure_unknownRetryFrom(t *testing.T) {
+	t.Parallel()
+
 	stored := provisioning.Server{
 		Name:   "one",
 		Status: api.ServerStatusDeploying,
@@ -2427,6 +2513,8 @@ func Test_serverService_recordDeploymentFailure_unknownRetryFrom(t *testing.T) {
 }
 
 func Test_keptSecureBootCertificates_additional(t *testing.T) {
+	t.Parallel()
+
 	s := &serverService{
 		secureBootCatalog: &adapterMock.SecureBootCertificateCatalogPortMock{
 			CertificatesByFingerprintFunc: func(fingerprints []string) ([]string, []string) {

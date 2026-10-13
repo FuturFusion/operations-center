@@ -4292,6 +4292,8 @@ func readyServerForClustering(id int64, name string) *provisioning.Server {
 }
 
 func TestClusterService_AddServers(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                  string
 		meshTunnelInterfaceDetectionTimeout   time.Duration
@@ -7322,6 +7324,8 @@ func TestClusterService_AddServers(t *testing.T) {
 }
 
 func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
+	t.Parallel()
+
 	servicesApplications := []api.ApplicationVersionData{
 		{Name: "incus", Version: "1"},
 		{Name: "incus-ceph", Version: "1"},
@@ -8518,6 +8522,8 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 }
 
 func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
+	t.Parallel()
+
 	const servicesConfigMismatchHint = "Configure the service on all servers or copy the services configuration from an existing cluster member."
 
 	assertInconsistent := func(message string, hint string) require.ErrorAssertionFunc {
@@ -15327,6 +15333,8 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 }
 
 func TestSystemStoragePool_fieldCount(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, 21, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only and server specific device fields in checkClusteringServerConsistency")
 }
 
@@ -16169,6 +16177,8 @@ func TestClusterService_RemoveServer(t *testing.T) {
 }
 
 func TestClusterService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllClusters provisioning.Clusters
@@ -16226,6 +16236,8 @@ func TestClusterService_GetAll(t *testing.T) {
 }
 
 func TestClusterService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		filter                    provisioning.ClusterFilter
@@ -16425,6 +16437,8 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestClusterService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllNames    []string
@@ -16473,6 +16487,8 @@ func TestClusterService_GetAllNames(t *testing.T) {
 }
 
 func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filter                       provisioning.ClusterFilter
@@ -16567,6 +16583,8 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 }
 
 func TestClusterService_GetByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		nameArg                      string
@@ -17565,6 +17583,8 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 }
 
 func TestClusterService_ResyncInventory(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		ctx                context.Context
@@ -17660,6 +17680,8 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 }
 
 func TestClusterService_ResyncInventoryByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		nameArg            string
@@ -17711,6 +17733,8 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 }
 
 func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		argName                   string
@@ -19008,6 +19032,8 @@ func rebootReadyServer(mutators ...func(server *provisioning.Server)) provisioni
 }
 
 func TestClusterService_LaunchClusterReboot(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		repoGetByName             []queue.Item[*provisioning.Cluster]
@@ -19399,6 +19425,8 @@ func TestClusterService_LaunchClusterReboot(t *testing.T) {
 }
 
 func TestClusterService_AbortClusterOperation(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		repoGetByName    *provisioning.Cluster
@@ -21030,6 +21058,8 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 }
 
 func TestClusterService_AddApplication(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -23690,6 +23720,8 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 }
 
 func TestClusterService_UpdateCertificate(t *testing.T) {
+	t.Parallel()
+
 	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
@@ -23811,6 +23843,8 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 }
 
 func TestClusterService_GetClusterArtifactAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                  string
 		argClusterName                        string
@@ -23880,6 +23914,8 @@ func TestClusterService_GetClusterArtifactAll(t *testing.T) {
 }
 
 func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                       string
 		argClusterName                             string
@@ -23939,6 +23975,8 @@ func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
 }
 
 func TestClusterService_GetClusterArtifactByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		argClusterName                           string
@@ -24015,6 +24053,8 @@ func TestClusterService_GetClusterArtifactByName(t *testing.T) {
 }
 
 func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		argClusterName                           string
@@ -24115,6 +24155,8 @@ func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
 }
 
 func TestClusterService_GetClusterArtifactArchiveByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                             string
 		argClusterName                                   string

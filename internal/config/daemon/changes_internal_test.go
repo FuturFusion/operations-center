@@ -10,6 +10,8 @@ import (
 )
 
 func Test_isSettingsChanged(t *testing.T) {
+	t.Parallel()
+
 	newConfig := func(settings system.SettingsPut) config {
 		return config{
 			Settings: system.Settings{

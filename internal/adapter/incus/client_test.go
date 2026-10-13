@@ -72,6 +72,8 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 
 	for _, method := range methods {
 		t.Run(method.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 
 			// getClientErr error - invalid key pair
@@ -80,6 +82,8 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 			// run regular test cases
 			for _, tc := range method.testCases {
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
 					// Setup
 					var gotPaths []string
 					var gotBodies []string
@@ -197,6 +201,8 @@ func newTestServer(connectionURL string, serverCert string) provisioning.Server 
 }
 
 func TestClient_Endpoint(t *testing.T) {
+	t.Parallel()
+
 	methods := []methodTestSet{
 		{
 			name: "Ping",
@@ -484,6 +490,8 @@ func setupCerts(t *testing.T) (caPool *x509.CertPool, certPEM string, keyPEM str
 }
 
 func TestClient_input_validation(t *testing.T) {
+	t.Parallel()
+
 	client := incus.New("", "", incus.WithSkipGetServer(true))
 
 	_, err := client.GetSystem(t.Context(), provisioning.Server{}, "invalid/resource")

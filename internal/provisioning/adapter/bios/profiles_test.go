@@ -72,6 +72,8 @@ func lenovoSecureBoot() api.BIOSSecureBoot {
 // profiles, that changes the profiles applied to a server or the values they
 // assign, is caught here.
 func TestCatalog_builtinProfiles(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		data api.BMCData
@@ -217,6 +219,8 @@ func TestCatalog_builtinProfiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			resolution, err := catalog.Resolve(context.Background(), provisioning.Server{
 				Name:    "one",
 				BMCData: tc.data,

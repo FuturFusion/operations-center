@@ -13,6 +13,8 @@ import (
 )
 
 func TestChannelService_validateUpdatesConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		updatesDefaultChannel string
@@ -87,6 +89,8 @@ func TestChannelService_validateUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			repo := &repoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
 					_, err := queue.Pop(t, &tc.repoGetByName)

@@ -21,6 +21,8 @@ import (
 )
 
 func Test_availableVersionGreaterThan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		currentVersion   string
@@ -75,6 +77,8 @@ func Test_availableVersionGreaterThan(t *testing.T) {
 }
 
 func Test_mediaURLWarnings(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		mediaURL string

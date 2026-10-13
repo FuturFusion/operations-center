@@ -47,6 +47,8 @@ type Data struct {
 }
 
 func TestUnderlyingBaseTypePatcher(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		expression string
@@ -386,6 +388,8 @@ func TestUnderlyingBaseTypePatcher(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			filterExpression, err := expr.Compile(
 				tc.expression,
 				expr.Env(Data{}),

@@ -9,6 +9,8 @@ import (
 )
 
 func TestIsApplicationNameIncusKind(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -33,6 +35,8 @@ func TestIsApplicationNameIncusKind(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := domain.IsApplicationNameIncusKind(tc.name)
 			require.Equal(t, tc.want, got)
 		})
@@ -40,6 +44,8 @@ func TestIsApplicationNameIncusKind(t *testing.T) {
 }
 
 func TestIsPrimaryApplication(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -74,6 +80,8 @@ func TestIsPrimaryApplication(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := domain.IsPrimaryApplication(tc.name)
 			require.Equal(t, tc.want, got)
 		})

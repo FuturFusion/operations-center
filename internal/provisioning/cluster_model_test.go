@@ -12,6 +12,8 @@ import (
 )
 
 func TestCluster_ValidateCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		cluster provisioning.Cluster
@@ -194,6 +196,8 @@ func TestCluster_ValidateCreate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.cluster.ValidateCreate()
 
 			tc.assertErr(t, err)
@@ -202,6 +206,8 @@ func TestCluster_ValidateCreate(t *testing.T) {
 }
 
 func TestCluster_IsUpdateInProgress(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		cluster provisioning.Cluster
@@ -236,6 +242,8 @@ func TestCluster_IsUpdateInProgress(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tc.cluster.IsUpdateInProgress()
 
 			require.Equal(t, tc.want, got)
@@ -244,6 +252,8 @@ func TestCluster_IsUpdateInProgress(t *testing.T) {
 }
 
 func TestCluster_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter provisioning.ClusterFilter
@@ -280,6 +290,8 @@ func TestCluster_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 			require.Equal(t, tc.wantIsEmpty, tc.filter.IsEmpty())
 		})
@@ -287,6 +299,8 @@ func TestCluster_Filter(t *testing.T) {
 }
 
 func TestClusterArtifactFiles_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		files provisioning.ClusterArtifactFiles
@@ -316,6 +330,8 @@ func TestClusterArtifactFiles_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tc.files.Value()
 
 			tc.assertErr(t, err)
@@ -325,6 +341,8 @@ func TestClusterArtifactFiles_Value(t *testing.T) {
 }
 
 func TestClusterArtifactFiles_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -405,6 +423,8 @@ func TestClusterArtifactFiles_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			clusterArtifactFiles := provisioning.ClusterArtifactFiles{}
 
 			err := clusterArtifactFiles.Scan(tc.value)

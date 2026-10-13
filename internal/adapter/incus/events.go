@@ -31,6 +31,7 @@ func (c Client) SubscribeLifecycleEvents(ctx context.Context, endpoint provision
 	// connection from being blocked due to slow processing.
 	lifecycleEvents := make(chan domain.LifecycleEvent, 100)
 	errChan := make(chan error)
+	stopped := make(chan struct{})
 	// ignore the error, only happens, if the passed function is nil.
 	target, _ := listener.AddHandler([]string{incusapi.EventTypeLifecycle}, func(event incusapi.Event) {
 		lifecycleEvent, ok, err := mapIncusEventToLifecycleEvent(ctx, event)
@@ -45,8 +46,8 @@ func (c Client) SubscribeLifecycleEvents(ctx context.Context, endpoint provision
 
 		select {
 		case lifecycleEvents <- lifecycleEvent:
+		case <-stopped:
 		case <-ctx.Done():
-			return
 		}
 	})
 
@@ -65,11 +66,9 @@ func (c Client) SubscribeLifecycleEvents(ctx context.Context, endpoint provision
 			_ = listener.RemoveHandler(target)
 		}
 
-		// Block potential senders, these will be "released" when the context is cancelled.
-		// We can not close the channel here, since already inflight handlers might still
-		// try to send on the channel, if these have been spawned before the handler
-		// has been removed.
-		lifecycleEvents = nil
+		// Stop the senders. Do not close lifecycleEvents. Handlers, that have been
+		// spawned before the handler has been removed, might still send on it.
+		close(stopped)
 		close(errChan)
 	}()
 

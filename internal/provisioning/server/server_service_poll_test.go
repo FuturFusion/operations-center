@@ -33,6 +33,8 @@ import (
 )
 
 func TestServerService_PollServers(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		repoGetAllWithFilterServers provisioning.Servers
@@ -2168,6 +2170,8 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 }
 
 func TestServerService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 

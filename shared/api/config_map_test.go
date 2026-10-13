@@ -11,6 +11,8 @@ import (
 )
 
 func TestConfigMap_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		input  map[string]any
@@ -185,6 +187,8 @@ func TestConfigMap_UnmarshalJSON(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			in, err := json.Marshal(tc.input)
 			require.NoError(t, err)
 
@@ -197,6 +201,8 @@ func TestConfigMap_UnmarshalJSON(t *testing.T) {
 }
 
 func TestConfigMap_UnmarshalYAML(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		input  map[string]any
@@ -378,6 +384,8 @@ func TestConfigMap_UnmarshalYAML(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			in, err := yaml.Marshal(tc.input)
 			require.NoError(t, err)
 

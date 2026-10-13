@@ -31,6 +31,8 @@ import (
 )
 
 func TestRedfish_ConnectionTest(t *testing.T) {
+	t.Parallel()
+
 	responses := mockRedfishServer{
 		serviceRootStatusCode: http.StatusOK,
 	}
@@ -110,6 +112,8 @@ func TestRedfish_ConnectionTest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			defer tc.svr.Close()
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -135,12 +139,15 @@ func TestRedfish_ConnectionTest(t *testing.T) {
 }
 
 func TestRedfish_ConnectionTest_timeout(t *testing.T) {
+	t.Parallel()
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	defer func() {
+	// The subtests run in parallel. A defer runs before they start.
+	t.Cleanup(func() {
 		_ = listener.Close()
-	}()
+	})
 
 	go func() {
 		for {
@@ -178,6 +185,8 @@ func TestRedfish_ConnectionTest_timeout(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			client := redfish.New(redfish.WithConnectionTestTimeout(100 * time.Millisecond))
 
 			start := time.Now()
@@ -220,6 +229,8 @@ const idracDataSourcesUnavailableBody = `{
 }`
 
 func TestRedfish_GetData(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		responses mockRedfishServer
@@ -1494,6 +1505,8 @@ func TestRedfish_GetData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -1530,6 +1543,8 @@ func TestRedfish_GetData(t *testing.T) {
 }
 
 func TestRedfish_GetData_WithTrustedCertificate(t *testing.T) {
+	t.Parallel()
+
 	responses := mockRedfishServer{
 		serviceRootStatusCode: http.StatusOK,
 		systemsStatusCode:     http.StatusOK,
@@ -1620,6 +1635,8 @@ func TestRedfish_GetData_WithTrustedCertificate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := httptest.NewTLSServer(newMockRedfishHandler(responses, nil))
 			defer svr.Close()
 
@@ -1762,6 +1779,8 @@ const (
 )
 
 func TestRedfish_ServerPowerOn(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		force bool
@@ -2022,6 +2041,8 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
@@ -2053,6 +2074,8 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 }
 
 func TestRedfish_ServerPowerOff(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		force bool
@@ -2313,6 +2336,8 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
@@ -2344,6 +2369,8 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 }
 
 func TestRedfish_ServerRestart(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		force bool
@@ -2555,6 +2582,8 @@ func TestRedfish_ServerRestart(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
@@ -2585,6 +2614,8 @@ func TestRedfish_ServerRestart(t *testing.T) {
 }
 
 func TestRedfish_ServerSetLocationIndicator(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		active bool
@@ -2722,6 +2753,8 @@ func TestRedfish_ServerSetLocationIndicator(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotPatchBody []byte
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
@@ -2749,6 +2782,8 @@ func TestRedfish_ServerSetLocationIndicator(t *testing.T) {
 }
 
 func TestRedfish_WaitForTask(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		argCtx         func(t *testing.T) context.Context
@@ -2945,6 +2980,8 @@ func TestRedfish_WaitForTask(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:  tc.serviceRootStatusCode,
 				taskMonitorStatusCodes: tc.taskMonitorStatusCodes,
@@ -2960,6 +2997,8 @@ func TestRedfish_WaitForTask(t *testing.T) {
 }
 
 func TestRedfish_TaskState(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		argTaskMonitor *provisioning.BMCTaskMonitor
@@ -3088,6 +3127,8 @@ func TestRedfish_TaskState(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:  tc.serviceRootStatusCode,
 				taskMonitorStatusCodes: tc.taskMonitorStatusCodes,
@@ -3204,6 +3245,8 @@ const (
 )
 
 func TestRedfish_LogEntriesBySource(t *testing.T) {
+	t.Parallel()
+
 	wantLogEntries := []api.BMCLogEvent{
 		{
 			EntryType: "Event",
@@ -3412,6 +3455,8 @@ func TestRedfish_LogEntriesBySource(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -3428,6 +3473,8 @@ func TestRedfish_LogEntriesBySource(t *testing.T) {
 }
 
 func TestRedfish_LogSources(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		responses mockRedfishServer
@@ -3554,6 +3601,8 @@ func TestRedfish_LogSources(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, tc.responses, nil)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
@@ -3570,6 +3619,8 @@ func TestRedfish_LogSources(t *testing.T) {
 }
 
 func TestRedfish_Dump(t *testing.T) {
+	t.Parallel()
+
 	responses := mockRedfishServer{
 		serviceRootStatusCode: http.StatusOK,
 
@@ -4053,6 +4104,8 @@ var biosAttributeRegistryExtraRoutes = map[string]mockRedfishRoute{
 }
 
 func TestRedfish_BIOSAttributes(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -4198,6 +4251,8 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode: tc.serviceRootStatusCode,
 				systemsStatusCode:     tc.systemsStatusCode,
@@ -4219,6 +4274,8 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 }
 
 func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
+	t.Parallel()
+
 	svr := newMockRedfishServer(t, mockRedfishServer{
 		serviceRootStatusCode: http.StatusOK,
 		systemsStatusCode:     http.StatusOK,
@@ -4237,6 +4294,8 @@ func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
 }
 
 func TestRedfish_BIOSAttribute(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -4425,6 +4484,8 @@ func TestRedfish_BIOSAttribute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode: tc.serviceRootStatusCode,
 				systemsStatusCode:     tc.systemsStatusCode,
@@ -4454,6 +4515,8 @@ var defaultBiosAttributes = map[string]any{
 }
 
 func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -4812,6 +4875,8 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotPatchBodies [][]byte
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
@@ -5419,6 +5484,8 @@ func insertMediaActionInfoMediaTypeRoute(allowableValues string) mockRedfishRout
 }
 
 func TestRedfish_AttachMedia(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		virtualMediaID string
@@ -6666,6 +6733,8 @@ func TestRedfish_AttachMedia(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			serviceRootStatusCode := tc.serviceRootStatusCode
@@ -6718,6 +6787,8 @@ func TestRedfish_AttachMedia(t *testing.T) {
 }
 
 func TestRedfish_DetachMedia(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		virtualMediaID string
@@ -7070,6 +7141,8 @@ func TestRedfish_DetachMedia(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			serviceRootStatusCode := tc.serviceRootStatusCode
@@ -7145,6 +7218,8 @@ const secureBootBody = `{
 }`
 
 func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
+	t.Parallel()
+
 	// A valid certificate, which is not part of any allow list.
 	notAllowListedCertPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
@@ -7809,6 +7884,8 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotDeletedCertPaths []string
 
 			gotPostedCerts := map[string][]string{}
@@ -7864,6 +7941,8 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 }
 
 func TestRedfish_SecureBootCertificatesApplied(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -7902,6 +7981,8 @@ func TestRedfish_SecureBootCertificatesApplied(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotDeletedCertPaths []string
 
 			gotPostedCerts := map[string][]string{}
@@ -7943,6 +8024,8 @@ func TestRedfish_SecureBootCertificatesApplied(t *testing.T) {
 }
 
 func TestRedfish_ApplySecureBootCertificates_noCertificateSourceConfigured(t *testing.T) {
+	t.Parallel()
+
 	var gotDeletedCertPaths []string
 
 	gotPostedCerts := map[string][]string{}
@@ -8157,6 +8240,8 @@ func catalogCertificate(t *testing.T, fingerprint string) string {
 }
 
 func TestRedfish_EnableSecureBoot(t *testing.T) {
+	t.Parallel()
+
 	secureBootBodyWithEnable := func(enabled bool) string {
 		return fmt.Sprintf(`{
   "@odata.id": "/redfish/v1/Systems/1/SecureBoot",
@@ -8202,6 +8287,8 @@ func TestRedfish_EnableSecureBoot(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{

@@ -12,6 +12,8 @@ import (
 )
 
 func TestSchemaEnsure(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		prepare func(*sql.DB) error
@@ -44,6 +46,8 @@ func TestSchemaEnsure(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tmpDir := t.TempDir()
 			db, err := sqlite.Open(tmpDir)
 			require.NoError(t, err)
@@ -59,6 +63,8 @@ func TestSchemaEnsure(t *testing.T) {
 }
 
 func TestSchemaEnsure_normalizeServerIdentifiers(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)
@@ -106,6 +112,8 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 }
 
 func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)

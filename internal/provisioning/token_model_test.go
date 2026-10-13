@@ -15,6 +15,8 @@ import (
 )
 
 func TestToken_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		token provisioning.Token
@@ -74,6 +76,8 @@ func TestToken_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.token.Validate()
 
 			tc.assertErr(t, err)
@@ -82,6 +86,8 @@ func TestToken_Validate(t *testing.T) {
 }
 
 func TestTokenImageSeedConfigs_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -127,6 +133,8 @@ func TestTokenImageSeedConfigs_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tc.tokenImageSeedConfigs.Value()
 
 			tc.assertErr(t, err)
@@ -136,6 +144,8 @@ func TestTokenImageSeedConfigs_Value(t *testing.T) {
 }
 
 func TestTokenImageSeeds_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -214,6 +224,8 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tokenImageSeeds := provisioning.TokenImageSeedConfigs{}
 
 			err := tokenImageSeeds.Scan(tc.value)
@@ -225,6 +237,8 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 }
 
 func TestTokenSeed_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		tokenSeed provisioning.TokenSeed
@@ -254,6 +268,8 @@ func TestTokenSeed_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.tokenSeed.Validate()
 
 			tc.assertErr(t, err)
@@ -262,6 +278,8 @@ func TestTokenSeed_Validate(t *testing.T) {
 }
 
 func TestSeedImageCacheID(t *testing.T) {
+	t.Parallel()
+
 	tokenUUID := uuid.MustParse("f4f8bbb2-1f0a-4c4e-9d5f-2b4a6c8e0d13")
 
 	id := provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")

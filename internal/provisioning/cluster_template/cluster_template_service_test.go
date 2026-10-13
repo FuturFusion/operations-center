@@ -15,6 +15,8 @@ import (
 )
 
 func TestClusterTemplateService_Create(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		clusterTemplate provisioning.ClusterTemplate
@@ -54,6 +56,8 @@ func TestClusterTemplateService_Create(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.ClusterTemplate) (int64, error) {
@@ -73,6 +77,8 @@ func TestClusterTemplateService_Create(t *testing.T) {
 }
 
 func TestClusterTemplateService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                       string
 		repoGetAllClusterTemplates provisioning.ClusterTemplates
@@ -106,6 +112,8 @@ func TestClusterTemplateService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.ClusterTemplates, error) {
@@ -126,6 +134,8 @@ func TestClusterTemplateService_GetAll(t *testing.T) {
 }
 
 func TestClusterTemplateService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllNames    []string
@@ -155,6 +165,8 @@ func TestClusterTemplateService_GetAllNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
@@ -175,6 +187,8 @@ func TestClusterTemplateService_GetAllNames(t *testing.T) {
 }
 
 func TestClusterTemplateService_GetByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		nameArg                      string
@@ -211,6 +225,8 @@ func TestClusterTemplateService_GetByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {
@@ -231,6 +247,8 @@ func TestClusterTemplateService_GetByName(t *testing.T) {
 }
 
 func TestClusterTemplateService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		clusterTemplate provisioning.ClusterTemplate
@@ -270,6 +288,8 @@ func TestClusterTemplateService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.ClusterTemplate) error {
@@ -289,6 +309,8 @@ func TestClusterTemplateService_Update(t *testing.T) {
 }
 
 func TestClusterTemplateService_Rename(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		oldName       string
@@ -335,6 +357,8 @@ func TestClusterTemplateService_Rename(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				RenameFunc: func(ctx context.Context, oldName string, newName string) error {
@@ -356,6 +380,8 @@ func TestClusterTemplateService_Rename(t *testing.T) {
 }
 
 func TestClusterTemplateService_DeleteByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		nameArg             string
@@ -388,6 +414,8 @@ func TestClusterTemplateService_DeleteByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, id string) error {
@@ -407,6 +435,8 @@ func TestClusterTemplateService_DeleteByName(t *testing.T) {
 }
 
 func TestClusterTemplateService_Apply(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		nameArg           string
@@ -534,6 +564,8 @@ key: @VALUE@
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ClusterTemplateRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {

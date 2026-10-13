@@ -10,6 +10,8 @@ import (
 )
 
 func TestErr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -35,6 +37,8 @@ func TestErr(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tt := &mockTestingT{}
 
 			boom.ErrorIs(tt, tc.err)

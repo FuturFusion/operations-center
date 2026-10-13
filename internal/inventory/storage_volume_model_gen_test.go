@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusStorageVolumeFullWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusStorageVolumeFullWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.storagevolumefull.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusStorageVolumeFullWrapper_Value(t *testing.T) {
 }
 
 func TestIncusStorageVolumeFullWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusStorageVolumeFullWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusStorageVolumeFullWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusStorageVolumeFullWrapper_Scan(t *testing.T) {
 }
 
 func TestStorageVolume_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		storageVolume *inventory.StorageVolume
@@ -192,6 +202,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.storageVolume.Validate()
 
 			tc.assertErr(t, err)
@@ -200,6 +212,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 }
 
 func TestStorageVolume_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.StorageVolumeFilter
@@ -230,6 +244,8 @@ func TestStorageVolume_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

@@ -16,6 +16,8 @@ import (
 )
 
 func Test_serverHandler_serverPut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 

@@ -26,6 +26,8 @@ import (
 )
 
 func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) (inventory.NetworkAddressSets, error) {
@@ -123,6 +127,8 @@ func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestNetworkAddressSetService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                           string
 		idArg                          uuid.UUID
@@ -241,6 +251,8 @@ func TestNetworkAddressSetService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkAddressSet, error) {
@@ -263,6 +275,8 @@ func TestNetworkAddressSetService_GetByUUID(t *testing.T) {
 }
 
 func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                                 string
 		clusterSvcGetEndpoint                                provisioning.Endpoint
@@ -549,6 +563,8 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkAddressSet, error) {
@@ -592,6 +608,8 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 }
 
 func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                                 string
 		argClusterName                                       string
@@ -1082,6 +1100,8 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) ([]uuid.UUID, error) {

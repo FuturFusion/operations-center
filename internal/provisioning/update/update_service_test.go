@@ -40,6 +40,8 @@ import (
 )
 
 func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		filterExpression string
@@ -89,6 +91,8 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			fileFilterExpression, err := expr.Compile(
 				tc.filterExpression,
 				provisioningUpdate.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
@@ -103,6 +107,8 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 }
 
 func TestUpdateService_CreateFromArchive(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -170,6 +176,8 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
@@ -200,6 +208,8 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 }
 
 func TestUpdateService_CleanupAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                   string
 		filesRepoCleanupAllErr error
@@ -254,6 +264,8 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -284,6 +296,8 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 }
 
 func TestUpdateService_Prune(t *testing.T) {
+	t.Parallel()
+
 	type fileDetail struct {
 		rc   io.ReadCloser
 		size int
@@ -396,6 +410,8 @@ func TestUpdateService_Prune(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -438,6 +454,8 @@ func TestUpdateService_Prune(t *testing.T) {
 }
 
 func TestUpdateService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		repoGetAllUpdates provisioning.Updates
@@ -461,6 +479,8 @@ func TestUpdateService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -482,6 +502,8 @@ func TestUpdateService_GetAll(t *testing.T) {
 }
 
 func TestUpdateService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                   string
 		filter                                 provisioning.UpdateFilter
@@ -561,6 +583,8 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -588,6 +612,8 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestUpdateService_GetAllUUIDs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllUUIDs    []uuid.UUID
@@ -614,6 +640,8 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
@@ -635,6 +663,8 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 }
 
 func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		filter             provisioning.UpdateFilter
@@ -697,6 +727,8 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -721,6 +753,8 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                   string
 		filter                                 provisioning.UpdateFilter
@@ -755,6 +789,8 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
@@ -776,6 +812,8 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 }
 
 func TestUpdateService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		idArg               uuid.UUID
@@ -802,6 +840,8 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
@@ -823,6 +863,8 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 }
 
 func TestUpdateService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		updateArg             provisioning.Update
@@ -876,6 +918,8 @@ func TestUpdateService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
@@ -1364,6 +1408,8 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 }
 
 func TestUpdateService_GetChangelogByChannel(t *testing.T) {
+	t.Parallel()
+
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
 
@@ -1701,6 +1747,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
@@ -1739,6 +1787,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 }
 
 func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		idArg               uuid.UUID
@@ -1773,6 +1823,8 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
@@ -1794,6 +1846,8 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 }
 
 func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		idArg                        uuid.UUID
@@ -1864,6 +1918,8 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {

@@ -9,6 +9,8 @@ import (
 )
 
 func TestLocalfs_CleanupAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		namespaces  []string
@@ -103,6 +105,8 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)

@@ -11,6 +11,8 @@ import (
 )
 
 func TestClusterTemplate_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		clusterTemplate provisioning.ClusterTemplate
@@ -151,6 +153,8 @@ func TestClusterTemplate_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.clusterTemplate.Validate()
 
 			tc.assertErr(t, err)

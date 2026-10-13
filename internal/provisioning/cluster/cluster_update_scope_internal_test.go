@@ -10,6 +10,8 @@ import (
 )
 
 func TestRollingUpdateScope(t *testing.T) {
+	t.Parallel()
+
 	osTrigger := api.ServerUpdateApplication{
 		Name:          "os",
 		TriggerUpdate: true,

@@ -12,6 +12,8 @@ import (
 )
 
 func TestServerVersionData_Value(t *testing.T) {
+	t.Parallel()
+
 	svd := api.ServerVersionData{
 		OS: api.OSVersionData{
 			Name:             "os",
@@ -59,6 +61,8 @@ func TestServerVersionData_Value(t *testing.T) {
 }
 
 func TestServerVersionData_UpdateState(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		status        api.ServerStatus
 		statusDetail  api.ServerStatusDetail
@@ -293,6 +297,8 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("status: %v, statusDetail: %v, cluster: %t, needsUpdate: %t, needsReboot: %t, inMaintenance: %v, isTypeIncus: %t", tc.status, tc.statusDetail, tc.cluster != "", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			t.Parallel()
+
 			server := api.Server{
 				Status:       tc.status,
 				StatusDetail: tc.statusDetail,
@@ -318,6 +324,8 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 }
 
 func TestServerVersionData_RecommendedAction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		status        api.ServerStatus
 		statusDetail  api.ServerStatusDetail
@@ -471,6 +479,8 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("status: %v, statusDetail: %v, cluster: %t, needsUpdate: %t, needsReboot: %t, inMaintenance: %v, isTypeIncus: %t", tc.status, tc.statusDetail, tc.cluster != "", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			t.Parallel()
+
 			server := api.Server{
 				Status:       tc.status,
 				StatusDetail: tc.statusDetail,
@@ -496,6 +506,8 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 }
 
 func TestServerVersionData_Compute(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		serverVersionData       api.ServerVersionData
@@ -676,6 +688,8 @@ func TestServerVersionData_Compute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tc.serverVersionData
 			got.Compute("IncusOS", tc.latestAvailableVersions)
 
@@ -685,6 +699,8 @@ func TestServerVersionData_Compute(t *testing.T) {
 }
 
 func TestBMCData_ServerArchitecture(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -773,6 +789,8 @@ func TestBMCData_ServerArchitecture(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			data := api.BMCData{
 				ServerProcessorInstructionSet: tc.instructionSet,
 				ServerProcessorArchitecture:   tc.architecture,

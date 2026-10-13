@@ -10,6 +10,8 @@ import (
 )
 
 func Test_isAuthorizationModelEqual(t *testing.T) {
+	t.Parallel()
+
 	loadModel := func(t *testing.T, body []byte) openfga.WriteAuthorizationModelRequest {
 		t.Helper()
 
@@ -54,6 +56,8 @@ func Test_isAuthorizationModelEqual(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := isAuthorizationModelEqual(loadModel(t, tc.builtin), latestV1)
 			require.NoError(t, err)
 

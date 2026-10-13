@@ -19,10 +19,14 @@ import (
 
 // TestClientInventory runs the generated inventory method test sets.
 func TestClientInventory(t *testing.T) {
+	t.Parallel()
+
 	runMethodTestSets(t, appendTestCases(t, nil))
 }
 
 func TestClient_HasExtension(t *testing.T) {
+	t.Parallel()
+
 	caPool, certPEM, keyPEM := setupCerts(t)
 
 	tests := []struct {

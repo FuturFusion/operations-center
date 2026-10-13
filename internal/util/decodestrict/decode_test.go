@@ -12,6 +12,8 @@ import (
 )
 
 func TestJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		body string
@@ -112,6 +114,8 @@ func TestJSON(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var tokenImagePost api.TokenImagePost
 
 			err := decodestrict.JSON(strings.NewReader(tc.body), &tokenImagePost)
@@ -129,6 +133,8 @@ func TestJSON(t *testing.T) {
 }
 
 func TestYAML_tokenSeedConfigs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		body string
@@ -209,6 +215,8 @@ unknown: value
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var seeds api.TokenSeedConfigs
 
 			err := decodestrict.YAML([]byte(tc.body), &seeds)
@@ -225,6 +233,8 @@ unknown: value
 }
 
 func TestYAML_tokenSeedPut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		body string
@@ -294,6 +304,8 @@ seeds:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var tokenSeedPut api.TokenSeedPut
 
 			err := decodestrict.YAML([]byte(tc.body), &tokenSeedPut)

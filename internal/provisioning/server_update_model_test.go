@@ -13,6 +13,8 @@ import (
 )
 
 func TestServerUpdate_claim(t *testing.T) {
+	t.Parallel()
+
 	now := time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC)
 
 	// A server, that does not take part in a run, has no record at all, and every

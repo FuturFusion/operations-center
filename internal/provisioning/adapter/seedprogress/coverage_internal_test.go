@@ -8,6 +8,8 @@ import (
 )
 
 func Test_coverage_add(t *testing.T) {
+	t.Parallel()
+
 	type read struct {
 		offset int64
 		n      int64
@@ -84,6 +86,8 @@ func Test_coverage_add(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var c coverage
 
 			for _, r := range tc.reads {
@@ -97,6 +101,8 @@ func Test_coverage_add(t *testing.T) {
 }
 
 func Test_coverage_matchesABitmap(t *testing.T) {
+	t.Parallel()
+
 	const size = 1000
 
 	var (
@@ -129,6 +135,8 @@ func Test_coverage_matchesABitmap(t *testing.T) {
 }
 
 func Test_coverage_compaction(t *testing.T) {
+	t.Parallel()
+
 	const (
 		spans = maxCoverageSpans + 50
 		read  = int64(10)

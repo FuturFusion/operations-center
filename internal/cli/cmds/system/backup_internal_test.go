@@ -10,6 +10,8 @@ import (
 )
 
 func TestVerifyArchive(t *testing.T) {
+	t.Parallel()
+
 	buf := &bytes.Buffer{}
 	gzw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gzw)
@@ -59,6 +61,8 @@ func TestVerifyArchive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := verifyArchive(bytes.NewReader(tc.archive))
 			tc.assertErr(t, err)
 		})

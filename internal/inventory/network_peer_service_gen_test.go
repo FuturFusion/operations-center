@@ -26,6 +26,8 @@ import (
 )
 
 func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) (inventory.NetworkPeers, error) {
@@ -123,6 +127,8 @@ func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestNetworkPeerService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestNetworkPeerService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestNetworkPeerService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestNetworkPeerService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		idArg                    uuid.UUID
@@ -242,6 +252,8 @@ func TestNetworkPeerService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkPeer, error) {
@@ -264,6 +276,8 @@ func TestNetworkPeerService_GetByUUID(t *testing.T) {
 }
 
 func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		clusterSvcGetEndpoint                    provisioning.Endpoint
@@ -552,6 +566,8 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkPeer, error) {
@@ -595,6 +611,8 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 }
 
 func TestNetworkPeerService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                     string
 		argClusterName                           string
@@ -1077,6 +1095,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]uuid.UUID, error) {

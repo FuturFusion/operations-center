@@ -56,6 +56,8 @@ func skipWithoutTools(t *testing.T) {
 }
 
 func TestMediaCheckSupported(t *testing.T) {
+	t.Parallel()
+
 	bootLoaderDir := t.TempDir()
 
 	err := os.WriteFile(filepath.Join(bootLoaderDir, "systemd-bootx64.efi"), []byte("boot loader"), 0o600)
@@ -153,6 +155,8 @@ func TestMediaCheckSupported(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			media := securebootmedia.New(t.TempDir(),
 				securebootmedia.WithBootLoaderDir(tc.bootLoaderDir),
 				securebootmedia.WithLookPath(tc.lookPath),
@@ -166,6 +170,8 @@ func TestMediaCheckSupported(t *testing.T) {
 }
 
 func TestMediaID(t *testing.T) {
+	t.Parallel()
+
 	certificates := testCertificates(t)
 
 	id := securebootmedia.MediaID(api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
@@ -196,6 +202,8 @@ func TestMediaID(t *testing.T) {
 }
 
 func TestMedia_GenerateBootsTheArchitectureOfTheServer(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	certificates := testCertificates(t)
@@ -212,6 +220,8 @@ func TestMedia_GenerateBootsTheArchitectureOfTheServer(t *testing.T) {
 }
 
 func TestMedia_GenerateRejectsAnUnsupportedArchitecture(t *testing.T) {
+	t.Parallel()
+
 	certificates := testCertificates(t)
 
 	for _, architecture := range []images.UpdateFileArchitecture{images.UpdateFileArchitectureUndefined, images.UpdateFileArchitecture64BitARM} {
@@ -223,6 +233,8 @@ func TestMedia_GenerateRejectsAnUnsupportedArchitecture(t *testing.T) {
 }
 
 func TestMedia_Generate(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	tests := []struct {
@@ -248,6 +260,8 @@ func TestMedia_Generate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			dir := t.TempDir()
 			media := securebootmedia.New(dir)
 
@@ -276,6 +290,8 @@ func TestMedia_Generate(t *testing.T) {
 }
 
 func TestMedia_GenerateEnrollsThePlatformKeyUpdateAsItIs(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
@@ -299,6 +315,8 @@ func TestMedia_GenerateEnrollsThePlatformKeyUpdateAsItIs(t *testing.T) {
 }
 
 func TestMedia_GenerateIsReproducible(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -327,6 +345,8 @@ func TestMedia_GenerateIsReproducible(t *testing.T) {
 }
 
 func TestMedia_GenerateCaches(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
@@ -351,6 +371,8 @@ func TestMedia_GenerateCaches(t *testing.T) {
 }
 
 func TestMedia_GenerateErrors(t *testing.T) {
+	t.Parallel()
+
 	certificates := testCertificates(t)
 
 	tests := []struct {
@@ -411,6 +433,8 @@ func TestMedia_GenerateErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			dir := t.TempDir()
 			media := securebootmedia.New(dir, tc.opts...)
 
@@ -425,6 +449,8 @@ func TestMedia_GenerateErrors(t *testing.T) {
 }
 
 func TestMedia_Open(t *testing.T) {
+	t.Parallel()
+
 	media := securebootmedia.New(t.TempDir())
 
 	_, err := media.Open(t.Context(), api.ImageTypeISO, "not an ID")
@@ -438,6 +464,8 @@ func TestMedia_Open(t *testing.T) {
 }
 
 func TestMedia_Prune(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	media := securebootmedia.New(dir)
 
@@ -466,6 +494,8 @@ func TestMedia_Prune(t *testing.T) {
 }
 
 func TestMedia_PruneKeepsWhatHasBeenReadAfterARestart(t *testing.T) {
+	t.Parallel()
+
 	skipWithoutTools(t)
 
 	dir := t.TempDir()

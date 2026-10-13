@@ -30,6 +30,8 @@ import (
 )
 
 func TestImageIncusService_AddVersion(t *testing.T) {
+	t.Parallel()
+
 	type fileRepoPutValue struct {
 		commitErr error
 		cancelErr error
@@ -1140,6 +1142,8 @@ func multipartReaderWithInvalid2ndPart(t *testing.T) *multipart.Reader {
 }
 
 func TestImageIncusService_GetAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		repoGetAll    image.IncusImages
@@ -1163,6 +1167,8 @@ func TestImageIncusService_GetAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetAllFunc: func(ctx context.Context) (image.IncusImages, error) {
@@ -1183,6 +1189,8 @@ func TestImageIncusService_GetAll(t *testing.T) {
 }
 
 func TestImageIncusService_GetAllNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		repoGetAllNames    []string
@@ -1209,6 +1217,8 @@ func TestImageIncusService_GetAllNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
@@ -1229,6 +1239,8 @@ func TestImageIncusService_GetAllNames(t *testing.T) {
 }
 
 func TestImageIncusService_GetByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		nameArg          string
@@ -1265,6 +1277,8 @@ func TestImageIncusService_GetByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
@@ -1285,6 +1299,8 @@ func TestImageIncusService_GetByName(t *testing.T) {
 }
 
 func TestImageIncusService_DeleteByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		argName             string
@@ -1345,6 +1361,8 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
@@ -1373,6 +1391,8 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 }
 
 func TestImageIncusService_DeleteBySource(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		argName                 string
@@ -1439,6 +1459,8 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
@@ -1467,6 +1489,8 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 }
 
 func TestImageIncusService_DeleteVersionByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		argName                   string
@@ -1571,6 +1595,8 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
@@ -1599,6 +1625,8 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 }
 
 func TestIncusImageService_GetVersionFileByName(t *testing.T) {
+	t.Parallel()
+
 	assertZeroValues := func(t *testing.T, rc io.ReadCloser, size int64) {
 		t.Helper()
 
@@ -1718,6 +1746,8 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			repo := &mock.ImageIncusRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
 					return tc.repoGetByName, tc.repoGetByNameErr
@@ -1743,6 +1773,8 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 }
 
 func TestIncusImageService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		incusImage    image.IncusImage
@@ -1790,6 +1822,8 @@ func TestIncusImageService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				UpdateFunc: func(ctx context.Context, newIncusImage image.IncusImage) error {
@@ -1809,6 +1843,8 @@ func TestIncusImageService_Update(t *testing.T) {
 }
 
 func TestIncusImageService_ValidateFilterExpression(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		argFilterExpression string
@@ -1831,6 +1867,8 @@ func TestIncusImageService_ValidateFilterExpression(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			imageSvc := image.NewIncusImage(nil, nil, nil)
 
@@ -1844,6 +1882,8 @@ func TestIncusImageService_ValidateFilterExpression(t *testing.T) {
 }
 
 func TestIncusImageService_RefreshFromSource(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                          string
 		ctx                           context.Context
@@ -2578,6 +2618,8 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &mock.ImageIncusRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {

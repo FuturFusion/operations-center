@@ -62,6 +62,8 @@ func retryTestServer(t *testing.T, header http.Header, statuses ...int) (*httpte
 }
 
 func TestRetryTransport_RoundTrip(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		method   string
@@ -174,6 +176,8 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		// Not parallel. One test case has a Retry-After date relative to the
+		// creation of the test table. A parallel subtest starts too late.
 		t.Run(tc.name, func(t *testing.T) {
 			svr, requests := retryTestServer(t, tc.header, tc.statuses...)
 
@@ -235,6 +239,8 @@ func (timeoutError) Timeout() bool { return true }
 func (timeoutError) Temporary() bool { return true }
 
 func TestRetryTransport_RoundTripTransportErrors(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		method string
@@ -301,6 +307,8 @@ func TestRetryTransport_RoundTripTransportErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			requests := 0
 
 			transport, waits := newTestRetryTransport(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
@@ -334,6 +342,8 @@ func TestRetryTransport_RoundTripTransportErrors(t *testing.T) {
 }
 
 func TestRetryTransport_RoundTripChargesUnansweredAttempts(t *testing.T) {
+	t.Parallel()
+
 	now := time.Date(2026, 9, 3, 21, 4, 30, 0, time.UTC)
 	requests := 0
 
@@ -360,6 +370,8 @@ func TestRetryTransport_RoundTripChargesUnansweredAttempts(t *testing.T) {
 }
 
 func TestRetryTransport_RoundTripSharesItsBudget(t *testing.T) {
+	t.Parallel()
+
 	svr, requests := retryTestServer(t, nil, http.StatusServiceUnavailable)
 
 	transport, waits := newTestRetryTransport(t, http.DefaultTransport)
@@ -384,6 +396,8 @@ func TestRetryTransport_RoundTripSharesItsBudget(t *testing.T) {
 }
 
 func Test_parseRetryAfter(t *testing.T) {
+	t.Parallel()
+
 	now := time.Date(2026, 9, 3, 21, 4, 30, 0, time.UTC)
 
 	tests := []struct {
@@ -414,6 +428,8 @@ func Test_parseRetryAfter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, ok := parseRetryAfter(tc.header, now)
 
 			require.Equal(t, tc.wantOK, ok)

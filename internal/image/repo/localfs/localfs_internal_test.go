@@ -15,6 +15,8 @@ import (
 )
 
 func TestLocalfs_Exists(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -85,6 +87,8 @@ func TestLocalfs_Exists(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -102,6 +106,8 @@ func TestLocalfs_Exists(t *testing.T) {
 }
 
 func TestLocalfs_Get(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -168,6 +174,8 @@ func TestLocalfs_Get(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -185,6 +193,8 @@ func TestLocalfs_Get(t *testing.T) {
 }
 
 func TestLocalfs_Put(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		img    image.IncusImage
@@ -260,6 +270,8 @@ func TestLocalfs_Put(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			lfs, err := New(tmpDir)
@@ -303,6 +315,8 @@ type nopCloser struct {
 func (n nopCloser) Close() error { return n.err }
 
 func TestLocalfs_Delete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -333,6 +347,8 @@ func TestLocalfs_Delete(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -349,6 +365,8 @@ func TestLocalfs_Delete(t *testing.T) {
 }
 
 func TestLocalfs_DeleteVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -379,6 +397,8 @@ func TestLocalfs_DeleteVersion(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)

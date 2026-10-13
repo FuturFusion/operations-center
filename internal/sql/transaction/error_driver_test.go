@@ -8,6 +8,8 @@ import (
 )
 
 func TestErrorDriverQueryRow(t *testing.T) {
+	t.Parallel()
+
 	errDB, _ := sql.Open("sqlerrordriver", "")
 
 	row := errDB.QueryRow("boom!")

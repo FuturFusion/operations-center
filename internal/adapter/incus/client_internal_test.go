@@ -27,6 +27,8 @@ import (
 )
 
 func TestClient_ClusterEndpointWithCA(t *testing.T) {
+	t.Parallel()
+
 	const domainName = "cluster.company.com"
 
 	tests := []struct {

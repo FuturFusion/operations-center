@@ -11,6 +11,8 @@ import (
 )
 
 func TestDeploymentProgressLines(t *testing.T) {
+	t.Parallel()
+
 	start := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 
 	at := func(offset time.Duration) time.Time {
@@ -162,6 +164,8 @@ func TestDeploymentProgressLines(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			lines, reportedUpTo := deploymentProgressLines(tc.deployment, tc.reportedUpTo)
 
 			require.Equal(t, tc.wantLines, lines)
@@ -171,6 +175,8 @@ func TestDeploymentProgressLines(t *testing.T) {
 }
 
 func TestDeploymentProgressLines_reportsEveryStateOnce(t *testing.T) {
+	t.Parallel()
+
 	start := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 
 	states := []api.ServerDeploymentState{
@@ -215,6 +221,8 @@ func TestDeploymentProgressLines_reportsEveryStateOnce(t *testing.T) {
 }
 
 func TestDeploymentResultError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		deployment api.ServerDeploymentStatus
@@ -255,6 +263,8 @@ func TestDeploymentResultError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := deploymentResultError("one", tc.deployment)
 
 			tc.assertErr(t, err)
@@ -263,6 +273,8 @@ func TestDeploymentResultError(t *testing.T) {
 }
 
 func TestParseBIOSProfiles(t *testing.T) {
+	t.Parallel()
+
 	example, err := os.ReadFile("../../../provisioning/adapter/bios/profiles/_dummy.yaml.example")
 	require.NoError(t, err)
 
@@ -318,6 +330,8 @@ func TestParseBIOSProfiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			profiles, err := parseBIOSProfiles([]byte(tc.content))
 			tc.assertErr(t, err)
 

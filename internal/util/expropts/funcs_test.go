@@ -9,6 +9,8 @@ import (
 )
 
 func TestToFloat64(t *testing.T) {
+	t.Parallel()
+
 	type specialFloat64 float64
 
 	tests := []struct {
@@ -57,6 +59,8 @@ func TestToFloat64(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := expropts.ToFloat64(tc.in)
 			require.NoError(t, err)
 

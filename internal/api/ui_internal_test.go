@@ -18,6 +18,8 @@ const (
 )
 
 func TestRegisterUIHandlers(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 

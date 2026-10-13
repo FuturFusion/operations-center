@@ -34,6 +34,8 @@ func TestLogWarningService(t *testing.T) {
 }
 
 func TestNoopWarningService(t *testing.T) {
+	t.Parallel()
+
 	warn := NoopWarningService{}
 
 	warn.Emit(t.Context(), warning.NewWarning(

@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusNetworkACLWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusNetworkACLWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.networkACL.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusNetworkACLWrapper_Value(t *testing.T) {
 }
 
 func TestIncusNetworkACLWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusNetworkACLWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusNetworkACLWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusNetworkACLWrapper_Scan(t *testing.T) {
 }
 
 func TestNetworkACL_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		networkACL *inventory.NetworkACL
@@ -166,6 +176,8 @@ func TestNetworkACL_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.networkACL.Validate()
 
 			tc.assertErr(t, err)
@@ -174,6 +186,8 @@ func TestNetworkACL_Validate(t *testing.T) {
 }
 
 func TestNetworkACL_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.NetworkACLFilter
@@ -202,6 +216,8 @@ func TestNetworkACL_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

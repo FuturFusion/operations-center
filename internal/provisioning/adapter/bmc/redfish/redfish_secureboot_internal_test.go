@@ -26,6 +26,8 @@ const (
 )
 
 func TestSecureBootCertificateFingerprint(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		certificateString string
@@ -81,6 +83,8 @@ func TestSecureBootCertificateFingerprint(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			cert := &schemas.Certificate{
 				CertificateString: tc.certificateString,
 			}
@@ -96,6 +100,8 @@ func TestSecureBootCertificateFingerprint(t *testing.T) {
 }
 
 func TestSecureBootCertificatesByDatabase(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		incusOSCertificates incusosapi.InternalSecureBootCertificates
@@ -147,6 +153,8 @@ func TestSecureBootCertificatesByDatabase(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := secureBootCertificatesByDatabase(tc.incusOSCertificates, "Applying")
 
 			tc.assertErr(t, err)
@@ -156,6 +164,8 @@ func TestSecureBootCertificatesByDatabase(t *testing.T) {
 }
 
 func TestSecureBootDatabaseName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		secureBootDB *schemas.SecureBootDatabase
@@ -204,12 +214,16 @@ func TestSecureBootDatabaseName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, secureBootDatabaseName(tc.secureBootDB))
 		})
 	}
 }
 
 func TestSecureBootDatabasesByName(t *testing.T) {
+	t.Parallel()
+
 	kek := newSecureBootDatabase("KEK", "KEK", "UEFI Key Exchange Key Database")
 	db := newSecureBootDatabase("db", "db", "UEFI Signature Database")
 	pk := newSecureBootDatabase("PK", "PK", "UEFI Platform Key")
@@ -223,6 +237,8 @@ func TestSecureBootDatabasesByName(t *testing.T) {
 }
 
 func TestDescribeSecureBootDatabases(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                string
 		secureBootDatabases []*schemas.SecureBootDatabase
@@ -247,6 +263,8 @@ func TestDescribeSecureBootDatabases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, describeSecureBootDatabases(tc.secureBootDatabases))
 		})
 	}
@@ -293,6 +311,8 @@ func keys[V any](m map[string]V) []string {
 }
 
 func TestSecureBootAllowList(t *testing.T) {
+	t.Parallel()
+
 	const microsoft2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
 
 	tests := []struct {
@@ -364,6 +384,8 @@ func TestSecureBootAllowList(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			allowList := secureBootAllowList(tc.dbName, tc.secureBoot)
 
 			require.ElementsMatch(t, tc.wantCertificates, keys(allowList.certificates))
@@ -373,6 +395,8 @@ func TestSecureBootAllowList(t *testing.T) {
 }
 
 func TestSecureBootDatabaseApplied(t *testing.T) {
+	t.Parallel()
+
 	microsoft2011 := catalogCertificate(t, microsoftCorporationUEFICA2011)
 	incusOS := catalogCertificate(t, microsoftUEFICA2023)
 	optionROM := catalogCertificate(t, microsoftOptionROMUEFICA2023)
@@ -466,6 +490,8 @@ func TestSecureBootDatabaseApplied(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			state := secureBootDatabaseState{}
 
 			for i, pemCertificate := range tc.enrolled {

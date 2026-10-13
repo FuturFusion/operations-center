@@ -8,6 +8,8 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,7 +21,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 var upgrader = websocket.Upgrader{
@@ -50,7 +51,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		assertErr        require.ErrorAssertionFunc
 		assertErrChanErr require.ErrorAssertionFunc
 		wantEvent        domain.LifecycleEvent
-		assertLog        log.MatcherFunc
+		wantLog          string
 	}{
 		{
 			name:   "success one event",
@@ -90,7 +91,6 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: log.Noop,
 		},
 		{
 			name:   "error - getClient",
@@ -168,7 +168,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: log.Contains("Failed to map incus event to lifecycle event"),
+			wantLog: "Failed to map incus event to lifecycle event",
 		},
 		{
 			name:   "error - unsupported lifecycle event resource type",
@@ -214,7 +214,6 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: log.Noop,
 		},
 		{
 			name:              "handle event - cancelled context",
@@ -256,7 +255,6 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
-			assertLog:        log.Noop,
 		},
 		{
 			name:   "error - webserver disconnect websocket immediately",
@@ -279,7 +277,6 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.Error,
-			assertLog:        log.Noop,
 		},
 	}
 
@@ -307,7 +304,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		Certificate:   new(string(serverCert)),
 	}
 
-	logBuf := &bytes.Buffer{}
+	logBuf := &syncBuffer{}
 	err := logger.InitLogger(logBuf, "", false, false, false)
 	require.NoError(t, err)
 
@@ -362,9 +359,39 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			// Assert
 			tc.assertErrChanErr(t, errChanErr)
 			require.Equal(t, tc.wantEvent, event)
-			tc.assertLog(t, logBuf)
+			require.Eventually(t, func() bool {
+				return strings.Contains(logBuf.String(), tc.wantLog)
+			}, 200*time.Millisecond, 10*time.Millisecond, "the log is written by another goroutine")
 		})
 	}
+}
+
+// syncBuffer is a buffer for the log output. The event handlers write the log
+// from other goroutines.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
+}
+
+func (b *syncBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.buf.Reset()
 }
 
 func createLifecycleEvent(t *testing.T, action string) incusapi.Event {

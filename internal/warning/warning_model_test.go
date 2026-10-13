@@ -15,6 +15,8 @@ import (
 )
 
 func TestWarning_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		warning warning.Warning
@@ -192,6 +194,8 @@ func TestWarning_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.warning.Validate()
 
 			tc.assertErr(t, err)
@@ -200,6 +204,8 @@ func TestWarning_Validate(t *testing.T) {
 }
 
 func TestNewWarningFromError(t *testing.T) {
+	t.Parallel()
+
 	scope := api.WarningScope{Scope: "test", EntityType: "server", Entity: "one"}
 
 	tests := []struct {
@@ -242,6 +248,8 @@ func TestNewWarningFromError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			w := warning.NewWarningFromError(api.WarningTypeUnreachable, scope, tc.cause, tc.format, tc.args...)
 
 			require.Equal(t, []string{tc.wantMessage}, w.Messages, "only the message for the user is stored")

@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusNetworkZoneWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusNetworkZoneWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.networkZone.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusNetworkZoneWrapper_Value(t *testing.T) {
 }
 
 func TestIncusNetworkZoneWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusNetworkZoneWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusNetworkZoneWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusNetworkZoneWrapper_Scan(t *testing.T) {
 }
 
 func TestNetworkZone_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		networkZone *inventory.NetworkZone
@@ -166,6 +176,8 @@ func TestNetworkZone_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.networkZone.Validate()
 
 			tc.assertErr(t, err)
@@ -174,6 +186,8 @@ func TestNetworkZone_Validate(t *testing.T) {
 }
 
 func TestNetworkZone_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.NetworkZoneFilter
@@ -202,6 +216,8 @@ func TestNetworkZone_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

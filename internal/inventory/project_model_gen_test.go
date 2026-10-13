@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusProjectWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusProjectWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.project.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusProjectWrapper_Value(t *testing.T) {
 }
 
 func TestIncusProjectWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusProjectWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusProjectWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusProjectWrapper_Scan(t *testing.T) {
 }
 
 func TestProject_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		project *inventory.Project
@@ -148,6 +158,8 @@ func TestProject_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.project.Validate()
 
 			tc.assertErr(t, err)
@@ -156,6 +168,8 @@ func TestProject_Validate(t *testing.T) {
 }
 
 func TestProject_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.ProjectFilter
@@ -183,6 +197,8 @@ func TestProject_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

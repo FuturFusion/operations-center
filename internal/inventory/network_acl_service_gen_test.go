@@ -26,6 +26,8 @@ import (
 )
 
 func TestNetworkACLService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -99,6 +101,8 @@ func TestNetworkACLService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) (inventory.NetworkACLs, error) {
@@ -123,6 +127,8 @@ func TestNetworkACLService_GetAllWithFilter(t *testing.T) {
 }
 
 func TestNetworkACLService_GetAllUUIDsWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		filterExpression             *string
@@ -184,6 +190,8 @@ func TestNetworkACLService_GetAllUUIDsWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]uuid.UUID, error) {
@@ -208,6 +216,8 @@ func TestNetworkACLService_GetAllUUIDsWithFilter(t *testing.T) {
 }
 
 func TestNetworkACLService_GetByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		idArg                   uuid.UUID
@@ -241,6 +251,8 @@ func TestNetworkACLService_GetByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkACL, error) {
@@ -263,6 +275,8 @@ func TestNetworkACLService_GetByUUID(t *testing.T) {
 }
 
 func TestNetworkACLService_ResyncByUUID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                   string
 		clusterSvcGetEndpoint                  provisioning.Endpoint
@@ -549,6 +563,8 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkACL, error) {
@@ -592,6 +608,8 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 }
 
 func TestNetworkACLService_ResyncByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                   string
 		argClusterName                         string
@@ -1082,6 +1100,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]uuid.UUID, error) {

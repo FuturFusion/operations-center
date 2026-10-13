@@ -7,6 +7,8 @@ import (
 )
 
 func TestWords(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		in string
 
@@ -83,6 +85,8 @@ func TestWords(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.wantCamelCase, CamelCase(tc.in))
 			require.Equal(t, tc.wantPascalCase, PascalCase(tc.in))
 			require.Equal(t, tc.wantKebabCase, KebabCase(tc.in))

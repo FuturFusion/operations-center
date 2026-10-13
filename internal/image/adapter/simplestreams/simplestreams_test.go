@@ -17,6 +17,8 @@ import (
 )
 
 func TestSimplestreams_GetImageList(t *testing.T) {
+	t.Parallel()
+
 	type response struct {
 		statuscode int
 		body       []byte
@@ -219,6 +221,8 @@ func TestSimplestreams_GetImageList(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					response, _ := queue.Pop(t, &tc.responses)
@@ -245,6 +249,8 @@ func TestSimplestreams_GetImageList(t *testing.T) {
 }
 
 func TestSimplestreams_GetFile(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		argFileName  string
@@ -286,6 +292,8 @@ func TestSimplestreams_GetFile(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path != tc.wantFilePath {

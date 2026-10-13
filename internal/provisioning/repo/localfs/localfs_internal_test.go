@@ -28,6 +28,8 @@ import (
 )
 
 func TestLocalfs_Exists(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -87,6 +89,8 @@ func TestLocalfs_Exists(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -104,6 +108,8 @@ func TestLocalfs_Exists(t *testing.T) {
 }
 
 func TestLocalfs_Get(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -162,6 +168,8 @@ func TestLocalfs_Get(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -179,6 +187,8 @@ func TestLocalfs_Get(t *testing.T) {
 }
 
 func TestLocalfs_Put(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		update provisioning.Update
@@ -248,6 +258,8 @@ func TestLocalfs_Put(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			lfs, err := New(tmpDir, "")
@@ -290,6 +302,8 @@ type nopCloser struct {
 func (n nopCloser) Close() error { return n.err }
 
 func TestLocalfs_Delete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -316,6 +330,8 @@ func TestLocalfs_Delete(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -332,6 +348,8 @@ func TestLocalfs_Delete(t *testing.T) {
 }
 
 func TestLocalfs_PruneFiles(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -382,6 +400,8 @@ func TestLocalfs_PruneFiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -426,6 +446,8 @@ func listFiles(root string) ([]string, error) {
 }
 
 func TestLocalfs_CleanupAll(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -453,6 +475,8 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
@@ -469,6 +493,8 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 }
 
 func TestLocalfs_DeleteUnknown(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 	known := uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc")
 	unknown := uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110")
@@ -503,6 +529,8 @@ type testLocalfsCreateFromArchive struct {
 var testdataFS embed.FS
 
 func TestLocalfs_CreateFromArchive(t *testing.T) {
+	t.Parallel()
+
 	tests := []testLocalfsCreateFromArchive{
 		{
 			name:            "success",
@@ -714,6 +742,8 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			caCert, cert, key := signaturetest.GenerateCertChain(t)
 			tr := generateUpdateTar(t, tc, cert, key)

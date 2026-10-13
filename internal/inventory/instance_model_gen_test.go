@@ -14,6 +14,8 @@ import (
 )
 
 func TestIncusInstanceFullWrapper_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -34,6 +36,8 @@ func TestIncusInstanceFullWrapper_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := tc.instancefull.Value()
 
 			tc.assertErr(t, err)
@@ -42,6 +46,8 @@ func TestIncusInstanceFullWrapper_Value(t *testing.T) {
 }
 
 func TestIncusInstanceFullWrapper_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -79,6 +85,8 @@ func TestIncusInstanceFullWrapper_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := inventory.IncusInstanceFullWrapper{}
 
 			err := updateFiles.Scan(tc.value)
@@ -89,6 +97,8 @@ func TestIncusInstanceFullWrapper_Scan(t *testing.T) {
 }
 
 func TestInstance_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		instance *inventory.Instance
@@ -186,6 +196,8 @@ func TestInstance_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.instance.Validate()
 
 			tc.assertErr(t, err)
@@ -194,6 +206,8 @@ func TestInstance_Validate(t *testing.T) {
 }
 
 func TestInstance_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter inventory.InstanceFilter
@@ -223,6 +237,8 @@ func TestInstance_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}

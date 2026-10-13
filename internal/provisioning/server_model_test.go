@@ -15,6 +15,8 @@ import (
 )
 
 func TestServer_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		server provisioning.Server
@@ -411,6 +413,8 @@ one
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.server.Validate()
 
 			tc.assertErr(t, err)
@@ -419,6 +423,8 @@ one
 }
 
 func TestServer_NormalizeIdentifiers(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		server provisioning.Server
@@ -467,6 +473,8 @@ func TestServer_NormalizeIdentifiers(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tc.server.NormalizeIdentifiers()
 
 			require.Equal(t, tc.wantSystemUUID, tc.server.SystemUUID, "system UUID should be normalized to lower case")
@@ -476,6 +484,8 @@ func TestServer_NormalizeIdentifiers(t *testing.T) {
 }
 
 func TestServer_UpdateState(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		server provisioning.Server
@@ -494,6 +504,8 @@ func TestServer_UpdateState(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			state := tc.server.UpdateState()
 
 			require.Equal(t, tc.want, state)
@@ -502,6 +514,8 @@ func TestServer_UpdateState(t *testing.T) {
 }
 
 func TestServer_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter provisioning.ServerFilter
@@ -533,6 +547,8 @@ func TestServer_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 			require.Equal(t, tc.wantEmpty, tc.filter.IsEmpty())
 		})
@@ -540,6 +556,8 @@ func TestServer_Filter(t *testing.T) {
 }
 
 func TestServer_Getters(t *testing.T) {
+	t.Parallel()
+
 	server := provisioning.Server{
 		Name:          "server1",
 		ConnectionURL: "http://example.com:443/",
@@ -560,6 +578,8 @@ func TestServer_Getters(t *testing.T) {
 }
 
 func TestServer_Clone(t *testing.T) {
+	t.Parallel()
+
 	server := provisioning.Server{
 		Name:    "name",
 		Cluster: new("cluster"),
@@ -592,6 +612,8 @@ func TestServer_Clone(t *testing.T) {
 }
 
 func TestServer_Clone_statusInternal(t *testing.T) {
+	t.Parallel()
+
 	startedAt := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 
 	server := provisioning.Server{
@@ -634,6 +656,8 @@ func TestServer_Clone_statusInternal(t *testing.T) {
 }
 
 func TestServer_GetServerName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		server provisioning.Server
@@ -673,6 +697,8 @@ func TestServer_GetServerName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			serverName, err := tc.server.GetServerName()
 			tc.assertErr(t, err)
 
@@ -682,6 +708,8 @@ func TestServer_GetServerName(t *testing.T) {
 }
 
 func TestDetermineManagementRoleURL(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   api.OSData
@@ -732,6 +760,8 @@ func TestDetermineManagementRoleURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := provisioning.DetermineManagementRoleURL(tc.in)
 
 			tc.assertErr(t, err)
@@ -741,6 +771,8 @@ func TestDetermineManagementRoleURL(t *testing.T) {
 }
 
 func TestDetermineMeshTunnelInterface(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   api.OSData
@@ -844,6 +876,8 @@ func TestDetermineMeshTunnelInterface(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := provisioning.DetermineMeshTunnelInterface(tc.in)
 
 			tc.assertErr(t, err)
@@ -853,6 +887,8 @@ func TestDetermineMeshTunnelInterface(t *testing.T) {
 }
 
 func TestDetermineMeshTunnelLocalAddress(t *testing.T) {
+	t.Parallel()
+
 	osData := func(addresses ...string) api.OSData {
 		return api.OSData{
 			Network: incusosapi.SystemNetwork{
@@ -905,6 +941,8 @@ func TestDetermineMeshTunnelLocalAddress(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := provisioning.DetermineMeshTunnelLocalAddress(tc.in)
 
 			require.Equal(t, tc.want, got)
@@ -913,6 +951,8 @@ func TestDetermineMeshTunnelLocalAddress(t *testing.T) {
 }
 
 func TestMeshTunnelLocalAddresses(t *testing.T) {
+	t.Parallel()
+
 	osData := api.OSData{
 		Network: incusosapi.SystemNetwork{
 			State: incusosapi.SystemNetworkState{

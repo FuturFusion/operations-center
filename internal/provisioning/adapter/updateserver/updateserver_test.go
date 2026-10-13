@@ -22,6 +22,8 @@ import (
 )
 
 func TestUpdateServer_GetLatest(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		queryParameterAuthentication bool
@@ -155,6 +157,8 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			envMock := &mock.EnvironmentMock{
 				GetTokenFunc: func(ctx context.Context) (string, error) {
 					return "token", nil
@@ -201,6 +205,8 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 }
 
 func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		statusCode   int
@@ -229,6 +235,8 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			errChan := make(chan error, 1)
 
 			svr := httptest.NewServer(

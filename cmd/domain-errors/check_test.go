@@ -10,6 +10,8 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		pattern string
@@ -61,6 +63,8 @@ func TestCheck(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			pkgs, err := scan.Load(tc.pattern)
 			require.NoError(t, err)
 
@@ -85,6 +89,8 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckUnknownConstructs(t *testing.T) {
+	t.Parallel()
+
 	result := &scan.Result{
 		UnknownConstructs: []scan.UnknownConstruct{
 			{Name: "NewSomethingErr", What: "constructor"},
@@ -105,6 +111,8 @@ func TestCheckUnknownConstructs(t *testing.T) {
 }
 
 func TestScanKnowsEveryDomainConstruct(t *testing.T) {
+	t.Parallel()
+
 	pkgs, err := scan.Load(scan.DomainPkg)
 	require.NoError(t, err)
 
@@ -116,6 +124,8 @@ func TestScanKnowsEveryDomainConstruct(t *testing.T) {
 }
 
 func TestCheckIgnoreDirective(t *testing.T) {
+	t.Parallel()
+
 	pkgs, err := scan.Load("./testdata/violations")
 	require.NoError(t, err)
 

@@ -19,6 +19,8 @@ import (
 )
 
 func Test_systemHandler_certificateGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                           string
 		systemServiceGetCertificate    apisystem.Certificate
@@ -93,6 +95,8 @@ func Test_systemHandler_certificateGet(t *testing.T) {
 }
 
 func Test_systemHandler_certificatePut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                              string
 		requestBody                       string

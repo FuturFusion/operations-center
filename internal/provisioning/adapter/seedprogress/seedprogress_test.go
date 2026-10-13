@@ -16,6 +16,8 @@ import (
 const testDeploymentID = "deployment-1"
 
 func TestTracker_overlappingRangeReads(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789abcdefghij"
 
 	ctx := context.Background()
@@ -36,6 +38,8 @@ func TestTracker_overlappingRangeReads(t *testing.T) {
 }
 
 func TestTracker_repeatedRangeReads(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789abcdefghij"
 
 	ctx := context.Background()
@@ -55,6 +59,8 @@ func TestTracker_repeatedRangeReads(t *testing.T) {
 }
 
 func TestTracker_coverageAcrossRequests(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789abcdefghij"
 
 	ctx := context.Background()
@@ -82,6 +88,8 @@ func TestTracker_coverageAcrossRequests(t *testing.T) {
 }
 
 func TestTracker_seekedReadsRecordAbsoluteOffsets(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789abcdefghij"
 
 	ctx := context.Background()
@@ -112,6 +120,8 @@ func TestTracker_seekedReadsRecordAbsoluteOffsets(t *testing.T) {
 }
 
 func TestTrackerReset(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789"
 
 	ctx := context.Background()
@@ -140,6 +150,8 @@ func TestTrackerReset(t *testing.T) {
 }
 
 func TestTracker_readsFromSeveralSources(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789"
 
 	ctx := context.Background()
@@ -170,6 +182,8 @@ func TestTracker_readsFromSeveralSources(t *testing.T) {
 }
 
 func TestTracker_evictionAfterIdlePeriod(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789"
 
 	ctx := context.Background()

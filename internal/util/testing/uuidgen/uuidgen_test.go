@@ -11,6 +11,8 @@ import (
 )
 
 func TestFromPattern(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		pattern string
@@ -67,6 +69,8 @@ func TestFromPattern(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			dummyT := &dummyTestingT{}
 
 			var id uuid.UUID
