@@ -11,6 +11,8 @@ import (
 )
 
 func TestEnvironment_GetSecureBootPlatformKeyUpdate(t *testing.T) {
+	t.Parallel()
+
 	update := []byte("a signed platform key update")
 
 	tests := []struct {
@@ -62,6 +64,8 @@ func TestEnvironment_GetSecureBootPlatformKeyUpdate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			path := filepath.Join(t.TempDir(), "PK.auth")
 
 			if !tc.absent {
