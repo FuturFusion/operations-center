@@ -148,6 +148,11 @@ clean_operations_center() {
   fi
 }
 
+# A test run without cleanup leaves OpenFGA running.
+step "Stop OpenFGA"
+# The test starts OpenFGA with a normalized path.
+ignore_errors '^$' pkill -f "$(realpath -ms "$tmp_dir")/openfga/openfga run"
+
 step "Remove temporary files"
 rm -rf "$tmp_dir/image-downloads"
 rm -rf "$tmp_dir/oidc-cli-config"

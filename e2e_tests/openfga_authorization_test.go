@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 )
 
 const (
@@ -47,7 +48,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 
 	// Setup
 	provider := startOIDCProvider(t)
-	backend := startOpenFGA(t)
+	backend := startOpenFGA(t, tmpDir)
 
 	operationsCenterAddress := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '."e2e-test".addr'`, cpuArch).OutputTrimmed()
 	require.NotEmpty(t, operationsCenterAddress, "Failed to determine the address of Operations Center")
@@ -189,21 +190,11 @@ func assertUnreachableOpenFGAIsRejected(ctx context.Context, t *testing.T, tmpDi
 	defer stop()
 
 	// Setup
-	// Listen and close again to get a port without a listener.
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
-	require.NoError(t, err, "Failed to listen on a free port")
-
-	tcpAddr, ok := listener.Addr().(*net.TCPAddr)
-	require.True(t, ok, "Failed to get the port of the listener")
-
-	err = listener.Close()
-	require.NoError(t, err, "Failed to close the listener")
-
-	unreachableAPIURL := "http://" + net.JoinHostPort(e2eHostAddress(t), strconv.Itoa(tcpAddr.Port))
+	unreachableAPIURL := "http://" + net.JoinHostPort(e2eHostAddress(t), testingnet.FreePort(t, "0.0.0.0"))
 
 	// Run test
 	t.Log("Verify that Operations Center rejects an unreachable OpenFGA server")
-	err = setSystemSecurityOpenFGAWithContext(ctx, t, tmpDir, unreachableAPIURL, openFGAAPIToken, backend.StoreID)
+	err := setSystemSecurityOpenFGAWithContext(ctx, t, tmpDir, unreachableAPIURL, openFGAAPIToken, backend.StoreID)
 
 	// Assertions
 	require.ErrorContains(t, err, "Failed to reach OpenFGA", "expect Operations Center to reject an OpenFGA server it cannot reach")

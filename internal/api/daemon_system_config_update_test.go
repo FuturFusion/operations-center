@@ -23,7 +23,7 @@ import (
 
 func TestSystemConfigUpdate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Authentication tests are slow due to the use of test containers")
+		t.Skip("System config update tests are slow")
 	}
 
 	err := os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
@@ -51,8 +51,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 	// Setup OIDC mock service.
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
-	// Start OpenFGA container.
-	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
+	openFGAEndpoint, openFGAStoreID := setupOpenFGA(t)
 
 	env := &mock.EnvironmentMock{
 		IsIncusOSFunc: func() bool {
@@ -298,12 +297,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 		t.Log(`7. Expect bad request for an unreachable OIDC issuer or OpenFGA server`)
-		// Listen and close again to get a port without a listener.
-		listener, err := net.Listen("tcp", "127.0.0.1:0")
-		require.NoError(t, err)
-		unreachableEndpoint := "http://" + listener.Addr().String()
-		err = listener.Close()
-		require.NoError(t, err)
+		unreachableEndpoint := "http://" + net.JoinHostPort("127.0.0.1", testingnet.FreePort(t, "127.0.0.1"))
 
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
   "oidc": {
