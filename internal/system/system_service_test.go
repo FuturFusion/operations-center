@@ -36,6 +36,8 @@ import (
 )
 
 func TestSystemService_GetCertificate(t *testing.T) {
+	t.Parallel()
+
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -72,6 +74,8 @@ func TestSystemService_GetCertificate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 
@@ -850,6 +854,8 @@ func isRoot(t *testing.T) bool {
 }
 
 func TestSystemService_TriggerCertificateRenew(t *testing.T) {
+	t.Parallel()
+
 	currentCertPEM, currentKeyPEM, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
@@ -910,6 +916,8 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 
@@ -1651,6 +1659,8 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 }
 
 func TestSystemService_CleanCache(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                   string
 		cacheRepoCleanupAllErr error
@@ -1672,6 +1682,8 @@ func TestSystemService_CleanCache(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			cacheRepo := &repoMock.CacheRepoMock{
 				CleanupAllFunc: func(ctx context.Context) error {
@@ -1691,6 +1703,8 @@ func TestSystemService_CleanCache(t *testing.T) {
 }
 
 func TestSystemService_Restore(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name               string
 		servers            provisioning.Servers
@@ -1739,6 +1753,8 @@ func TestSystemService_Restore(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			dir := t.TempDir()
 
