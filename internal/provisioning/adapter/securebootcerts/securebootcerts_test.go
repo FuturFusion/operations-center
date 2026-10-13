@@ -14,6 +14,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	catalog, err := securebootcerts.New()
 	require.NoError(t, err, "The shipped certificate catalog has to be valid")
 
@@ -28,6 +30,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewHoldsEveryShippedCertificate(t *testing.T) {
+	t.Parallel()
+
 	catalog, err := securebootcerts.New()
 	require.NoError(t, err)
 
@@ -53,6 +57,8 @@ func TestNewHoldsEveryShippedCertificate(t *testing.T) {
 }
 
 func TestCatalog_CertificatesByFingerprint(t *testing.T) {
+	t.Parallel()
+
 	catalog, err := securebootcerts.New()
 	require.NoError(t, err)
 

@@ -7,6 +7,8 @@ import (
 )
 
 func Test_splitConfig(t *testing.T) {
+	t.Parallel()
+
 	nodeSpecificConfigKeys := map[string]map[string]bool{
 		"server": {
 			"core.https_address": true,
@@ -41,6 +43,8 @@ func Test_splitConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := splitConfig(nodeSpecificConfigKeys)(tc.in, tc.kind)
 
 			require.Equal(t, tc.want, got)
@@ -49,6 +53,8 @@ func Test_splitConfig(t *testing.T) {
 }
 
 func Test_splitConfig_panics(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   any
@@ -68,6 +74,8 @@ func Test_splitConfig_panics(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Panics(t, func() {
 				_ = splitConfig(map[string]map[string]bool{})(tc.in, tc.kind)
 			})

@@ -11,6 +11,8 @@ import (
 )
 
 func Test_incusPreseedWithDefaults(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		config map[string]any
@@ -324,6 +326,8 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, _, err := incusPreseedWithDefaults(tc.config, nil, nil)
 
 			tc.assertErr(t, err)
@@ -333,6 +337,8 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 }
 
 func Test_incusPreseedWithDefaults_trustedClientCertificates(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                           string
 		config                         map[string]any
@@ -449,6 +455,8 @@ func Test_incusPreseedWithDefaults_trustedClientCertificates(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, gotKnown, err := incusPreseedWithDefaults(tc.config, tc.trustedClientCertificates, tc.knownTrustedClientCertificates)
 
 			tc.assertErr(t, err)

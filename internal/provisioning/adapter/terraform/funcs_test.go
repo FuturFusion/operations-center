@@ -7,6 +7,8 @@ import (
 )
 
 func Test_tfString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   string
@@ -47,6 +49,8 @@ func Test_tfString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tfString(tc.in)
 
 			require.Equal(t, tc.want, got)
@@ -55,6 +59,8 @@ func Test_tfString(t *testing.T) {
 }
 
 func Test_maxKeyLength(t *testing.T) {
+	t.Parallel()
+
 	type customMap map[string]string
 
 	tests := []struct {
@@ -103,6 +109,8 @@ func Test_maxKeyLength(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := maxKeyLength(tc.in)
 
 			require.Equal(t, tc.want, got)

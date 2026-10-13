@@ -23,6 +23,8 @@ import (
 var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
 
 func TestTerraform_Init(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		clusterName      string
@@ -63,6 +65,8 @@ func TestTerraform_Init(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 
@@ -290,6 +294,8 @@ cluster_groups:
 }
 
 func TestTerraform_Init_trustedClientCertificates(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 
 	tf, err := terraform.New(
@@ -329,6 +335,8 @@ func TestTerraform_Init_trustedClientCertificates(t *testing.T) {
 }
 
 func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                           string
 		trustedClientCertificates      []string
@@ -353,6 +361,8 @@ func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tmpDir := t.TempDir()
 
 			tf, err := terraform.New(
@@ -438,6 +448,8 @@ func fileMatchGolden(t *testing.T, filename string, goldenFilename string) {
 }
 
 func TestTerraform_Apply(t *testing.T) {
+	t.Parallel()
+
 	noopAssertPostProcessedFiles := func(*testing.T, string, string) {}
 
 	tests := []struct {
@@ -535,6 +547,8 @@ func TestTerraform_Apply(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			tmpDir := t.TempDir()
 			clusterName := "foobar"

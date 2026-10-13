@@ -7,6 +7,8 @@ import (
 )
 
 func Test_cleanEnvVars(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   []string
@@ -47,6 +49,8 @@ func Test_cleanEnvVars(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			out := cleanEnvVars(tc.in)
 
 			require.ElementsMatch(t, tc.want, out)
