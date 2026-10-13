@@ -392,7 +392,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Handler: componentMiddleware(
 			logger.RequestIDMiddleware(
 				logger.AccessLogMiddleware(
-					serveMux,
+					// Keep the metrics middleware innermost. Some outer
+					// middlewares copy the request. A copy does not receive
+					// the matched pattern.
+					metrics.HTTPMiddleware(serveMux),
 				),
 			),
 		),
