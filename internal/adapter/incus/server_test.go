@@ -19,6 +19,8 @@ import (
 )
 
 func TestClientServer(t *testing.T) {
+	t.Parallel()
+
 	methods := []methodTestSet{
 		{
 			name: "IsReady",
