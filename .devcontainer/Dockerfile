@@ -27,7 +27,6 @@ apt install -y \
   aspell \
   aspell-en \
   direnv \
-  docker.io \
   dosfstools \
   efitools \
   fish \
@@ -65,7 +64,6 @@ RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
 # Add vscode user and add it to sudoers.
 RUN groupadd -g 1000 $USERNAME && \
     useradd -s /bin/bash -u $USER_UID -g $USER_GID -m $USERNAME && \
-    usermod -aG docker $USERNAME && \
     mkdir -p /etc/sudoers.d && \
     echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME

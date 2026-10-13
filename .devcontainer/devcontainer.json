@@ -7,7 +7,6 @@
       "extensions": [
         "golang.go",
         "766b.go-outliner",
-        "ms-azuretools.vscode-docker",
         "ms-vscode.makefile-tools",
         "github.vscode-github-actions",
         "davidanson.vscode-markdownlint",
@@ -72,12 +71,6 @@
           }
         }
       }
-    }
-  },
-
-  "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "moby": false
     }
   },
 
