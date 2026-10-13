@@ -12,6 +12,8 @@ import (
 )
 
 func TestError_ErrorAndMessage(t *testing.T) {
+	t.Parallel()
+
 	err := domain.NewErrorf(domain.ErrOperationNotPermitted, "server_not_evacuated", "Server %q is not evacuated", "one")
 
 	require.Equal(t, `Server "one" is not evacuated`, err.Error(), "message is reported without the kind")
@@ -25,6 +27,8 @@ func TestError_ErrorAndMessage(t *testing.T) {
 }
 
 func TestError_Details(t *testing.T) {
+	t.Parallel()
+
 	err := domain.NewErrorf(domain.ErrNotFound, "", "Server %q not found", "one")
 	withDetail := err.WithDetail("server", "one")
 
@@ -34,6 +38,8 @@ func TestError_Details(t *testing.T) {
 }
 
 func TestError_Is(t *testing.T) {
+	t.Parallel()
+
 	err := fmt.Errorf("Failed to delete server: %w", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server is a cluster member"))
 
 	require.ErrorIs(t, err, domain.ErrOperationNotPermitted, "the kind is matched through wrapping")
@@ -41,6 +47,8 @@ func TestError_Is(t *testing.T) {
 }
 
 func TestError_As(t *testing.T) {
+	t.Parallel()
+
 	err := fmt.Errorf("Failed to update server: %w", domain.NewErrorf(domain.ErrInvalidArgument, "", "Server name can not be empty"))
 
 	var validationErr domain.ErrValidation
@@ -52,12 +60,16 @@ func TestError_As(t *testing.T) {
 }
 
 func TestError_Unwrap(t *testing.T) {
+	t.Parallel()
+
 	err := domain.NewErrorf(domain.ErrNotFound, "", "Server %q not found", "one").WithCause(boom.Error)
 
 	boom.ErrorIs(t, err, "the cause stays part of the error chain")
 }
 
 func TestUserMessage(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -107,6 +119,8 @@ func TestUserMessage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, domain.UserMessage(tc.err))
 		})
 	}

@@ -16,12 +16,16 @@ import (
 )
 
 func TestValidationErr_Error(t *testing.T) {
+	t.Parallel()
+
 	err := domain.NewValidationErrf("boom!")
 
 	require.Equal(t, "boom!", err.Error())
 }
 
 func TestRetryableErrf(t *testing.T) {
+	t.Parallel()
+
 	err := fmt.Errorf("Outer wrap: %w", domain.NewRetryableErr(boom.Error))
 
 	var retryableErr domain.ErrRetryable
@@ -29,6 +33,8 @@ func TestRetryableErrf(t *testing.T) {
 }
 
 func TestIsRetryableError(t *testing.T) {
+	t.Parallel()
+
 	nilRetryableErr := domain.NewRetryableErr(nil)
 	require.False(t, domain.IsRetryableError(nilRetryableErr))
 
@@ -45,6 +51,8 @@ func TestIsRetryableError(t *testing.T) {
 }
 
 func TestRetryableWrapper(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		inErr error
@@ -139,6 +147,8 @@ func TestRetryableWrapper(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := domain.RetryableWrapper()(tc.inErr)
 
 			require.Equal(t, tc.want, domain.IsRetryableError(err))
