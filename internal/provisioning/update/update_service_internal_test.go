@@ -672,6 +672,8 @@ func makeUpdate(
 }
 
 func TestUpdateService_validateUpdatesConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		filterExpression     string
@@ -708,6 +710,8 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateSvc := New(nil, nil, nil, nil)
 
 			err := updateSvc.validateUpdatesConfig(t.Context(), system.Updates{

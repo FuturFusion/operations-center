@@ -14,6 +14,8 @@ import (
 )
 
 func TestUpdate_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		server provisioning.Update
@@ -81,6 +83,8 @@ func TestUpdate_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tc.server.Validate()
 
 			tc.assertErr(t, err)
@@ -89,6 +93,8 @@ func TestUpdate_Validate(t *testing.T) {
 }
 
 func TestUpdate_Components(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 	}{
@@ -99,6 +105,8 @@ func TestUpdate_Components(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			update := provisioning.Update{
 				Files: provisioning.UpdateFiles{
 					{
@@ -133,6 +141,8 @@ func TestUpdate_Components(t *testing.T) {
 }
 
 func TestUpdate_Applications(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 	}{
@@ -143,6 +153,8 @@ func TestUpdate_Applications(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			update := provisioning.Update{
 				Files: provisioning.UpdateFiles{
 					{
@@ -181,6 +193,8 @@ func TestUpdate_Applications(t *testing.T) {
 }
 
 func TestUpdate_Filter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		filter provisioning.UpdateFilter
@@ -207,12 +221,16 @@ func TestUpdate_Filter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
 }
 
 func TestUpdatesSort(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   provisioning.Updates
@@ -347,6 +365,8 @@ func TestUpdatesSort(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			sort.Stable(tc.in)
 
 			require.Equal(t, tc.want, tc.in)
@@ -355,6 +375,8 @@ func TestUpdatesSort(t *testing.T) {
 }
 
 func TestUpdateFiles_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -387,6 +409,8 @@ func TestUpdateFiles_UnmarshalJSON(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := provisioning.UpdateFiles{}
 
 			err := updateFiles.UnmarshalJSON(tc.input)
@@ -397,6 +421,8 @@ func TestUpdateFiles_UnmarshalJSON(t *testing.T) {
 }
 
 func TestUpdateFiles_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -423,6 +449,8 @@ func TestUpdateFiles_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tc.updateFiles.Value()
 
 			tc.assertErr(t, err)
@@ -432,6 +460,8 @@ func TestUpdateFiles_Value(t *testing.T) {
 }
 
 func TestUpdateFiles_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -484,6 +514,8 @@ func TestUpdateFiles_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateFiles := provisioning.UpdateFiles{}
 
 			err := updateFiles.Scan(tc.value)
@@ -495,6 +527,8 @@ func TestUpdateFiles_Scan(t *testing.T) {
 }
 
 func TestUpdateUpstreamChannels_Value(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -515,6 +549,8 @@ func TestUpdateUpstreamChannels_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tc.updateFiles.Value()
 
 			tc.assertErr(t, err)
@@ -524,6 +560,8 @@ func TestUpdateUpstreamChannels_Value(t *testing.T) {
 }
 
 func TestUpdateUpstreamChannels_Scan(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -566,6 +604,8 @@ func TestUpdateUpstreamChannels_Scan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			updateUpstreamChannels := provisioning.UpdateUpstreamChannels{}
 
 			err := updateUpstreamChannels.Scan(tc.value)
