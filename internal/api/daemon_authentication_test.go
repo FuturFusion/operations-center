@@ -18,14 +18,13 @@ import (
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/stretchr/testify/require"
-	testcontainers "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/openfga"
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
+	testingopenfga "github.com/FuturFusion/operations-center/internal/util/testing/openfga"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -45,10 +44,6 @@ var users = []string{
 }
 
 func TestAuthentication(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Authentication tests are slow due to the use of test containers")
-	}
-
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
@@ -76,7 +71,7 @@ func TestAuthentication(t *testing.T) {
 
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
-	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
+	openFGAEndpoint, openFGAStoreID := setupOpenFGA(t)
 
 	var token string
 
@@ -897,24 +892,17 @@ func setupMockOIDC(t *testing.T) (*mockoidc.MockOIDC, map[string]string) {
 	return m, accessTokens
 }
 
-func setupOpenFGA(ctx context.Context, t *testing.T) (endpoint string, storeID string) {
+func setupOpenFGA(t *testing.T) (endpoint string, storeID string) {
 	t.Helper()
 
-	openfgaContainer, err := openfga.Run(ctx, "openfga/openfga:v1.8.9")
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = testcontainers.TerminateContainer(openfgaContainer)
-		require.NoError(t, err)
-	})
-
-	openFGAEndpoint, err := openfgaContainer.PortEndpoint(ctx, "8080", "")
-	require.NoError(t, err)
-	openFGAEndpoint = "http://" + openFGAEndpoint
+	openFGAEndpoint := testingopenfga.Run(t)
 
 	resp, err := http.Post(openFGAEndpoint+"/stores", "application/json", bytes.NewBufferString(`{"name": "operations-center"}`))
 	require.NoError(t, err)
 	defer resp.Body.Close()
+
+	// The in-process HTTP API returns 200. A standalone OpenFGA server returns 201.
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Failed to create the OpenFGA store")
 
 	createStoreResponseBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -925,6 +913,7 @@ func setupOpenFGA(ctx context.Context, t *testing.T) (endpoint string, storeID s
 
 	err = json.Unmarshal(createStoreResponseBody, &createStoreResponse)
 	require.NoError(t, err)
+	require.NotEmpty(t, createStoreResponse.ID, "OpenFGA returned no store ID")
 
 	return openFGAEndpoint, createStoreResponse.ID
 }
