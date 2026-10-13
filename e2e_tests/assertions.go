@@ -743,3 +743,51 @@ func assertOperationsCenterCliAdminDebugPprof(t *testing.T, tmpDir string) {
 	// Text profile.
 	mustRun(t, `../bin/operations-center.linux.%s admin debug pprof goroutine --debug 1 | grep "goroutine profile:"`, cpuArch)
 }
+
+func assertOperationsCenterMetrics(t *testing.T) {
+	t.Helper()
+
+	t.Log("Assert operations-center metrics endpoint")
+
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	metricsURL := fmt.Sprintf("https://%s:8443/1.0/metrics", operationsCenterIPAddress(t))
+	clientCert := filepath.Join(homeDir, ".config/incus/client.crt")
+	clientKey := filepath.Join(homeDir, ".config/incus/client.key")
+
+	disableMetrics := fmt.Sprintf(`EDITOR='sed -i "s|^metrics_enabled: .*|metrics_enabled: false|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+	enableMetrics := fmt.Sprintf(`EDITOR='sed -i "s|^metrics_enabled: .*|metrics_enabled: true|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+
+	resp := mustRun(t, `curl -sk -o /dev/null -w '%%{http_code}' %s`, metricsURL)
+	require.Equal(t, "401", resp.OutputTrimmed(), "expect the metrics endpoint to reject an unauthenticated request")
+
+	resp = mustRun(t, `curl -sfk --cert %s --key %s %s`, clientCert, clientKey, metricsURL)
+	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to be enabled by default")
+	require.Regexp(t, `(?m)^operations_center_http_requests_total\{.*route="/1\.0`, resp.Output(), "expect the HTTP API metrics to be enabled by default and to carry the matched route")
+
+	resp = mustRun(t, `curl -sfk --cert %s --key %s -H 'Accept: application/openmetrics-text; version=1.0.0' %s`, clientCert, clientKey, metricsURL)
+	require.True(t, strings.HasSuffix(resp.OutputTrimmed(), "# EOF"), "expect the OpenMetrics format to end with the end marker")
+
+	mustRun(t, "%s", disableMetrics)
+	t.Cleanup(func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		mustRunWithContext(ctx, t, "%s", enableMetrics)
+	})
+
+	resp = mustRun(t, `curl -sk --cert %s --key %s -w '\n%%{http_code}' %s`, clientCert, clientKey, metricsURL)
+	require.Contains(t, resp.Output(), "metrics_enabled", "expect the disabled metrics endpoint to hint at the setting")
+	require.True(t, strings.HasSuffix(resp.OutputTrimmed(), "\n400"), "expect the disabled metrics endpoint to return status 400")
+
+	mustRun(t, "%s", enableMetrics)
+
+	resp = mustRun(t, `curl -sfk --cert %s --key %s %s`, clientCert, clientKey, metricsURL)
+	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to serve metrics after it is enabled again")
+}

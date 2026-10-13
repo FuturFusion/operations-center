@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 )
 
 var componentDaemon = logger.RegisterComponent("daemon")
@@ -100,6 +101,8 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to set per component log levels from config: %w", err)
 	}
+
+	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
 
 	rootCtx, stop := signal.NotifyContext(
 		context.Background(),

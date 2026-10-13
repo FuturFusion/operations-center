@@ -79,12 +79,14 @@ certificates are available.
 
 ## System settings
 
-| Configuration                   | Description                                                                                                   | Value(s)             | Default |
-| :---                            | :---                                                                                                          | :---                 | :---    |
-| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`  |
-| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |         |
-| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |         |
-| `pprof_enabled`                 | Enable the pprof debug endpoints, see *pprof debug endpoints* below for details                               | true/false           | false   |
+| Configuration                   | Description                                                                                                   | Value(s)             | Default          |
+| :---                            | :---                                                                                                          | :---                 | :---             |
+| `log_level`                     | Default log level for Operations Center logs                                                                  | string               | `WARN`           |
+| `log_levels`                    | Log levels per component, overriding `log_level`, see *Per component log levels* below for details            | map of string:string |                  |
+| `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string               |                  |
+| `pprof_enabled`                 | Enable the pprof debug endpoints, see *pprof debug endpoints* below for details                               | true/false           | false            |
+| `metrics_enabled`               | Enable the metrics endpoint, see *Metrics components* below for details                                       | true/false           | true             |
+| `metrics_components`            | Components that expose metrics, see *Metrics components* below for details                                    | list of strings      | `runtime`, `api` |
 
 The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
 
@@ -142,6 +144,36 @@ have a name of their own, e.g. `provisioning.server_service`,
 Changes to `log_levels` take effect immediately, a restart is not required. The
 `--verbose` and `--debug` command line flags of `operations-centerd` only govern
 the default log level, the per component log levels always apply.
+
+### Metrics components
+
+Operations Center serves metrics at `/1.0/metrics`. See [Metrics](metrics.md).
+`metrics_enabled` enables or disables the endpoint. If it is `false`, the
+endpoint returns an error and no metrics are collected.
+
+`metrics_components` lists the components that expose metrics. A component
+that is not in the list exposes no metrics.
+
+Component names are hierarchical. Dots separate the levels. Enabling a
+component also enables all of its children.
+
+```yaml
+settings:
+  metrics_enabled: true
+  metrics_components:
+    - runtime
+    - api
+```
+
+Operations Center rejects an unknown component.
+
+````{dropdown} Complete list of metrics components
+```{include} settings_metrics_components.md
+```
+````
+
+Changes to `metrics_enabled` and `metrics_components` take effect immediately.
+A restart is not required.
 
 ### pprof debug endpoints
 

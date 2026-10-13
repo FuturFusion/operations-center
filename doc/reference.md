@@ -11,6 +11,7 @@ Backup and restore </reference/backup>
 Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
 Inventory </reference/inventory>
+Metrics </reference/metrics>
 Server </reference/server>
 Settings </reference/settings>
 Token </reference/token>

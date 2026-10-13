@@ -94,6 +94,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
@@ -154,7 +155,7 @@ type Daemon struct {
 }
 
 func NewDaemon(ctx context.Context, env environment) *Daemon {
-	registerComponentLevelsValidation()
+	registerComponentsValidation()
 
 	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
 	clientCert, err := os.ReadFile(clientCertFilename)
@@ -391,7 +392,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Handler: componentMiddleware(
 			logger.RequestIDMiddleware(
 				logger.AccessLogMiddleware(
-					serveMux,
+					// Keep the metrics middleware innermost. Some outer
+					// middlewares copy the request. A copy does not receive
+					// the matched pattern.
+					metrics.HTTPMiddleware(serveMux),
 				),
 			),
 		),
@@ -1144,6 +1148,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	debugRouter := api10router.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
+
+	metricsRouter := api10router.SubGroup("/metrics")
+	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
 
 	internalRouter := api10router.SubGroup("/internal")
 	registerInternalHandler(internalRouter, d.authorizer, db)

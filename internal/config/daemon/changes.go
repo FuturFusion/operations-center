@@ -54,6 +54,11 @@ func isPprofEnabledChanged(oldCfg, newCfg config) bool {
 	return oldCfg.Settings.PprofEnabled != newCfg.Settings.PprofEnabled
 }
 
+func isMetricsChanged(oldCfg, newCfg config) bool {
+	return oldCfg.Settings.MetricsEnabled != newCfg.Settings.MetricsEnabled ||
+		!slices.Equal(oldCfg.Settings.MetricsComponents, newCfg.Settings.MetricsComponents)
+}
+
 func isSettingsChanged(oldCfg, newCfg config) bool {
 	return !reflect.DeepEqual(oldCfg.Settings.SettingsPut, newCfg.Settings.SettingsPut)
 }
