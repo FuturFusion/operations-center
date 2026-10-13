@@ -3,7 +3,6 @@ package api_test
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -28,15 +28,20 @@ func TestStartAndStop(t *testing.T) {
 	err = f.Close()
 	require.NoError(t, err)
 
-	// Block port 17444
-	go func() {
-		_ = http.ListenAndServe(fmt.Sprintf(":%d", 17444), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	}()
+	freePort := testingnet.FreePort(t, "")
+
+	// Block a port. Close the listener after the test to not leak the port.
+	blockedPort := testingnet.FreePort(t, "")
+	blockingListener, err := net.Listen("tcp", ":"+blockedPort)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, blockingListener.Close())
+	})
 
 	tests := []struct {
 		name       string
 		unixSocket string
-		bindPort   int
+		bindPort   string
 
 		assertStartErr require.ErrorAssertionFunc
 		assertStopErr  require.ErrorAssertionFunc
@@ -45,7 +50,7 @@ func TestStartAndStop(t *testing.T) {
 		{
 			name:       "success - unix socket request",
 			unixSocket: filepath.Join(tmpDir, "unix.socket"),
-			bindPort:   17443,
+			bindPort:   freePort,
 
 			assertStartErr: require.NoError,
 			assertStopErr:  require.NoError,
@@ -74,7 +79,7 @@ func TestStartAndStop(t *testing.T) {
 		{
 			name:       "success - http request",
 			unixSocket: filepath.Join(tmpDir, "unix.socket"),
-			bindPort:   17443,
+			bindPort:   freePort,
 
 			assertStartErr: require.NoError,
 			assertStopErr:  require.NoError,
@@ -89,7 +94,7 @@ func TestStartAndStop(t *testing.T) {
 					},
 				}
 
-				resp, err := client.Get("https://localhost:17443")
+				resp, err := client.Get("https://localhost:" + freePort)
 				require.NoError(t, err)
 				defer resp.Body.Close()
 
@@ -103,7 +108,7 @@ func TestStartAndStop(t *testing.T) {
 		{
 			name:       "error - invalid unix socket",
 			unixSocket: tmpDir, // invalid, because it is a directory
-			bindPort:   17443,
+			bindPort:   freePort,
 
 			assertStartErr: require.Error,
 			// Start fails before any listener is served, so there is nothing left to fail during stop.
@@ -113,7 +118,7 @@ func TestStartAndStop(t *testing.T) {
 		{
 			name:       "error - http port already taken",
 			unixSocket: filepath.Join(tmpDir, "unix.socket"),
-			bindPort:   17444,
+			bindPort:   blockedPort,
 
 			assertStartErr: require.Error,
 			assertStopErr:  require.Error,
@@ -151,8 +156,8 @@ func TestStartAndStop(t *testing.T) {
 				SourcePollSkipFirst:       true,
 			})
 			err := config.UpdateNetwork(ctx, system.NetworkPut{
-				OperationsCenterAddress: "https://127.0.0.1:17443",
-				RestServerAddress:       fmt.Sprintf(":%d", tc.bindPort),
+				OperationsCenterAddress: "https://127.0.0.1:" + freePort,
+				RestServerAddress:       ":" + tc.bindPort,
 			})
 			require.NoError(t, err)
 
