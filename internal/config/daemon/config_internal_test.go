@@ -610,6 +610,8 @@ func Test_UpdateSecurity_trustedClientCertificates(t *testing.T) {
 }
 
 func Test_validateURI(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		uri            string
@@ -720,6 +722,8 @@ func Test_validateURI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := validateURI(tc.uri, tc.required, tc.enforceNoPath, tc.enforceNoQuery)
 
 			tc.assertErr(t, err)
