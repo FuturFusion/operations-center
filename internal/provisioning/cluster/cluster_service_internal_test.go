@@ -18,6 +18,8 @@ import (
 )
 
 func Test_determineManagementAddress(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		serverArg provisioning.Server
@@ -82,6 +84,8 @@ func Test_determineManagementAddress(t *testing.T) {
 }
 
 func Test_determineClusterAddress(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		serverArg provisioning.Server
@@ -194,6 +198,8 @@ func Test_determineClusterAddress(t *testing.T) {
 }
 
 func Test_memberDependentAddress(t *testing.T) {
+	t.Parallel()
+
 	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
 		return provisioning.Server{
 			Name: name,
@@ -339,6 +345,8 @@ func Test_memberDependentAddress(t *testing.T) {
 }
 
 func Test_memberDependentOVNTunnelAddresses(t *testing.T) {
+	t.Parallel()
+
 	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
 		return provisioning.Server{
 			Name: name,
@@ -461,6 +469,8 @@ func Test_memberDependentOVNTunnelAddresses(t *testing.T) {
 }
 
 func Test_memberDependentLinstorListenAddresses(t *testing.T) {
+	t.Parallel()
+
 	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
 		return provisioning.Server{
 			Name: name,
@@ -592,6 +602,8 @@ func Test_memberDependentLinstorListenAddresses(t *testing.T) {
 }
 
 func Test_memberDependentListenAddress(t *testing.T) {
+	t.Parallel()
+
 	referenceServer := provisioning.Server{
 		Name: "one",
 		OSData: api.OSData{
@@ -673,6 +685,8 @@ func Test_memberDependentListenAddress(t *testing.T) {
 }
 
 func Test_clusterUpdateState(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                          string
 		clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus
@@ -1085,6 +1099,8 @@ func Test_clusterUpdateState(t *testing.T) {
 }
 
 func Test_clusterUpdateState_phaseTransitionKeepsProgress(t *testing.T) {
+	t.Parallel()
+
 	// The rolling update advances from the apply update phase to the rolling restart
 	// phase once all servers are updated. Both phases have to report the same
 	// progress for a given server state, otherwise the progress reported to the user
@@ -1114,6 +1130,8 @@ func Test_clusterUpdateState_phaseTransitionKeepsProgress(t *testing.T) {
 }
 
 func Test_clusterUpdateState_rollingRebootSkipsTheUpdateSteps(t *testing.T) {
+	t.Parallel()
+
 	serverNames := []string{"serverA", "serverB", "serverC"}
 
 	// The update steps are skipped altogether, so only the restart states can occur
@@ -1146,6 +1164,8 @@ func Test_clusterUpdateState_rollingRebootSkipsTheUpdateSteps(t *testing.T) {
 }
 
 func Test_clusterUpdateState_doesNotReorderServers(t *testing.T) {
+	t.Parallel()
+
 	// clusterUpdateState is called with the servers of a cluster while the caller is
 	// iterating over them, so it must not reorder the slice it is given.
 	servers := provisioning.Servers{
@@ -1251,6 +1271,8 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 }
 
 func TestClusterService_getClusterUpdateStatus_progressOnlyMovesForward(t *testing.T) {
+	t.Parallel()
+
 	// The update state of a server is derived from data, which is refreshed
 	// asynchronously from several sources, so a server can briefly fall back to an
 	// earlier state.
@@ -1335,6 +1357,8 @@ func TestClusterService_getClusterUpdateStatus_progressOnlyMovesForward(t *testi
 }
 
 func Test_rollingUpdateStates(t *testing.T) {
+	t.Parallel()
+
 	for state, definition := range rollingUpdateStates {
 		t.Run(state.String(), func(t *testing.T) {
 			switch definition.kind {
@@ -1382,6 +1406,8 @@ func Test_rollingUpdateStates(t *testing.T) {
 }
 
 func Test_rollingRestartPostRestoreDelay(t *testing.T) {
+	t.Parallel()
+
 	// A cluster, which configures no delay, is granted the one of the settle state
 	// rather than none at all.
 	require.Equal(t, time.Minute, rollingRestartPostRestoreDelay(provisioning.Cluster{}, time.Minute))
@@ -1392,6 +1418,8 @@ func Test_rollingRestartPostRestoreDelay(t *testing.T) {
 }
 
 func Test_memberConfigForServer(t *testing.T) {
+	t.Parallel()
+
 	memberConfig := []incusapi.ClusterMemberConfigKey{
 		{Entity: "storage-pool", Name: "local", Key: "source", Value: "local/incus"},
 		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.interface", Value: "eth1"},

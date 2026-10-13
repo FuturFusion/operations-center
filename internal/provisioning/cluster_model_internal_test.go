@@ -7,6 +7,8 @@ import (
 )
 
 func Test_clusterEndpoint(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		endpoint ClusterEndpoint
@@ -61,6 +63,8 @@ func Test_clusterEndpoint(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			gotCertificate := tc.endpoint.GetCertificate()
 			gotConnectionURL := tc.endpoint.GetConnectionURL()
 			gotServerName, err := tc.endpoint.GetServerName()
@@ -76,6 +80,8 @@ func Test_clusterEndpoint(t *testing.T) {
 }
 
 func Test_clusterEndpoint_many(t *testing.T) {
+	t.Parallel()
+
 	endpoint := ClusterEndpoint{
 		{
 			ConnectionURL: "http://one/",

@@ -558,6 +558,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 }
 
 func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                           string
 		repoGetAll                     []queue.Item[provisioning.Clusters]
