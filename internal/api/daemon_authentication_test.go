@@ -80,6 +80,9 @@ func TestAuthentication(t *testing.T) {
 
 	var token string
 
+	port := testingnet.FreePort(t, "")
+	tcpBaseURL := "https://localhost:" + port
+
 	// Test cases
 	tests := []struct {
 		name     string
@@ -104,7 +107,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/",
+			resource: tcpBaseURL + "/",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
@@ -138,7 +141,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0",
+			resource: tcpBaseURL + "/1.0",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
@@ -175,7 +178,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0",
+			resource: tcpBaseURL + "/1.0",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
@@ -193,7 +196,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0",
+			resource: tcpBaseURL + "/1.0",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -214,7 +217,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusUnauthorized,
@@ -249,7 +252,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
@@ -266,7 +269,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -286,7 +289,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 			},
@@ -306,7 +309,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
 			},
@@ -326,7 +329,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/tokens",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -346,7 +349,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/tokens",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
 			},
@@ -366,7 +369,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/tokens",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 			},
@@ -393,7 +396,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers?token=TOKEN",
+			resource: tcpBaseURL + "/1.0/provisioning/servers?token=TOKEN",
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -414,7 +417,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -436,7 +439,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers?token=invalid",
+			resource: tcpBaseURL + "/1.0/provisioning/servers?token=invalid",
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -458,7 +461,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers?token=01a37f54-4dbd-4d26-a88d-df5a534545fb",
+			resource: tcpBaseURL + "/1.0/provisioning/servers?token=01a37f54-4dbd-4d26-a88d-df5a534545fb",
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -480,7 +483,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -504,7 +507,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
 			},
@@ -528,7 +531,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 			},
@@ -556,7 +559,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/:self",
 			body: bytes.NewBufferString(`{
   "connection_url": "https://self-update:12346/"
 }`),
@@ -576,7 +579,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/:self",
 			body: bytes.NewBufferString(`{
   "connection_url": "https://self-update:12346/"
 }`),
@@ -596,7 +599,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPut,
-			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/:self",
 			body: bytes.NewBufferString(`{
 		  "connection_url": "https://self-update:12347/"
 		}`),
@@ -616,7 +619,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodDelete,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -636,7 +639,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodDelete,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
 			},
@@ -656,7 +659,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodDelete,
-			resource: "https://localhost:17443/1.0/provisioning/servers/serverA",
+			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 			},
@@ -678,7 +681,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/updates",
+			resource: tcpBaseURL + "/1.0/provisioning/updates",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
@@ -700,7 +703,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/public",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens/TOKEN/seeds/public",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusUnauthorized,
@@ -717,7 +720,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/private",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens/TOKEN/seeds/private",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusUnauthorized,
@@ -739,7 +742,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/public/architecture/x86_64/type/iso/file.iso",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens/TOKEN/seeds/public/architecture/x86_64/type/iso/file.iso",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusNotFound,
@@ -759,7 +762,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/private/architecture/x86_64/type/iso/file.iso",
+			resource: tcpBaseURL + "/1.0/provisioning/tokens/TOKEN/seeds/private/architecture/x86_64/type/iso/file.iso",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusForbidden,
@@ -792,8 +795,8 @@ func TestAuthentication(t *testing.T) {
 		SourcePollSkipFirst:       true,
 	})
 	err = config.UpdateNetwork(ctx, system.NetworkPut{
-		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":17443",
+		OperationsCenterAddress: "https://127.0.0.1:" + port,
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 	err = config.UpdateSecurity(ctx, system.SecurityPut{
@@ -817,11 +820,12 @@ func TestAuthentication(t *testing.T) {
 	)
 
 	err = d.Start(ctx)
-	require.NoError(t, err)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
 		require.NoError(t, err)
 	})
+
+	require.NoError(t, err)
 
 	setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
 

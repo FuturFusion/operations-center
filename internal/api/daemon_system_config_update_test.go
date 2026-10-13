@@ -86,11 +86,12 @@ func TestSystemConfigUpdate(t *testing.T) {
 		env,
 	)
 	err = d.Start(ctx)
-	require.NoError(t, err)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
 		require.NoError(t, err)
 	})
+
+	require.NoError(t, err)
 
 	// Prepare clients for TCP and unix socket.
 	tcpClient := &http.Client{
@@ -109,11 +110,14 @@ func TestSystemConfigUpdate(t *testing.T) {
 		},
 	}
 
-	port := 17443
+	// Switch between two ports back and forth.
+	ports := []string{testingnet.FreePort(t, ""), testingnet.FreePort(t, "")}
 	openFGAInitialized := false
 	for i := range 4 {
+		port := ports[i%2]
+
 		t.Log(`1. Expect error over http with no rest port defined`)
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err := tcpClient.Do(req)
 		require.Error(t, err)
@@ -122,10 +126,10 @@ func TestSystemConfigUpdate(t *testing.T) {
 			_ = resp.Body.Close()
 		}
 
-		t.Log(`2. Update network configuration, listen on port 17443`)
+		t.Log(`2. Update network configuration, listen on the current port`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
-  "address": "https://127.0.0.1:17443",
-  "rest_server_address": "%s:%d"
+  "address": "https://127.0.0.1:%[2]s",
+  "rest_server_address": "%[1]s:%[2]s"
 }
 `, testingnet.LocalhostIP(t), port)))
 		require.NoError(t, err)
@@ -136,7 +140,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Expect unauthorized over http without trusted credentials.
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
@@ -165,7 +169,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
@@ -181,7 +185,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
 		resp, err = tcpClient.Do(req)
@@ -214,7 +218,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
 		resp, err = tcpClient.Do(req)
@@ -224,7 +228,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 
 		t.Log(`6. Add OpenFGA configuration`)
 		// Add it using user "viewer", which works now, since no authorization is happening.
-		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%s/1.0/system/security", port), bytes.NewBufferString(`{
   "oidc": {
     "issuer": "`+oidcProvider.Issuer()+`",
     "client_id": "`+oidcProvider.ClientID+`",
@@ -263,7 +267,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
 		resp, err = tcpClient.Do(req)
@@ -272,7 +276,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Expect PUT to fail now, since user "viewer" is not allowed to update security settings.
-		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%s/1.0/system/security", port), bytes.NewBufferString(`{
   "oidc": {
     "issuer": "`+oidcProvider.Issuer()+`",
     "client_id": "`+oidcProvider.ClientID+`",
@@ -361,7 +365,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Contains(t, string(body), openFGAEndpoint, "expect the rejected updates to keep the previous OpenFGA API URL")
 		require.NotContains(t, string(body), unreachableEndpoint, "expect the rejected updates not to be applied")
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
 		resp, err = tcpClient.Do(req)
@@ -370,7 +374,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode, "expect OpenFGA to still authorize the viewer")
 
 		t.Log(`8. Reset security config with user "admin`)
-		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{}`))
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%s/1.0/system/security", port), bytes.NewBufferString(`{}`))
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
@@ -387,12 +391,5 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-
-		// Switch between port 17443 and 17444 back and forth.
-		if i%2 == 0 {
-			port = 17444
-		} else {
-			port = 17443
-		}
 	}
 }
