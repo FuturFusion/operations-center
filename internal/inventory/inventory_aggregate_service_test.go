@@ -12,6 +12,8 @@ import (
 )
 
 func TestInventoryAggregateService_GetAllWithFilter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                    string
 		filterExpression        *string
@@ -46,6 +48,8 @@ func TestInventoryAggregateService_GetAllWithFilter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.InventoryAggregateRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
