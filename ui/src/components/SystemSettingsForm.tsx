@@ -16,6 +16,8 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
     server_registration_scriptlet:
       settings?.server_registration_scriptlet ?? "",
     pprof_enabled: settings?.pprof_enabled ?? false,
+    metrics_enabled: settings?.metrics_enabled ?? true,
+    metrics_components: settings?.metrics_components ?? [],
   };
 
   const formik = useFormik({
@@ -65,6 +67,22 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
             />
             <Form.Label className="me-2 mb-0">
               Enable pprof debug endpoints
+            </Form.Label>
+          </Form.Group>
+          <Form.Group
+            className="mb-3 d-flex align-items-center gap-2"
+            controlId="metrics_enabled"
+          >
+            <Form.Check
+              type="checkbox"
+              name="metrics_enabled"
+              checked={formik.values.metrics_enabled}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
+            />
+            <Form.Label className="me-2 mb-0">
+              Enable metrics endpoint
             </Form.Label>
           </Form.Group>
           <Form.Group
