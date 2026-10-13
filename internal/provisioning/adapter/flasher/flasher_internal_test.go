@@ -11,6 +11,8 @@ import (
 )
 
 func TestIsCertChainTrusted(t *testing.T) {
+	t.Parallel()
+
 	rootPEM, intermediatePEM, leafPEM, leafKeyPEM := certs.GenerateChain(t)
 
 	chain, err := tls.X509KeyPair(append(append([]byte{}, leafPEM...), intermediatePEM...), leafKeyPEM)
@@ -71,6 +73,8 @@ func TestIsCertChainTrusted(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			require.Equal(t, tc.want, isCertChainTrusted(tc.cert, tc.pool))
 		})
 	}

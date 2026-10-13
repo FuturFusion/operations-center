@@ -14,6 +14,8 @@ import (
 )
 
 func TestFlasher_GetProviderConfig(t *testing.T) {
+	t.Parallel()
+
 	const serverURL = "https://localhost"
 	tokenID := uuidgen.FromPattern(t, "1")
 
@@ -57,6 +59,8 @@ func TestFlasher_GetProviderConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			flasher := flasher.New(tc.serverURL, cert)
 

@@ -10,6 +10,8 @@ import (
 )
 
 func Test_parentCloser(t *testing.T) {
+	t.Parallel()
+
 	rc := &closer{Reader: bytes.NewBufferString(`foobar`)}
 	parent := &closer{}
 
@@ -37,6 +39,8 @@ func (c *closer) Close() error {
 }
 
 func Test_injectReader(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		injectPos int64
@@ -92,6 +96,8 @@ func Test_injectReader(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			buf := bytes.NewBufferString(`foobarbaz`)
 			payload := []byte(`AAA`)
 

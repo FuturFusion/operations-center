@@ -110,11 +110,15 @@ func (c *countingReadCloser) Close() error {
 }
 
 func TestFlasher_GenerateSeededImage(t *testing.T) {
+	t.Parallel()
+
 	content := testContent
 
 	ctx := context.Background()
 
 	t.Run("generates the image on a cold cache and serves it from the file afterwards", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
@@ -151,6 +155,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("serves arbitrary byte ranges of the cached image", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		image, info, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
@@ -176,6 +182,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("keeps images of different fingerprints side by side", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		generate(t, flasher, "old", content)
@@ -195,6 +203,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("names the image differently, if what is seeded into it changed", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		before := fingerprintID(t, flasher, "fingerprint")
@@ -205,6 +215,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("generates the image only once for concurrent requests", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		const concurrency = 8
@@ -258,6 +270,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("serves an image, which appeared between the cache miss and the generation being acquired", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		// The hook runs in exactly the window the request below has to survive:
@@ -294,6 +308,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("refuses to generate the image, if the space does not suffice", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 		flasher.cache.usage = func() (file.UsageInformation, error) {
 			return file.UsageInformation{
@@ -316,6 +332,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("leaves no partial file behind, if the context is cancelled", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		cancelledCtx, cancel := context.WithCancel(ctx)
@@ -331,6 +349,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("rejects a cache ID, which is not usable as a filename", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
@@ -341,6 +361,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	})
 
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := &Flasher{serverURL: "https://operations-center.local:7443"}
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
@@ -352,11 +374,15 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 }
 
 func TestFlasher_OpenSeededImage(t *testing.T) {
+	t.Parallel()
+
 	content := testContent
 
 	ctx := context.Background()
 
 	t.Run("serves an image generated for a public token seed", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		generate(t, flasher, "fingerprint", content)
@@ -374,6 +400,8 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	})
 
 	t.Run("does not serve an image generated for a token seed, which is not public", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
@@ -385,6 +413,8 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	})
 
 	t.Run("reports an image, which has never been generated, as not found", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		_, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
@@ -392,6 +422,8 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	})
 
 	t.Run("rejects an ID, which is not usable as a filename", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		for _, id := range []string{"../../etc/passwd", "", "short", "way-too-long-to-be-an-id"} {
@@ -401,6 +433,8 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	})
 
 	t.Run("waits for an image, which is being generated right now", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		var started atomic.Int64
@@ -465,6 +499,8 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	})
 
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := &Flasher{serverURL: "https://operations-center.local:7443"}
 
 		_, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
@@ -473,11 +509,15 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 }
 
 func TestFlasher_PruneCache(t *testing.T) {
+	t.Parallel()
+
 	content := testContent
 
 	ctx := context.Background()
 
 	t.Run("keeps a recently accessed image and removes a stale one", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		generate(t, flasher, "fingerprint", content)
@@ -500,6 +540,8 @@ func TestFlasher_PruneCache(t *testing.T) {
 	})
 
 	t.Run("prunes the images of a token seed, which is not public, as well", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
@@ -520,6 +562,8 @@ func TestFlasher_PruneCache(t *testing.T) {
 	})
 
 	t.Run("removes leftovers of an interrupted generation", func(t *testing.T) {
+		t.Parallel()
+
 		flasher := testFlasher(t)
 
 		dir := flasher.cache.namespaceDir(true)
@@ -545,15 +589,21 @@ func TestFlasher_PruneCache(t *testing.T) {
 	})
 
 	t.Run("does nothing, if the cache is not configured or empty", func(t *testing.T) {
+		t.Parallel()
+
 		require.NoError(t, (&Flasher{}).PruneCache(ctx, time.Hour))
 		require.NoError(t, testFlasher(t).PruneCache(ctx, time.Hour))
 	})
 }
 
 func TestImageCache_open(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("reports a cache miss for an image, which is not stored", func(t *testing.T) {
+		t.Parallel()
+
 		cache := newImageCache(t.TempDir())
 
 		_, _, err := cache.open(true, testCacheID, "0123456789ab")
@@ -561,6 +611,8 @@ func TestImageCache_open(t *testing.T) {
 	})
 
 	t.Run("reports the size and the generation time of the stored image", func(t *testing.T) {
+		t.Parallel()
+
 		cache := newImageCache(t.TempDir())
 
 		before := time.Now().Add(-time.Second)
@@ -576,6 +628,8 @@ func TestImageCache_open(t *testing.T) {
 	})
 
 	t.Run("keeps the two namespaces apart", func(t *testing.T) {
+		t.Parallel()
+
 		cache := newImageCache(t.TempDir())
 
 		require.NoError(t, cache.write(ctx, false, testCacheID, "0123456789ab", bytes.NewReader([]byte("private"))))
