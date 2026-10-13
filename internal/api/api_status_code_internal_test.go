@@ -23,6 +23,8 @@ import (
 )
 
 func Test_updateAndActionHandlers_statusOK(t *testing.T) {
+	t.Parallel()
+
 	clusterService := &provisioningMock.ClusterServiceMock{
 		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 			return &provisioning.Cluster{Name: name}, nil

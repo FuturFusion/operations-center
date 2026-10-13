@@ -29,6 +29,8 @@ import (
 const tokenUUID = "b32d0079-c48b-4957-b1cb-bef54125c861"
 
 func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		requestBody string
@@ -135,6 +137,8 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenPut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		requestBody string
@@ -185,6 +189,8 @@ func Test_tokenHandler_tokenPut(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenSeedPut(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		requestBody string
@@ -275,6 +281,8 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenSeedGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		path string
@@ -329,6 +337,8 @@ func Test_tokenHandler_tokenSeedGet(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		path string
@@ -451,6 +461,8 @@ func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenSeedImageGet_cached(t *testing.T) {
+	t.Parallel()
+
 	const (
 		path      = "/" + tokenUUID + "/seeds/test/architecture/x86_64/type/iso/file.iso"
 		imageData = "cached-image-data"
@@ -530,6 +542,8 @@ func Test_tokenHandler_tokenSeedImageGet_cached(t *testing.T) {
 }
 
 func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
+	t.Parallel()
+
 	const (
 		path      = "/" + tokenUUID + "/seeds/test/architecture/x86_64/type/iso/file.iso"
 		imageData = "image-data"
@@ -622,6 +636,8 @@ type nopReadSeekCloser struct {
 func (nopReadSeekCloser) Close() error { return nil }
 
 func Test_tokenHandler_tokenSeedImageGetRange(t *testing.T) {
+	t.Parallel()
+
 	const content = "0123456789abcdefghij"
 
 	const path = "/" + tokenUUID + "/seeds/test/architecture/x86_64/type/iso/file.iso"
@@ -761,6 +777,8 @@ func Test_tokenHandler_tokenSeedImageGetRange(t *testing.T) {
 // a deployment streaming its installation media, and that a read, that names no
 // deployment, is not recorded at all.
 func Test_tokenHandler_tokenSeedImageGet_readProgress(t *testing.T) {
+	t.Parallel()
+
 	const (
 		fingerprintID = "AAAAAAAAAAAA"
 		deploymentID  = "BBBBBBBBBBBB"
@@ -846,6 +864,8 @@ func Test_tokenHandler_tokenSeedImageGet_readProgress(t *testing.T) {
 // apart, even when their BMCs read from the same address, which happens as soon
 // as they sit behind one NAT.
 func Test_tokenHandler_tokenSeedImageGet_readProgressPerDeployment(t *testing.T) {
+	t.Parallel()
+
 	const (
 		fingerprintID = "AAAAAAAAAAAA"
 		firstID       = "BBBBBBBBBBBB"

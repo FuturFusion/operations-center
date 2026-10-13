@@ -14,6 +14,8 @@ import (
 )
 
 func Test_api10Get(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		request func() *http.Request

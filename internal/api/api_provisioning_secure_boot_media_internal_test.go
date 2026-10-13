@@ -18,8 +18,12 @@ import (
 )
 
 func Test_secureBootMediaGet(t *testing.T) {
+	t.Parallel()
+
 	for _, imageType := range []api.ImageType{api.ImageTypeISO, api.ImageTypeRaw} {
 		t.Run(imageType.String(), func(t *testing.T) {
+			t.Parallel()
+
 			err := securebootmedia.New(t.TempDir()).CheckSupported(t.Context(), imageType, images.UpdateFileArchitecture64BitX86)
 			if err != nil {
 				t.Skipf("The secure boot enrollment media can not be generated here: %v", err)
