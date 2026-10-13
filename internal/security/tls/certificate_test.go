@@ -11,6 +11,8 @@ import (
 )
 
 func TestCertificateFingerprints(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		certificatesPEM []string
@@ -66,6 +68,8 @@ Zm9vYmFy
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := securitytls.CertificateFingerprints(tc.certificatesPEM)
 
 			tc.assertErr(t, err)
@@ -75,6 +79,8 @@ Zm9vYmFy
 }
 
 func TestTrustedClientCertificates(t *testing.T) {
+	t.Parallel()
+
 	wantCertificate := incusapi.CertificatesPost{
 		CertificatePut: incusapi.CertificatePut{
 			Name:        "oc-trusted-" + testcert.ClientCertificateFingerprint[:12],
@@ -134,6 +140,8 @@ Zm9vYmFy
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := securitytls.TrustedClientCertificates(tc.certificatesPEM)
 
 			tc.assertErr(t, err)
@@ -143,6 +151,8 @@ Zm9vYmFy
 }
 
 func TestTrustedClientCertificatesWithFingerprint(t *testing.T) {
+	t.Parallel()
+
 	wantCertificate := securitytls.TrustedClientCertificate{
 		CertificatesPost: incusapi.CertificatesPost{
 			CertificatePut: incusapi.CertificatePut{
@@ -196,6 +206,8 @@ func TestTrustedClientCertificatesWithFingerprint(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := securitytls.TrustedClientCertificatesWithFingerprint(tc.certificatesPEM)
 
 			tc.assertErr(t, err)
@@ -205,6 +217,8 @@ func TestTrustedClientCertificatesWithFingerprint(t *testing.T) {
 }
 
 func TestFilterCertificatesByFingerprints(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		certificatesPEM []string
@@ -268,6 +282,8 @@ func TestFilterCertificatesByFingerprints(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := securitytls.FilterCertificatesByFingerprints(tc.certificatesPEM, tc.fingerprints, tc.matching)
 
 			tc.assertErr(t, err)

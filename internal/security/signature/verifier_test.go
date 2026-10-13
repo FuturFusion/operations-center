@@ -12,6 +12,8 @@ import (
 )
 
 func TestVerifierVerify(t *testing.T) {
+	t.Parallel()
+
 	payload := []byte(`This is some random text`)
 
 	caCert, cert, key := signaturetest.GenerateCertChain(t)
@@ -25,12 +27,16 @@ func TestVerifierVerify(t *testing.T) {
 }
 
 func TestVerifierVerifyFileWithDefaultKey(t *testing.T) {
+	t.Parallel()
+
 	v := signature.NewVerifier(nil)
 	_, err := v.VerifyFile("testdata/index.sjson")
 	require.NoError(t, err)
 }
 
 func TestNoopVerifier(t *testing.T) {
+	t.Parallel()
+
 	payload := []byte(`This is some random text`)
 
 	_, cert, key := signaturetest.GenerateCertChain(t)
