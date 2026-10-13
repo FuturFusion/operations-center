@@ -8,6 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -62,11 +63,12 @@ func componentTask(component logger.Component, f task.Func) task.Func {
 	}
 }
 
-// registerComponentLevelsValidation wires validateComponentLevels to the
-// validate signal, which is not emitted while the configuration is loaded, so a
-// component going away does not keep the daemon from starting.
-var registerComponentLevelsValidation = sync.OnceFunc(func() {
+// registerComponentsValidation registers the checks for unknown components.
+// The validate signal is not emitted while the configuration loads. A removed
+// component therefore does not stop the daemon from starting.
+var registerComponentsValidation = sync.OnceFunc(func() {
 	lifecycle.SettingsValidateSignal.AddListenerWithErr(validateComponentLevels)
+	lifecycle.SettingsValidateSignal.AddListenerWithErr(validateMetricsComponents)
 })
 
 // validateComponentLevels rejects log levels configured for unknown components.
@@ -74,6 +76,16 @@ func validateComponentLevels(_ context.Context, settings apisystem.Settings) err
 	err := logger.ValidateComponentLevelsKnown(settings.LogLevels)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
+	}
+
+	return nil
+}
+
+// validateMetricsComponents rejects metrics enabled for unknown components.
+func validateMetricsComponents(_ context.Context, settings apisystem.Settings) error {
+	err := metrics.ValidateComponentsKnown(settings.MetricsComponents)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.metrics_components" property is invalid: %v`, err)
 	}
 
 	return nil
