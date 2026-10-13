@@ -1085,6 +1085,15 @@ func (d *Daemon) setupAPIRoutes(
 	)
 	registerOSProxy(osRouter, osRouterPrefix, d.authorizer, d.env)
 
+	// The internal API is not versioned. It can change at any time.
+	internalRouter := router.SubGroup("/internal").AddMiddlewares(
+		d.authenticator.Middleware(),
+	)
+	registerInternalHandler(internalRouter, d.authorizer, db)
+
+	debugRouter := internalRouter.SubGroup("/debug")
+	registerDebugHandler(debugRouter, d.authorizer)
+
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)
 	}
@@ -1143,14 +1152,8 @@ func (d *Daemon) setupAPIRoutes(
 	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 
-	debugRouter := api10router.SubGroup("/debug")
-	registerDebugHandler(debugRouter, d.authorizer)
-
 	metricsRouter := api10router.SubGroup("/metrics")
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
-
-	internalRouter := api10router.SubGroup("/internal")
-	registerInternalHandler(internalRouter, d.authorizer, db)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
