@@ -56,7 +56,7 @@ func (_d FlasherPortWithPrometheus) GenerateCompressedSeededImage(ctx context.Co
 }
 
 // GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
+func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -66,7 +66,7 @@ func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, cac
 
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GenerateSeededImage(ctx, cacheID, fingerprint, id, seedConfig, public, source)
+	return _d.base.GenerateSeededImage(ctx, cacheID, generation, fingerprint, id, seedConfig, public, source)
 }
 
 // GetProviderConfig implements provisioning.FlasherPort.
@@ -95,6 +95,30 @@ func (_d FlasherPortWithPrometheus) OpenSeededImage(ctx context.Context, cacheID
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "OpenSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.OpenSeededImage(ctx, cacheID, fingerprintID)
+}
+
+// RemoveSeededImages implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) RemoveSeededImages(ctx context.Context, cachePrefix string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveSeededImages", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveSeededImages(ctx, cachePrefix)
+}
+
+// SeedImageCacheGeneration implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) SeedImageCacheGeneration(ctx context.Context, cachePrefix string) (v uint64) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedImageCacheGeneration", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SeedImageCacheGeneration(ctx, cachePrefix)
 }
 
 // SeedImageFingerprintID implements provisioning.FlasherPort.
