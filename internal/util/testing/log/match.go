@@ -1,7 +1,7 @@
 package log
 
 import (
-	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -14,13 +14,13 @@ type TestifyT interface {
 	Helper()
 }
 
-type MatcherFunc func(t TestifyT, logBuf *bytes.Buffer)
+type MatcherFunc func(t TestifyT, logBuf fmt.Stringer)
 
-func Noop(t TestifyT, logBuf *bytes.Buffer) {
+func Noop(t TestifyT, logBuf fmt.Stringer) {
 	t.Helper()
 }
 
-func Empty(t TestifyT, logBuf *bytes.Buffer) {
+func Empty(t TestifyT, logBuf fmt.Stringer) {
 	t.Helper()
 
 	require.Empty(t, logBuf.String())
@@ -28,8 +28,8 @@ func Empty(t TestifyT, logBuf *bytes.Buffer) {
 
 var IgnorePatternDebugLines = "[0-9TZ:-]+ DBG.*"
 
-func EmptyWithIgnorePattern(pattern string) func(t TestifyT, logBuf *bytes.Buffer) {
-	return func(t TestifyT, logBuf *bytes.Buffer) {
+func EmptyWithIgnorePattern(pattern string) func(t TestifyT, logBuf fmt.Stringer) {
+	return func(t TestifyT, logBuf fmt.Stringer) {
 		t.Helper()
 
 		re, err := regexp.Compile(pattern)
@@ -53,8 +53,8 @@ func EmptyWithIgnorePattern(pattern string) func(t TestifyT, logBuf *bytes.Buffe
 	}
 }
 
-func Contains(want string) func(t TestifyT, logBuf *bytes.Buffer) {
-	return func(t TestifyT, logBuf *bytes.Buffer) {
+func Contains(want string) func(t TestifyT, logBuf fmt.Stringer) {
+	return func(t TestifyT, logBuf fmt.Stringer) {
 		t.Helper()
 
 		// Give logs a little bit of time to be processed.
@@ -70,16 +70,16 @@ func Contains(want string) func(t TestifyT, logBuf *bytes.Buffer) {
 	}
 }
 
-func NotContains(unwanted string) func(t TestifyT, logBuf *bytes.Buffer) {
-	return func(t TestifyT, logBuf *bytes.Buffer) {
+func NotContains(unwanted string) func(t TestifyT, logBuf fmt.Stringer) {
+	return func(t TestifyT, logBuf fmt.Stringer) {
 		t.Helper()
 
 		require.NotContains(t, logBuf.String(), unwanted)
 	}
 }
 
-func Match(expr string) func(t TestifyT, logBuf *bytes.Buffer) {
-	return func(t TestifyT, logBuf *bytes.Buffer) {
+func Match(expr string) func(t TestifyT, logBuf fmt.Stringer) {
+	return func(t TestifyT, logBuf fmt.Stringer) {
 		t.Helper()
 
 		re, err := regexp.Compile(expr)
@@ -87,13 +87,13 @@ func Match(expr string) func(t TestifyT, logBuf *bytes.Buffer) {
 
 		// Give logs a little bit of time to be processed.
 		for range 20 {
-			if re.Match(logBuf.Bytes()) {
+			if re.MatchString(logBuf.String()) {
 				break
 			}
 
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		require.True(t, re.Match(logBuf.Bytes()), "logBuf did not match expression: %q, logBuf:\n%s", expr, logBuf.String())
+		require.True(t, re.MatchString(logBuf.String()), "logBuf did not match expression: %q, logBuf:\n%s", expr, logBuf.String())
 	}
 }
