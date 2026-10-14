@@ -159,8 +159,13 @@ func (c OperationsCenterClient) CreateTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
-func (c OperationsCenterClient) UpdateTokenSeed(ctx context.Context, id string, name string, tokenSeed api.TokenSeedPut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/tokens", id, "seeds", name), nil, tokenSeed)
+func (c OperationsCenterClient) UpdateTokenSeed(ctx context.Context, id string, name string, tokenSeed api.TokenSeedPut, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/tokens", id, "seeds", name), query, tokenSeed)
 	if err != nil {
 		return err
 	}
@@ -168,8 +173,31 @@ func (c OperationsCenterClient) UpdateTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id, "seeds", name), nil, nil)
+func (c OperationsCenterClient) RenameTokenSeed(ctx context.Context, id string, name string, newName string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "seeds", name), query, api.TokenSeed{
+		TokenSeedPost: api.TokenSeedPost{
+			Name: newName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id, "seeds", name), query, nil)
 	if err != nil {
 		return err
 	}

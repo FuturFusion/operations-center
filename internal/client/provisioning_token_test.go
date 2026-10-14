@@ -861,7 +861,153 @@ func Test_UpdateTokenSeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			err := tc.client.UpdateTokenSeed(t.Context(), tc.tcNameArg, tc.tcSeedNameArg, tc.tokenSeed)
+			err := tc.client.UpdateTokenSeed(t.Context(), tc.tcNameArg, tc.tcSeedNameArg, tc.tokenSeed, false)
+
+			tc.assertErr(t, err)
+			tc.assertFunc(t)
+		})
+	}
+}
+
+func Test_RenameTokenSeed(t *testing.T) {
+	d := daemonSetup(t)
+
+	tests := []struct {
+		name       string
+		client     client.OperationsCenterClient
+		dbSeedFunc func(t *testing.T)
+
+		tcNameArg     string
+		tcSeedNameArg string
+		tcNewName     string
+		tcForce       bool
+
+		assertErr  require.ErrorAssertionFunc
+		assertFunc func(t *testing.T)
+	}{
+		{
+			name:   "success",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedTokenSeed(t, d, uuidgen.FromPattern(t, "1"), "seed-one")
+			},
+
+			tcNameArg:     uuidgen.FromPattern(t, "1").String(),
+			tcSeedNameArg: "seed-one",
+			tcNewName:     "seed-new",
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				tokenSeed, err := d.socketClient.GetTokenSeed(t.Context(), uuidgen.FromPattern(t, "1").String(), "seed-new")
+				require.NoError(t, err)
+				require.Equal(t, "seed-new", tokenSeed.Name)
+
+				_, err = d.socketClient.GetTokenSeed(t.Context(), uuidgen.FromPattern(t, "1").String(), "seed-one")
+				require.ErrorIs(t, err, domain.ErrNotFound)
+			},
+		},
+		{
+			name:   "success - in use by active deployment with force",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedTokenSeed(t, d, uuidgen.FromPattern(t, "2"), "seed-two")
+				seedServerWithActiveDeployment(t, d, "server-two", uuidgen.FromPattern(t, "2"), "seed-two")
+			},
+
+			tcNameArg:     uuidgen.FromPattern(t, "2").String(),
+			tcSeedNameArg: "seed-two",
+			tcNewName:     "seed-new",
+			tcForce:       true,
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				_, err := d.socketClient.GetTokenSeed(t.Context(), uuidgen.FromPattern(t, "2").String(), "seed-new")
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:   "error - in use by active deployment",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedTokenSeed(t, d, uuidgen.FromPattern(t, "3"), "seed-one")
+				seedServerWithActiveDeployment(t, d, "server-three", uuidgen.FromPattern(t, "3"), "seed-one")
+			},
+
+			tcNameArg:     uuidgen.FromPattern(t, "3").String(),
+			tcSeedNameArg: "seed-one",
+			tcNewName:     "seed-new",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "is in use by the active deployment of servers: server-three")
+			},
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				_, err := d.socketClient.GetTokenSeed(t.Context(), uuidgen.FromPattern(t, "3").String(), "seed-one")
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:   "error - invalid new name",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedTokenSeed(t, d, uuidgen.FromPattern(t, "4"), "seed-one")
+			},
+
+			tcNameArg:     uuidgen.FromPattern(t, "4").String(),
+			tcSeedNameArg: "seed-one",
+			tcNewName:     "seed new", // invalid
+
+			assertErr:  require.Error,
+			assertFunc: noop,
+		},
+		{
+			name:       "error - not authorized",
+			client:     d.unauthorizedHTTPClient,
+			dbSeedFunc: noop,
+
+			tcNameArg:     uuidgen.FromPattern(t, "1").String(),
+			tcSeedNameArg: "seed-new",
+			tcNewName:     "seed-other",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
+			},
+			assertFunc: noop,
+		},
+		{
+			name:       "error - not found",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			tcNameArg:     uuidgen.FromPattern(t, "1").String(),
+			tcSeedNameArg: "unknown",
+			tcNewName:     "seed-other",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+			},
+			assertFunc: noop,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.dbSeedFunc(t)
+
+			err := tc.client.RenameTokenSeed(t.Context(), tc.tcNameArg, tc.tcSeedNameArg, tc.tcNewName, tc.tcForce)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -935,12 +1081,36 @@ func Test_DeleteTokenSeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			err := tc.client.DeleteTokenSeed(t.Context(), tc.tcNameArg, tc.tcSeedNameArg)
+			err := tc.client.DeleteTokenSeed(t.Context(), tc.tcNameArg, tc.tcSeedNameArg, false)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
 		})
 	}
+}
+
+// seedServerWithActiveDeployment adds a server with a deployment, which is not
+// finished and uses the given token seed.
+func seedServerWithActiveDeployment(t *testing.T, d testDaemon, name string, tokenUUID uuid.UUID, seed string) {
+	t.Helper()
+
+	_, err := entities.CreateServer(t.Context(), d.db, provisioning.Server{
+		Name:         name,
+		Channel:      defaultChannelName,
+		Status:       api.ServerStatusDeploying,
+		StatusDetail: api.ServerStatusDetailNone,
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateWaitInstall,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID: tokenUUID,
+					Seed:      seed,
+					ImageType: api.ImageTypeISO,
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
 }
 
 // seedTokenSeed adds a token with the given UUID together with a token seed
