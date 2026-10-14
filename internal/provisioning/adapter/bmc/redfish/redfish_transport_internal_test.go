@@ -64,6 +64,8 @@ func retryTestServer(t *testing.T, header http.Header, statuses ...int) (*httpte
 func TestRetryTransport_RoundTrip(t *testing.T) {
 	t.Parallel()
 
+	retryAfterNow := time.Date(2026, 9, 3, 21, 4, 30, 0, time.UTC)
+
 	tests := []struct {
 		name     string
 		method   string
@@ -72,13 +74,13 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 		statuses []int
 		deadline time.Duration
 
+		// now is the time the transport sees. A fixed time gives an exact wait
+		// for a Retry-After date, which has a precision of one second.
+		now time.Time
+
 		wantRequests int
 		wantStatus   int
 		wantWaits    []time.Duration
-
-		// wantWaitRange bounds a single wait, whose exact value depends on the
-		// clock, instead of pinning it down.
-		wantWaitRange [2]time.Duration
 	}{
 		{
 			name:     "a read, the BMC turns down transiently, is asked again",
@@ -123,12 +125,13 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 		{
 			name:     "a BMC asking through a date is understood as well",
 			method:   http.MethodGet,
-			header:   http.Header{"Retry-After": []string{time.Now().Add(4 * time.Second).UTC().Format(http.TimeFormat)}},
+			header:   http.Header{"Retry-After": []string{retryAfterNow.Add(4 * time.Second).Format(http.TimeFormat)}},
 			statuses: []int{http.StatusServiceUnavailable, http.StatusOK},
+			now:      retryAfterNow,
 
-			wantRequests:  2,
-			wantStatus:    http.StatusOK,
-			wantWaitRange: [2]time.Duration{3 * time.Second, 4 * time.Second},
+			wantRequests: 2,
+			wantStatus:   http.StatusOK,
+			wantWaits:    []time.Duration{4 * time.Second},
 		},
 		{
 			name:     "a delete, the BMC turns down transiently, is asked again",
@@ -176,12 +179,16 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		// Not parallel. One test case has a Retry-After date relative to the
-		// creation of the test table. A parallel subtest starts too late.
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			svr, requests := retryTestServer(t, tc.header, tc.statuses...)
 
 			transport, waits := newTestRetryTransport(t, http.DefaultTransport)
+
+			if !tc.now.IsZero() {
+				transport.now = func() time.Time { return tc.now }
+			}
 
 			ctx := t.Context()
 
@@ -207,13 +214,7 @@ func TestRetryTransport_RoundTrip(t *testing.T) {
 
 			require.Equal(t, tc.wantStatus, resp.StatusCode)
 			require.Equal(t, int64(tc.wantRequests), requests.Load())
-			if tc.wantWaitRange != [2]time.Duration{} {
-				require.Len(t, *waits, 1)
-				require.Greater(t, (*waits)[0], tc.wantWaitRange[0])
-				require.LessOrEqual(t, (*waits)[0], tc.wantWaitRange[1])
-			} else {
-				require.Equal(t, tc.wantWaits, *waits)
-			}
+			require.Equal(t, tc.wantWaits, *waits)
 
 			// The body of the answer handed out is still readable, so the caller
 			// gets the details the BMC reported with it.

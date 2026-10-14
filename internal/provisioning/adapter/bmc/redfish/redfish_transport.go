@@ -195,7 +195,7 @@ func (t *retryTransport) retryDelay(resp *http.Response, backoff time.Duration) 
 		return backoff
 	}
 
-	retryAfter, ok := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
+	retryAfter, ok := parseRetryAfter(resp.Header.Get("Retry-After"), t.now())
 	if !ok {
 		return backoff
 	}
