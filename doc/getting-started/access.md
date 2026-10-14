@@ -44,6 +44,8 @@ trusted_tls_client_certificates:
       -----BEGIN CERTIFICATE-----
       ...
       -----END CERTIFICATE-----
+trusted_tls_metrics_client_cert_fingerprints: []
+trusted_tls_metrics_client_certificates: []
 oidc:
     issuer: ""
     client_id: ""
@@ -92,6 +94,11 @@ those. Removing the certificate from the list revokes the access to Operations
 Center. The certificate is not withdrawn from the systems it has already been
 passed on to, this has to be done on the respective system.
 See [system settings](../reference/settings.md#security-settings) for details.
+
+A client that only collects metrics does not need full access. Add the SHA256
+fingerprint of its certificate to `trusted_tls_metrics_client_cert_fingerprints`
+instead. Or add the certificate to `trusted_tls_metrics_client_certificates`.
+See [metrics](../reference/metrics.md#access) for details.
 
 ## From the web
 
