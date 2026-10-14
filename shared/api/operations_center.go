@@ -19,7 +19,8 @@ type ServerUntrusted struct {
 	// Example: 1.0
 	APIVersion string `json:"api_version" yaml:"api_version"`
 
-	// Authentication protocol of a trusted client (one of "tls", "oidc" or "unix"), "untrusted" otherwise
+	// Authentication protocol of a trusted client (one of "tls", "oidc" or "unix"), "untrusted" otherwise.
+	// A metrics only certificate also reports "tls", even though it can only read the metrics.
 	// Read only: true
 	// Example: untrusted
 	Auth string `json:"auth" yaml:"auth"`

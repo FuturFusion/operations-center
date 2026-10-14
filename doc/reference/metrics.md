@@ -11,18 +11,35 @@ API listener.
 The endpoint supports several formats. The `Accept` header of the request selects
 the format:
 
-| `Accept` header                                                                | Format                                                                      |
-| :---                                                                           | :---                                                                        |
-| `application/openmetrics-text; version=1.0.0`                                  | [OpenMetrics](https://prometheus.io/docs/specs/om/open_metrics_spec/) 1.0.0 |
-| `application/openmetrics-text`                                                 | OpenMetrics 0.0.1                                                           |
-| `application/vnd.google.protobuf; proto=io.prometheus.client.MetricFamily`     | Prometheus protobuf format                                                  |
-| any other value                                                                | Prometheus text format                                                      |
+| `Accept` header                                                                                | Format                                                                      |
+| :---                                                                                           | :---                                                                        |
+| `application/openmetrics-text; version=1.0.0`                                                  | [OpenMetrics](https://prometheus.io/docs/specs/om/open_metrics_spec/) 1.0.0 |
+| `application/openmetrics-text`                                                                 | OpenMetrics 0.0.1                                                           |
+| `application/vnd.google.protobuf; proto=io.prometheus.client.MetricFamily; encoding=delimited` | Prometheus protobuf format                                                  |
+| any other value                                                                                | Prometheus text format                                                      |
 
 ## Access
 
-The endpoint requires authentication, like the rest of the REST API. With
-OpenFGA, the user needs the `can_view_metrics` entitlement on the server. The
-`viewer` relation grants this entitlement.
+The endpoint requires authentication. With OpenFGA, the user needs the
+`can_view_metrics` entitlement on the server. The `viewer` relation grants this
+entitlement.
+
+A monitoring system does not need full access to Operations Center. Add its TLS
+client certificate to `trusted_tls_metrics_client_cert_fingerprints` or
+`trusted_tls_metrics_client_certificates`. A certificate in one of these lists is
+a metrics only certificate. See
+[security settings](settings.md#security-settings) for the rules of these
+settings.
+
+A metrics only certificate can only read the metrics. Every other request that
+needs a permission fails with a 403 error. An OpenFGA relation does not change
+this. Endpoints that need no authentication stay reachable.
+
+`GET /1.0` returns `tls` in the `auth` field for a metrics only certificate. The
+field shows how the client is authenticated. It does not show what the client is
+allowed to do. The UI and the command line client therefore treat a metrics only
+certificate as logged in, but every request except the metrics fails with a 403
+error. Use a metrics only certificate only to collect metrics.
 
 The endpoint is enabled by default. Set `metrics_enabled` to `false` in the
 [system settings](settings.md) to disable it. A request to a disabled endpoint
@@ -30,7 +47,8 @@ returns an error.
 
 ## Collect the metrics
 
-Fetch the metrics with a trusted TLS client certificate:
+Fetch the metrics with a trusted TLS client certificate or with a metrics only
+certificate:
 
 ```shell
 curl --cert client.crt --key client.key https://operations-center.example.com:8443/1.0/metrics
