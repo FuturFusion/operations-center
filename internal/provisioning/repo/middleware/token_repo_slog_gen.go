@@ -366,6 +366,39 @@ func (_d TokenRepoWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID
 	return _d._base.GetTokenSeedByName(ctx, id, name)
 }
 
+// RenameTokenSeed implements provisioning.TokenRepo.
+func (_d TokenRepoWithSlog) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RenameTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RenameTokenSeed returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RenameTokenSeed finished")
+		}
+	}()
+	return _d._base.RenameTokenSeed(ctx, id, oldName, newName)
+}
+
 // Update implements provisioning.TokenRepo.
 func (_d TokenRepoWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

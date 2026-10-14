@@ -647,6 +647,40 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 	return _d._base.PrepareTokenSeedImage(ctx, id, name, imageType, architecture, channel)
 }
 
+// RenameTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RenameTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RenameTokenSeed returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RenameTokenSeed finished")
+		}
+	}()
+	return _d._base.RenameTokenSeed(ctx, id, oldName, newName, force)
+}
+
 // ResolveTokenSeedImageID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

@@ -80,6 +80,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
 //				panic("mock out the PrepareTokenSeedImage method")
 //			},
+//			RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+//				panic("mock out the RenameTokenSeed method")
+//			},
 //			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 //				panic("mock out the ResolveTokenSeedImageID method")
 //			},
@@ -152,6 +155,9 @@ type TokenServiceMock struct {
 
 	// PrepareTokenSeedImageFunc mocks the PrepareTokenSeedImage method.
 	PrepareTokenSeedImageFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error
+
+	// RenameTokenSeedFunc mocks the RenameTokenSeed method.
+	RenameTokenSeedFunc func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error
 
 	// ResolveTokenSeedImageIDFunc mocks the ResolveTokenSeedImageID method.
 	ResolveTokenSeedImageIDFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error)
@@ -337,6 +343,19 @@ type TokenServiceMock struct {
 			// Channel is the channel argument value.
 			Channel string
 		}
+		// RenameTokenSeed holds details about calls to the RenameTokenSeed method.
+		RenameTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// OldName is the oldName argument value.
+			OldName string
+			// NewName is the newName argument value.
+			NewName string
+			// Force is the force argument value.
+			Force bool
+		}
 		// ResolveTokenSeedImageID holds details about calls to the ResolveTokenSeedImageID method.
 		ResolveTokenSeedImageID []struct {
 			// Ctx is the ctx argument value.
@@ -392,6 +411,7 @@ type TokenServiceMock struct {
 	lockGetTokenSeedByName                   sync.RWMutex
 	lockPreparePreSeededImage                sync.RWMutex
 	lockPrepareTokenSeedImage                sync.RWMutex
+	lockRenameTokenSeed                      sync.RWMutex
 	lockResolveTokenSeedImageID              sync.RWMutex
 	lockSetServerService                     sync.RWMutex
 	lockUpdate                               sync.RWMutex
@@ -1131,6 +1151,54 @@ func (mock *TokenServiceMock) PrepareTokenSeedImageCalls() []struct {
 	mock.lockPrepareTokenSeedImage.RLock()
 	calls = mock.calls.PrepareTokenSeedImage
 	mock.lockPrepareTokenSeedImage.RUnlock()
+	return calls
+}
+
+// RenameTokenSeed calls RenameTokenSeedFunc.
+func (mock *TokenServiceMock) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+	if mock.RenameTokenSeedFunc == nil {
+		panic("TokenServiceMock.RenameTokenSeedFunc: method is nil but TokenService.RenameTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		ID      uuid.UUID
+		OldName string
+		NewName string
+		Force   bool
+	}{
+		Ctx:     ctx,
+		ID:      id,
+		OldName: oldName,
+		NewName: newName,
+		Force:   force,
+	}
+	mock.lockRenameTokenSeed.Lock()
+	mock.calls.RenameTokenSeed = append(mock.calls.RenameTokenSeed, callInfo)
+	mock.lockRenameTokenSeed.Unlock()
+	return mock.RenameTokenSeedFunc(ctx, id, oldName, newName, force)
+}
+
+// RenameTokenSeedCalls gets all the calls that were made to RenameTokenSeed.
+// Check the length with:
+//
+//	len(mockedTokenService.RenameTokenSeedCalls())
+func (mock *TokenServiceMock) RenameTokenSeedCalls() []struct {
+	Ctx     context.Context
+	ID      uuid.UUID
+	OldName string
+	NewName string
+	Force   bool
+} {
+	var calls []struct {
+		Ctx     context.Context
+		ID      uuid.UUID
+		OldName string
+		NewName string
+		Force   bool
+	}
+	mock.lockRenameTokenSeed.RLock()
+	calls = mock.calls.RenameTokenSeed
+	mock.lockRenameTokenSeed.RUnlock()
 	return calls
 }
 
