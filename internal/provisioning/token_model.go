@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -133,6 +134,9 @@ func (t *TokenImageSeedConfigs) Scan(value any) error {
 	}
 }
 
+// The name is part of the URL and of the file name of the image.
+var tokenSeedNameRegexp = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
+
 type TokenSeed struct {
 	ID          int64
 	Token       uuid.UUID `db:"primary=yes&join=tokens.uuid"`
@@ -146,6 +150,10 @@ type TokenSeed struct {
 func (t TokenSeed) Validate() error {
 	if t.Name == "" {
 		return domain.NewValidationErrf("Invalid token seed, name can not be empty")
+	}
+
+	if !tokenSeedNameRegexp.MatchString(t.Name) {
+		return domain.NewValidationErrf("Invalid token seed, name must start with a letter or a digit, must only contain letters, digits, %q, %q and %q and must not be longer than 63 characters", ".", "_", "-")
 	}
 
 	return nil
