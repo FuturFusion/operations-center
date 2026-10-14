@@ -46,9 +46,16 @@ func (c *CmdQuery) validateArgsAndFlags(cmd *cobra.Command, args []string) error
 }
 
 func (c *CmdQuery) run(cmd *cobra.Command, args []string) error {
+	doRequest := c.OCClient.DoRequest
 	query, _ := strings.CutPrefix(args[0], "/1.0")
 
-	resp, err := c.OCClient.DoRequest(cmd.Context(), c.flagRequest, query, nil, bytes.NewBuffer([]byte(c.flagData)))
+	internalQuery, isInternal := strings.CutPrefix(args[0], "/internal")
+	if isInternal {
+		doRequest = c.OCClient.DoInternalRequest
+		query = internalQuery
+	}
+
+	resp, err := doRequest(cmd.Context(), c.flagRequest, query, nil, bytes.NewBuffer([]byte(c.flagData)))
 	if err != nil {
 		return err
 	}

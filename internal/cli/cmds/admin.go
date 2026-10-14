@@ -149,7 +149,7 @@ func (c *cmdAdminSQL) run(cmd *cobra.Command, args []string) error {
 			queryParams.Add("dump", dump.OptionTables.String())
 		}
 
-		response, err := c.ocClient.DoRequest(cmd.Context(), http.MethodGet, "/internal/sql", queryParams, nil)
+		response, err := c.ocClient.DoInternalRequest(cmd.Context(), http.MethodGet, "/sql", queryParams, nil)
 		if err != nil {
 			return fmt.Errorf("Failed to request dump: %w", err)
 		}
@@ -168,7 +168,7 @@ func (c *cmdAdminSQL) run(cmd *cobra.Command, args []string) error {
 		Query: query,
 	}
 
-	response, err := c.ocClient.DoRequest(cmd.Context(), http.MethodPost, "/internal/sql", nil, data)
+	response, err := c.ocClient.DoInternalRequest(cmd.Context(), http.MethodPost, "/sql", nil, data)
 	if err != nil {
 		return err
 	}
