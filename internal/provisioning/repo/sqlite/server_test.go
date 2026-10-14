@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
@@ -387,6 +388,9 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 
 	server := sqlite.NewServer(tx)
 
+	tokenUUID := uuid.MustParse("f4f8bbb2-1f0a-4c4e-9d5f-2b4a6c8e0d13")
+	otherTokenUUID := uuid.MustParse("0b6c1c59-6f0c-4a52-a7a3-3f3e6e1f2a44")
+
 	withDeployment := func(name string, status api.ServerStatus, state api.ServerDeploymentState) provisioning.Server {
 		srv := provisioning.Server{
 			Name:    name,
@@ -396,8 +400,12 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 
 		if state != "" {
 			srv.StatusInternal.Deployment = &provisioning.ServerDeployment{
-				State:   state,
-				Request: provisioning.ServerDeploymentRequest{ImageType: api.ImageTypeISO},
+				State: state,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID: tokenUUID,
+					Seed:      "seed",
+					ImageType: api.ImageTypeISO,
+				},
 			}
 		}
 
@@ -419,9 +427,27 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	otherSeed := withDeployment("other seed", api.ServerStatusDeploying, api.ServerDeploymentStateWaitInstall)
+	otherSeed.StatusInternal.Deployment.Request.Seed = "other"
+	_, err = server.Create(ctx, otherSeed)
+	require.NoError(t, err)
+
+	otherToken := withDeployment("other token", api.ServerStatusDeploying, api.ServerDeploymentStateWaitInstall)
+	otherToken.StatusInternal.Deployment.Request.TokenUUID = otherTokenUUID
+	_, err = server.Create(ctx, otherToken)
+	require.NoError(t, err)
+
 	names, err := server.GetAllNamesWithActiveDeployment(ctx)
 	require.NoError(t, err)
-	require.Equal(t, []string{"deploying", "ready", "registering"}, names)
+	require.Equal(t, []string{"deploying", "other seed", "other token", "ready", "registering"}, names)
+
+	names, err = server.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, "seed")
+	require.NoError(t, err)
+	require.Equal(t, []string{"deploying", "ready", "registering"}, names, "Only active deployments of the given token seed are returned.")
+
+	names, err = server.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, otherTokenUUID, "other")
+	require.NoError(t, err)
+	require.Empty(t, names, "Token and seed name have to match both.")
 
 	// A deployment, that reaches a terminal state, is not picked up anymore.
 	done, err := server.GetByName(ctx, "ready")
@@ -433,6 +459,10 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	names, err = server.GetAllNamesWithActiveDeployment(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"deploying", "other seed", "other token", "registering"}, names)
+
+	names, err = server.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, "seed")
 	require.NoError(t, err)
 	require.Equal(t, []string{"deploying", "registering"}, names)
 }

@@ -85,6 +85,19 @@ func (t token) UpdateTokenSeed(ctx context.Context, in provisioning.TokenSeed) e
 	})
 }
 
+func (t token) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, t.db), func(ctx context.Context, tx transaction.TX) error {
+		tokenSeed, err := entities.GetTokenSeed(ctx, tx, id, oldName)
+		if err != nil {
+			return err
+		}
+
+		tokenSeed.Name = newName
+
+		return entities.UpdateTokenSeed(ctx, tx, id, oldName, *tokenSeed)
+	})
+}
+
 func (t token) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
 	return entities.DeleteTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), name, id)
 }

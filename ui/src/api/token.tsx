@@ -115,6 +115,22 @@ export const deleteTokenSeed = (
   });
 };
 
+export const renameTokenSeed = (
+  uuid: string,
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/tokens/${uuid}/seeds/${name}`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const updateTokenSeed = (
   uuid: string,
   name: string,

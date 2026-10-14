@@ -181,6 +181,25 @@ func TestTokenDatabaseActions(t *testing.T) {
 	tokenBSeed1.LastUpdated = dbTokenBSeed1.LastUpdated
 	require.Equal(t, tokenB, *dbTokenB)
 
+	// Can't rename a token seed to a name that already exists.
+	err = token.RenameTokenSeed(ctx, tokenBSeed1.Token, tokenBSeed1.Name, tokenBSeed2.Name)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Can't rename a token seed that doesn't exist.
+	err = token.RenameTokenSeed(ctx, tokenBSeed1.Token, "missing", "config-new")
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Test renaming a token seed.
+	err = token.RenameTokenSeed(ctx, tokenBSeed1.Token, tokenBSeed1.Name, "config-new")
+	require.NoError(t, err)
+	_, err = token.GetTokenSeedByName(ctx, tokenBSeed1.Token, tokenBSeed1.Name)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+	dbTokenBSeed1, err = token.GetTokenSeedByName(ctx, tokenBSeed1.Token, "config-new")
+	require.NoError(t, err)
+	tokenBSeed1.Name = "config-new"
+	tokenBSeed1.LastUpdated = dbTokenBSeed1.LastUpdated
+	require.Equal(t, tokenBSeed1, *dbTokenBSeed1)
+
 	// Delete a token seed.
 	err = token.DeleteTokenSeedByName(ctx, tokenBSeed2.Token, tokenBSeed2.Name)
 	require.NoError(t, err)

@@ -179,6 +179,20 @@ func (_d TokenRepoWithPrometheus) GetTokenSeedByName(ctx context.Context, id uui
 	return _d.base.GetTokenSeedByName(ctx, id, name)
 }
 
+// RenameTokenSeed implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RenameTokenSeed(ctx, id, oldName, newName)
+}
+
 // Update implements provisioning.TokenRepo.
 func (_d TokenRepoWithPrometheus) Update(ctx context.Context, token provisioning.Token) (err error) {
 	_since := time.Now()

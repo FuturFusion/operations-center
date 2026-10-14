@@ -348,6 +348,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateSvc.SetServerService(serverSvc)
 	channelSvc.SetServerService(serverSvc)
+	tokenSvc.SetServerService(serverSvc)
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 

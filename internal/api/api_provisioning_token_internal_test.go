@@ -18,6 +18,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	provisioningMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -37,6 +38,7 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 
 		wantStatus              int
 		wantResponseBodyContain string
+		wantLocation            string
 		wantServiceCalled       bool
 	}{
 		{
@@ -53,6 +55,7 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 }`,
 
 			wantStatus:        http.StatusCreated,
+			wantLocation:      "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/test",
 			wantServiceCalled: true,
 		},
 		{
@@ -124,9 +127,10 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 				},
 			}
 
-			body, status := doTokenRequest(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds", tc.requestBody)
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds", tc.requestBody, nil)
 
-			require.Equal(t, tc.wantStatus, status)
+			require.Equal(t, tc.wantStatus, resp.statusCode)
+			require.Equal(t, tc.wantLocation, resp.header.Get("Location"), "The location is the URL of the created token seed.")
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 
 			if tc.wantResponseBodyContain != "" {
@@ -184,6 +188,50 @@ func Test_tokenHandler_tokenPut(t *testing.T) {
 			require.Equal(t, tc.wantStatus, status)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeedsGet(t *testing.T) {
+	tests := []struct {
+		name                           string
+		serviceGetTokenSeedAllNames    []string
+		serviceGetTokenSeedAllNamesErr error
+
+		wantStatus              int
+		wantResponseBodyContain string
+	}{
+		{
+			name:                        "success",
+			serviceGetTokenSeedAllNames: []string{"one", "two"},
+
+			wantStatus:              http.StatusOK,
+			wantResponseBodyContain: `"metadata":["/1.0/provisioning/tokens/` + tokenUUID + `/seeds/one","/1.0/provisioning/tokens/` + tokenUUID + `/seeds/two"]`,
+		},
+		{
+			name:                           "error - service.GetTokenSeedAllNames",
+			serviceGetTokenSeedAllNamesErr: domain.ErrNotFound,
+
+			wantStatus:              http.StatusNotFound,
+			wantResponseBodyContain: `"error_code":404`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedAllNamesFunc: func(ctx context.Context, id uuid.UUID) ([]string, error) {
+					return tc.serviceGetTokenSeedAllNames, tc.serviceGetTokenSeedAllNamesErr
+				},
+			}
+
+			// Run test
+			body, status := doTokenRequest(t, tokenService, http.MethodGet, "/"+tokenUUID+"/seeds", "")
+
+			// Assert
+			require.Equal(t, tc.wantStatus, status)
+			require.Contains(t, body, tc.wantResponseBodyContain, "The URLs point to the token seeds.")
 		})
 	}
 }
@@ -266,7 +314,7 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 
 					return &provisioning.TokenSeed{}, nil
 				},
-				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 					return nil
 				},
 			}
@@ -276,6 +324,168 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 			require.Equal(t, tc.wantStatus, status)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeedPost(t *testing.T) {
+	type renameCall struct {
+		oldName string
+		newName string
+		force   bool
+	}
+
+	tests := []struct {
+		name                         string
+		query                        string
+		requestBody                  string
+		serviceGetTokenSeedByNameErr error
+		serviceRenameTokenSeedErr    error
+
+		wantStatus              int
+		wantResponseBodyContain string
+		wantLocation            string
+		wantRenameCalls         []renameCall
+	}{
+		{
+			name:        "success",
+			requestBody: `{"name": "new"}`,
+
+			wantStatus:              http.StatusCreated,
+			wantResponseBodyContain: `"status_code":200`,
+			wantLocation:            "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/new",
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: false}},
+		},
+		{
+			name:        "success - with force",
+			query:       "?force=true",
+			requestBody: `{"name": "new"}`,
+
+			wantStatus:              http.StatusCreated,
+			wantResponseBodyContain: `"status_code":200`,
+			wantLocation:            "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/new",
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: true}},
+		},
+		{
+			name:        "error - unknown field",
+			requestBody: `{"name": "new", "unknown": true}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"unknown\"`,
+		},
+		{
+			name:                         "error - token seed not found",
+			requestBody:                  `{"name": "new"}`,
+			serviceGetTokenSeedByNameErr: domain.ErrNotFound,
+
+			wantStatus:              http.StatusNotFound,
+			wantResponseBodyContain: `"error_code":404`,
+		},
+		{
+			name:                      "error - service.RenameTokenSeed",
+			requestBody:               `{"name": "new"}`,
+			serviceRenameTokenSeedErr: domain.ErrOperationNotPermitted,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `"error_code":400`,
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: false}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var renameCalls []renameCall
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{}, tc.serviceGetTokenSeedByNameErr
+				},
+				RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+					renameCalls = append(renameCalls, renameCall{oldName: oldName, newName: newName, force: force})
+
+					return tc.serviceRenameTokenSeedErr
+				},
+			}
+
+			// Run test
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds/test"+tc.query, tc.requestBody, nil)
+
+			// Assert
+			require.Equal(t, tc.wantStatus, resp.statusCode)
+			require.Contains(t, body, tc.wantResponseBodyContain)
+			require.Equal(t, tc.wantLocation, resp.header.Get("Location"))
+			require.Equal(t, tc.wantRenameCalls, renameCalls)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeed_force(t *testing.T) {
+	tests := []struct {
+		name        string
+		method      string
+		query       string
+		requestBody string
+
+		wantForce bool
+	}{
+		{
+			name:        "put - without force",
+			method:      http.MethodPut,
+			requestBody: `{"description": "some description"}`,
+
+			wantForce: false,
+		},
+		{
+			name:        "put - with force",
+			method:      http.MethodPut,
+			query:       "?force=true",
+			requestBody: `{"description": "some description"}`,
+
+			wantForce: true,
+		},
+		{
+			name:   "delete - without force",
+			method: http.MethodDelete,
+
+			wantForce: false,
+		},
+		{
+			name:   "delete - with force",
+			method: http.MethodDelete,
+			query:  "?force=1",
+
+			wantForce: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var gotForce []bool
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{}, nil
+				},
+				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
+					gotForce = append(gotForce, force)
+
+					return nil
+				},
+				DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string, force bool) error {
+					gotForce = append(gotForce, force)
+
+					return nil
+				},
+			}
+
+			// Run test
+			_, status := doTokenRequest(t, tokenService, tc.method, "/"+tokenUUID+"/seeds/test"+tc.query, tc.requestBody)
+
+			// Assert
+			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, []bool{tc.wantForce}, gotForce, "The force query parameter is passed to the service.")
 		})
 	}
 }

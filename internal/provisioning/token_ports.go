@@ -11,6 +11,8 @@ import (
 )
 
 type TokenService interface {
+	SetServerService(serverSvc ServerService)
+
 	Create(ctx context.Context, token Token) (Token, error)
 	GetAll(ctx context.Context) (Tokens, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -25,8 +27,9 @@ type TokenService interface {
 	GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error)
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
-	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error
-	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
+	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed, force bool) error
+	RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error
+	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error
 	GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error)
 	GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*TokenImage, error)
 	ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, _ error)
@@ -46,6 +49,7 @@ type TokenRepo interface {
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
 	UpdateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) error
+	RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
 }
 
@@ -57,6 +61,8 @@ type FlasherPort interface {
 	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 	SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs) (string, error)
-	GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	SeedImageCacheGeneration(ctx context.Context, cachePrefix string) uint64
+	GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
 	OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	RemoveSeededImages(ctx context.Context, cachePrefix string) error
 }

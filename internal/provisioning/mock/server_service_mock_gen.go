@@ -109,6 +109,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
+//			GetAllNamesWithActiveDeploymentByTokenSeedFunc: func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+//				panic("mock out the GetAllNamesWithActiveDeploymentByTokenSeed method")
+//			},
 //			GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
 //				panic("mock out the GetAllNamesWithFilter method")
 //			},
@@ -301,6 +304,9 @@ type ServerServiceMock struct {
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllNamesWithActiveDeploymentByTokenSeedFunc mocks the GetAllNamesWithActiveDeploymentByTokenSeed method.
+	GetAllNamesWithActiveDeploymentByTokenSeedFunc func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error)
 
 	// GetAllNamesWithFilterFunc mocks the GetAllNamesWithFilter method.
 	GetAllNamesWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error)
@@ -640,6 +646,15 @@ type ServerServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllNamesWithActiveDeploymentByTokenSeed holds details about calls to the GetAllNamesWithActiveDeploymentByTokenSeed method.
+		GetAllNamesWithActiveDeploymentByTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TokenUUID is the tokenUUID argument value.
+			TokenUUID uuid.UUID
+			// Seed is the seed argument value.
+			Seed string
+		}
 		// GetAllNamesWithFilter holds details about calls to the GetAllNamesWithFilter method.
 		GetAllNamesWithFilter []struct {
 			// Ctx is the ctx argument value.
@@ -917,68 +932,69 @@ type ServerServiceMock struct {
 			Name string
 		}
 	}
-	lockAddApplication                       sync.RWMutex
-	lockApplyBIOSAttributesByName            sync.RWMutex
-	lockBIOSProfileByName                    sync.RWMutex
-	lockBMCApplySecureBootCertificatesByName sync.RWMutex
-	lockBMCAttachMediaByName                 sync.RWMutex
-	lockBMCBIOSAttributeByName               sync.RWMutex
-	lockBMCBIOSAttributesByName              sync.RWMutex
-	lockBMCDetachMediaByName                 sync.RWMutex
-	lockBMCDumpByName                        sync.RWMutex
-	lockBMCLogEntriesByNameAndLogSource      sync.RWMutex
-	lockBMCLogSourcesByName                  sync.RWMutex
-	lockBMCRefreshByName                     sync.RWMutex
-	lockBMCResetSecureBootKeysByName         sync.RWMutex
-	lockBMCServerPowerOffByName              sync.RWMutex
-	lockBMCServerPowerOnByName               sync.RWMutex
-	lockBMCServerRestartByName               sync.RWMutex
-	lockBMCServerSetLocationIndicatorByName  sync.RWMutex
-	lockBeginUpdateRunByCluster              sync.RWMutex
-	lockCancelDeploymentByName               sync.RWMutex
-	lockDeleteByName                         sync.RWMutex
-	lockDeployByName                         sync.RWMutex
-	lockDeploymentControlLoop                sync.RWMutex
-	lockDetachFromCluster                    sync.RWMutex
-	lockEndUpdateRunByCluster                sync.RWMutex
-	lockEvacuateSystemByName                 sync.RWMutex
-	lockFactoryResetByName                   sync.RWMutex
-	lockGetAll                               sync.RWMutex
-	lockGetAllNames                          sync.RWMutex
-	lockGetAllNamesWithFilter                sync.RWMutex
-	lockGetAllWithFilter                     sync.RWMutex
-	lockGetByName                            sync.RWMutex
-	lockGetChangelogByName                   sync.RWMutex
-	lockGetSystemKernel                      sync.RWMutex
-	lockGetSystemLogging                     sync.RWMutex
-	lockGetSystemProvider                    sync.RWMutex
-	lockGetSystemUpdate                      sync.RWMutex
-	lockPollServer                           sync.RWMutex
-	lockPollServers                          sync.RWMutex
-	lockPostRestoreSystemDoneByName          sync.RWMutex
-	lockPoweroffSystemByName                 sync.RWMutex
-	lockPreRegister                          sync.RWMutex
-	lockRebootSystemByName                   sync.RWMutex
-	lockReconcileMeshTunnelLocalAddress      sync.RWMutex
-	lockRegister                             sync.RWMutex
-	lockRename                               sync.RWMutex
-	lockRestartApplication                   sync.RWMutex
-	lockRestoreSystemByName                  sync.RWMutex
-	lockResyncBMCData                        sync.RWMutex
-	lockResyncByName                         sync.RWMutex
-	lockSelfRegisterOperationsCenter         sync.RWMutex
-	lockSelfUpdate                           sync.RWMutex
-	lockSetClusterService                    sync.RWMutex
-	lockSyncCluster                          sync.RWMutex
-	lockUpdate                               sync.RWMutex
-	lockUpdateSystemByName                   sync.RWMutex
-	lockUpdateSystemKernel                   sync.RWMutex
-	lockUpdateSystemLogging                  sync.RWMutex
-	lockUpdateSystemNetwork                  sync.RWMutex
-	lockUpdateSystemProvider                 sync.RWMutex
-	lockUpdateSystemStorage                  sync.RWMutex
-	lockUpdateSystemUpdate                   sync.RWMutex
-	lockValidateBIOSProfileByName            sync.RWMutex
+	lockAddApplication                             sync.RWMutex
+	lockApplyBIOSAttributesByName                  sync.RWMutex
+	lockBIOSProfileByName                          sync.RWMutex
+	lockBMCApplySecureBootCertificatesByName       sync.RWMutex
+	lockBMCAttachMediaByName                       sync.RWMutex
+	lockBMCBIOSAttributeByName                     sync.RWMutex
+	lockBMCBIOSAttributesByName                    sync.RWMutex
+	lockBMCDetachMediaByName                       sync.RWMutex
+	lockBMCDumpByName                              sync.RWMutex
+	lockBMCLogEntriesByNameAndLogSource            sync.RWMutex
+	lockBMCLogSourcesByName                        sync.RWMutex
+	lockBMCRefreshByName                           sync.RWMutex
+	lockBMCResetSecureBootKeysByName               sync.RWMutex
+	lockBMCServerPowerOffByName                    sync.RWMutex
+	lockBMCServerPowerOnByName                     sync.RWMutex
+	lockBMCServerRestartByName                     sync.RWMutex
+	lockBMCServerSetLocationIndicatorByName        sync.RWMutex
+	lockBeginUpdateRunByCluster                    sync.RWMutex
+	lockCancelDeploymentByName                     sync.RWMutex
+	lockDeleteByName                               sync.RWMutex
+	lockDeployByName                               sync.RWMutex
+	lockDeploymentControlLoop                      sync.RWMutex
+	lockDetachFromCluster                          sync.RWMutex
+	lockEndUpdateRunByCluster                      sync.RWMutex
+	lockEvacuateSystemByName                       sync.RWMutex
+	lockFactoryResetByName                         sync.RWMutex
+	lockGetAll                                     sync.RWMutex
+	lockGetAllNames                                sync.RWMutex
+	lockGetAllNamesWithActiveDeploymentByTokenSeed sync.RWMutex
+	lockGetAllNamesWithFilter                      sync.RWMutex
+	lockGetAllWithFilter                           sync.RWMutex
+	lockGetByName                                  sync.RWMutex
+	lockGetChangelogByName                         sync.RWMutex
+	lockGetSystemKernel                            sync.RWMutex
+	lockGetSystemLogging                           sync.RWMutex
+	lockGetSystemProvider                          sync.RWMutex
+	lockGetSystemUpdate                            sync.RWMutex
+	lockPollServer                                 sync.RWMutex
+	lockPollServers                                sync.RWMutex
+	lockPostRestoreSystemDoneByName                sync.RWMutex
+	lockPoweroffSystemByName                       sync.RWMutex
+	lockPreRegister                                sync.RWMutex
+	lockRebootSystemByName                         sync.RWMutex
+	lockReconcileMeshTunnelLocalAddress            sync.RWMutex
+	lockRegister                                   sync.RWMutex
+	lockRename                                     sync.RWMutex
+	lockRestartApplication                         sync.RWMutex
+	lockRestoreSystemByName                        sync.RWMutex
+	lockResyncBMCData                              sync.RWMutex
+	lockResyncByName                               sync.RWMutex
+	lockSelfRegisterOperationsCenter               sync.RWMutex
+	lockSelfUpdate                                 sync.RWMutex
+	lockSetClusterService                          sync.RWMutex
+	lockSyncCluster                                sync.RWMutex
+	lockUpdate                                     sync.RWMutex
+	lockUpdateSystemByName                         sync.RWMutex
+	lockUpdateSystemKernel                         sync.RWMutex
+	lockUpdateSystemLogging                        sync.RWMutex
+	lockUpdateSystemNetwork                        sync.RWMutex
+	lockUpdateSystemProvider                       sync.RWMutex
+	lockUpdateSystemStorage                        sync.RWMutex
+	lockUpdateSystemUpdate                         sync.RWMutex
+	lockValidateBIOSProfileByName                  sync.RWMutex
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -2062,6 +2078,46 @@ func (mock *ServerServiceMock) GetAllNamesCalls() []struct {
 	mock.lockGetAllNames.RLock()
 	calls = mock.calls.GetAllNames
 	mock.lockGetAllNames.RUnlock()
+	return calls
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeed calls GetAllNamesWithActiveDeploymentByTokenSeedFunc.
+func (mock *ServerServiceMock) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+	if mock.GetAllNamesWithActiveDeploymentByTokenSeedFunc == nil {
+		panic("ServerServiceMock.GetAllNamesWithActiveDeploymentByTokenSeedFunc: method is nil but ServerService.GetAllNamesWithActiveDeploymentByTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		TokenUUID uuid.UUID
+		Seed      string
+	}{
+		Ctx:       ctx,
+		TokenUUID: tokenUUID,
+		Seed:      seed,
+	}
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.Lock()
+	mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed = append(mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed, callInfo)
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.Unlock()
+	return mock.GetAllNamesWithActiveDeploymentByTokenSeedFunc(ctx, tokenUUID, seed)
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeedCalls gets all the calls that were made to GetAllNamesWithActiveDeploymentByTokenSeed.
+// Check the length with:
+//
+//	len(mockedServerService.GetAllNamesWithActiveDeploymentByTokenSeedCalls())
+func (mock *ServerServiceMock) GetAllNamesWithActiveDeploymentByTokenSeedCalls() []struct {
+	Ctx       context.Context
+	TokenUUID uuid.UUID
+	Seed      string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		TokenUUID uuid.UUID
+		Seed      string
+	}
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.RLock()
+	calls = mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.RUnlock()
 	return calls
 }
 

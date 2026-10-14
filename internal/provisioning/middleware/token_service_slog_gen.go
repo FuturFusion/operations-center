@@ -179,7 +179,7 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 }
 
 // DeleteTokenSeedByName implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -187,6 +187,7 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
 			slog.String("name", name),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling DeleteTokenSeedByName")
@@ -207,7 +208,7 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 			log.DebugContext(ctx, "<= method DeleteTokenSeedByName finished")
 		}
 	}()
-	return _d._base.DeleteTokenSeedByName(ctx, id, name)
+	return _d._base.DeleteTokenSeedByName(ctx, id, name, force)
 }
 
 // GetAll implements provisioning.TokenService.
@@ -646,6 +647,40 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 	return _d._base.PrepareTokenSeedImage(ctx, id, name, imageType, architecture, channel)
 }
 
+// RenameTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RenameTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RenameTokenSeed returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RenameTokenSeed finished")
+		}
+	}()
+	return _d._base.RenameTokenSeed(ctx, id, oldName, newName, force)
+}
+
 // ResolveTokenSeedImageID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -682,6 +717,23 @@ func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id u
 	return _d._base.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
 }
 
+// SetServerService implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("serverSvc", serverSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetServerService")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method SetServerService finished")
+	}()
+	_d._base.SetServerService(serverSvc)
+}
+
 // Update implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -714,13 +766,14 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 }
 
 // UpdateTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
+func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tokenSeed", tokenSeed),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling UpdateTokenSeed")
@@ -741,5 +794,5 @@ func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed pr
 			log.DebugContext(ctx, "<= method UpdateTokenSeed finished")
 		}
 	}()
-	return _d._base.UpdateTokenSeed(ctx, tokenSeed)
+	return _d._base.UpdateTokenSeed(ctx, tokenSeed, force)
 }

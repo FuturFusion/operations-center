@@ -1,7 +1,9 @@
 package token
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +23,7 @@ import (
 
 type tokenService struct {
 	repo       provisioning.TokenRepo
+	serverSvc  provisioning.ServerService
 	updateSvc  provisioning.UpdateService
 	channelSvc provisioning.ChannelService
 	flasher    provisioning.FlasherPort
@@ -53,6 +56,10 @@ func New(repo provisioning.TokenRepo, updateSvc provisioning.UpdateService, chan
 	}
 
 	return tokenSvc
+}
+
+func (s *tokenService) SetServerService(serverSvc provisioning.ServerService) {
+	s.serverSvc = serverSvc
 }
 
 func (s *tokenService) Create(ctx context.Context, newToken provisioning.Token) (provisioning.Token, error) {
@@ -287,24 +294,141 @@ func (s *tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, nam
 	return tokenSeedConfig, nil
 }
 
-func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 	err := tokenSeed.Validate()
 	if err != nil {
 		return fmt.Errorf("Validate token seed: %w", err)
 	}
 
-	err = s.repo.UpdateTokenSeed(ctx, tokenSeed)
-	if err != nil {
-		return err
-	}
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		currentTokenSeed, err := s.repo.GetTokenSeedByName(ctx, tokenSeed.Token, tokenSeed.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get token seed %q for token %q: %w", tokenSeed.Name, tokenSeed.Token.String(), err)
+		}
 
-	return nil
+		imageChanged, err := tokenSeedImageChanged(*currentTokenSeed, tokenSeed)
+		if err != nil {
+			return err
+		}
+
+		// A change of the description does not affect the image.
+		if imageChanged {
+			err = s.checkNoActiveDeployment(ctx, tokenSeed.Token, tokenSeed.Name, force)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = s.repo.UpdateTokenSeed(ctx, tokenSeed)
+		if err != nil {
+			return err
+		}
+
+		// The images of a public token seed are served without authorization.
+		if currentTokenSeed.Public && !tokenSeed.Public {
+			return s.removeSeededImagesAfterCommit(ctx, tokenSeed.Token, tokenSeed.Name)
+		}
+
+		return nil
+	})
 }
 
-func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
-	err := s.repo.DeleteTokenSeedByName(ctx, id, name)
+func (s *tokenService) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+	if oldName == "" {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed name cannot be empty")
+	}
+
+	if oldName == newName {
+		return domain.NewValidationErrf("Old and new token seed name are equal")
+	}
+
+	err := provisioning.TokenSeed{Name: newName}.Validate()
 	if err != nil {
-		return err
+		return fmt.Errorf("Validate token seed: %w", err)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		// The name is part of the URL of the image.
+		err := s.checkNoActiveDeployment(ctx, id, oldName, force)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.RenameTokenSeed(ctx, id, oldName, newName)
+		if err != nil {
+			return fmt.Errorf("Failed to rename token seed %q for token %q: %w", oldName, id.String(), err)
+		}
+
+		return s.removeSeededImagesAfterCommit(ctx, id, oldName)
+	})
+}
+
+func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		err := s.checkNoActiveDeployment(ctx, id, name, force)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.DeleteTokenSeedByName(ctx, id, name)
+		if err != nil {
+			return err
+		}
+
+		return s.removeSeededImagesAfterCommit(ctx, id, name)
+	})
+}
+
+// removeSeededImagesAfterCommit removes the cached images of a token seed as
+// soon as the change of the token seed is committed.
+func (s *tokenService) removeSeededImagesAfterCommit(ctx context.Context, id uuid.UUID, name string) error {
+	return transaction.AfterCommit(ctx, func() error {
+		err := s.flasher.RemoveSeededImages(ctx, provisioning.SeedImageCachePrefix(id, name))
+		if err != nil {
+			return fmt.Errorf("Failed to remove cached images of token seed %q: %w", name, err)
+		}
+
+		return nil
+	})
+}
+
+// tokenSeedImageChanged reports whether the update changes the image or the
+// way the image is served.
+func tokenSeedImageChanged(current provisioning.TokenSeed, updated provisioning.TokenSeed) (bool, error) {
+	if current.Public != updated.Public {
+		return true, nil
+	}
+
+	currentSeeds, err := json.Marshal(current.Seeds)
+	if err != nil {
+		return false, fmt.Errorf("Failed to encode seeds of token seed %q: %w", current.Name, err)
+	}
+
+	updatedSeeds, err := json.Marshal(updated.Seeds)
+	if err != nil {
+		return false, fmt.Errorf("Failed to encode seeds of token seed %q: %w", updated.Name, err)
+	}
+
+	return !bytes.Equal(currentSeeds, updatedSeeds), nil
+}
+
+// checkNoActiveDeployment returns an error if a server deployment, which is
+// not finished, uses the token seed. With force, the check is skipped.
+func (s *tokenService) checkNoActiveDeployment(ctx context.Context, id uuid.UUID, name string, force bool) error {
+	if force {
+		return nil
+	}
+
+	serverNames, err := s.serverSvc.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, id, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get servers with an active deployment for token seed %q: %w", name, err)
+	}
+
+	if len(serverNames) > 0 {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q is in use by the active deployment of servers: %s", name, strings.Join(serverNames, ", ")).
+			WithHintf("Wait for the deployments to finish, cancel them or use the force option.").
+			WithDetail("token_seed", name).
+			WithDetail("servers", strings.Join(serverNames, ", "))
 	}
 
 	return nil
@@ -342,6 +466,8 @@ func (s *tokenService) GetCompressedTokenImageFromTokenSeed(ctx context.Context,
 // naming a token seed. A request naming a prepared image is answered by
 // GetPreparedTokenSeedImage instead, which takes no lookup at all.
 func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
+
 	tokenSeed, err := s.tokenSeedForImage(ctx, id, name, imageType, architecture)
 	if err != nil {
 		return nil, err
@@ -349,7 +475,7 @@ func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, i
 
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
-	content, info, err := s.generateSeedImage(ctx, cacheID, id, *tokenSeed, imageType, architecture, channel)
+	content, info, err := s.generateSeedImage(ctx, cacheID, generation, id, *tokenSeed, imageType, architecture, channel)
 	if err != nil {
 		return nil, err
 	}
@@ -384,6 +510,8 @@ func (s *tokenService) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID
 // and stores it, so that a request naming it can be answered without anything
 // having to be looked up.
 func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
+	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
+
 	tokenSeed, err := s.publicTokenSeedForImage(ctx, id, name, imageType, architecture)
 	if err != nil {
 		return err
@@ -391,7 +519,7 @@ func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, 
 
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
-	content, _, err := s.generateSeedImage(ctx, cacheID, id, *tokenSeed, imageType, architecture, channel)
+	content, _, err := s.generateSeedImage(ctx, cacheID, generation, id, *tokenSeed, imageType, architecture, channel)
 	if err != nil {
 		return err
 	}
@@ -495,7 +623,7 @@ func (s *tokenService) resolveSeedImage(ctx context.Context, imageType api.Image
 //
 // An image for a token seed, which is not public, is kept where a request
 // naming it cannot reach it.
-func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, id uuid.UUID, tokenSeed provisioning.TokenSeed, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
+func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, generation uint64, id uuid.UUID, tokenSeed provisioning.TokenSeed, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
 	fingerprint, updateUUID, filename, seeds, err := s.resolveSeedImage(ctx, imageType, architecture, channel, tokenSeed.Seeds)
 	if err != nil {
 		return nil, provisioning.SeedImageInfo{}, err
@@ -506,7 +634,7 @@ func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, id
 		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, updateUUID.String(), err)
 	}
 
-	return s.flasher.GenerateSeededImage(ctx, cacheID, fingerprint, id, seeds, tokenSeed.Public, filereader)
+	return s.flasher.GenerateSeededImage(ctx, cacheID, generation, fingerprint, id, seeds, tokenSeed.Public, filereader)
 }
 
 func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds provisioning.TokenImageSeedConfigs) (_ io.ReadCloser, err error) {

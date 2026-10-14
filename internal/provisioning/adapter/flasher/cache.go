@@ -55,6 +55,10 @@ type imageCache struct {
 
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
+
+	// generations counts per cache prefix, how often the images have been
+	// removed on request.
+	generations map[string]uint64
 }
 
 type cacheEntry struct {
@@ -72,6 +76,7 @@ func newImageCache(dir string) *imageCache {
 	cache := &imageCache{
 		dir:           dir,
 		entries:       map[string]*cacheEntry{},
+		generations:   map[string]uint64{},
 		beforeAcquire: func() {},
 	}
 
@@ -102,8 +107,26 @@ func seedImageFingerprintID(fingerprint string, tarball []byte) string {
 	return provisioning.SeedImageFingerprintID(fingerprint + "\x00" + base64.RawURLEncoding.EncodeToString(tarballSum[:]))
 }
 
+// SeedImageCacheGeneration returns the current generation of the cached images
+// with a cache ID starting with cachePrefix. RemoveSeededImages starts a new
+// generation.
+//
+// A caller reads the generation before it reads the token seed and passes it to
+// GenerateSeededImage. This way, an image is never stored for a token seed,
+// which has changed in the meantime.
+func (f *Flasher) SeedImageCacheGeneration(_ context.Context, cachePrefix string) uint64 {
+	if f.cache == nil {
+		return 0
+	}
+
+	return f.cache.generation(cachePrefix)
+}
+
 // GenerateSeededImage stores the seeded image for cacheID in the cache, unless
 // it is stored already, and returns it as a seekable stream.
+//
+// generation is the value of SeedImageCacheGeneration read before the token
+// seed. The call fails, if the images have been removed since then.
 //
 // public tells whether the image may be served to a request naming it, which is
 // only true for an image generated for a public token seed. An image generated
@@ -112,7 +135,7 @@ func seedImageFingerprintID(fingerprint string, tarball []byte) string {
 //
 // The call blocks until the image is stored. Concurrent calls for the same
 // image generate it only once. source is closed in all cases.
-func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, err error) {
+func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, err error) {
 	// source is only consumed, if the image has to be generated.
 	defer func() {
 		if source != nil {
@@ -139,6 +162,12 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 	fingerprintID := seedImageFingerprintID(fingerprint, tarball)
 
 	for {
+		// A waiting caller must not generate the image again, if it has been
+		// removed in the meantime.
+		if f.cache.generation(cacheID) != generation {
+			return nil, provisioning.SeedImageInfo{}, errSeedImageStale(fingerprintID)
+		}
+
 		image, info, err := f.cache.open(public, cacheID, fingerprintID)
 		if err == nil {
 			return image, info, nil
@@ -179,7 +208,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 			// generate takes ownership of the source and closes it.
 			source = nil
 
-			err = f.generate(ctx, public, cacheID, fingerprintID, offset, tarball, generateSource)
+			err = f.generate(ctx, public, cacheID, generation, fingerprintID, offset, tarball, generateSource)
 			if err != nil {
 				return nil, provisioning.SeedImageInfo{}, err
 			}
@@ -240,6 +269,22 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 	}
 }
 
+// RemoveSeededImages removes all cached images with a cache ID starting with
+// cachePrefix.
+//
+// An image being generated right now is not stored.
+func (f *Flasher) RemoveSeededImages(_ context.Context, cachePrefix string) error {
+	if f.cache == nil {
+		return nil
+	}
+
+	if len(cachePrefix) != provisioning.SeedImageCachePrefixLength || !cacheIDRegexp.MatchString(cachePrefix) {
+		return fmt.Errorf("Invalid seed image cache prefix %q", cachePrefix)
+	}
+
+	return f.cache.removeByPrefix(cachePrefix)
+}
+
 // PruneCache removes cached images, which have not been accessed within ttl,
 // together with leftovers of interrupted generations.
 func (f *Flasher) PruneCache(ctx context.Context, ttl time.Duration) error {
@@ -251,7 +296,7 @@ func (f *Flasher) PruneCache(ctx context.Context, ttl time.Duration) error {
 }
 
 // generate writes the seeded image to the cache. It closes source.
-func (f *Flasher) generate(ctx context.Context, public bool, cacheID string, fingerprintID string, offset int64, tarball []byte, source io.ReadCloser) (err error) {
+func (f *Flasher) generate(ctx context.Context, public bool, cacheID string, generation uint64, fingerprintID string, offset int64, tarball []byte, source io.ReadCloser) (err error) {
 	image, err := seededImage(source, offset, tarball)
 	if err != nil {
 		return errors.Join(fmt.Errorf("Failed to generate seeded image: %w", err), source.Close())
@@ -267,7 +312,7 @@ func (f *Flasher) generate(ctx context.Context, public bool, cacheID string, fin
 		return err
 	}
 
-	return f.cache.write(ctx, public, cacheID, fingerprintID, image)
+	return f.cache.write(ctx, public, cacheID, generation, fingerprintID, image)
 }
 
 // acquire either returns a channel to wait on, because another caller is
@@ -301,6 +346,29 @@ func (c *imageCache) acquire(public bool, cacheID string, fingerprintID string) 
 		entry.generating = nil
 		close(generating)
 	}
+}
+
+// generation returns the current generation of the images of the token seed,
+// that id belongs to. id is a cache ID or a cache prefix.
+func (c *imageCache) generation(id string) uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.generations[cachePrefix(id)]
+}
+
+func cachePrefix(id string) string {
+	if len(id) <= provisioning.SeedImageCachePrefixLength {
+		return id
+	}
+
+	return id[:provisioning.SeedImageCachePrefixLength]
+}
+
+func errSeedImageStale(fingerprintID string) error {
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The token seed of seed image %q has been changed while the image was requested", fingerprintID).
+		WithHintf("Request the image again.").
+		WithDetail("fingerprint", fingerprintID)
 }
 
 // generating returns a channel closed as soon as the image is done being
@@ -343,7 +411,7 @@ func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ 
 }
 
 // write stores the image under the name it is addressed by.
-func (c *imageCache) write(ctx context.Context, public bool, cacheID string, fingerprintID string, image io.Reader) (err error) {
+func (c *imageCache) write(ctx context.Context, public bool, cacheID string, generation uint64, fingerprintID string, image io.Reader) (err error) {
 	dir := c.namespaceDir(public)
 
 	err = os.MkdirAll(dir, 0o700)
@@ -381,9 +449,9 @@ func (c *imageCache) write(ctx context.Context, public bool, cacheID string, fin
 		return fmt.Errorf("Failed to close partial file for cached seed image %q: %w", fingerprintID, err)
 	}
 
-	err = os.Rename(partialName, c.imageFilename(public, cacheID, fingerprintID))
+	err = c.moveIntoPlace(partialName, public, cacheID, generation, fingerprintID)
 	if err != nil {
-		return fmt.Errorf("Failed to move cached seed image %q into place: %w", fingerprintID, err)
+		return err
 	}
 
 	partialName = ""
@@ -391,6 +459,76 @@ func (c *imageCache) write(ctx context.Context, public bool, cacheID string, fin
 	c.touch(cacheKey(public, cacheID, fingerprintID))
 
 	return nil
+}
+
+// moveIntoPlace makes the generated image available, unless the images have
+// been removed since the caller has read generation.
+func (c *imageCache) moveIntoPlace(partialName string, public bool, cacheID string, generation uint64, fingerprintID string) error {
+	// The lock is shared with removeByPrefix. Either the image is in place
+	// before the removal and gets removed, or it is rejected here.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.generations[cachePrefix(cacheID)] != generation {
+		return errSeedImageStale(fingerprintID)
+	}
+
+	err := os.Rename(partialName, c.imageFilename(public, cacheID, fingerprintID))
+	if err != nil {
+		return fmt.Errorf("Failed to move cached seed image %q into place: %w", fingerprintID, err)
+	}
+
+	return nil
+}
+
+// removeByPrefix removes the cached images with a name starting with prefix
+// from all namespaces and starts a new generation for prefix.
+func (c *imageCache) removeByPrefix(prefix string) error {
+	// The lock is held all the way, see moveIntoPlace.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.generations[prefix]++
+
+	var errs []error
+
+	for _, namespace := range []string{cachePublicDir, cachePrivateDir} {
+		for key, entry := range c.entries {
+			// The entry of an image being generated is still in use.
+			if !strings.HasPrefix(key, namespace+"/"+prefix) || entry.generating != nil {
+				continue
+			}
+
+			delete(c.entries, key)
+		}
+
+		dir := filepath.Join(c.dir, namespace)
+
+		dirEntries, err := os.ReadDir(dir)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+
+			errs = append(errs, fmt.Errorf("Failed to read seed image cache directory %q: %w", dir, err))
+			continue
+		}
+
+		for _, dirEntry := range dirEntries {
+			filename := dirEntry.Name()
+
+			if dirEntry.IsDir() || !strings.HasPrefix(filename, prefix) || !strings.HasSuffix(filename, cacheImageExt) {
+				continue
+			}
+
+			err = os.Remove(filepath.Join(dir, filename))
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				errs = append(errs, fmt.Errorf("Failed to remove cached seed image %q: %w", filename, err))
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // prune removes cached images not accessed within ttl and leftovers of

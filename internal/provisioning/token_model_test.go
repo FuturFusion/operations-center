@@ -2,6 +2,7 @@ package provisioning_test
 
 import (
 	"database/sql/driver"
+	"strings"
 	"testing"
 	"time"
 
@@ -239,6 +240,11 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 func TestTokenSeed_Validate(t *testing.T) {
 	t.Parallel()
 
+	validationErr := func(tt require.TestingT, err error, a ...any) {
+		var verr domain.ErrValidation
+		require.ErrorAs(tt, err, &verr, a...)
+	}
+
 	tests := []struct {
 		name      string
 		tokenSeed provisioning.TokenSeed
@@ -246,7 +252,7 @@ func TestTokenSeed_Validate(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "valid",
+			name: "valid - letters",
 			tokenSeed: provisioning.TokenSeed{
 				Name: "name",
 			},
@@ -254,15 +260,108 @@ func TestTokenSeed_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - name empty",
+			name: "valid - single character",
 			tokenSeed: provisioning.TokenSeed{
-				Name: "", // invalid, name empty
+				Name: "a",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
+			assertErr: require.NoError,
+		},
+		{
+			name: "valid - all allowed character classes",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "0aZ._-9",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "valid - maximum length",
+			tokenSeed: provisioning.TokenSeed{
+				Name: strings.Repeat("a", 63),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - name empty",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name too long",
+			tokenSeed: provisioning.TokenSeed{
+				Name: strings.Repeat("a", 64),
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with leading dot",
+			tokenSeed: provisioning.TokenSeed{
+				Name: ".name",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with leading dash",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "-name",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with space",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "my name",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with slash",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "my/name",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with percent",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "my%20name",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with question mark",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "name?",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with non ASCII letter",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "näme",
+			},
+
+			assertErr: validationErr,
+		},
+		{
+			name: "error - name with trailing newline",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "name\n",
+			},
+
+			assertErr: validationErr,
 		},
 	}
 
@@ -291,6 +390,15 @@ func TestSeedImageCacheID(t *testing.T) {
 	t.Run("is usable as a URL path segment and as a filename", func(t *testing.T) {
 		require.Len(t, id, provisioning.SeedImageCacheIDLength)
 		require.Regexp(t, `^[A-Za-z0-9_-]+$`, id)
+	})
+
+	t.Run("starts with the cache prefix of the token seed", func(t *testing.T) {
+		prefix := provisioning.SeedImageCachePrefix(tokenUUID, "default")
+
+		require.Len(t, prefix, provisioning.SeedImageCachePrefixLength)
+		require.True(t, strings.HasPrefix(id, prefix))
+		require.True(t, strings.HasPrefix(provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeRaw, images.UpdateFileArchitecture64BitARM, "daily"), prefix), "All images of a token seed share the prefix.")
+		require.False(t, strings.HasPrefix(provisioning.SeedImageCacheID(tokenUUID, "other", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"), prefix), "Another token seed has another prefix.")
 	})
 
 	t.Run("differs for every input it is derived from", func(t *testing.T) {

@@ -404,8 +404,12 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	// Edit seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/token_seed_put.yaml`, cpuArch, token, tmpDir)
 
+	// Rename seed.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed rename %s test test-renamed`, cpuArch, token)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test-renamed`, cpuArch, token)
+
 	// Remove seed
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed remove %s test`, cpuArch, token)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed remove %s test-renamed`, cpuArch, token)
 
 	// Create seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test2 %s/incusos_seed.yaml`, cpuArch, token, tmpDir)

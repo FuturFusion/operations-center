@@ -945,6 +945,39 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 	return _d._base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithActiveDeploymentByTokenSeed implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tokenUUID", tokenUUID),
+			slog.String("seed", seed),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllNamesWithActiveDeploymentByTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeploymentByTokenSeed returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeploymentByTokenSeed finished")
+		}
+	}()
+	return _d._base.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, seed)
+}
+
 // GetAllNamesWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

@@ -8,6 +8,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -35,6 +37,9 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			},
 //			GetAllNamesWithActiveDeploymentFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNamesWithActiveDeployment method")
+//			},
+//			GetAllNamesWithActiveDeploymentByTokenSeedFunc: func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+//				panic("mock out the GetAllNamesWithActiveDeploymentByTokenSeed method")
 //			},
 //			GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
 //				panic("mock out the GetAllNamesWithFilter method")
@@ -81,6 +86,9 @@ type ServerRepoMock struct {
 
 	// GetAllNamesWithActiveDeploymentFunc mocks the GetAllNamesWithActiveDeployment method.
 	GetAllNamesWithActiveDeploymentFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllNamesWithActiveDeploymentByTokenSeedFunc mocks the GetAllNamesWithActiveDeploymentByTokenSeed method.
+	GetAllNamesWithActiveDeploymentByTokenSeedFunc func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error)
 
 	// GetAllNamesWithFilterFunc mocks the GetAllNamesWithFilter method.
 	GetAllNamesWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error)
@@ -136,6 +144,15 @@ type ServerRepoMock struct {
 		GetAllNamesWithActiveDeployment []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// GetAllNamesWithActiveDeploymentByTokenSeed holds details about calls to the GetAllNamesWithActiveDeploymentByTokenSeed method.
+		GetAllNamesWithActiveDeploymentByTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TokenUUID is the tokenUUID argument value.
+			TokenUUID uuid.UUID
+			// Seed is the seed argument value.
+			Seed string
 		}
 		// GetAllNamesWithFilter holds details about calls to the GetAllNamesWithFilter method.
 		GetAllNamesWithFilter []struct {
@@ -196,19 +213,20 @@ type ServerRepoMock struct {
 			Server provisioning.Server
 		}
 	}
-	lockCreate                          sync.RWMutex
-	lockDeleteByName                    sync.RWMutex
-	lockGetAll                          sync.RWMutex
-	lockGetAllNames                     sync.RWMutex
-	lockGetAllNamesWithActiveDeployment sync.RWMutex
-	lockGetAllNamesWithFilter           sync.RWMutex
-	lockGetAllWithFilter                sync.RWMutex
-	lockGetByCertificate                sync.RWMutex
-	lockGetByMachineID                  sync.RWMutex
-	lockGetByName                       sync.RWMutex
-	lockGetBySystemUUID                 sync.RWMutex
-	lockRename                          sync.RWMutex
-	lockUpdate                          sync.RWMutex
+	lockCreate                                     sync.RWMutex
+	lockDeleteByName                               sync.RWMutex
+	lockGetAll                                     sync.RWMutex
+	lockGetAllNames                                sync.RWMutex
+	lockGetAllNamesWithActiveDeployment            sync.RWMutex
+	lockGetAllNamesWithActiveDeploymentByTokenSeed sync.RWMutex
+	lockGetAllNamesWithFilter                      sync.RWMutex
+	lockGetAllWithFilter                           sync.RWMutex
+	lockGetByCertificate                           sync.RWMutex
+	lockGetByMachineID                             sync.RWMutex
+	lockGetByName                                  sync.RWMutex
+	lockGetBySystemUUID                            sync.RWMutex
+	lockRename                                     sync.RWMutex
+	lockUpdate                                     sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -376,6 +394,46 @@ func (mock *ServerRepoMock) GetAllNamesWithActiveDeploymentCalls() []struct {
 	mock.lockGetAllNamesWithActiveDeployment.RLock()
 	calls = mock.calls.GetAllNamesWithActiveDeployment
 	mock.lockGetAllNamesWithActiveDeployment.RUnlock()
+	return calls
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeed calls GetAllNamesWithActiveDeploymentByTokenSeedFunc.
+func (mock *ServerRepoMock) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+	if mock.GetAllNamesWithActiveDeploymentByTokenSeedFunc == nil {
+		panic("ServerRepoMock.GetAllNamesWithActiveDeploymentByTokenSeedFunc: method is nil but ServerRepo.GetAllNamesWithActiveDeploymentByTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		TokenUUID uuid.UUID
+		Seed      string
+	}{
+		Ctx:       ctx,
+		TokenUUID: tokenUUID,
+		Seed:      seed,
+	}
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.Lock()
+	mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed = append(mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed, callInfo)
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.Unlock()
+	return mock.GetAllNamesWithActiveDeploymentByTokenSeedFunc(ctx, tokenUUID, seed)
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeedCalls gets all the calls that were made to GetAllNamesWithActiveDeploymentByTokenSeed.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetAllNamesWithActiveDeploymentByTokenSeedCalls())
+func (mock *ServerRepoMock) GetAllNamesWithActiveDeploymentByTokenSeedCalls() []struct {
+	Ctx       context.Context
+	TokenUUID uuid.UUID
+	Seed      string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		TokenUUID uuid.UUID
+		Seed      string
+	}
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.RLock()
+	calls = mock.calls.GetAllNamesWithActiveDeploymentByTokenSeed
+	mock.lockGetAllNamesWithActiveDeploymentByTokenSeed.RUnlock()
 	return calls
 }
 

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stmcginnis/gofish/schemas"
 
@@ -1687,6 +1688,10 @@ func (s *serverService) DeploymentControlLoop(ctx context.Context, serverNameFil
 	wg.Wait()
 
 	return errors.Join(errs...)
+}
+
+func (s *serverService) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+	return s.repo.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, seed)
 }
 
 // deploymentCandidates returns the names of the servers, that have a deployment

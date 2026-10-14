@@ -75,6 +75,7 @@ type ServerService interface {
 	BMCApplySecureBootCertificatesByName(ctx context.Context, name string) error
 	BMCResetSecureBootKeysByName(ctx context.Context, name string) error
 
+	GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error)
 	DeployByName(ctx context.Context, name string, request ServerDeploymentRequest) error
 	CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error
 	DeploymentControlLoop(ctx context.Context, serverNameFilter *string) error
@@ -87,6 +88,7 @@ type ServerRepo interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetAllNamesWithActiveDeployment(ctx context.Context) ([]string, error)
+	GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	GetByCertificate(ctx context.Context, certificatePEM string) (*Server, error)
 	GetBySystemUUID(ctx context.Context, systemUUID string) (*Server, error)

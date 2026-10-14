@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -89,14 +90,39 @@ SELECT servers.name
 `, strings.TrimSuffix(strings.Repeat("?, ", len(api.ServerDeploymentTerminalStates())), ", "))
 
 func (s server) GetAllNamesWithActiveDeployment(ctx context.Context) ([]string, error) {
+	return s.queryServerNamesWithActiveDeployment(ctx, serverNamesWithActiveDeploymentStmt)
+}
+
+// serverNamesWithActiveDeploymentByTokenSeedStmt selects the servers, that
+// still have an automated deployment to advance, which has been requested for
+// the given token seed.
+var serverNamesWithActiveDeploymentByTokenSeedStmt = fmt.Sprintf(`
+SELECT servers.name
+  FROM servers
+  WHERE json_extract(servers.status_internal, '$.deployment.state') IS NOT NULL
+    AND json_extract(servers.status_internal, '$.deployment.state') NOT IN (%s)
+    AND json_extract(servers.status_internal, '$.deployment.request.token_uuid') = ?
+    AND json_extract(servers.status_internal, '$.deployment.request.seed') = ?
+  ORDER BY servers.name
+`, strings.TrimSuffix(strings.Repeat("?, ", len(api.ServerDeploymentTerminalStates())), ", "))
+
+func (s server) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+	return s.queryServerNamesWithActiveDeployment(ctx, serverNamesWithActiveDeploymentByTokenSeedStmt, tokenUUID.String(), seed)
+}
+
+// queryServerNamesWithActiveDeployment runs stmt with the terminal deployment
+// states as the first arguments, followed by extraArgs.
+func (s server) queryServerNamesWithActiveDeployment(ctx context.Context, stmt string, extraArgs ...any) ([]string, error) {
 	terminalStates := api.ServerDeploymentTerminalStates()
 
-	args := make([]any, 0, len(terminalStates))
+	args := make([]any, 0, len(terminalStates)+len(extraArgs))
 	for _, state := range terminalStates {
 		args = append(args, state.String())
 	}
 
-	rows, err := transaction.GetDBTX(ctx, s.db).QueryContext(ctx, serverNamesWithActiveDeploymentStmt, args...)
+	args = append(args, extraArgs...)
+
+	rows, err := transaction.GetDBTX(ctx, s.db).QueryContext(ctx, stmt, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
 	}
