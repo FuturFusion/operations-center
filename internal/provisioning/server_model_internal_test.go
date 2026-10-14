@@ -1,9 +1,9 @@
 package provisioning
 
 import (
-	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -14,8 +14,7 @@ import (
 
 func TestServer_SignalLifecycleEvent(t *testing.T) {
 	tests := []struct {
-		name                              string
-		lifecycleServerLifecycleSignalErr error
+		name string
 
 		assertLog log.MatcherFunc
 	}{
@@ -34,21 +33,30 @@ func TestServer_SignalLifecycleEvent(t *testing.T) {
 				signalLifecycleEventDelay = oldSignalLifecycleEventDelay
 			}()
 
-			lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(_ context.Context, _ lifecycle.ServerLifecycleMessage) error {
-				return tc.lifecycleServerLifecycleSignalErr
+			signaled := make(chan struct{})
+			lifecycle.ServerLifecycleSignal.AddListener(func(_ context.Context, _ lifecycle.ServerLifecycleMessage) {
+				close(signaled)
 			}, "TestServer_SignalLifecycleEvent")
 			t.Cleanup(func() {
 				lifecycle.ServerLifecycleSignal.RemoveListener("TestServer_SignalLifecycleEvent")
 			})
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			server := Server{}
 
+			// Run test
 			server.SignalLifecycleEvent()
 
+			select {
+			case <-signaled:
+			case <-time.After(time.Second):
+				t.Fatal("Lifecycle signal not emitted")
+			}
+
+			// Assert
 			tc.assertLog(t, logBuf)
 		})
 	}
