@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,12 +32,13 @@ func TestStartAndStop(t *testing.T) {
 	freePort := testingnet.FreePort(t, "")
 
 	// Block a port. Close the listener after the test to not leak the port.
-	blockedPort := testingnet.FreePort(t, "")
-	blockingListener, err := net.Listen("tcp", ":"+blockedPort)
-	require.NoError(t, err)
+	blockingListener, err := net.Listen("tcp", ":0")
+	require.NoError(t, err, "Failed to block a port")
 	t.Cleanup(func() {
-		require.NoError(t, blockingListener.Close())
+		require.NoError(t, blockingListener.Close(), "Failed to close the blocking listener")
 	})
+
+	blockedPort := strconv.Itoa(blockingListener.Addr().(*net.TCPAddr).Port)
 
 	tests := []struct {
 		name       string
