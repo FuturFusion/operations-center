@@ -1889,6 +1889,154 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 	}
 }
 
+func TestTokenService_RenameTokenSeed(t *testing.T) {
+	validationErr := func(tt require.TestingT, err error, a ...any) {
+		var verr domain.ErrValidation
+		require.ErrorAs(tt, err, &verr, a...)
+	}
+
+	tests := []struct {
+		name                         string
+		oldNameArg                   string
+		newNameArg                   string
+		force                        bool
+		serverSvcGetAllNames         []string
+		serverSvcGetAllNamesErr      error
+		repoRenameTokenSeedErr       error
+		flasherRemoveSeededImagesErr error
+		wantRepoRenameCalls          int
+		wantRemovedCachePrefixes     []string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                     "success",
+			oldNameArg:               "one",
+			newNameArg:               "one-new",
+			wantRepoRenameCalls:      1,
+			wantRemovedCachePrefixes: []string{provisioning.SeedImageCachePrefix(uuidA, "one")},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                     "success - active deployment with force",
+			oldNameArg:               "one",
+			newNameArg:               "one-new",
+			force:                    true,
+			serverSvcGetAllNames:     []string{"server"},
+			wantRepoRenameCalls:      1,
+			wantRemovedCachePrefixes: []string{provisioning.SeedImageCachePrefix(uuidA, "one")},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:       "error - old name empty",
+			oldNameArg: "", // invalid
+			newNameArg: "one-new",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:       "error - new name empty",
+			oldNameArg: "one",
+			newNameArg: "", // invalid
+
+			assertErr: validationErr,
+		},
+		{
+			name:       "error - new name with prohibited character",
+			oldNameArg: "one",
+			newNameArg: "one new", // invalid
+
+			assertErr: validationErr,
+		},
+		{
+			name:       "error - old and new name equal",
+			oldNameArg: "one",
+			newNameArg: "one", // invalid
+
+			assertErr: validationErr,
+		},
+		{
+			name:                 "error - active deployment",
+			oldNameArg:           "one",
+			newNameArg:           "one-new",
+			serverSvcGetAllNames: []string{"server"},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:                    "error - serverSvc.GetAllNamesWithActiveDeploymentByTokenSeed",
+			oldNameArg:              "one",
+			newNameArg:              "one-new",
+			serverSvcGetAllNamesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                   "error - repo.RenameTokenSeed",
+			oldNameArg:             "one",
+			newNameArg:             "one-new",
+			repoRenameTokenSeedErr: boom.Error,
+			wantRepoRenameCalls:    1,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                         "error - flasher.RemoveSeededImages",
+			oldNameArg:                   "one",
+			newNameArg:                   "one-new",
+			flasherRemoveSeededImagesErr: boom.Error,
+			wantRepoRenameCalls:          1,
+			wantRemovedCachePrefixes:     []string{provisioning.SeedImageCachePrefix(uuidA, "one")},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.TokenRepoMock{
+				RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string) error {
+					return tc.repoRenameTokenSeedErr
+				},
+			}
+
+			serverSvc := &svcMock.ServerServiceMock{
+				GetAllNamesWithActiveDeploymentByTokenSeedFunc: func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+					return tc.serverSvcGetAllNames, tc.serverSvcGetAllNamesErr
+				},
+			}
+
+			var removedCachePrefixes []string
+
+			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
+					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
+
+					return tc.flasherRemoveSeededImagesErr
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, nil, nil, flasher, nil)
+			tokenSvc.SetServerService(serverSvc)
+
+			// Run test
+			err := tokenSvc.RenameTokenSeed(context.Background(), uuidA, tc.oldNameArg, tc.newNameArg, tc.force)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, repo.RenameTokenSeedCalls(), tc.wantRepoRenameCalls, "The token seed is only renamed, if no active deployment uses it or force is set.")
+			require.Equal(t, tc.wantRemovedCachePrefixes, removedCachePrefixes, "The cached images of the old name are only removed, if the token seed has been renamed.")
+		})
+	}
+}
+
 func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 	t.Parallel()
 

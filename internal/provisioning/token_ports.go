@@ -28,6 +28,7 @@ type TokenService interface {
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
 	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed, force bool) error
+	RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error
 	GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error)
 	GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*TokenImage, error)
@@ -48,6 +49,7 @@ type TokenRepo interface {
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
 	UpdateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) error
+	RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
 }
 

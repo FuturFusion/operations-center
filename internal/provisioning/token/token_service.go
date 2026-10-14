@@ -333,6 +333,36 @@ func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioni
 	})
 }
 
+func (s *tokenService) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+	if oldName == "" {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed name cannot be empty")
+	}
+
+	if oldName == newName {
+		return domain.NewValidationErrf("Old and new token seed name are equal")
+	}
+
+	err := provisioning.TokenSeed{Name: newName}.Validate()
+	if err != nil {
+		return fmt.Errorf("Validate token seed: %w", err)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		// The name is part of the URL of the image.
+		err := s.checkNoActiveDeployment(ctx, id, oldName, force)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.RenameTokenSeed(ctx, id, oldName, newName)
+		if err != nil {
+			return fmt.Errorf("Failed to rename token seed %q for token %q: %w", oldName, id.String(), err)
+		}
+
+		return s.removeSeededImagesAfterCommit(ctx, id, oldName)
+	})
+}
+
 func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		err := s.checkNoActiveDeployment(ctx, id, name, force)
