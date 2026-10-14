@@ -258,6 +258,18 @@ e2e-test-list:
 	@$(GO) test -list '^TestE2E' ./e2e_tests/
 	@echo ""
 	@echo "Run a single test case by running 'make e2e-test GO_TEST_RUN=\"^TestMyTest$$\"'"
+	@echo "Select test cases interactively by running 'make e2e-test-select' or 'make e2e-test-select-multi'"
+
+# E2E_TARGET is the make target that runs the selected e2e tests.
+E2E_TARGET ?= e2e-test
+
+.PHONY: e2e-test-select
+e2e-test-select:
+	@sel=$$(GO=$(GO) scripts/e2e/select.sh single) && $(MAKE) $(E2E_TARGET) GO_TEST_RUN="$$sel"
+
+.PHONY: e2e-test-select-multi
+e2e-test-select-multi:
+	@sel=$$(GO=$(GO) scripts/e2e/select.sh multi) && $(MAKE) $(E2E_TARGET) GO_TEST_RUN="$$sel"
 
 .PHONY: clean-e2e-test
 clean-e2e-test:
