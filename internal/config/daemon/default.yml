@@ -24,6 +24,14 @@ security:
   # deployed by Operations Center, if the user did not provide their own set.
   trusted_tls_client_certificates: []
 
+  # Array of SHA256 certificate fingerprints of metrics only certificates.
+  # A metrics only certificate can only read the metrics at /1.0/metrics.
+  trusted_tls_metrics_client_cert_fingerprints: []
+
+  # Array of X509 PEM encoded metrics only certificates.
+  # A metrics only certificate can only read the metrics at /1.0/metrics.
+  trusted_tls_metrics_client_certificates: []
+
   # OIDCconfiguration.
   oidc:
     issuer: ""
