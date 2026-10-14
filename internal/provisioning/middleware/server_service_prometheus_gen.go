@@ -433,6 +433,20 @@ func (_d ServerServiceWithPrometheus) GetAllNames(ctx context.Context) (strings 
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithActiveDeploymentByTokenSeed implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithActiveDeploymentByTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, seed)
+}
+
 // GetAllNamesWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
 	_since := time.Now()

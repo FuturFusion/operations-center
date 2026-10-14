@@ -38,7 +38,7 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
 //			},
-//			DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) error {
+//			DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string, force bool) error {
 //				panic("mock out the DeleteTokenSeedByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
@@ -83,10 +83,13 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 //				panic("mock out the ResolveTokenSeedImageID method")
 //			},
+//			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
+//				panic("mock out the SetServerService method")
+//			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
 //				panic("mock out the Update method")
 //			},
-//			UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+//			UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 //				panic("mock out the UpdateTokenSeed method")
 //			},
 //		}
@@ -109,7 +112,7 @@ type TokenServiceMock struct {
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
 	// DeleteTokenSeedByNameFunc mocks the DeleteTokenSeedByName method.
-	DeleteTokenSeedByNameFunc func(ctx context.Context, id uuid.UUID, name string) error
+	DeleteTokenSeedByNameFunc func(ctx context.Context, id uuid.UUID, name string, force bool) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Tokens, error)
@@ -153,11 +156,14 @@ type TokenServiceMock struct {
 	// ResolveTokenSeedImageIDFunc mocks the ResolveTokenSeedImageID method.
 	ResolveTokenSeedImageIDFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error)
 
+	// SetServerServiceFunc mocks the SetServerService method.
+	SetServerServiceFunc func(serverSvc provisioning.ServerService)
+
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
 
 	// UpdateTokenSeedFunc mocks the UpdateTokenSeed method.
-	UpdateTokenSeedFunc func(ctx context.Context, tokenSeed provisioning.TokenSeed) error
+	UpdateTokenSeedFunc func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -197,6 +203,8 @@ type TokenServiceMock struct {
 			ID uuid.UUID
 			// Name is the name argument value.
 			Name string
+			// Force is the force argument value.
+			Force bool
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -344,6 +352,11 @@ type TokenServiceMock struct {
 			// Channel is the channel argument value.
 			Channel string
 		}
+		// SetServerService holds details about calls to the SetServerService method.
+		SetServerService []struct {
+			// ServerSvc is the serverSvc argument value.
+			ServerSvc provisioning.ServerService
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -357,6 +370,8 @@ type TokenServiceMock struct {
 			Ctx context.Context
 			// TokenSeed is the tokenSeed argument value.
 			TokenSeed provisioning.TokenSeed
+			// Force is the force argument value.
+			Force bool
 		}
 	}
 	lockConsume                              sync.RWMutex
@@ -378,6 +393,7 @@ type TokenServiceMock struct {
 	lockPreparePreSeededImage                sync.RWMutex
 	lockPrepareTokenSeedImage                sync.RWMutex
 	lockResolveTokenSeedImageID              sync.RWMutex
+	lockSetServerService                     sync.RWMutex
 	lockUpdate                               sync.RWMutex
 	lockUpdateTokenSeed                      sync.RWMutex
 }
@@ -527,23 +543,25 @@ func (mock *TokenServiceMock) DeleteByUUIDCalls() []struct {
 }
 
 // DeleteTokenSeedByName calls DeleteTokenSeedByNameFunc.
-func (mock *TokenServiceMock) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
+func (mock *TokenServiceMock) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error {
 	if mock.DeleteTokenSeedByNameFunc == nil {
 		panic("TokenServiceMock.DeleteTokenSeedByNameFunc: method is nil but TokenService.DeleteTokenSeedByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		ID   uuid.UUID
-		Name string
+		Ctx   context.Context
+		ID    uuid.UUID
+		Name  string
+		Force bool
 	}{
-		Ctx:  ctx,
-		ID:   id,
-		Name: name,
+		Ctx:   ctx,
+		ID:    id,
+		Name:  name,
+		Force: force,
 	}
 	mock.lockDeleteTokenSeedByName.Lock()
 	mock.calls.DeleteTokenSeedByName = append(mock.calls.DeleteTokenSeedByName, callInfo)
 	mock.lockDeleteTokenSeedByName.Unlock()
-	return mock.DeleteTokenSeedByNameFunc(ctx, id, name)
+	return mock.DeleteTokenSeedByNameFunc(ctx, id, name, force)
 }
 
 // DeleteTokenSeedByNameCalls gets all the calls that were made to DeleteTokenSeedByName.
@@ -551,14 +569,16 @@ func (mock *TokenServiceMock) DeleteTokenSeedByName(ctx context.Context, id uuid
 //
 //	len(mockedTokenService.DeleteTokenSeedByNameCalls())
 func (mock *TokenServiceMock) DeleteTokenSeedByNameCalls() []struct {
-	Ctx  context.Context
-	ID   uuid.UUID
-	Name string
+	Ctx   context.Context
+	ID    uuid.UUID
+	Name  string
+	Force bool
 } {
 	var calls []struct {
-		Ctx  context.Context
-		ID   uuid.UUID
-		Name string
+		Ctx   context.Context
+		ID    uuid.UUID
+		Name  string
+		Force bool
 	}
 	mock.lockDeleteTokenSeedByName.RLock()
 	calls = mock.calls.DeleteTokenSeedByName
@@ -1166,6 +1186,38 @@ func (mock *TokenServiceMock) ResolveTokenSeedImageIDCalls() []struct {
 	return calls
 }
 
+// SetServerService calls SetServerServiceFunc.
+func (mock *TokenServiceMock) SetServerService(serverSvc provisioning.ServerService) {
+	if mock.SetServerServiceFunc == nil {
+		panic("TokenServiceMock.SetServerServiceFunc: method is nil but TokenService.SetServerService was just called")
+	}
+	callInfo := struct {
+		ServerSvc provisioning.ServerService
+	}{
+		ServerSvc: serverSvc,
+	}
+	mock.lockSetServerService.Lock()
+	mock.calls.SetServerService = append(mock.calls.SetServerService, callInfo)
+	mock.lockSetServerService.Unlock()
+	mock.SetServerServiceFunc(serverSvc)
+}
+
+// SetServerServiceCalls gets all the calls that were made to SetServerService.
+// Check the length with:
+//
+//	len(mockedTokenService.SetServerServiceCalls())
+func (mock *TokenServiceMock) SetServerServiceCalls() []struct {
+	ServerSvc provisioning.ServerService
+} {
+	var calls []struct {
+		ServerSvc provisioning.ServerService
+	}
+	mock.lockSetServerService.RLock()
+	calls = mock.calls.SetServerService
+	mock.lockSetServerService.RUnlock()
+	return calls
+}
+
 // Update calls UpdateFunc.
 func (mock *TokenServiceMock) Update(ctx context.Context, token provisioning.Token) error {
 	if mock.UpdateFunc == nil {
@@ -1203,21 +1255,23 @@ func (mock *TokenServiceMock) UpdateCalls() []struct {
 }
 
 // UpdateTokenSeed calls UpdateTokenSeedFunc.
-func (mock *TokenServiceMock) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+func (mock *TokenServiceMock) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 	if mock.UpdateTokenSeedFunc == nil {
 		panic("TokenServiceMock.UpdateTokenSeedFunc: method is nil but TokenService.UpdateTokenSeed was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
 		TokenSeed provisioning.TokenSeed
+		Force     bool
 	}{
 		Ctx:       ctx,
 		TokenSeed: tokenSeed,
+		Force:     force,
 	}
 	mock.lockUpdateTokenSeed.Lock()
 	mock.calls.UpdateTokenSeed = append(mock.calls.UpdateTokenSeed, callInfo)
 	mock.lockUpdateTokenSeed.Unlock()
-	return mock.UpdateTokenSeedFunc(ctx, tokenSeed)
+	return mock.UpdateTokenSeedFunc(ctx, tokenSeed, force)
 }
 
 // UpdateTokenSeedCalls gets all the calls that were made to UpdateTokenSeed.
@@ -1227,10 +1281,12 @@ func (mock *TokenServiceMock) UpdateTokenSeed(ctx context.Context, tokenSeed pro
 func (mock *TokenServiceMock) UpdateTokenSeedCalls() []struct {
 	Ctx       context.Context
 	TokenSeed provisioning.TokenSeed
+	Force     bool
 } {
 	var calls []struct {
 		Ctx       context.Context
 		TokenSeed provisioning.TokenSeed
+		Force     bool
 	}
 	mock.lockUpdateTokenSeed.RLock()
 	calls = mock.calls.UpdateTokenSeed

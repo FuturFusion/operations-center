@@ -7,6 +7,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
@@ -200,6 +202,39 @@ func (_d ServerRepoWithSlog) GetAllNamesWithActiveDeployment(ctx context.Context
 		}
 	}()
 	return _d._base.GetAllNamesWithActiveDeployment(ctx)
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeed implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) (strings []string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tokenUUID", tokenUUID),
+			slog.String("seed", seed),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllNamesWithActiveDeploymentByTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeploymentByTokenSeed returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetAllNamesWithActiveDeploymentByTokenSeed finished")
+		}
+	}()
+	return _d._base.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, seed)
 }
 
 // GetAllNamesWithFilter implements provisioning.ServerRepo.

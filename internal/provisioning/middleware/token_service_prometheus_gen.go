@@ -99,7 +99,7 @@ func (_d TokenServiceWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.U
 }
 
 // DeleteTokenSeedByName implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+func (_d TokenServiceWithPrometheus) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -109,7 +109,7 @@ func (_d TokenServiceWithPrometheus) DeleteTokenSeedByName(ctx context.Context, 
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteTokenSeedByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteTokenSeedByName(ctx, id, name)
+	return _d.base.DeleteTokenSeedByName(ctx, id, name, force)
 }
 
 // GetAll implements provisioning.TokenService.
@@ -308,6 +308,16 @@ func (_d TokenServiceWithPrometheus) ResolveTokenSeedImageID(ctx context.Context
 	return _d.base.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
 }
 
+// SetServerService implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) SetServerService(serverSvc provisioning.ServerService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetServerService(serverSvc)
+}
+
 // Update implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) Update(ctx context.Context, token provisioning.Token) (err error) {
 	_since := time.Now()
@@ -323,7 +333,7 @@ func (_d TokenServiceWithPrometheus) Update(ctx context.Context, token provision
 }
 
 // UpdateTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
+func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -333,5 +343,5 @@ func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenS
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateTokenSeed", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateTokenSeed(ctx, tokenSeed)
+	return _d.base.UpdateTokenSeed(ctx, tokenSeed, force)
 }

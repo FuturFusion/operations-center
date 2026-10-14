@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -106,6 +107,20 @@ func (_d ServerRepoWithPrometheus) GetAllNamesWithActiveDeployment(ctx context.C
 		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithActiveDeployment", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetAllNamesWithActiveDeployment(ctx)
+}
+
+// GetAllNamesWithActiveDeploymentByTokenSeed implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, tokenUUID uuid.UUID, seed string) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithActiveDeploymentByTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, tokenUUID, seed)
 }
 
 // GetAllNamesWithFilter implements provisioning.ServerRepo.
