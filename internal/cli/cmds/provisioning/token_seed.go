@@ -67,6 +67,13 @@ func (c *cmdTokenSeed) Command() *cobra.Command {
 
 	cmd.AddCommand(tokenEditCmd.Command())
 
+	// Rename
+	tokenRenameCmd := cmdTokenSeedRename{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(tokenRenameCmd.Command())
+
 	// Remove
 	tokenRemoveCmd := cmdTokenSeedRemove{
 		ocClient: c.ocClient,
@@ -224,6 +231,8 @@ func (c *cmdTokenSeedList) run(cmd *cobra.Command, args []string) error {
 // Edit token seeds.
 type cmdTokenSeedEdit struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdTokenSeedEdit) Command() *cobra.Command {
@@ -233,6 +242,8 @@ func (c *cmdTokenSeedEdit) Command() *cobra.Command {
 	cmd.Long = `Description:
   Edit the seed configuration for the given token
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully edit the token seed, even if it is in use by an active server deployment")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -283,7 +294,7 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = c.ocClient.UpdateTokenSeed(cmd.Context(), id, name, newdata)
+		err = c.ocClient.UpdateTokenSeed(cmd.Context(), id, name, newdata, c.flagForce)
 		if err != nil {
 			return err
 		}
@@ -314,7 +325,7 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 		newdata := api.TokenSeedPut{}
 		err = decodestrict.YAML(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateTokenSeed(cmd.Context(), id, name, newdata)
+			err = c.ocClient.UpdateTokenSeed(cmd.Context(), id, name, newdata, c.flagForce)
 		}
 
 		// Respawn the editor
@@ -341,9 +352,63 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Rename token seed.
+type cmdTokenSeedRename struct {
+	ocClient *client.OperationsCenterClient
+
+	flagForce bool
+}
+
+func (c *cmdTokenSeedRename) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "rename <uuid> <name> <new-name>"
+	cmd.Short = "Rename a token seed configuration"
+	cmd.Long = `Description:
+  Rename a token seed configuration
+
+  Renames a token seed configuration to a new name.
+`
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully rename the token seed, even if it is in use by an active server deployment")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdTokenSeedRename) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 3, 3)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdTokenSeedRename) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+	name := args[1]
+	newName := args[2]
+
+	if name == newName {
+		return fmt.Errorf("Rename failed, name and new name are equal")
+	}
+
+	err := c.ocClient.RenameTokenSeed(cmd.Context(), id, name, newName, c.flagForce)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Remove token seed.
 type cmdTokenSeedRemove struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdTokenSeedRemove) Command() *cobra.Command {
@@ -355,6 +420,8 @@ func (c *cmdTokenSeedRemove) Command() *cobra.Command {
 
   Removes a token seed configuration from the operations center.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully remove the token seed, even if it is in use by an active server deployment")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -376,7 +443,7 @@ func (c *cmdTokenSeedRemove) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 
-	err := c.ocClient.DeleteTokenSeed(cmd.Context(), id, name)
+	err := c.ocClient.DeleteTokenSeed(cmd.Context(), id, name, c.flagForce)
 	if err != nil {
 		return err
 	}
