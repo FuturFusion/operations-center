@@ -12,12 +12,16 @@ import { IncusServerTypeString, ServerTypeString } from "util/server";
 import { secondaryIncusAppOptions } from "util/util";
 import YAML from "yaml";
 
+// Keep in sync with the token seed name validation of the API.
+const tokenSeedNameRegexp = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
+
 interface Props {
   seed?: TokenSeed;
   onSubmit: (tokenSeed: TokenSeed) => void;
+  onRename?: (newName: string) => void;
 }
 
-const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
+const TokenSeedForm: FC<Props> = ({ seed, onSubmit, onRename }) => {
   const { notify } = useNotification();
   let formikInitialValues: TokenSeedFormValues = {
     name: "",
@@ -73,6 +77,12 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
     values: TokenSeedFormValues,
   ): FormikErrors<TokenSeedFormValues> => {
     const errors: FormikErrors<TokenSeedFormValues> = {};
+
+    // An unchanged name of an existing token seed is not validated.
+    if (values.name !== seed?.name && !tokenSeedNameRegexp.test(values.name)) {
+      errors.name =
+        "Name must start with a letter or a digit, must only contain letters, digits, '.', '_' and '-' and must not be longer than 63 characters";
+    }
 
     if (!values.seeds.application) {
       errors.seeds ??= {};
@@ -138,17 +148,31 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
         <Form noValidate>
           <Form.Group className="mb-3" controlId="name">
             <Form.Label>Name</Form.Label>
-            <Form.Control
-              type="text"
-              name="name"
-              value={formik.values.name}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.name && formik.touched.name}
-            />
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.name}
-            </Form.Control.Feedback>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Control
+                type="text"
+                name="name"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                isInvalid={!!formik.errors.name && formik.touched.name}
+              />
+              {seed && (
+                <Button
+                  className="float-end"
+                  variant="success"
+                  disabled={!!formik.errors.name}
+                  onClick={() => onRename?.(formik.values.name)}
+                >
+                  Rename
+                </Button>
+              )}
+            </div>
+            {!!formik.errors.name && formik.touched.name && (
+              <Form.Control.Feedback type="invalid" className="d-block">
+                {formik.errors.name}
+              </Form.Control.Feedback>
+            )}
           </Form.Group>
           <Form.Group className="mb-3" controlId="description">
             <Form.Label>Description</Form.Label>

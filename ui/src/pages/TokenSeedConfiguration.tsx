@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
-import { fetchTokenSeed, updateTokenSeed } from "api/token";
+import { fetchTokenSeed, renameTokenSeed, updateTokenSeed } from "api/token";
 import TokenSeedForm from "components/TokenSeedForm";
 import { useNotification } from "context/notificationContext";
 import { TokenSeed } from "types/token";
@@ -30,6 +30,25 @@ const TokenSeedConfiguration = () => {
       });
   };
 
+  const onRename = (newName: string) => {
+    if (name !== newName) {
+      renameTokenSeed(uuid, name, JSON.stringify({ name: newName }, null, 2))
+        .then((response) => {
+          if (response.error_code == 0) {
+            notify.success(`Token seed ${newName} renamed`);
+            navigate(
+              `/ui/provisioning/tokens/${uuid}/seeds/${newName}/configuration`,
+            );
+            return;
+          }
+          notify.error(errorMessage(response));
+        })
+        .catch((e) => {
+          notify.error(`Error during token seed rename: ${e}`);
+        });
+    }
+  };
+
   const {
     data: seed = undefined,
     error,
@@ -47,7 +66,7 @@ const TokenSeedConfiguration = () => {
     return <div>Error while loading token seed</div>;
   }
 
-  return <TokenSeedForm seed={seed} onSubmit={onSubmit} />;
+  return <TokenSeedForm seed={seed} onSubmit={onSubmit} onRename={onRename} />;
 };
 
 export default TokenSeedConfiguration;
