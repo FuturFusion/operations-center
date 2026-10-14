@@ -13749,6 +13749,15 @@ paths:
                   name: name
                   required: true
                   type: string
+                - description: |-
+                    Boolean indicating, if the operation should be applied forcefully or
+                    not. Required, if a server deployment, which is not finished, uses the
+                    token seed.
+                    Defaults to false.
+                  in: query
+                  name: force
+                  type: boolean
+                  x-example: true
             produces:
                 - application/json
             responses:
@@ -13819,6 +13828,15 @@ paths:
                   name: name
                   required: true
                   type: string
+                - description: |-
+                    Boolean indicating, if the operation should be applied forcefully or
+                    not. Required, if a server deployment, which is not finished, uses the
+                    token seed.
+                    Defaults to false.
+                  in: query
+                  name: force
+                  type: boolean
+                  x-example: true
                 - description: Token seed config definition
                   in: body
                   name: token
