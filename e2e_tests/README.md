@@ -228,6 +228,11 @@ give up early on a state the VM can not recover from:
   test is failed. Restarting is not guaranteed to help, so the final error names
   the failure, even if the VM recovered but the incus agent stayed away.
 
+  If incus-osd fails during the installation, `createIncusOSInstances` removes
+  the VM and installs it once more from scratch. A restart in place does not
+  help in this case, since the VM keeps its partially written disk and TPM
+  state.
+
 ### Debug output
 
 The debug output is collected in two places, both only written on a failing test:
