@@ -18,6 +18,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	provisioningMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -276,6 +277,98 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 			require.Equal(t, tc.wantStatus, status)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeedPost(t *testing.T) {
+	type renameCall struct {
+		oldName string
+		newName string
+		force   bool
+	}
+
+	tests := []struct {
+		name                         string
+		query                        string
+		requestBody                  string
+		serviceGetTokenSeedByNameErr error
+		serviceRenameTokenSeedErr    error
+
+		wantStatus              int
+		wantResponseBodyContain string
+		wantLocation            string
+		wantRenameCalls         []renameCall
+	}{
+		{
+			name:        "success",
+			requestBody: `{"name": "new"}`,
+
+			wantStatus:              http.StatusCreated,
+			wantResponseBodyContain: `"status_code":200`,
+			wantLocation:            "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/new",
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: false}},
+		},
+		{
+			name:        "success - with force",
+			query:       "?force=true",
+			requestBody: `{"name": "new"}`,
+
+			wantStatus:              http.StatusCreated,
+			wantResponseBodyContain: `"status_code":200`,
+			wantLocation:            "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/new",
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: true}},
+		},
+		{
+			name:        "error - unknown field",
+			requestBody: `{"name": "new", "unknown": true}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"unknown\"`,
+		},
+		{
+			name:                         "error - token seed not found",
+			requestBody:                  `{"name": "new"}`,
+			serviceGetTokenSeedByNameErr: domain.ErrNotFound,
+
+			wantStatus:              http.StatusNotFound,
+			wantResponseBodyContain: `"error_code":404`,
+		},
+		{
+			name:                      "error - service.RenameTokenSeed",
+			requestBody:               `{"name": "new"}`,
+			serviceRenameTokenSeedErr: domain.ErrOperationNotPermitted,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `"error_code":400`,
+			wantRenameCalls:         []renameCall{{oldName: "test", newName: "new", force: false}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var renameCalls []renameCall
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{}, tc.serviceGetTokenSeedByNameErr
+				},
+				RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
+					renameCalls = append(renameCalls, renameCall{oldName: oldName, newName: newName, force: force})
+
+					return tc.serviceRenameTokenSeedErr
+				},
+			}
+
+			// Run test
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds/test"+tc.query, tc.requestBody, nil)
+
+			// Assert
+			require.Equal(t, tc.wantStatus, resp.statusCode)
+			require.Contains(t, body, tc.wantResponseBodyContain)
+			require.Equal(t, tc.wantLocation, resp.header.Get("Location"))
+			require.Equal(t, tc.wantRenameCalls, renameCalls)
 		})
 	}
 }

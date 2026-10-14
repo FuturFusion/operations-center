@@ -50,6 +50,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 	router.HandleFunc("GET /{uuid}/seeds/{name}", response.With(handler.tokenSeedGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{uuid}/seeds", response.With(handler.tokenSeedsPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{uuid}/seeds/{name}", response.With(handler.tokenSeedPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/seeds/{name}", response.With(handler.tokenSeedPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}/seeds/{name}", response.With(handler.tokenSeedDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 }
 
@@ -1176,6 +1177,107 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, nil)
+}
+
+// swagger:operation POST /1.0/provisioning/tokens/{uuid}/seeds/{name} tokens token_seed_post
+//
+//	Rename the token seed config
+//
+//	Renames the token seed config.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: name
+//	    description: Name of the seed
+//	    type: string
+//	    required: true
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operation should be applied forcefully or
+//	      not. Required, if a server deployment, which is not finished, uses the
+//	      token seed.
+//	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
+//	  - in: body
+//	    name: token
+//	    description: Token seed config definition. Only the name is used.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/TokenSeed"
+//	responses:
+//	  "201":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenSeedPost(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+
+	var tokenSeed api.TokenSeed
+
+	err = decodestrict.JSON(r.Body, &tokenSeed)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to decode token seed: %w", err))
+	}
+
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentTokenSeed, err := t.service.GetTokenSeedByName(ctx, UUID, name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf(`Failed to get token seed config "%s/%s": %w`, UUID.String(), name, err))
+	}
+
+	// Validate ETag
+	err = response.EtagCheck(r, currentTokenSeed)
+	if err != nil {
+		return response.PreconditionFailed(err)
+	}
+
+	err = t.service.RenameTokenSeed(ctx, UUID, name, tokenSeed.Name, force)
+	if err != nil {
+		return response.SmartError(fmt.Errorf(`Failed renaming token seed config "%s/%s": %w`, UUID.String(), name, err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/seeds/"+tokenSeed.Name)
 }
 
 // swagger:operation DELETE /1.0/provisioning/tokens/{uuid}/seeds/{name} tokens token_seed_delete
