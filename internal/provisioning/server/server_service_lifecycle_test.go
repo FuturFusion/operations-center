@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -676,7 +677,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf fmt.Stringer) {
 				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
 				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err="Failed to get server \"one\" by name:`)(t, logBuf)
 			},
@@ -726,7 +727,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf fmt.Stringer) {
 				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
 				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err=boom!`)(t, logBuf)
 			},
