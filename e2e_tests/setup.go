@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -603,6 +604,9 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 		timeout = time.Duration(int(timeout) * len(names))
 	}
 
+	// Leave room for one reinstall from scratch, see below.
+	timeout += 25 * time.Minute
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
@@ -652,42 +656,31 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					}
 				}
 
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, name, cpuCount, memorySize, diskSize))
-				if err != nil {
-					return err
+				err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+
+				// A restart in place does not help, if incus-osd fails during
+				// the installation, since the VM keeps its partially written
+				// disk and TPM state. So install it once more from scratch.
+				if errors.Is(err, errIncusOSStartupFailed) && errgrpctx.Err() == nil {
+					t.Logf("Reinstalling %s from scratch, since incus-osd failed to start during installation: %v", name, err)
+
+					startupErr := err
+
+					err = removeInstanceWithContext(errgrpctx, t, name)
+					if err != nil {
+						return fmt.Errorf("Failed to remove %q after a failed installation (%w): %w", name, startupErr, err)
+					}
+
+					// The debug information of the first attempt is already
+					// logged. Collect it again, if the reinstalled VM fails.
+					forgetVMDebugInfo(name)
+
+					err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+					if err != nil {
+						return fmt.Errorf("Failed to reinstall %q after a failed installation (%w): %w", name, startupErr, err)
+					}
 				}
 
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device add %s vtpm tpm`, name))
-				if err != nil {
-					return err
-				}
-
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device add %s boot-media disk pool=default source=%s boot.priority=10`, name, incusOSPreseededISOFilename))
-				if err != nil {
-					return err
-				}
-
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config set %s systemd.credential.fully-enable-incus-agent=true`, name))
-				if err != nil {
-					return err
-				}
-
-				err = startInstanceWithContext(errgrpctx, t, name)
-				if err != nil {
-					return err
-				}
-
-				t.Logf("Waiting for %s to complete installation", name)
-				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
-				err = waitAgentRunningWithContext(agentWaitCtx, t, name)
-				cancel()
-				if err != nil {
-					return err
-				}
-
-				logWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(10*time.Minute))
-				err = waitExpectedLogWithContext(logWaitCtx, t, "%s", "incus-osd", "IncusOS was successfully installed|System is ready", true, name)
-				cancel()
 				if err != nil {
 					return err
 				}
@@ -776,6 +769,50 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 		nameHostnamePair := strings.SplitN(serverNameHostnamePair, ",", 2)
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, nameHostnamePair[1], nameHostnamePair[0])
 	}
+}
+
+// installIncusOSInstance creates the VM name, boots it from the preseeded ISO
+// and waits for the installation to complete.
+func installIncusOSInstance(ctx context.Context, t *testing.T, name string, incusOSPreseededISOFilename string) error {
+	t.Helper()
+
+	err := fmtRunErr(runWithContext(ctx, t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, name, cpuCount, memorySize, diskSize))
+	if err != nil {
+		return err
+	}
+
+	err = fmtRunErr(runWithContext(ctx, t, `incus config device add %s vtpm tpm`, name))
+	if err != nil {
+		return err
+	}
+
+	err = fmtRunErr(runWithContext(ctx, t, `incus config device add %s boot-media disk pool=default source=%s boot.priority=10`, name, incusOSPreseededISOFilename))
+	if err != nil {
+		return err
+	}
+
+	err = fmtRunErr(runWithContext(ctx, t, `incus config set %s systemd.credential.fully-enable-incus-agent=true`, name))
+	if err != nil {
+		return err
+	}
+
+	err = startInstanceWithContext(ctx, t, name)
+	if err != nil {
+		return err
+	}
+
+	t.Logf("Waiting for %s to complete installation", name)
+	agentWaitCtx, cancel := context.WithTimeout(ctx, strechedTimeout(5*time.Minute))
+	err = waitAgentRunningWithContext(agentWaitCtx, t, name)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	logWaitCtx, cancel := context.WithTimeout(ctx, strechedTimeout(10*time.Minute))
+	defer cancel()
+
+	return waitExpectedLogWithContext(logWaitCtx, t, "%s", "incus-osd", "IncusOS was successfully installed|System is ready", true, name)
 }
 
 func asJSON(t *testing.T, in any) string {

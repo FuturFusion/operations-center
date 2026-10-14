@@ -398,6 +398,16 @@ func debugInfoTodo(vms []string) (todo []string, host bool) {
 	return todo, host
 }
 
+// forgetVMDebugInfo marks the debug information of vm and of the host as not
+// collected. This allows to collect it again for a new VM with the same name.
+func forgetVMDebugInfo(vm string) {
+	debugInfoLoggedMu.Lock()
+	defer debugInfoLoggedMu.Unlock()
+
+	delete(debugInfoLogged, vm)
+	delete(debugInfoLogged, hostDebugInfoKey)
+}
+
 func resetVMDebugInfo() {
 	debugInfoLoggedMu.Lock()
 	defer debugInfoLoggedMu.Unlock()
@@ -605,7 +615,7 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 	}
 
 	if startupErrSeen != nil {
-		return fmt.Errorf("Failed to wait for incus agent on %q after %s, last instance status %q, incus-osd failed to start on it earlier (%v): %s", vm, time.Since(start).String(), lastStatus, startupErrSeen, lastErr)
+		return fmt.Errorf("Failed to wait for incus agent on %q after %s, last instance status %q, incus-osd failed to start on it earlier (%w): %s", vm, time.Since(start).String(), lastStatus, startupErrSeen, lastErr)
 	}
 
 	return fmt.Errorf("Failed to wait for incus agent on %q after %s, last instance status %q: %s", vm, time.Since(start).String(), lastStatus, lastErr)
@@ -1167,6 +1177,9 @@ var incusOSStartupErrors = []string{
 	"IncusOS critical startup error",
 }
 
+// errIncusOSStartupFailed is wrapped by the errors of errIncusOSStartupFailure.
+var errIncusOSStartupFailed = errors.New("incus-osd failed to start")
+
 // errIncusOSStartupFailure returns an error, if incus-osd failed to start
 // inside the given VM. It returns nil, if this can not be determined, since
 // this is most likely a transient condition.
@@ -1183,7 +1196,7 @@ func errIncusOSStartupFailure(ctx context.Context, t *testing.T, name string) er
 		return nil
 	}
 
-	return fmt.Errorf("incus-osd failed to start on %[1]q, the console log contains %[2]q, see the output of `incus console %[1]s --show-log` in the debug information below", name, fragment)
+	return fmt.Errorf("%[3]w on %[1]q, the console log contains %[2]q, see the output of `incus console %[1]s --show-log` in the debug information below", name, fragment, errIncusOSStartupFailed)
 }
 
 // incusOSStartupError returns the fragment of incusOSStartupErrors found in the
