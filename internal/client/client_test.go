@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/sql/dump"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -174,6 +177,73 @@ func Test_GetAPIServerInfo(t *testing.T) {
 			require.Equal(t, api.APIVersion, serverInfo.APIVersion)
 			require.Equal(t, []string{api.AuthenticationMethodOIDC, api.AuthenticationMethodTLS}, serverInfo.AuthMethods)
 			require.Equal(t, version.Version, serverInfo.ServerVersion)
+		})
+	}
+}
+
+func Test_DoInternalRequest(t *testing.T) {
+	d := daemonSetup(t)
+
+	query := dump.SQLQuery{Query: "SELECT 1"}
+
+	tests := []struct {
+		name string
+		do   func(ctx context.Context) (*api.Response, error)
+
+		assertErr  require.ErrorAssertionFunc
+		assertResp func(t *testing.T, resp *api.Response)
+	}{
+		{
+			name: "success - internal API",
+			do: func(ctx context.Context) (*api.Response, error) {
+				return d.authorizedHTTPClient.DoInternalRequest(ctx, http.MethodPost, "/sql", nil, query)
+			},
+
+			assertErr: require.NoError,
+			assertResp: func(t *testing.T, resp *api.Response) {
+				t.Helper()
+
+				require.JSONEq(t, `{"Results":[{"type":"select","columns":["1"],"rows":[[1]],"rows_affected":0}]}`, string(resp.Metadata), "result of the SQL query")
+			},
+		},
+		{
+			name: "error - not authenticated",
+			do: func(ctx context.Context) (*api.Response, error) {
+				return d.unauthorizedHTTPClient.DoInternalRequest(ctx, http.MethodPost, "/sql", nil, query)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotAuthenticated, a...)
+			},
+			assertResp: func(t *testing.T, resp *api.Response) {
+				t.Helper()
+
+				require.Equal(t, http.StatusUnauthorized, resp.Code, "error code of the response")
+			},
+		},
+		{
+			name: "error - internal API is not below the versioned API",
+			do: func(ctx context.Context) (*api.Response, error) {
+				return d.authorizedHTTPClient.DoRequest(ctx, http.MethodPost, "/internal/sql", nil, query)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+			},
+			assertResp: func(t *testing.T, resp *api.Response) {
+				t.Helper()
+
+				require.Nil(t, resp, "the plain text response of the router is not decoded")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := tc.do(t.Context())
+
+			tc.assertErr(t, err)
+			tc.assertResp(t, resp)
 		})
 	}
 }
