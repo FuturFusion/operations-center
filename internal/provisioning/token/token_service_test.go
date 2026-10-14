@@ -1672,20 +1672,68 @@ func TestTokenService_GetTokenSeedByName(t *testing.T) {
 func TestTokenService_UpdateTokenSeed(t *testing.T) {
 	t.Parallel()
 
+	currentTokenSeed := provisioning.TokenSeed{
+		ID:          1,
+		Token:       uuidA,
+		Name:        "one",
+		Description: "description",
+		Public:      true,
+	}
+
 	tests := []struct {
-		name                   string
-		token                  provisioning.TokenSeed
-		repoUpdateTokenSeedErr error
+		name                         string
+		token                        provisioning.TokenSeed
+		force                        bool
+		repoGetTokenSeedByNameErr    error
+		serverSvcGetAllNames         []string
+		serverSvcGetAllNamesErr      error
+		repoUpdateTokenSeedErr       error
+		wantServerSvcGetAllNamesCall int
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - description changed",
 			token: provisioning.TokenSeed{
-				ID:    1,
-				Token: uuidA,
-				Name:  "1",
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "new description",
+				Public:      true,
 			},
+			serverSvcGetAllNames: []string{"server"},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - seeds changed without active deployment",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      true,
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Install: api.SeedInstall{
+						ForceReboot: true,
+					},
+				},
+			},
+			wantServerSvcGetAllNamesCall: 1,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - public changed with active deployment and force",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      false,
+			},
+			force:                true,
+			serverSvcGetAllNames: []string{"server"},
 
 			assertErr: require.NoError,
 		},
@@ -1703,11 +1751,75 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 			},
 		},
 		{
-			name: "error - repo",
+			name: "error - repo.GetTokenSeedByName",
 			token: provisioning.TokenSeed{
 				ID:    1,
 				Token: uuidA,
-				Name:  "1",
+				Name:  "one",
+			},
+			repoGetTokenSeedByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - public changed with active deployment",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      false,
+			},
+			serverSvcGetAllNames:         []string{"server"},
+			wantServerSvcGetAllNamesCall: 1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name: "error - seeds changed with active deployment",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      true,
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Install: api.SeedInstall{
+						ForceReboot: true,
+					},
+				},
+			},
+			serverSvcGetAllNames:         []string{"server"},
+			wantServerSvcGetAllNamesCall: 1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name: "error - serverSvc.GetAllNamesWithActiveDeploymentByTokenSeed",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      false,
+			},
+			serverSvcGetAllNamesErr:      boom.Error,
+			wantServerSvcGetAllNamesCall: 1,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.UpdateTokenSeed",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "new description",
+				Public:      true,
 			},
 			repoUpdateTokenSeedErr: boom.Error,
 
@@ -1721,18 +1833,29 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 
 			// Setup
 			repo := &mock.TokenRepoMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &currentTokenSeed, tc.repoGetTokenSeedByNameErr
+				},
 				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) error {
 					return tc.repoUpdateTokenSeedErr
 				},
 			}
 
+			serverSvc := &svcMock.ServerServiceMock{
+				GetAllNamesWithActiveDeploymentByTokenSeedFunc: func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+					return tc.serverSvcGetAllNames, tc.serverSvcGetAllNamesErr
+				},
+			}
+
 			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
+			tokenSvc.SetServerService(serverSvc)
 
 			// Run test
-			err := tokenSvc.UpdateTokenSeed(context.Background(), tc.token)
+			err := tokenSvc.UpdateTokenSeed(context.Background(), tc.token, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Len(t, serverSvc.GetAllNamesWithActiveDeploymentByTokenSeedCalls(), tc.wantServerSvcGetAllNamesCall, "The active deployments are only checked, if the image changes and force is not set.")
 		})
 	}
 }
@@ -1744,22 +1867,56 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 		name                         string
 		idArg                        uuid.UUID
 		nameArg                      string
+		force                        bool
+		serverSvcGetAllNames         []string
+		serverSvcGetAllNamesErr      error
 		repoDeleteTokenSeedByNameErr error
+		wantRepoDeleteCalls          int
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			idArg:   uuidA,
-			nameArg: "1",
+			name:                "success",
+			idArg:               uuidA,
+			nameArg:             "1",
+			wantRepoDeleteCalls: 1,
 
 			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - active deployment with force",
+			idArg:                uuidA,
+			nameArg:              "1",
+			force:                true,
+			serverSvcGetAllNames: []string{"server"},
+			wantRepoDeleteCalls:  1,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "error - active deployment",
+			idArg:                uuidA,
+			nameArg:              "1",
+			serverSvcGetAllNames: []string{"server"},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:                    "error - serverSvc.GetAllNamesWithActiveDeploymentByTokenSeed",
+			idArg:                   uuidA,
+			nameArg:                 "1",
+			serverSvcGetAllNamesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:                         "error - repo",
 			idArg:                        uuidA,
 			nameArg:                      "1",
 			repoDeleteTokenSeedByNameErr: boom.Error,
+			wantRepoDeleteCalls:          1,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1776,13 +1933,21 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 				},
 			}
 
+			serverSvc := &svcMock.ServerServiceMock{
+				GetAllNamesWithActiveDeploymentByTokenSeedFunc: func(ctx context.Context, tokenUUID uuid.UUID, seed string) ([]string, error) {
+					return tc.serverSvcGetAllNames, tc.serverSvcGetAllNamesErr
+				},
+			}
+
 			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
+			tokenSvc.SetServerService(serverSvc)
 
 			// Run test
-			err := tokenSvc.DeleteTokenSeedByName(context.Background(), tc.idArg, tc.nameArg)
+			err := tokenSvc.DeleteTokenSeedByName(context.Background(), tc.idArg, tc.nameArg, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Len(t, repo.DeleteTokenSeedByNameCalls(), tc.wantRepoDeleteCalls, "The token seed is only deleted, if no active deployment uses it or force is set.")
 		})
 	}
 }

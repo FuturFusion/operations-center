@@ -11,6 +11,8 @@ import (
 )
 
 type TokenService interface {
+	SetServerService(serverSvc ServerService)
+
 	Create(ctx context.Context, token Token) (Token, error)
 	GetAll(ctx context.Context) (Tokens, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -25,8 +27,8 @@ type TokenService interface {
 	GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error)
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
-	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error
-	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
+	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed, force bool) error
+	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error
 	GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error)
 	GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*TokenImage, error)
 	ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, _ error)

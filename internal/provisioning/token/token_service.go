@@ -1,7 +1,9 @@
 package token
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +23,7 @@ import (
 
 type tokenService struct {
 	repo       provisioning.TokenRepo
+	serverSvc  provisioning.ServerService
 	updateSvc  provisioning.UpdateService
 	channelSvc provisioning.ChannelService
 	flasher    provisioning.FlasherPort
@@ -53,6 +56,10 @@ func New(repo provisioning.TokenRepo, updateSvc provisioning.UpdateService, chan
 	}
 
 	return tokenSvc
+}
+
+func (s *tokenService) SetServerService(serverSvc provisioning.ServerService) {
+	s.serverSvc = serverSvc
 }
 
 func (s *tokenService) Create(ctx context.Context, newToken provisioning.Token) (provisioning.Token, error) {
@@ -287,24 +294,83 @@ func (s *tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, nam
 	return tokenSeedConfig, nil
 }
 
-func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 	err := tokenSeed.Validate()
 	if err != nil {
 		return fmt.Errorf("Validate token seed: %w", err)
 	}
 
-	err = s.repo.UpdateTokenSeed(ctx, tokenSeed)
-	if err != nil {
-		return err
-	}
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		currentTokenSeed, err := s.repo.GetTokenSeedByName(ctx, tokenSeed.Token, tokenSeed.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get token seed %q for token %q: %w", tokenSeed.Name, tokenSeed.Token.String(), err)
+		}
 
-	return nil
+		imageChanged, err := tokenSeedImageChanged(*currentTokenSeed, tokenSeed)
+		if err != nil {
+			return err
+		}
+
+		// A change of the description does not affect the image.
+		if imageChanged {
+			err = s.checkNoActiveDeployment(ctx, tokenSeed.Token, tokenSeed.Name, force)
+			if err != nil {
+				return err
+			}
+		}
+
+		return s.repo.UpdateTokenSeed(ctx, tokenSeed)
+	})
 }
 
-func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
-	err := s.repo.DeleteTokenSeedByName(ctx, id, name)
+func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		err := s.checkNoActiveDeployment(ctx, id, name, force)
+		if err != nil {
+			return err
+		}
+
+		return s.repo.DeleteTokenSeedByName(ctx, id, name)
+	})
+}
+
+// tokenSeedImageChanged reports whether the update changes the image or the
+// way the image is served.
+func tokenSeedImageChanged(current provisioning.TokenSeed, updated provisioning.TokenSeed) (bool, error) {
+	if current.Public != updated.Public {
+		return true, nil
+	}
+
+	currentSeeds, err := json.Marshal(current.Seeds)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("Failed to encode seeds of token seed %q: %w", current.Name, err)
+	}
+
+	updatedSeeds, err := json.Marshal(updated.Seeds)
+	if err != nil {
+		return false, fmt.Errorf("Failed to encode seeds of token seed %q: %w", updated.Name, err)
+	}
+
+	return !bytes.Equal(currentSeeds, updatedSeeds), nil
+}
+
+// checkNoActiveDeployment returns an error if a server deployment, which is
+// not finished, uses the token seed. With force, the check is skipped.
+func (s *tokenService) checkNoActiveDeployment(ctx context.Context, id uuid.UUID, name string, force bool) error {
+	if force {
+		return nil
+	}
+
+	serverNames, err := s.serverSvc.GetAllNamesWithActiveDeploymentByTokenSeed(ctx, id, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get servers with an active deployment for token seed %q: %w", name, err)
+	}
+
+	if len(serverNames) > 0 {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q is in use by the active deployment of servers: %s", name, strings.Join(serverNames, ", ")).
+			WithHintf("Wait for the deployments to finish, cancel them or use the force option.").
+			WithDetail("token_seed", name).
+			WithDetail("servers", strings.Join(serverNames, ", "))
 	}
 
 	return nil
