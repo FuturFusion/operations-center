@@ -14,6 +14,7 @@ import (
 // Chain represents a chain of authorizers. They are probed in order.
 // Processing is stopped after the first authorizer returns without error
 // and access is granted.
+// Processing is also stopped after a final denial, see [authz.Deny].
 // If all authorizers fail, an error is returned and access is forbidden.
 type Chain struct {
 	authorizers []authz.Authorizer
@@ -35,6 +36,10 @@ func (c Chain) CheckPermission(ctx context.Context, details *authz.RequestDetail
 		}
 
 		errs = append(errs, err)
+
+		if authz.IsDenied(err) {
+			break
+		}
 	}
 
 	slog.DebugContext(ctx, "chain authorizer failed", logger.Err(errors.Join(errs...)), slog.String("user", details.Username), slog.String("entitlement", entitlement.String()), slog.String("object", object.String()))
