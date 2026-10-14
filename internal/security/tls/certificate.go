@@ -3,10 +3,13 @@
 package tls
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -16,6 +19,20 @@ import (
 // certificates derived from the trusted client certificates of Operations
 // Center. It marks them as managed by Operations Center.
 const trustedClientCertificateNamePrefix = "oc-trusted-"
+
+// CanonicalFingerprint returns the fingerprint in lower case and without
+// colons. Use it to compare fingerprints from the configuration.
+func CanonicalFingerprint(fingerprint string) string {
+	return strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+}
+
+// IsSHA256Fingerprint reports whether the fingerprint is a full SHA256
+// fingerprint. Upper case and colons are allowed, see [CanonicalFingerprint].
+func IsSHA256Fingerprint(fingerprint string) bool {
+	b, err := hex.DecodeString(CanonicalFingerprint(fingerprint))
+
+	return err == nil && len(b) == sha256.Size
+}
 
 // ParseCertificate parses a X509 PEM encoded certificate.
 func ParseCertificate(certificatePEM string) (*x509.Certificate, error) {
