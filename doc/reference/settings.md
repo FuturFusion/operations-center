@@ -178,9 +178,10 @@ A restart is not required.
 
 Operations Center exposes the Go runtime profiling data in the format of
 [pprof](https://pkg.go.dev/net/http/pprof) on the REST API below
-`/1.0/debug/pprof/`. This allows to collect CPU and memory profiles, goroutine
-dumps and execution traces, e.g. when investigating an issue together with the
-development team.
+`/internal/debug/pprof/`. This allows to collect CPU and memory profiles,
+goroutine dumps and execution traces, e.g. when investigating an issue together
+with the development team. The endpoints are not part of the versioned API.
+They can change or be removed without notice.
 
 The endpoints are disabled by default and need to be enabled with the
 `pprof_enabled` setting. They are served on the regular REST API listener and
