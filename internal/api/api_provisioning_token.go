@@ -598,7 +598,7 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/images/"+seedConfig.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/seeds/"+seedConfig.Name)
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds tokens tokens_seeds_get
@@ -704,7 +704,7 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(tokenSeedNames))
 	for _, name := range tokenSeedNames {
-		result = append(result, fmt.Sprintf("/%s/provisioning/tokens/%s/images/%s", api.APIVersion, UUID, name))
+		result = append(result, fmt.Sprintf("/%s/provisioning/tokens/%s/seeds/%s", api.APIVersion, UUID, name))
 	}
 
 	return response.SyncResponse(true, result)

@@ -38,6 +38,7 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 
 		wantStatus              int
 		wantResponseBodyContain string
+		wantLocation            string
 		wantServiceCalled       bool
 	}{
 		{
@@ -54,6 +55,7 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 }`,
 
 			wantStatus:        http.StatusCreated,
+			wantLocation:      "/1.0/provisioning/tokens/" + tokenUUID + "/seeds/test",
 			wantServiceCalled: true,
 		},
 		{
@@ -125,9 +127,10 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 				},
 			}
 
-			body, status := doTokenRequest(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds", tc.requestBody)
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodPost, "/"+tokenUUID+"/seeds", tc.requestBody, nil)
 
-			require.Equal(t, tc.wantStatus, status)
+			require.Equal(t, tc.wantStatus, resp.statusCode)
+			require.Equal(t, tc.wantLocation, resp.header.Get("Location"), "The location is the URL of the created token seed.")
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 
 			if tc.wantResponseBodyContain != "" {
@@ -185,6 +188,50 @@ func Test_tokenHandler_tokenPut(t *testing.T) {
 			require.Equal(t, tc.wantStatus, status)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeedsGet(t *testing.T) {
+	tests := []struct {
+		name                           string
+		serviceGetTokenSeedAllNames    []string
+		serviceGetTokenSeedAllNamesErr error
+
+		wantStatus              int
+		wantResponseBodyContain string
+	}{
+		{
+			name:                        "success",
+			serviceGetTokenSeedAllNames: []string{"one", "two"},
+
+			wantStatus:              http.StatusOK,
+			wantResponseBodyContain: `"metadata":["/1.0/provisioning/tokens/` + tokenUUID + `/seeds/one","/1.0/provisioning/tokens/` + tokenUUID + `/seeds/two"]`,
+		},
+		{
+			name:                           "error - service.GetTokenSeedAllNames",
+			serviceGetTokenSeedAllNamesErr: domain.ErrNotFound,
+
+			wantStatus:              http.StatusNotFound,
+			wantResponseBodyContain: `"error_code":404`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedAllNamesFunc: func(ctx context.Context, id uuid.UUID) ([]string, error) {
+					return tc.serviceGetTokenSeedAllNames, tc.serviceGetTokenSeedAllNamesErr
+				},
+			}
+
+			// Run test
+			body, status := doTokenRequest(t, tokenService, http.MethodGet, "/"+tokenUUID+"/seeds", "")
+
+			// Assert
+			require.Equal(t, tc.wantStatus, status)
+			require.Contains(t, body, tc.wantResponseBodyContain, "The URLs point to the token seeds.")
 		})
 	}
 }
