@@ -123,6 +123,26 @@ func GetDBTX(ctx context.Context, db DBTX) DBTX {
 	return db
 }
 
+// AfterCommit registers f to run after the transaction of ctx is committed.
+// f does not run if the transaction is rolled back.
+// Without a transaction in ctx, f runs immediately.
+//
+// f must not use the transaction. An error of f is returned by Commit, but the
+// transaction stays committed.
+func AfterCommit(ctx context.Context, f func() error) error {
+	tc, ok := ctx.Value(tcKey{}).(*transactionContainer)
+	if !ok {
+		return f()
+	}
+
+	tc.lock.Lock()
+	defer tc.lock.Unlock()
+
+	tc.afterCommit = append(tc.afterCommit, f)
+
+	return nil
+}
+
 func IsActive(ctx context.Context) bool {
 	existingTC := ctx.Value(tcKey{})
 	return existingTC != nil
@@ -138,18 +158,36 @@ func Begin(ctx context.Context) (context.Context, transaction) {
 }
 
 type transactionContainer struct {
-	tx   TX
-	lock sync.Mutex
+	tx          TX
+	afterCommit []func() error
+	lock        sync.Mutex
 }
 
 var _ transaction = &transactionContainer{}
 
 func (t *transactionContainer) Commit() error {
-	if t.tx == nil {
-		return nil
+	if t.tx != nil {
+		err := t.tx.Commit()
+		if err != nil {
+			return err
+		}
 	}
 
-	return t.tx.Commit()
+	t.lock.Lock()
+	afterCommit := t.afterCommit
+	t.afterCommit = nil
+	t.lock.Unlock()
+
+	var errs []error
+
+	for _, f := range afterCommit {
+		err := f()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Transaction is committed, but a follow-up action failed: %w", err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func (t *transactionContainer) Rollback() error {

@@ -174,6 +174,115 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 	require.Empty(t, dummies)
 }
 
+func TestAfterCommit(t *testing.T) {
+	errBoom := errors.New("boom")
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T, calls *[]string) error
+
+		assertErr require.ErrorAssertionFunc
+		wantCalls []string
+	}{
+		{
+			name: "runs immediately without transaction",
+			run: func(t *testing.T, calls *[]string) error {
+				t.Helper()
+
+				err := transaction.AfterCommit(t.Context(), func() error {
+					*calls = append(*calls, "after commit")
+					return nil
+				})
+
+				*calls = append(*calls, "done")
+
+				return err
+			},
+
+			assertErr: require.NoError,
+			wantCalls: []string{"after commit", "done"},
+		},
+		{
+			name: "runs after the outermost transaction is committed",
+			run: func(t *testing.T, calls *[]string) error {
+				t.Helper()
+
+				return transaction.Do(t.Context(), func(ctx context.Context) error {
+					err := transaction.Do(ctx, func(ctx context.Context) error {
+						return transaction.AfterCommit(ctx, func() error {
+							*calls = append(*calls, "after commit")
+							return nil
+						})
+					})
+
+					*calls = append(*calls, "inner done")
+
+					return err
+				})
+			},
+
+			assertErr: require.NoError,
+			wantCalls: []string{"inner done", "after commit"},
+		},
+		{
+			name: "does not run if the transaction is rolled back",
+			run: func(t *testing.T, calls *[]string) error {
+				t.Helper()
+
+				return transaction.Do(t.Context(), func(ctx context.Context) error {
+					err := transaction.AfterCommit(ctx, func() error {
+						*calls = append(*calls, "after commit")
+						return nil
+					})
+					require.NoError(t, err)
+
+					return errBoom
+				})
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errBoom, a...)
+			},
+			wantCalls: nil,
+		},
+		{
+			name: "error is returned by the commit and all functions run",
+			run: func(t *testing.T, calls *[]string) error {
+				t.Helper()
+
+				return transaction.Do(t.Context(), func(ctx context.Context) error {
+					err := transaction.AfterCommit(ctx, func() error {
+						*calls = append(*calls, "first")
+						return errBoom
+					})
+					require.NoError(t, err)
+
+					return transaction.AfterCommit(ctx, func() error {
+						*calls = append(*calls, "second")
+						return nil
+					})
+				})
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errBoom, a...)
+			},
+			wantCalls: []string{"first", "second"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls []string
+
+			err := tc.run(t, &calls)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantCalls, calls)
+		})
+	}
+}
+
 func TestIsActive(t *testing.T) {
 	t.Parallel()
 
