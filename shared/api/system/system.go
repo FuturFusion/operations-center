@@ -225,7 +225,7 @@ type SettingsPut struct {
 	// ServerRegistrationScriptlet hold the server registration scriptlet.
 	ServerRegistrationScriptlet string `json:"server_registration_scriptlet" yaml:"server_registration_scriptlet"`
 
-	// PprofEnabled enables the pprof debug endpoints under /1.0/debug/pprof.
+	// PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
 	// Example: false
 	PprofEnabled bool `json:"pprof_enabled" yaml:"pprof_enabled"`
 
