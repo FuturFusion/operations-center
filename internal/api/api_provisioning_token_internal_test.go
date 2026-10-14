@@ -266,7 +266,7 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 
 					return &provisioning.TokenSeed{}, nil
 				},
-				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed) error {
+				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
 					return nil
 				},
 			}
@@ -276,6 +276,76 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 			require.Equal(t, tc.wantStatus, status)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 			require.Contains(t, body, tc.wantResponseBodyContain)
+		})
+	}
+}
+
+func Test_tokenHandler_tokenSeed_force(t *testing.T) {
+	tests := []struct {
+		name        string
+		method      string
+		query       string
+		requestBody string
+
+		wantForce bool
+	}{
+		{
+			name:        "put - without force",
+			method:      http.MethodPut,
+			requestBody: `{"description": "some description"}`,
+
+			wantForce: false,
+		},
+		{
+			name:        "put - with force",
+			method:      http.MethodPut,
+			query:       "?force=true",
+			requestBody: `{"description": "some description"}`,
+
+			wantForce: true,
+		},
+		{
+			name:   "delete - without force",
+			method: http.MethodDelete,
+
+			wantForce: false,
+		},
+		{
+			name:   "delete - with force",
+			method: http.MethodDelete,
+			query:  "?force=1",
+
+			wantForce: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var gotForce []bool
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{}, nil
+				},
+				UpdateTokenSeedFunc: func(ctx context.Context, tokenSeed provisioning.TokenSeed, force bool) error {
+					gotForce = append(gotForce, force)
+
+					return nil
+				},
+				DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string, force bool) error {
+					gotForce = append(gotForce, force)
+
+					return nil
+				},
+			}
+
+			// Run test
+			_, status := doTokenRequest(t, tokenService, tc.method, "/"+tokenUUID+"/seeds/test"+tc.query, tc.requestBody)
+
+			// Assert
+			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, []bool{tc.wantForce}, gotForce, "The force query parameter is passed to the service.")
 		})
 	}
 }

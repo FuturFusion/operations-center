@@ -1087,6 +1087,15 @@ func parseSeedImageParams(params string) (seedImageParams, error) {
 //	    description: Name of the seed
 //	    type: string
 //	    required: true
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operation should be applied forcefully or
+//	      not. Required, if a server deployment, which is not finished, uses the
+//	      token seed.
+//	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	  - in: body
 //	    name: token
 //	    description: Token seed config definition
@@ -1115,6 +1124,7 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 	}
 
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
 	var tokenSeed api.TokenSeedPut
 
@@ -1155,7 +1165,7 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 			Network:          tokenSeed.Seeds.Network,
 			OperationsCenter: tokenSeed.Seeds.OperationsCenter,
 		},
-	})
+	}, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf(`Failed updating token seed config "%s/%s": %w`, UUID.String(), name, err))
 	}
@@ -1189,6 +1199,15 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 //	    description: Name of the seed
 //	    type: string
 //	    required: true
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operation should be applied forcefully or
+//	      not. Required, if a server deployment, which is not finished, uses the
+//	      token seed.
+//	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1209,8 +1228,9 @@ func (t *tokenHandler) tokenSeedDelete(r *http.Request) response.Response {
 	}
 
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err = t.service.DeleteTokenSeedByName(r.Context(), UUID, name)
+	err = t.service.DeleteTokenSeedByName(r.Context(), UUID, name, force)
 	if err != nil {
 		return response.SmartError(err)
 	}
