@@ -13811,6 +13811,56 @@ paths:
             summary: Get token seed config
             tags:
                 - tokens
+        post:
+            consumes:
+                - application/json
+            description: Renames the token seed config.
+            operationId: token_seed_post
+            parameters:
+                - description: UUID of the token
+                  format: uuid
+                  in: path
+                  name: uuid
+                  required: true
+                  type: string
+                - description: Name of the seed
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: |-
+                    Boolean indicating, if the operation should be applied forcefully or
+                    not. Required, if a server deployment, which is not finished, uses the
+                    token seed.
+                    Defaults to false.
+                  in: query
+                  name: force
+                  type: boolean
+                  x-example: true
+                - description: Token seed config definition. Only the name is used.
+                  in: body
+                  name: token
+                  required: true
+                  schema:
+                    $ref: '#/definitions/TokenSeed'
+            produces:
+                - application/json
+            responses:
+                "201":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Rename the token seed config
+            tags:
+                - tokens
         put:
             consumes:
                 - application/json
