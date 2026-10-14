@@ -5268,6 +5268,22 @@ definitions:
                     type: string
                 type: array
                 x-go-name: TrustedTLSClientCertificates
+            trusted_tls_metrics_client_cert_fingerprints:
+                description: |-
+                    An array of SHA256 certificate fingerprints of metrics only certificates.
+                    A metrics only certificate can only read the metrics.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertFingerprints
+            trusted_tls_metrics_client_certificates:
+                description: |-
+                    An array of X509 PEM encoded metrics only certificates.
+                    A metrics only certificate can only read the metrics.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertificates
         title: Security represents the system's security configuration.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
@@ -5394,6 +5410,22 @@ definitions:
                     type: string
                 type: array
                 x-go-name: TrustedTLSClientCertificates
+            trusted_tls_metrics_client_cert_fingerprints:
+                description: |-
+                    An array of SHA256 certificate fingerprints of metrics only certificates.
+                    A metrics only certificate can only read the metrics.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertFingerprints
+            trusted_tls_metrics_client_certificates:
+                description: |-
+                    An array of X509 PEM encoded metrics only certificates.
+                    A metrics only certificate can only read the metrics.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSMetricsClientCertificates
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SeedNetwork:
@@ -6207,7 +6239,9 @@ definitions:
                 type: string
                 x-go-name: APIVersion
             auth:
-                description: Authentication protocol of a trusted client (one of "tls", "oidc" or "unix"), "untrusted" otherwise
+                description: |-
+                    Authentication protocol of a trusted client (one of "tls", "oidc" or "unix"), "untrusted" otherwise.
+                    A metrics only certificate also reports "tls", even though it can only read the metrics.
                 example: untrusted
                 readOnly: true
                 type: string
@@ -6327,11 +6361,10 @@ definitions:
                 x-go-name: LogLevels
             metrics_components:
                 description: |-
-                    MetricsComponents is the list of components, which expose metrics.
-                    Enabling a component enables all of its children as well.
+                    MetricsComponents lists the components that expose metrics.
+                    Enabling a component also enables all of its children.
                 example:
                     - runtime
-                    - api
                 items:
                     type: string
                 type: array
@@ -6375,11 +6408,10 @@ definitions:
                 x-go-name: LogLevels
             metrics_components:
                 description: |-
-                    MetricsComponents is the list of components, which expose metrics.
-                    Enabling a component enables all of its children as well.
+                    MetricsComponents lists the components that expose metrics.
+                    Enabling a component also enables all of its children.
                 example:
                     - runtime
-                    - api
                 items:
                     type: string
                 type: array
