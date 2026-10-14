@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -69,6 +70,35 @@ func TestAuthentication(t *testing.T) {
 
 	altCert, err := tls.X509KeyPair(altCertPEM, altKeyPEM)
 	require.NoError(t, err)
+
+	metricsCertPEM, metricsKeyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err, "generating the metrics only certificate must work")
+
+	metricsCert, err := tls.X509KeyPair(metricsCertPEM, metricsKeyPEM)
+	require.NoError(t, err, "loading the metrics only certificate must work")
+
+	// Use the format of openssl, upper case with colons, to cover the
+	// canonicalization of fingerprints from the configuration.
+	metricsCertFingerprint := strings.ReplaceAll(fmt.Sprintf("% X", sha256.Sum256(metricsCert.Leaf.Raw)), " ", ":")
+
+	metricsPEMCertPEM, metricsPEMKeyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err, "generating the metrics only certificate, trusted by its PEM encoded certificate, must work")
+
+	metricsPEMCert, err := tls.X509KeyPair(metricsPEMCertPEM, metricsPEMKeyPEM)
+	require.NoError(t, err, "loading the metrics only certificate, trusted by its PEM encoded certificate, must work")
+
+	tlsClient := func(cert tls.Certificate) func() *http.Client {
+		return func() *http.Client {
+			return &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						Certificates:       []tls.Certificate{cert},
+						InsecureSkipVerify: true,
+					},
+				},
+			}
+		}
+	}
 
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
@@ -182,6 +212,26 @@ func TestAuthentication(t *testing.T) {
 			wantAuth:       api.AuthenticationMethodTLS,
 		},
 		{
+			name:     "metrics client cert http GET /1.0",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationMethodTLS,
+		},
+		{
+			name:     "metrics client cert by PEM http GET /1.0",
+			client:   tlsClient(metricsPEMCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationMethodTLS,
+		},
+		{
 			name: "oidc http GET /1.0 as viewer",
 			client: func() *http.Client {
 				return &http.Client{
@@ -255,6 +305,96 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode:   http.StatusOK,
 			wantBodyContains: "operations_center_build_info",
+		},
+		{
+			name:     "metrics client cert http GET /1.0/metrics",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/metrics",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: "operations_center_build_info",
+		},
+		{
+			name:     "metrics client cert http GET /1.0/system/settings - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/system/settings",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_view\"`,
+		},
+		{
+			name:     "metrics client cert http GET /1.0/provisioning/servers - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_view\"`,
+		},
+		{
+			name:     "metrics client cert http PUT /1.0/system/settings - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodPut,
+			resource: tcpBaseURL + "/1.0/system/settings",
+			body:     strings.NewReader(`{}`),
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_edit\"`,
+		},
+		{
+			name:     "metrics client cert http POST /1.0/provisioning/servers - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodPost,
+			resource: tcpBaseURL + "/1.0/provisioning/servers",
+			body:     strings.NewReader(`{}`),
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_create\"`,
+		},
+		{
+			name:     "metrics client cert http GET /1.0/debug/pprof/ - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/debug/pprof/",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_debug\"`,
+		},
+		{
+			name:     "metrics client cert http GET /os/1.0 - forbidden",
+			client:   tlsClient(metricsCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/os/1.0",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_edit\"`,
+		},
+		{
+			name:     "metrics client cert by PEM http GET /1.0/metrics",
+			client:   tlsClient(metricsPEMCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/metrics",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: "operations_center_build_info",
+		},
+		{
+			name:     "metrics client cert by PEM http GET /1.0/system/settings - forbidden",
+			client:   tlsClient(metricsPEMCert),
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/system/settings",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantBodyContains: `entitlement \"can_view\"`,
 		},
 		{
 			name: "oidc http GET /1.0/metrics as viewer",
@@ -871,8 +1011,10 @@ func TestAuthentication(t *testing.T) {
 		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
-	err = config.UpdateSecurity(ctx, system.SecurityPut{
-		TrustedTLSClientCertFingerprints: []string{certFingerprint},
+	security := system.SecurityPut{
+		TrustedTLSClientCertFingerprints:        []string{certFingerprint},
+		TrustedTLSMetricsClientCertFingerprints: []string{metricsCertFingerprint},
+		TrustedTLSMetricsClientCertificates:     []string{string(metricsPEMCertPEM)},
 		OIDC: system.SecurityOIDC{
 			Issuer:   oidcProvider.Issuer(),
 			ClientID: oidcProvider.ClientID,
@@ -883,8 +1025,10 @@ func TestAuthentication(t *testing.T) {
 			APIToken: "dummy",
 			StoreID:  openFGAStoreID,
 		},
-	})
-	require.NoError(t, err)
+	}
+
+	err = config.UpdateSecurity(ctx, security)
+	require.NoError(t, err, "the security config with metrics only certificates must be accepted")
 
 	// The daemon command applies the metrics settings at startup.
 	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
@@ -904,6 +1048,10 @@ func TestAuthentication(t *testing.T) {
 	require.NoError(t, err)
 
 	setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
+
+	// An OpenFGA tuple must not widen the access of a metrics only certificate.
+	writeOpenFGATuple(t, openFGAEndpoint, openFGAStoreID, incustls.CertFingerprint(metricsCert.Leaf), admin)
+	writeOpenFGATuple(t, openFGAEndpoint, openFGAStoreID, incustls.CertFingerprint(metricsPEMCert.Leaf), admin)
 
 	token = setupTokenAndSeeds(t, tmpDir)
 
@@ -939,6 +1087,108 @@ func TestAuthentication(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.wantAuth, serverInfo.Auth)
+		})
+	}
+
+	type reloadRequest struct {
+		name     string
+		client   func() *http.Client
+		resource string
+
+		wantStatusCode int
+	}
+
+	// The reloads change the security config, so these run after all other cases
+	// and in the given order. Each mutation builds on the previous one.
+	reloads := []struct {
+		name     string
+		mutate   func(security *system.SecurityPut)
+		requests []reloadRequest
+	}{
+		{
+			name: "remove metrics only certificates",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSMetricsClientCertFingerprints = nil
+				security.TrustedTLSMetricsClientCertificates = nil
+			},
+			requests: []reloadRequest{
+				{
+					name:     "metrics client cert http GET /1.0/metrics - revoked",
+					client:   tlsClient(metricsCert),
+					resource: tcpBaseURL + "/1.0/metrics",
+
+					wantStatusCode: http.StatusUnauthorized,
+				},
+				{
+					name:     "metrics client cert by PEM http GET /1.0/metrics - revoked",
+					client:   tlsClient(metricsPEMCert),
+					resource: tcpBaseURL + "/1.0/metrics",
+
+					wantStatusCode: http.StatusUnauthorized,
+				},
+				{
+					name:     "tls client cert http GET /1.0/metrics - still trusted",
+					client:   tlsClient(cert),
+					resource: tcpBaseURL + "/1.0/metrics",
+
+					wantStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name: "add metrics only certificate",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSMetricsClientCertFingerprints = []string{metricsCertFingerprint}
+			},
+			requests: []reloadRequest{
+				{
+					name:     "metrics client cert http GET /1.0/metrics - granted",
+					client:   tlsClient(metricsCert),
+					resource: tcpBaseURL + "/1.0/metrics",
+
+					wantStatusCode: http.StatusOK,
+				},
+				{
+					name:     "metrics client cert http GET /1.0/system/settings - forbidden",
+					client:   tlsClient(metricsCert),
+					resource: tcpBaseURL + "/1.0/system/settings",
+
+					wantStatusCode: http.StatusForbidden,
+				},
+				{
+					name:     "tls client cert http GET /1.0/system/settings - still trusted",
+					client:   tlsClient(cert),
+					resource: tcpBaseURL + "/1.0/system/settings",
+
+					wantStatusCode: http.StatusOK,
+				},
+			},
+		},
+	}
+
+	for _, reload := range reloads {
+		t.Run(reload.name, func(t *testing.T) {
+			reload.mutate(&security)
+
+			err := config.UpdateSecurity(ctx, security)
+			require.NoError(t, err, "the changed security config must be accepted")
+
+			for _, tc := range reload.requests {
+				t.Run(tc.name, func(t *testing.T) {
+					// Setup
+					req, err := http.NewRequest(http.MethodGet, tc.resource, http.NoBody)
+					require.NoError(t, err, "building the request must work")
+
+					// Run test
+					resp, err := tc.client().Do(req)
+
+					// Assert
+					require.NoError(t, err, "the request must get a response")
+					t.Cleanup(func() { _ = resp.Body.Close() })
+
+					require.Equal(t, tc.wantStatusCode, resp.StatusCode, "a change of the metrics only certificates must take effect without a restart: %s", readBody(t, resp.Body))
+				})
+			}
 		})
 	}
 }
@@ -1008,27 +1258,33 @@ func setupOpenFGATuples(t *testing.T, endpoint string, storeID string) {
 	t.Helper()
 
 	for _, user := range users {
-		resp, err := http.Post(
-			fmt.Sprintf("%s/stores/%s/write", endpoint, storeID),
-			"application/json",
-			bytes.NewBufferString(
-				fmt.Sprintf(`{
+		writeOpenFGATuple(t, endpoint, storeID, user, user)
+	}
+}
+
+func writeOpenFGATuple(t *testing.T, endpoint string, storeID string, user string, relation string) {
+	t.Helper()
+
+	resp, err := http.Post(
+		fmt.Sprintf("%s/stores/%s/write", endpoint, storeID),
+		"application/json",
+		bytes.NewBufferString(
+			fmt.Sprintf(`{
   "writes": {
     "tuple_keys": [
       {
-        "user": "user:%[1]s",
-        "relation": "%[1]s",
+        "user": "user:%s",
+        "relation": "%s",
         "object": "server:operations-center"
       }
     ]
   }
-}`, user),
-			),
-		)
-		require.NoError(t, err)
-		resp.Body.Close()
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-	}
+}`, user, relation),
+		),
+	)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func setupTokenAndSeeds(t *testing.T, varDir string) string {

@@ -658,9 +658,19 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	}
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
+
+	// The metrics only certificates authenticate like the other trusted certificates.
+	// The authorizer restricts them to metrics access.
+	metricsCertificateFingerprints, err := securitytls.CertificateFingerprints(cfg.TrustedTLSMetricsClientCertificates)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("Failed to derive fingerprints from the metrics only certificates: %w", err))
+	}
+
+	metricsFingerprints := slices.Concat(cfg.TrustedTLSMetricsClientCertFingerprints, metricsCertificateFingerprints)
+
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
-			authntls.New(trustedFingerprints),
+			authntls.New(slices.Concat(trustedFingerprints, metricsFingerprints)),
 			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
 		),
 	)
@@ -674,7 +684,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
 		),
 		authzmiddleware.NewAuthorizerWithSlog(
-			authztls.New(ctx, trustedFingerprints),
+			authztls.New(ctx, trustedFingerprints, authztls.WithMetricsCertificateFingerprints(metricsFingerprints)),
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzTLS),
 		),
 	}
