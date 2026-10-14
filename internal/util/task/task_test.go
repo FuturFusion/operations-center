@@ -3,6 +3,7 @@ package task_test
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,16 +93,16 @@ func TestTask_ScheduleTemporaryError(t *testing.T) {
 
 // If SkipFirst is passed, the given task is only executed at the second round.
 func TestTask_SkipFirst(t *testing.T) {
-	i := 0
+	var i atomic.Int32
 	f := func(context.Context) {
-		i++
+		i.Add(1)
 	}
 
 	stop := startTask(t, f, task.Every(250*time.Millisecond, task.SkipFirst))
 	defer stop()
 
 	time.Sleep(400 * time.Millisecond)
-	assert.Equal(t, 1, i) // The function got executed only once, not twice.
+	assert.Equal(t, int32(1), i.Load()) // The function got executed only once, not twice.
 }
 
 // Create a new task function that sends a notification to a channel every time
