@@ -9,8 +9,14 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api/system"
+)
+
+const (
+	testFingerprint             = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	testFingerprintNonCanonical = "01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF"
 )
 
 func Test_validate(t *testing.T) {
@@ -378,6 +384,203 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "valid security.trusted_tls_metrics_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertificates:            []string{testcert.ClientCertificate},
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+						TrustedTLSMetricsClientCertificates:     []string{testcert.SecondClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "invalid security.trusted_tls_metrics_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSMetricsClientCertificates: []string{"not a certificate"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains(`"security.trusted_tls_metrics_client_certificates" contains an invalid certificate`),
+		},
+		{
+			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and in security.trusted_tls_metrics_client_cert_fingerprints",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints:        []string{testFingerprintNonCanonical},
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("can not be trusted for full access and for metrics access at the same time"),
+		},
+		{
+			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and non canonical in security.trusted_tls_metrics_client_cert_fingerprints",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints:        []string{testFingerprint},
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprintNonCanonical},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("can not be trusted for full access and for metrics access at the same time"),
+		},
+		{
+			name: "non canonical security.trusted_tls_metrics_client_cert_fingerprints",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprintNonCanonical},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "security.trusted_tls_metrics_client_cert_fingerprints with a truncated fingerprint",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint[:40]},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains(`"security.trusted_tls_metrics_client_cert_fingerprints" contains "0123456789abcdef0123456789abcdef01234567", which is not a SHA256 fingerprint`),
+		},
+		{
+			name: "security.trusted_tls_metrics_client_cert_fingerprints with surrounding whitespace",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSMetricsClientCertFingerprints: []string{" " + testFingerprint + "\n"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("which is not a SHA256 fingerprint"),
+		},
+		{
+			name: "security.trusted_tls_metrics_client_cert_fingerprints with an empty fingerprint",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSMetricsClientCertFingerprints: []string{""},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("which is not a SHA256 fingerprint"),
+		},
+		{
+			name: "certificate in security.trusted_tls_client_certificates and fingerprint in security.trusted_tls_metrics_client_cert_fingerprints",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertificates:            []string{testcert.ClientCertificate},
+						TrustedTLSMetricsClientCertFingerprints: []string{testcert.ClientCertificateFingerprint},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("can not be trusted for full access and for metrics access at the same time"),
+		},
+		{
+			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and certificate in security.trusted_tls_metrics_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints:    []string{testcert.ClientCertificateFingerprint},
+						TrustedTLSMetricsClientCertificates: []string{testcert.ClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("can not be trusted for full access and for metrics access at the same time"),
+		},
+		{
+			name: "certificate in security.trusted_tls_client_certificates and in security.trusted_tls_metrics_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertificates:        []string{testcert.ClientCertificate},
+						TrustedTLSMetricsClientCertificates: []string{testcert.ClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: errassert.ValidationErrorContains("can not be trusted for full access and for metrics access at the same time"),
+		},
+		{
+			name: "security.trusted_tls_metrics_client_certificates is not a fallback authentication method on IncusOS",
+			oldCfg: &config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints:        []string{},
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+						TrustedTLSMetricsClientCertificates:     []string{testcert.ClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: errassert.ValidationErrorContains("can not both be empty when running on IncusOS"),
+		},
+		{
+			name: "change of security.trusted_tls_metrics_client_cert_fingerprints on IncusOS",
+			oldCfg: &config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints:        []string{"fingerprint"},
+						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.NoError,
+		},
 
 		// Settings
 		{
@@ -486,7 +689,7 @@ func Test_validate(t *testing.T) {
 			},
 			isIncusOS: true,
 
-			assertErr: require.Error,
+			assertErr: errassert.ValidationErrorContains(`"settings.metrics_components" property is invalid`),
 		},
 	}
 
