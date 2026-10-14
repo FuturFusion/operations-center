@@ -21,7 +21,10 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-const apiVersionPrefix = "/1.0"
+const (
+	apiVersionPrefix = "/1.0"
+	internalPrefix   = "/internal"
+)
 
 type httpClient interface {
 	Do(*http.Request) (*http.Response, error)
@@ -153,7 +156,15 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 }
 
 func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {
-	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
+	return c.doRawRequest(ctx, method, apiVersionPrefix, endpoint, query, content, reqOpts...)
+}
+
+func (c OperationsCenterClient) doInternalRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {
+	return c.doRawRequest(ctx, method, internalPrefix, endpoint, query, content, reqOpts...)
+}
+
+func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string, prefix string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {
+	apiEndpoint, err := url.JoinPath(prefix, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +230,16 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 
 func (c OperationsCenterClient) DoRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
 	resp, err := c.doRequestRawResponse(ctx, method, endpoint, query, content)
+	if err != nil {
+		return nil, err
+	}
+
+	return processResponse(resp)
+}
+
+// DoInternalRequest sends a request to the unversioned internal API below /internal.
+func (c OperationsCenterClient) DoInternalRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
+	resp, err := c.doInternalRequestRawResponse(ctx, method, endpoint, query, content)
 	if err != nil {
 		return nil, err
 	}
