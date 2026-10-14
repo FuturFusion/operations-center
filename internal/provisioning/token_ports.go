@@ -59,6 +59,8 @@ type FlasherPort interface {
 	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 	SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs) (string, error)
-	GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	SeedImageCacheGeneration(ctx context.Context, cachePrefix string) uint64
+	GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
 	OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	RemoveSeededImages(ctx context.Context, cachePrefix string) error
 }

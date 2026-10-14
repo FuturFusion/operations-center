@@ -319,7 +319,17 @@ func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed provisioni
 			}
 		}
 
-		return s.repo.UpdateTokenSeed(ctx, tokenSeed)
+		err = s.repo.UpdateTokenSeed(ctx, tokenSeed)
+		if err != nil {
+			return err
+		}
+
+		// The images of a public token seed are served without authorization.
+		if currentTokenSeed.Public && !tokenSeed.Public {
+			return s.removeSeededImagesAfterCommit(ctx, tokenSeed.Token, tokenSeed.Name)
+		}
+
+		return nil
 	})
 }
 
@@ -330,7 +340,25 @@ func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, 
 			return err
 		}
 
-		return s.repo.DeleteTokenSeedByName(ctx, id, name)
+		err = s.repo.DeleteTokenSeedByName(ctx, id, name)
+		if err != nil {
+			return err
+		}
+
+		return s.removeSeededImagesAfterCommit(ctx, id, name)
+	})
+}
+
+// removeSeededImagesAfterCommit removes the cached images of a token seed as
+// soon as the change of the token seed is committed.
+func (s *tokenService) removeSeededImagesAfterCommit(ctx context.Context, id uuid.UUID, name string) error {
+	return transaction.AfterCommit(ctx, func() error {
+		err := s.flasher.RemoveSeededImages(ctx, provisioning.SeedImageCachePrefix(id, name))
+		if err != nil {
+			return fmt.Errorf("Failed to remove cached images of token seed %q: %w", name, err)
+		}
+
+		return nil
 	})
 }
 
@@ -408,6 +436,8 @@ func (s *tokenService) GetCompressedTokenImageFromTokenSeed(ctx context.Context,
 // naming a token seed. A request naming a prepared image is answered by
 // GetPreparedTokenSeedImage instead, which takes no lookup at all.
 func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
+
 	tokenSeed, err := s.tokenSeedForImage(ctx, id, name, imageType, architecture)
 	if err != nil {
 		return nil, err
@@ -415,7 +445,7 @@ func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, i
 
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
-	content, info, err := s.generateSeedImage(ctx, cacheID, id, *tokenSeed, imageType, architecture, channel)
+	content, info, err := s.generateSeedImage(ctx, cacheID, generation, id, *tokenSeed, imageType, architecture, channel)
 	if err != nil {
 		return nil, err
 	}
@@ -450,6 +480,8 @@ func (s *tokenService) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID
 // and stores it, so that a request naming it can be answered without anything
 // having to be looked up.
 func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
+	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
+
 	tokenSeed, err := s.publicTokenSeedForImage(ctx, id, name, imageType, architecture)
 	if err != nil {
 		return err
@@ -457,7 +489,7 @@ func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, 
 
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
-	content, _, err := s.generateSeedImage(ctx, cacheID, id, *tokenSeed, imageType, architecture, channel)
+	content, _, err := s.generateSeedImage(ctx, cacheID, generation, id, *tokenSeed, imageType, architecture, channel)
 	if err != nil {
 		return err
 	}
@@ -561,7 +593,7 @@ func (s *tokenService) resolveSeedImage(ctx context.Context, imageType api.Image
 //
 // An image for a token seed, which is not public, is kept where a request
 // naming it cannot reach it.
-func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, id uuid.UUID, tokenSeed provisioning.TokenSeed, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
+func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, generation uint64, id uuid.UUID, tokenSeed provisioning.TokenSeed, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
 	fingerprint, updateUUID, filename, seeds, err := s.resolveSeedImage(ctx, imageType, architecture, channel, tokenSeed.Seeds)
 	if err != nil {
 		return nil, provisioning.SeedImageInfo{}, err
@@ -572,7 +604,7 @@ func (s *tokenService) generateSeedImage(ctx context.Context, cacheID string, id
 		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, updateUUID.String(), err)
 	}
 
-	return s.flasher.GenerateSeededImage(ctx, cacheID, fingerprint, id, seeds, tokenSeed.Public, filereader)
+	return s.flasher.GenerateSeededImage(ctx, cacheID, generation, fingerprint, id, seeds, tokenSeed.Public, filereader)
 }
 
 func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds provisioning.TokenImageSeedConfigs) (_ io.ReadCloser, err error) {

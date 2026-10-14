@@ -392,6 +392,15 @@ func TestSeedImageCacheID(t *testing.T) {
 		require.Regexp(t, `^[A-Za-z0-9_-]+$`, id)
 	})
 
+	t.Run("starts with the cache prefix of the token seed", func(t *testing.T) {
+		prefix := provisioning.SeedImageCachePrefix(tokenUUID, "default")
+
+		require.Len(t, prefix, provisioning.SeedImageCachePrefixLength)
+		require.True(t, strings.HasPrefix(id, prefix))
+		require.True(t, strings.HasPrefix(provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeRaw, images.UpdateFileArchitecture64BitARM, "daily"), prefix), "All images of a token seed share the prefix.")
+		require.False(t, strings.HasPrefix(provisioning.SeedImageCacheID(tokenUUID, "other", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"), prefix), "Another token seed has another prefix.")
+	})
+
 	t.Run("differs for every input it is derived from", func(t *testing.T) {
 		otherUUID := uuid.MustParse("a1b2c3d4-1f0a-4c4e-9d5f-2b4a6c8e0d13")
 

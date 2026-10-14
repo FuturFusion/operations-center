@@ -1688,7 +1688,9 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 		serverSvcGetAllNames         []string
 		serverSvcGetAllNamesErr      error
 		repoUpdateTokenSeedErr       error
+		flasherRemoveSeededImagesErr error
 		wantServerSvcGetAllNamesCall int
+		wantRemovedCachePrefixes     []string
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1732,8 +1734,9 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 				Description: "description",
 				Public:      false,
 			},
-			force:                true,
-			serverSvcGetAllNames: []string{"server"},
+			force:                    true,
+			serverSvcGetAllNames:     []string{"server"},
+			wantRemovedCachePrefixes: []string{provisioning.SeedImageCachePrefix(uuidA, "one")},
 
 			assertErr: require.NoError,
 		},
@@ -1825,6 +1828,21 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name: "error - flasher.RemoveSeededImages",
+			token: provisioning.TokenSeed{
+				ID:          1,
+				Token:       uuidA,
+				Name:        "one",
+				Description: "description",
+				Public:      false,
+			},
+			flasherRemoveSeededImagesErr: boom.Error,
+			wantServerSvcGetAllNamesCall: 1,
+			wantRemovedCachePrefixes:     []string{provisioning.SeedImageCachePrefix(uuidA, "one")},
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1847,7 +1865,17 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
+			var removedCachePrefixes []string
+
+			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
+					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
+
+					return tc.flasherRemoveSeededImagesErr
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, nil, nil, flasher, nil)
 			tokenSvc.SetServerService(serverSvc)
 
 			// Run test
@@ -1856,6 +1884,7 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, serverSvc.GetAllNamesWithActiveDeploymentByTokenSeedCalls(), tc.wantServerSvcGetAllNamesCall, "The active deployments are only checked, if the image changes and force is not set.")
+			require.Equal(t, tc.wantRemovedCachePrefixes, removedCachePrefixes, "The cached images are only removed, if the token seed is not public anymore.")
 		})
 	}
 }
@@ -1871,25 +1900,29 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 		serverSvcGetAllNames         []string
 		serverSvcGetAllNamesErr      error
 		repoDeleteTokenSeedByNameErr error
+		flasherRemoveSeededImagesErr error
 		wantRepoDeleteCalls          int
+		wantRemovedCachePrefixes     []string
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:                "success",
-			idArg:               uuidA,
-			nameArg:             "1",
-			wantRepoDeleteCalls: 1,
+			name:                     "success",
+			idArg:                    uuidA,
+			nameArg:                  "1",
+			wantRepoDeleteCalls:      1,
+			wantRemovedCachePrefixes: []string{provisioning.SeedImageCachePrefix(uuidA, "1")},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "success - active deployment with force",
-			idArg:                uuidA,
-			nameArg:              "1",
-			force:                true,
-			serverSvcGetAllNames: []string{"server"},
-			wantRepoDeleteCalls:  1,
+			name:                     "success - active deployment with force",
+			idArg:                    uuidA,
+			nameArg:                  "1",
+			force:                    true,
+			serverSvcGetAllNames:     []string{"server"},
+			wantRepoDeleteCalls:      1,
+			wantRemovedCachePrefixes: []string{provisioning.SeedImageCachePrefix(uuidA, "1")},
 
 			assertErr: require.NoError,
 		},
@@ -1920,6 +1953,16 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:                         "error - flasher.RemoveSeededImages",
+			idArg:                        uuidA,
+			nameArg:                      "1",
+			flasherRemoveSeededImagesErr: boom.Error,
+			wantRepoDeleteCalls:          1,
+			wantRemovedCachePrefixes:     []string{provisioning.SeedImageCachePrefix(uuidA, "1")},
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1939,7 +1982,17 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
+			var removedCachePrefixes []string
+
+			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
+					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
+
+					return tc.flasherRemoveSeededImagesErr
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, nil, nil, flasher, nil)
 			tokenSvc.SetServerService(serverSvc)
 
 			// Run test
@@ -1948,6 +2001,7 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, repo.DeleteTokenSeedByNameCalls(), tc.wantRepoDeleteCalls, "The token seed is only deleted, if no active deployment uses it or force is set.")
+			require.Equal(t, tc.wantRemovedCachePrefixes, removedCachePrefixes, "The cached images are only removed, if the token seed has been deleted.")
 		})
 	}
 }
@@ -2534,12 +2588,19 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 
 			var (
 				gotCacheID     string
+				gotGeneration  uint64
 				gotFingerprint string
 			)
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
+				SeedImageCacheGenerationFunc: func(ctx context.Context, cachePrefix string) uint64 {
+					require.Empty(t, repo.GetTokenSeedByNameCalls(), "The generation is read before the token seed.")
+
+					return 7
+				},
+				GenerateSeededImageFunc: func(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 					gotCacheID = cacheID
+					gotGeneration = generation
 					gotFingerprint = fingerprint
 
 					if source != nil {
@@ -2581,6 +2642,7 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 			require.Equal(t, "pre-seed-config.iso", image.Filename)
 
 			require.Equal(t, provisioning.SeedImageCacheID(tokenUUID, "config", tc.imageTypeArg, tc.architectureArg, "stable"), gotCacheID)
+			require.Equal(t, uint64(7), gotGeneration)
 			require.Contains(t, gotFingerprint, updateUUID.String())
 			require.Contains(t, gotFingerprint, isoGzFilename)
 		})

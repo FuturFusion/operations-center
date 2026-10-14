@@ -175,19 +175,39 @@ type TokenImage struct {
 	Filename string
 }
 
-const SeedImageCacheIDLength = 12
+const (
+	seedImageIDLength = 12
 
-// SeedImageCacheID returns the cache ID for a pre-seeded image.
-func SeedImageCacheID(id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) string {
+	// SeedImageCachePrefixLength is the length of the part of a cache ID, which
+	// is shared by all pre-seeded images of one token seed.
+	SeedImageCachePrefixLength = seedImageIDLength
+
+	SeedImageCacheIDLength = 2 * seedImageIDLength
+)
+
+// SeedImageCachePrefix returns the prefix of the cache IDs of all pre-seeded
+// images of a token seed.
+func SeedImageCachePrefix(id uuid.UUID, name string) string {
 	sum := sha256.Sum256([]byte(strings.Join([]string{
 		id.String(),
 		name,
+	}, "\x00")))
+
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:seedImageIDLength]
+}
+
+// SeedImageCacheID returns the cache ID for a pre-seeded image.
+//
+// It starts with the SeedImageCachePrefix of the token seed. This allows to
+// find all images of a token seed.
+func SeedImageCacheID(id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{
 		imageType.String(),
 		architecture.String(),
 		channel,
 	}, "\x00")))
 
-	return base64.RawURLEncoding.EncodeToString(sum[:])[:SeedImageCacheIDLength]
+	return SeedImageCachePrefix(id, name) + base64.RawURLEncoding.EncodeToString(sum[:])[:seedImageIDLength]
 }
 
 // NewSeedImageDeploymentID returns an ID, that tells one deployment reading a
@@ -197,7 +217,7 @@ func SeedImageCacheID(id uuid.UUID, name string, imageType api.ImageType, archit
 func NewSeedImageDeploymentID() string {
 	sum := sha256.Sum256([]byte(uuid.New().String()))
 
-	return base64.RawURLEncoding.EncodeToString(sum[:])[:SeedImageCacheIDLength]
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:seedImageIDLength]
 }
 
 // SeedImageFingerprintID returns the ID of a pre-seeded image generated from
@@ -208,5 +228,5 @@ func NewSeedImageDeploymentID() string {
 func SeedImageFingerprintID(fingerprint string) string {
 	sum := sha256.Sum256([]byte(fingerprint))
 
-	return base64.RawURLEncoding.EncodeToString(sum[:])[:SeedImageCacheIDLength]
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:seedImageIDLength]
 }
