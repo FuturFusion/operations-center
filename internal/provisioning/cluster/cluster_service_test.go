@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"maps"
 	"reflect"
@@ -16958,7 +16959,7 @@ func TestClusterService_Update(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf fmt.Stringer) {
 				t.Helper()
 				log.Contains("Failed to restore previous cluster state after failed to update servers of the cluster cluster=one err=boom!")(t, logBuf)
 				log.Contains("Failed to restore previous server state after failed to update member server of cluster cluster=one server=one err=boom!")(t, logBuf)
@@ -23513,7 +23514,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			cancableCtx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -23586,7 +23587,9 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			processedEventsMu.Lock()
 			require.Equal(t, tc.wantProcessedEvents, processedEvents)
+			processedEventsMu.Unlock()
 			tc.assertLog(t, logBuf)
 		})
 	}
