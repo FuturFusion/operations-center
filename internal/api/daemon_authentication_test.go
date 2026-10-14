@@ -214,7 +214,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/metrics",
+			resource: tcpBaseURL + "/1.0/metrics",
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusUnauthorized,
@@ -250,7 +250,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/metrics",
+			resource: tcpBaseURL + "/1.0/metrics",
 			body:     http.NoBody,
 
 			wantStatusCode:   http.StatusOK,
@@ -268,7 +268,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodGet,
-			resource: "https://localhost:17443/1.0/metrics",
+			resource: tcpBaseURL + "/1.0/metrics",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
