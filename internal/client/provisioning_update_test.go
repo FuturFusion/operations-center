@@ -162,6 +162,68 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 			},
 		},
 		{
+			name:   "success - filter by update channel, matching",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				err := d.socketClient.UpdateUpdate(t.Context(), uuidgen.FromPattern(t, "1").String(), api.UpdatePut{
+					Channels: []string{defaultChannelName},
+				})
+				require.NoError(t, err)
+			},
+
+			filter: provisioning.UpdateFilter{
+				Channel: new(defaultChannelName),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Update) {
+				t.Helper()
+
+				require.Len(t, result, 1, "expect the update assigned to the channel")
+			},
+		},
+		{
+			name:   "success - filter by update channel, not matching",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				err := d.socketClient.CreateChannel(t.Context(), api.ChannelPost{
+					Name: "other",
+				})
+				require.NoError(t, err)
+			},
+
+			filter: provisioning.UpdateFilter{
+				Channel: new("other"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Update) {
+				t.Helper()
+
+				require.Empty(t, result, "expect no update for a channel without assigned updates")
+			},
+		},
+		{
+			name:       "success - filter by upstream channel, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: provisioning.UpdateFilter{
+				UpstreamChannel: new(defaultChannelName),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Update) {
+				t.Helper()
+
+				require.Empty(t, result, "expect the update channel not to be taken for the upstream channel")
+			},
+		},
+		{
 			name:       "error - invalid status",
 			client:     d.socketClient,
 			dbSeedFunc: noop,
