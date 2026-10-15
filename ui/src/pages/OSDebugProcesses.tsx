@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDebugProcesses } from "api/os";
+import QueryError from "components/QueryError";
 
 const OSDebugProcesses: FC = () => {
   const {
@@ -18,7 +19,9 @@ const OSDebugProcesses: FC = () => {
 
   if (error) {
     return (
-      <div className="u-align-text--center">Error during process load</div>
+      <div className="u-align-text--center">
+        <QueryError error={error} label="the processes" />
+      </div>
     );
   }
 

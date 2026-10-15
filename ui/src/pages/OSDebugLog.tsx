@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDebugLogs } from "api/os";
 import type { DebugLogOptions } from "api/os";
 import type { IncusOSLog } from "types/os";
+import QueryError from "components/QueryError";
 
 function formatTimestamp(us: string) {
   const ms = Number(us) / 1000;
@@ -114,7 +115,9 @@ const OSDebugLog: FC = () => {
       </Form>
 
       {error && (
-        <div className="u-align-text--center">Error during logs load</div>
+        <div className="u-align-text--center">
+          <QueryError error={error} label="the logs" />
+        </div>
       )}
       {!isLoading && logs.length === 0 && (
         <div className="u-align-text--center">There are no logs.</div>

@@ -4,6 +4,7 @@ import SystemSettingsForm from "components/SystemSettingsForm";
 import { useNotification } from "context/notificationContext";
 import { SystemSettings } from "types/settings";
 import { errorMessage } from "util/response";
+import QueryError from "components/QueryError";
 
 const SystemSettingsConfiguration = () => {
   const { notify } = useNotification();
@@ -36,7 +37,7 @@ const SystemSettingsConfiguration = () => {
   }
 
   if (error) {
-    return <div>Error while loading system settings</div>;
+    return <QueryError error={error} label="the system settings" />;
   }
 
   return <SystemSettingsForm settings={settings} onSubmit={onSubmit} />;

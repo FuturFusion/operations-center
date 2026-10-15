@@ -5,6 +5,7 @@ import SystemCertOverview from "components/SystemCertOverview";
 import { useNotification } from "context/notificationContext";
 import { SystemCertificatePost } from "types/settings";
 import { errorMessage } from "util/response";
+import QueryError from "components/QueryError";
 
 const SystemCertConfiguration = () => {
   const { notify } = useNotification();
@@ -39,7 +40,7 @@ const SystemCertConfiguration = () => {
   }
 
   if (error) {
-    return <div>Error while loading system certificate</div>;
+    return <QueryError error={error} label="the system certificate" />;
   }
 
   return (

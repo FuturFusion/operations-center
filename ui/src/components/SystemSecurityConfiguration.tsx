@@ -4,6 +4,7 @@ import SystemSecurityForm from "components/SystemSecurityForm";
 import { useNotification } from "context/notificationContext";
 import { SystemSecurity } from "types/settings";
 import { errorMessage } from "util/response";
+import QueryError from "components/QueryError";
 
 const SystemSecurityConfiguration = () => {
   const { notify } = useNotification();
@@ -36,7 +37,7 @@ const SystemSecurityConfiguration = () => {
   }
 
   if (error) {
-    return <div>Error while loading system security</div>;
+    return <QueryError error={error} label="the security settings" />;
   }
 
   return <SystemSecurityForm security={security} onSubmit={onSubmit} />;
