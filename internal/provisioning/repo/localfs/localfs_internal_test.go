@@ -70,12 +70,12 @@ func TestLocalfs_Exists(t *testing.T) {
 			wantExists: false,
 		},
 		{
-			name: "no permission",
+			name: "error - path component is not a directory",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 				updateID := uuidgen.FromPattern(t, "0").String()
 
-				err := os.MkdirAll(filepath.Join(destDir, updateID), 0o000)
+				err := os.WriteFile(filepath.Join(destDir, updateID), []byte(`not a directory`), 0o600)
 				require.NoError(t, err)
 			},
 			update: provisioning.Update{
