@@ -2624,7 +2624,7 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 		scope := api.WarningScope{
 			Scope:      "inventory_resync",
 			EntityType: "cluster",
-			Entity:     "cluster",
+			Entity:     cluster.Name,
 		}
 
 		err = s.ResyncInventoryByName(ctx, cluster.Name)

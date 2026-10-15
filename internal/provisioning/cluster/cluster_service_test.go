@@ -40,6 +40,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -17586,14 +17587,24 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 func TestClusterService_ResyncInventory(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name               string
-		ctx                context.Context
-		repoGetAllClusters provisioning.Clusters
-		repoGetAllErr      error
-		inventorySyncerErr error
+	inventoryResyncScope := func(clusterName string) api.WarningScope {
+		return api.WarningScope{
+			Scope:      "inventory_resync",
+			EntityType: "cluster",
+			Entity:     clusterName,
+		}
+	}
 
-		assertErr require.ErrorAssertionFunc
+	tests := []struct {
+		name                string
+		ctx                 context.Context
+		repoGetAllClusters  provisioning.Clusters
+		repoGetAllErr       error
+		inventorySyncerErrs map[string]error
+
+		assertErr                require.ErrorAssertionFunc
+		wantEmittedWarningScopes []api.WarningScope
+		wantRemovedStaleScopes   []api.WarningScope
 	}{
 		{
 			name:               "success - empty cluster list",
@@ -17609,9 +17620,16 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				{
 					Name: "one",
 				},
+				{
+					Name: "two",
+				},
 			},
 
 			assertErr: require.NoError,
+			wantRemovedStaleScopes: []api.WarningScope{
+				inventoryResyncScope("one"),
+				inventoryResyncScope("two"),
+			},
 		},
 		{
 			name:          "error - GetAll",
@@ -17642,10 +17660,21 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				{
 					Name: "one",
 				},
+				{
+					Name: "two",
+				},
 			},
-			inventorySyncerErr: boom.Error,
+			inventorySyncerErrs: map[string]error{
+				"one": boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			wantEmittedWarningScopes: []api.WarningScope{
+				inventoryResyncScope("one"),
+			},
+			wantRemovedStaleScopes: []api.WarningScope{
+				inventoryResyncScope("two"),
+			},
 		},
 	}
 
@@ -17660,11 +17689,27 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 
 			inventorySyncer := &serviceMock.InventorySyncerMock{
 				SyncClusterFunc: func(ctx context.Context, clusterName string) error {
-					return tc.inventorySyncerErr
+					return tc.inventorySyncerErrs[clusterName]
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
+			var gotEmittedWarningScopes []api.WarningScope
+			var gotRemovedStaleScopes []api.WarningScope
+
+			warningSvc := &adapterMock.WarningServicePortMock{
+				EmitFunc: func(ctx context.Context, w warning.Warning) {
+					gotEmittedWarningScopes = append(gotEmittedWarningScopes, api.WarningScope{
+						Scope:      w.Scope,
+						EntityType: w.EntityType,
+						Entity:     w.Entity,
+					})
+				},
+				RemoveStaleFunc: func(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+					gotRemovedStaleScopes = append(gotRemovedStaleScopes, scope)
+				},
+			}
+
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil, provisioningCluster.WithWarningEmitter(warningSvc))
 			clusterSvc.SetInventorySyncers(
 				map[domain.ResourceType]provisioning.InventorySyncer{
 					"test": inventorySyncer,
@@ -17676,6 +17721,8 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantEmittedWarningScopes, gotEmittedWarningScopes, "expect a warning for each cluster with a failed inventory resync")
+			require.Equal(t, tc.wantRemovedStaleScopes, gotRemovedStaleScopes, "expect the warnings to be cleared only for the clusters with a successful inventory resync")
 		})
 	}
 }
