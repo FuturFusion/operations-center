@@ -176,13 +176,13 @@ func (s channelService) GetChangelogByName(ctx context.Context, name string, arc
 	sort.Sort(updates)
 
 	channelChangelog := make(api.UpdateChangelogs, 0, len(updates)-1)
-	for range updates[:len(updates)-1] {
-		currentID := updates[0].UUID
-		priorID := updates[1].UUID
+	for i := range updates[:len(updates)-1] {
+		currentID := updates[i].UUID
+		priorID := updates[i+1].UUID
 
 		changelog, err := s.updateSvc.GetChangelog(ctx, currentID, priorID, architecture)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get changelog for update %s: %w", updates[0].UUID.String(), err)
+			return nil, fmt.Errorf("Failed to get changelog for update %s: %w", currentID.String(), err)
 		}
 
 		channelChangelog = append(channelChangelog, changelog)
