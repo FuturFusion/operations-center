@@ -65,6 +65,8 @@ network:
       - slaac
 `)
 
+	// The content differs from incusOSSeedFileYAMLTemplate, so the effect of an
+	// edit is visible.
 	tokenSeedPutYAMLTemplate = []byte(`---
 description: E2E test token seed
 public: false
@@ -73,7 +75,6 @@ seeds:
     version: "1"
     applications:
       - name: incus
-      - name: debug
   network:
     version: "1"
     interfaces:
@@ -84,6 +85,8 @@ seeds:
         - dhcp4
         - dhcp6
         - slaac
+    time:
+      timezone: Europe/Zurich
 `)
 
 	// The timezone differs from the default UTC. The server registration

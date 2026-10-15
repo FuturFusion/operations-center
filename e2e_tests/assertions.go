@@ -394,7 +394,7 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	require.NoError(t, err)
 
 	// Create seed.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml --public --description "CRUD seed"`, cpuArch, token, tmpDir)
 
 	// List seeds.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed list %s -f json | jq -e -r '. | length == 1'`, cpuArch, token)
@@ -402,8 +402,19 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	// Show seed
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test`, cpuArch, token)
 
+	seed := mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
+	require.True(t, gjson.Get(seed, "public").Bool(), "expect created token seed to be public")
+	require.Equal(t, "CRUD seed", gjson.Get(seed, "description").String(), "expect created token seed to have the given description")
+	require.JSONEq(t, `["incus","debug"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect created token seed to contain the applications of the seed file")
+
 	// Edit seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/token_seed_put.yaml`, cpuArch, token, tmpDir)
+
+	seed = mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
+	require.False(t, gjson.Get(seed, "public").Bool(), "expect edited token seed to be private")
+	require.Equal(t, "E2E test token seed", gjson.Get(seed, "description").String(), "expect edited token seed to have the new description")
+	require.JSONEq(t, `["incus"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect edited token seed to contain the new applications")
+	require.Equal(t, "Europe/Zurich", gjson.Get(seed, "seeds.network.time.timezone").String(), "expect edited token seed to contain the new timezone")
 
 	// Rename seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed rename %s test test-renamed`, cpuArch, token)
