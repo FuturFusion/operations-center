@@ -45,7 +45,7 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 				},
 			}
 
-			httpClient, err := newBMCHTTPClient(server, 0)
+			httpClient, err := newBMCHTTPClient(server, 0, responseHeaderTimeout)
 			require.NoError(t, err)
 
 			retry, ok := httpClient.Transport.(*retryTransport)
@@ -57,9 +57,70 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 			require.True(t, ok, "the client carries a transport of ours instead of falling back to the default one")
 
 			require.NotNil(t, transport.DialContext)
-			require.Positive(t, transport.ResponseHeaderTimeout)
+			require.Equal(t, responseHeaderTimeout, transport.ResponseHeaderTimeout)
 			require.Positive(t, transport.TLSHandshakeTimeout)
 			require.Equal(t, tc.certificate != "", transport.TLSClientConfig != nil, "the TLS configuration is only pinned down for a known certificate")
+		})
+	}
+}
+
+func Test_responseHeaderTimeoutUntilDeadline(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name   string
+		ctx    func(t *testing.T) context.Context
+		expect time.Duration
+	}{
+		{
+			name: "without a deadline",
+			ctx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				return t.Context()
+			},
+			expect: responseHeaderTimeout,
+		},
+		{
+			name: "with a deadline before the default timeout",
+			ctx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithDeadline(t.Context(), now.Add(10*time.Second))
+				t.Cleanup(cancel)
+
+				return ctx
+			},
+			expect: responseHeaderTimeout,
+		},
+		{
+			name: "with a deadline after the default timeout",
+			ctx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithDeadline(t.Context(), now.Add(5*time.Minute))
+				t.Cleanup(cancel)
+
+				return ctx
+			},
+			expect: 5 * time.Minute,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			ctx := tc.ctx(t)
+
+			// Run test
+			got := responseHeaderTimeoutUntilDeadline(ctx, now)
+
+			// Assert
+			require.Equal(t, tc.expect, got, "expect the response header timeout to never undercut the default")
 		})
 	}
 }
