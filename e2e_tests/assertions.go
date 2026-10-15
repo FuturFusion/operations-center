@@ -586,9 +586,9 @@ func assertInventory(t *testing.T, clusterName string, names []string) {
 	}
 
 	resp = run(t, `../bin/operations-center.linux.%s inventory project list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
-	require.NoError(t, resp.err, "expect 2 profiles: default, internal")
+	require.NoError(t, resp.err, "expect 2 projects: default, internal")
 	if !resp.Success() {
-		t.Error("expect 2 profiles: default, internal")
+		t.Error("expect 2 projects: default, internal")
 		success = false
 		fmt.Println("====[ Project List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory project list", cpuArch)
