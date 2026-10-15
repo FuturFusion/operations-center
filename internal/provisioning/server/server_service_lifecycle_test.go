@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -412,7 +412,11 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 	}
 }
 
+var lifecycleOperationWarningScope = api.WarningScope{Scope: "lifecycle_operation", EntityType: "server", Entity: "one"}
+
 func TestServerService_EvacuateSystemByName(t *testing.T) {
+	stepTriggeredAt := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
+
 	tests := []struct {
 		name                                            string
 		argClusterUpdate                                bool
@@ -426,8 +430,13 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(ctx context.Context, err error))
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		assertErr                    require.ErrorAssertionFunc
+		assertLog                    log.MatcherFunc
+		wantLastUpdatedStatusDetail  api.ServerStatusDetail
+		wantLastUpdatedInMaintenance api.InMaintenanceState
+		wantEmittedWarningTypes      []api.WarningType
+		wantWarningRemoveStaleCalls  int
+		wantLastUpdatedServerUpdate  *provisioning.ServerUpdate
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -453,8 +462,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyEvacuating,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuating,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:             "success - cluster update",
@@ -480,8 +492,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyEvacuating,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuating,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:     "success - force",
@@ -507,8 +522,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyEvacuating,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuating,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:             "success - cluster update - operation in flight",
@@ -597,14 +615,243 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 						},
 					},
 				},
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
+								},
+							},
+						},
+					},
+				},
 			},
 			doCallback: func(f func(ctx context.Context, err error)) {
 				f(t.Context(), boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
-			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to evacuate system name=one err=boom!"),
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.NotInMaintenance,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+		},
+		{
+			name: "error - callback error - status detail changed meanwhile",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: new("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailNone,
+						Type:         api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuated,
+								},
+							},
+						},
+					},
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuated,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+		},
+		{
+			name: "error - callback error - polling reported evacuated meanwhile",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: new("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuated,
+								},
+							},
+						},
+					},
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuated,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+		},
+		{
+			name: "error - callback error - previous state transient",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: new("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
+								},
+							},
+						},
+					},
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.NotInMaintenance,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+		},
+		{
+			name:     "error - force - callback error - rolling update step not failed",
+			argForce: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: new("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						StatusInternal: provisioning.ServerStatusInternal{
+							Update: &provisioning.ServerUpdate{
+								StartedAt:       stepTriggeredAt,
+								Step:            provisioning.ServerUpdateStepEvacuate,
+								StepTriggeredAt: stepTriggeredAt,
+							},
+						},
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
+						StatusInternal: provisioning.ServerStatusInternal{
+							Update: &provisioning.ServerUpdate{
+								StartedAt:       stepTriggeredAt,
+								Step:            provisioning.ServerUpdateStepEvacuate,
+								StepTriggeredAt: stepTriggeredAt,
+							},
+						},
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
+								},
+							},
+						},
+					},
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.NotInMaintenance,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+			wantLastUpdatedServerUpdate: &provisioning.ServerUpdate{
+				StartedAt:       stepTriggeredAt,
+				Step:            provisioning.ServerUpdateStepEvacuate,
+				StepTriggeredAt: stepTriggeredAt,
+			},
 		},
 		{
 			name:             "error - cluster update - callback error - status update successful",
@@ -627,14 +874,16 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 				{
 					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name: "incus",
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
 								},
 							},
 						},
@@ -646,8 +895,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), boom.Error)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to evacuate system name=one err=boom!"),
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.NotInMaintenance,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
 		},
 		{
 			name:             "error - cluster update - callback error - GetByName",
@@ -676,11 +928,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), boom.Error)
 			},
 
-			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf fmt.Stringer) {
-				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err="Failed to get server \"one\" by name:`)(t, logBuf)
-			},
+			assertErr:                    require.NoError,
+			assertLog:                    log.Contains(`Failed to record the failure of a step server=one step=evacuate err="Failed to get server \"one\" by name:`),
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyEvacuating,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuating,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
 		},
 		{
 			name:             "error - cluster update - callback error - repo.Update",
@@ -703,14 +955,16 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 				{
 					Value: &provisioning.Server{
-						Name:    "one",
-						Cluster: new("cluster"),
-						Status:  api.ServerStatusReady,
-						Type:    api.ServerTypeIncus,
+						Name:         "one",
+						Cluster:      new("cluster"),
+						Status:       api.ServerStatusReady,
+						StatusDetail: api.ServerStatusDetailReadyEvacuating,
+						Type:         api.ServerTypeIncus,
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name: "incus",
+									Name:          "incus",
+									InMaintenance: api.InMaintenanceEvacuating,
 								},
 							},
 						},
@@ -726,11 +980,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), boom.Error)
 			},
 
-			assertErr: require.NoError,
-			assertLog: func(t log.TestifyT, logBuf fmt.Stringer) {
-				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
-				log.Contains(`Failed to record the failure of a rolling update step server=one step=evacuate err=boom!`)(t, logBuf)
-			},
+			assertErr:                    require.NoError,
+			assertLog:                    log.Contains(`Failed to record the failure of a step server=one step=evacuate err=boom!`),
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.NotInMaintenance,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
 		},
 		{
 			name: "error - repo.GetByName",
@@ -807,8 +1061,10 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Noop,
+			assertErr:                    boom.ErrorIs,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyEvacuating,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuating,
 		},
 		{
 			name: "error - client.Evacuate",
@@ -835,8 +1091,9 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Noop,
+			assertErr:                   boom.ErrorIs,
+			assertLog:                   log.Noop,
+			wantWarningRemoveStaleCalls: 1,
 		},
 		{
 			name: "error - client.Evacuate - reverter error",
@@ -869,6 +1126,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Contains("Failed to restore previous server state after failed to trigger evacuation server=one err=boom!"),
+
+			wantWarningRemoveStaleCalls: 1,
 		},
 	}
 
@@ -882,11 +1141,13 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
+			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return queue.Pop(t, &tc.repoGetByName)
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					lastUpdated = server
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -916,9 +1177,21 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			}
 
+			var emittedWarningTypes []api.WarningType
+			warningSvc := &adapterMock.WarningServicePortMock{
+				EmitFunc: func(ctx context.Context, w warning.Warning) {
+					gotScope := api.WarningScope{Scope: w.Scope, EntityType: w.EntityType, Entity: w.Entity}
+					require.Equal(t, lifecycleOperationWarningScope, gotScope, "scope of the emitted warning")
+					emittedWarningTypes = append(emittedWarningTypes, w.Type)
+				},
+				RemoveStaleFunc: func(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+					require.Equal(t, lifecycleOperationWarningScope, scope, "scope of the removed warnings")
+				},
+			}
+
 			serverSvc := provisioningServer.New(
 				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
-				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+				provisioningServer.WithWarningEmitter(warningSvc),
 			)
 
 			// Run test
@@ -930,6 +1203,11 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			require.Empty(t, tc.repoGetByName)
 			require.Empty(t, tc.repoUpdateErrs)
+			require.Equal(t, tc.wantLastUpdatedStatusDetail, lastUpdated.StatusDetail, "status detail of the last stored server")
+			require.Equal(t, tc.wantLastUpdatedInMaintenance, incusInMaintenance(lastUpdated), "maintenance state of Incus of the last stored server")
+			require.Equal(t, tc.wantEmittedWarningTypes, emittedWarningTypes, "types of the emitted warnings")
+			require.Len(t, warningSvc.RemoveStaleCalls(), tc.wantWarningRemoveStaleCalls, "calls to remove stale warnings")
+			require.Equal(t, tc.wantLastUpdatedServerUpdate, lastUpdated.StatusInternal.Update, "a manual step does not fail the step of a rolling update")
 		})
 	}
 }
@@ -1312,8 +1590,12 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(ctx context.Context, err error))
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		assertErr                    require.ErrorAssertionFunc
+		assertLog                    log.MatcherFunc
+		wantLastUpdatedStatusDetail  api.ServerStatusDetail
+		wantLastUpdatedInMaintenance api.InMaintenanceState
+		wantEmittedWarningTypes      []api.WarningType
+		wantWarningRemoveStaleCalls  int
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -1334,8 +1616,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyRestoring,
+			wantLastUpdatedInMaintenance: api.InMaintenanceRestoring,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:             "success - cluster update",
@@ -1356,8 +1641,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyRestoring,
+			wantLastUpdatedInMaintenance: api.InMaintenanceRestoring,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:     "success - force",
@@ -1378,8 +1666,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Noop,
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyRestoring,
+			wantLastUpdatedInMaintenance: api.InMaintenanceRestoring,
+			wantWarningRemoveStaleCalls:  1,
 		},
 		{
 			name:             "success - cluster update - operation in flight",
@@ -1449,7 +1740,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: "incus",
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
 				},
@@ -1459,8 +1751,37 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
-			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to restore system name=one err=boom!"),
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuated,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
+		},
+		{
+			name: "error - callback error - previous state transient",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceRestoring,
+						},
+					},
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuated,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
 		},
 		{
 			name:             "error - cluster update - callback error",
@@ -1472,7 +1793,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: "incus",
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
 				},
@@ -1481,8 +1803,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				f(t.Context(), boom.Error)
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to restore system name=one err=boom!"),
+			assertErr:                    require.NoError,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailNone,
+			wantLastUpdatedInMaintenance: api.InMaintenanceEvacuated,
+			wantEmittedWarningTypes:      []api.WarningType{api.WarningTypeServerLifecycleOperationFailed},
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -1540,8 +1865,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				boom.Error,
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Noop,
+			assertErr:                    boom.ErrorIs,
+			assertLog:                    log.Noop,
+			wantLastUpdatedStatusDetail:  api.ServerStatusDetailReadyRestoring,
+			wantLastUpdatedInMaintenance: api.InMaintenanceRestoring,
 		},
 		{
 			name: "error - client.Restore",
@@ -1563,8 +1890,9 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				f(t.Context(), nil)
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Noop,
+			assertErr:                   boom.ErrorIs,
+			assertLog:                   log.Noop,
+			wantWarningRemoveStaleCalls: 1,
 		},
 		{
 			name: "error - client.Restore and reverter error",
@@ -1592,6 +1920,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Match("Failed to restore previous server state after failed to trigger restore server=one err=boom!"),
+
+			wantWarningRemoveStaleCalls: 1,
 		},
 	}
 
@@ -1602,11 +1932,13 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
+			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					lastUpdated = server
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -1630,9 +1962,21 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			}
 
+			var emittedWarningTypes []api.WarningType
+			warningSvc := &adapterMock.WarningServicePortMock{
+				EmitFunc: func(ctx context.Context, w warning.Warning) {
+					gotScope := api.WarningScope{Scope: w.Scope, EntityType: w.EntityType, Entity: w.Entity}
+					require.Equal(t, lifecycleOperationWarningScope, gotScope, "scope of the emitted warning")
+					emittedWarningTypes = append(emittedWarningTypes, w.Type)
+				},
+				RemoveStaleFunc: func(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+					require.Equal(t, lifecycleOperationWarningScope, scope, "scope of the removed warnings")
+				},
+			}
+
 			serverSvc := provisioningServer.New(
 				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
-				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+				provisioningServer.WithWarningEmitter(warningSvc),
 			)
 
 			// Run test
@@ -1642,6 +1986,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.repoUpdateErrs)
+			require.Equal(t, tc.wantLastUpdatedStatusDetail, lastUpdated.StatusDetail, "status detail of the last stored server")
+			require.Equal(t, tc.wantLastUpdatedInMaintenance, incusInMaintenance(lastUpdated), "maintenance state of Incus of the last stored server")
+			require.Equal(t, tc.wantEmittedWarningTypes, emittedWarningTypes, "types of the emitted warnings")
+			require.Len(t, warningSvc.RemoveStaleCalls(), tc.wantWarningRemoveStaleCalls, "calls to remove stale warnings")
 		})
 	}
 }
@@ -2684,4 +3032,14 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func incusInMaintenance(server provisioning.Server) api.InMaintenanceState {
+	for _, application := range server.VersionData.Applications {
+		if application.Name == "incus" {
+			return application.InMaintenance
+		}
+	}
+
+	return api.NotInMaintenance
 }
