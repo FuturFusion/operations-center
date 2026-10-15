@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -207,6 +208,84 @@ func Test_notify_metricsComponents(t *testing.T) {
 			// Assert
 			require.NoError(t, err)
 			require.Equal(t, tc.want, component.Enabled())
+		})
+	}
+}
+
+func Test_notify_securityUpdate(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  system.SecurityPut
+		security system.SecurityPut
+
+		wantMetricsFingerprints []string
+		wantMetricsCertificates []string
+	}{
+		{
+			name:    "add metrics only certificate fingerprint",
+			initial: system.SecurityPut{},
+			security: system.SecurityPut{
+				TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+			},
+
+			wantMetricsFingerprints: []string{testFingerprint},
+			wantMetricsCertificates: []string{},
+		},
+		{
+			name: "remove metrics only certificate fingerprint",
+			initial: system.SecurityPut{
+				TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint},
+			},
+			security: system.SecurityPut{},
+
+			wantMetricsFingerprints: []string{},
+			wantMetricsCertificates: []string{},
+		},
+		{
+			name:    "add metrics only certificate",
+			initial: system.SecurityPut{},
+			security: system.SecurityPut{
+				TrustedTLSMetricsClientCertificates: []string{testcert.ClientCertificate},
+			},
+
+			wantMetricsFingerprints: []string{},
+			wantMetricsCertificates: []string{testcert.ClientCertificate},
+		},
+		{
+			name: "remove metrics only certificate",
+			initial: system.SecurityPut{
+				TrustedTLSMetricsClientCertificates: []string{testcert.ClientCertificate},
+			},
+			security: system.SecurityPut{},
+
+			wantMetricsFingerprints: []string{},
+			wantMetricsCertificates: []string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+
+			err := UpdateSecurity(t.Context(), tc.initial)
+			require.NoError(t, err, "the initial security config must be accepted")
+
+			var emits []system.Security
+
+			lifecycle.SecurityUpdateSignal.AddListener(func(_ context.Context, security system.Security) {
+				emits = append(emits, security)
+			}, t.Name())
+			t.Cleanup(func() { lifecycle.SecurityUpdateSignal.RemoveListener(t.Name()) })
+
+			// Run test
+			err = UpdateSecurity(t.Context(), tc.security)
+
+			// Assert
+			require.NoError(t, err, "the changed security config must be accepted")
+			require.Len(t, emits, 1, "a change of the metrics only certificates must rebuild the authenticators")
+			require.ElementsMatch(t, tc.wantMetricsFingerprints, emits[0].TrustedTLSMetricsClientCertFingerprints, "listeners get the committed fingerprints")
+			require.ElementsMatch(t, tc.wantMetricsCertificates, emits[0].TrustedTLSMetricsClientCertificates, "listeners get the committed certificates")
 		})
 	}
 }

@@ -6,12 +6,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/security/authn"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -58,7 +58,7 @@ func checkTrustState(ctx context.Context, cert x509.Certificate, trustedCertFing
 
 	// Check whether client certificate fingerprint is trusted.
 	for _, fingerprint := range trustedCertFingerprints {
-		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+		canonicalFingerprint := securitytls.CanonicalFingerprint(fingerprint)
 		if certFingerprint == canonicalFingerprint {
 			slog.DebugContext(ctx, "Matched trusted cert", slog.String("fingerprint", canonicalFingerprint), slog.Any("subject", cert.Subject))
 			return true, canonicalFingerprint

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -56,9 +57,36 @@ func validate(oldCfg, newCfg config, isIncusOS bool) error {
 		return err
 	}
 
-	_, err = securitytls.CertificateFingerprints(newCfg.Security.TrustedTLSClientCertificates)
+	certificateFingerprints, err := securitytls.CertificateFingerprints(newCfg.Security.TrustedTLSClientCertificates)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_certificates" contains an invalid certificate: %v`, err)
+	}
+
+	metricsCertificateFingerprints, err := securitytls.CertificateFingerprints(newCfg.Security.TrustedTLSMetricsClientCertificates)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_metrics_client_certificates" contains an invalid certificate: %v`, err)
+	}
+
+	for _, fingerprint := range newCfg.Security.TrustedTLSMetricsClientCertFingerprints {
+		if !securitytls.IsSHA256Fingerprint(fingerprint) {
+			return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_metrics_client_cert_fingerprints" contains %q, which is not a SHA256 fingerprint`, fingerprint)
+		}
+	}
+
+	// Reject a certificate in both lists. Full access wins in the authorizer, so
+	// the restriction would have no effect.
+	trustedFingerprints := make(map[string]struct{}, len(newCfg.Security.TrustedTLSClientCertFingerprints)+len(certificateFingerprints))
+	for _, fingerprint := range slices.Concat(newCfg.Security.TrustedTLSClientCertFingerprints, certificateFingerprints) {
+		trustedFingerprints[securitytls.CanonicalFingerprint(fingerprint)] = struct{}{}
+	}
+
+	for _, fingerprint := range slices.Concat(newCfg.Security.TrustedTLSMetricsClientCertFingerprints, metricsCertificateFingerprints) {
+		canonicalFingerprint := securitytls.CanonicalFingerprint(fingerprint)
+
+		_, ok := trustedFingerprints[canonicalFingerprint]
+		if ok {
+			return domain.NewValidationErrf(`Invalid config, certificate fingerprint %q can not be trusted for full access and for metrics access at the same time`, canonicalFingerprint)
+		}
 	}
 
 	for _, p := range newCfg.Security.TrustedHTTPSProxies {

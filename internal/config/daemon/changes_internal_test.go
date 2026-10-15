@@ -83,6 +83,8 @@ func Test_isSettingsChanged(t *testing.T) {
 }
 
 func Test_isMetricsChanged(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		oldSettings system.SettingsPut
@@ -129,6 +131,8 @@ func Test_isMetricsChanged(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			oldCfg := config{Settings: system.Settings{SettingsPut: tc.oldSettings}}
 			newCfg := config{Settings: system.Settings{SettingsPut: tc.newSettings}}
@@ -138,6 +142,105 @@ func Test_isMetricsChanged(t *testing.T) {
 
 			// Assert
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_isSecurityAuthChanged(t *testing.T) {
+	t.Parallel()
+
+	newConfig := func(security system.SecurityPut) config {
+		return config{
+			Security: system.Security{
+				SecurityPut: security,
+			},
+		}
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(security *system.SecurityPut)
+
+		want bool
+	}{
+		{
+			name:   "unchanged",
+			mutate: func(security *system.SecurityPut) {},
+
+			want: false,
+		},
+		{
+			name: "TrustedTLSClientCertFingerprints",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSClientCertFingerprints = []string{"other"}
+			},
+
+			want: true,
+		},
+		{
+			name: "TrustedTLSClientCertificates",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSClientCertificates = []string{"other"}
+			},
+
+			want: true,
+		},
+		{
+			name: "TrustedTLSMetricsClientCertFingerprints",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSMetricsClientCertFingerprints = []string{"other"}
+			},
+
+			want: true,
+		},
+		{
+			name: "TrustedTLSMetricsClientCertificates",
+			mutate: func(security *system.SecurityPut) {
+				security.TrustedTLSMetricsClientCertificates = []string{"other"}
+			},
+
+			want: true,
+		},
+		{
+			name:   "OIDC",
+			mutate: func(security *system.SecurityPut) { security.OIDC.Issuer = "https://issuer.example.com" },
+
+			want: true,
+		},
+		{
+			name:   "OpenFGA",
+			mutate: func(security *system.SecurityPut) { security.OpenFGA.StoreID = "store" },
+
+			want: true,
+		},
+		{
+			name:   "TrustedHTTPSProxies",
+			mutate: func(security *system.SecurityPut) { security.TrustedHTTPSProxies = []string{"127.0.0.1"} },
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			base := system.SecurityPut{
+				TrustedTLSClientCertFingerprints:        []string{"fingerprint"},
+				TrustedTLSClientCertificates:            []string{"certificate"},
+				TrustedTLSMetricsClientCertFingerprints: []string{"metrics fingerprint"},
+				TrustedTLSMetricsClientCertificates:     []string{"metrics certificate"},
+			}
+
+			changed := base
+			tc.mutate(&changed)
+
+			// Run test
+			got := isSecurityAuthChanged(newConfig(base), newConfig(changed))
+
+			// Assert
+			require.Equal(t, tc.want, got, "a change of %q must be reported as %t", tc.name, tc.want)
 		})
 	}
 }

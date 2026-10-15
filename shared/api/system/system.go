@@ -114,6 +114,14 @@ type SecurityPut struct {
 	// the user did not provide their own set.
 	TrustedTLSClientCertificates []string `json:"trusted_tls_client_certificates" yaml:"trusted_tls_client_certificates"`
 
+	// An array of SHA256 certificate fingerprints of metrics only certificates.
+	// A metrics only certificate can only read the metrics.
+	TrustedTLSMetricsClientCertFingerprints []string `json:"trusted_tls_metrics_client_cert_fingerprints" yaml:"trusted_tls_metrics_client_cert_fingerprints"`
+
+	// An array of X509 PEM encoded metrics only certificates.
+	// A metrics only certificate can only read the metrics.
+	TrustedTLSMetricsClientCertificates []string `json:"trusted_tls_metrics_client_certificates" yaml:"trusted_tls_metrics_client_certificates"`
+
 	// An array of trusted HTTPS proxy addresses.
 	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
 }
@@ -233,9 +241,9 @@ type SettingsPut struct {
 	// Example: true
 	MetricsEnabled bool `json:"metrics_enabled" yaml:"metrics_enabled"`
 
-	// MetricsComponents is the list of components, which expose metrics.
-	// Enabling a component enables all of its children as well.
-	// Example: ["runtime", "api"]
+	// MetricsComponents lists the components that expose metrics.
+	// Enabling a component also enables all of its children.
+	// Example: ["runtime"]
 	MetricsComponents []string `json:"metrics_components" yaml:"metrics_components"`
 }
 

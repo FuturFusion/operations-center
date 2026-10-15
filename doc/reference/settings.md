@@ -11,13 +11,15 @@ Several global settings are available to be configured in Operations Center:
 
 ## Security settings
 
-| Configuration                          | Description                                                              | Value(s)          | Default |
-| :---                                   | :---                                                                     | :---              | :---    |
-| `trusted_tls_client_cert_fingerprints` | List of SHA256 certificate fingerprints belonging to trusted TLS clients | list of strings   |         |
-| `trusted_tls_client_certificates`      | List of X509 PEM encoded certificates belonging to trusted TLS clients   | list of strings   |         |
-| `oidc`                                 | OIDC configuration                                                       |                   |         |
-| `openfga`                              | OpenFGA configuration                                                    |                   |         |
-| `acme`                                 | ACME certificate renewal configuration                                   |                   |         |
+| Configuration                                  | Description                                                                               | Value(s)          | Default |
+| :---                                           | :---                                                                                      | :---              | :---    |
+| `trusted_tls_client_cert_fingerprints`         | List of SHA256 certificate fingerprints belonging to trusted TLS clients                  | list of strings   |         |
+| `trusted_tls_client_certificates`              | List of X509 PEM encoded certificates belonging to trusted TLS clients                    | list of strings   |         |
+| `trusted_tls_metrics_client_cert_fingerprints` | List of SHA256 certificate fingerprints of metrics only certificates                      | list of strings   |         |
+| `trusted_tls_metrics_client_certificates`      | List of X509 PEM encoded metrics only certificates                                        | list of strings   |         |
+| `oidc`                                         | OIDC configuration                                                                        |                   |         |
+| `openfga`                                      | OpenFGA configuration                                                                     |                   |         |
+| `acme`                                         | ACME certificate renewal configuration                                                    |                   |         |
 
 The SHA256 fingerprint of every certificate in `trusted_tls_client_certificates`
 is derived when the configuration is loaded and added to the trusted fingerprints
@@ -36,6 +38,25 @@ A certificate is passed on at the time a system is deployed. Removing it from
 `trusted_tls_client_certificates` therefore only revokes the access to Operations
 Center itself, the already deployed systems keep trusting the certificate until
 it is removed from their trust store as well.
+
+A certificate in `trusted_tls_metrics_client_cert_fingerprints` or
+`trusted_tls_metrics_client_certificates` is a metrics only certificate. It can
+only read the [metrics](metrics.md). Every other request that needs a permission
+fails with a 403 error. An OpenFGA relation does not change this. Endpoints that
+need no authentication stay reachable. A change takes effect without a restart.
+`GET /1.0` still returns `tls` in the `auth` field. See
+[metrics](metrics.md#access) for details.
+
+A fingerprint is the full SHA256 fingerprint of the certificate. Upper case and
+lower case are both valid. Colons are optional.
+
+A certificate must not be trusted for full access and be a metrics only
+certificate at the same time. Operations Center rejects such a configuration.
+This also applies to the configuration file at start.
+
+Operations Center does not pass a metrics only certificate on to the systems it
+deploys. On IncusOS, a metrics only certificate does not count as a trusted TLS
+client. At least one certificate with full access is still required.
 
 ### OIDC
 
@@ -164,7 +185,9 @@ settings:
     - runtime
 ```
 
-Operations Center rejects an unknown component.
+Operations Center rejects an update that contains an unknown component. An
+unknown component in the configuration file does not stop the start. Operations
+Center ignores the component.
 
 ````{dropdown} Complete list of metrics components
 ```{include} settings_metrics_components.md

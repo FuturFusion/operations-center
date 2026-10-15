@@ -1445,6 +1445,23 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "success - trusted metrics client certificate",
+			securityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSMetricsClientCertFingerprints: []string{testcert.SecondClientCertificateFingerprint},
+					TrustedTLSMetricsClientCertificates:     []string{testcert.ClientCertificate},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantSecurityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSMetricsClientCertFingerprints: []string{testcert.SecondClientCertificateFingerprint},
+					TrustedTLSMetricsClientCertificates:     []string{testcert.ClientCertificate},
+				},
+			},
+		},
+		{
 			name: "error - invalid trusted client certificate",
 			securityConfig: systemapi.Security{
 				SecurityPut: systemapi.SecurityPut{
@@ -1455,8 +1472,10 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			assertErr: require.Error,
 			wantSecurityConfig: systemapi.Security{
 				SecurityPut: systemapi.SecurityPut{
-					TrustedTLSClientCertFingerprints: []string{},
-					TrustedTLSClientCertificates:     []string{},
+					TrustedTLSClientCertFingerprints:        []string{},
+					TrustedTLSClientCertificates:            []string{},
+					TrustedTLSMetricsClientCertFingerprints: []string{},
+					TrustedTLSMetricsClientCertificates:     []string{},
 					ACME: systemapi.SecurityACME{
 						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
 						Challenge:           "HTTP-01",
@@ -1480,8 +1499,10 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			assertErr: require.Error,
 			wantSecurityConfig: systemapi.Security{
 				SecurityPut: systemapi.SecurityPut{
-					TrustedTLSClientCertFingerprints: []string{},
-					TrustedTLSClientCertificates:     []string{},
+					TrustedTLSClientCertFingerprints:        []string{},
+					TrustedTLSClientCertificates:            []string{},
+					TrustedTLSMetricsClientCertFingerprints: []string{},
+					TrustedTLSMetricsClientCertificates:     []string{},
 					ACME: systemapi.SecurityACME{
 						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
 						Challenge:           "HTTP-01",

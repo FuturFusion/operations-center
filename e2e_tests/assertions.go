@@ -793,4 +793,51 @@ func assertOperationsCenterMetrics(t *testing.T) {
 
 	resp = mustRun(t, `curl -sfk --cert %s --key %s %s`, clientCert, clientKey, metricsURL)
 	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to serve metrics after it is enabled again")
+
+	tmpDir := t.TempDir()
+	metricsCert := filepath.Join(tmpDir, "metrics.crt")
+	metricsKey := filepath.Join(tmpDir, "metrics.key")
+	settingsURL := fmt.Sprintf("https://%s:8443/1.0/system/settings", operationsCenterIPAddress(t))
+
+	mustRun(t, `openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -sha384 -nodes -days 1 -subj "/CN=metrics" -addext "extendedKeyUsage=clientAuth" -keyout %s -out %s`, metricsKey, metricsCert)
+	resp = mustRun(t, `openssl x509 -in %s -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'`, metricsCert)
+	metricsFingerprint := resp.OutputTrimmed()
+
+	// The edit shows an empty list on the line of the key and a list with entries
+	// as one entry per line. Adding and removing need different expressions.
+	addMetricsFingerprint := `EDITOR='sed -i "s|^trusted_tls_metrics_client_cert_fingerprints: .*|trusted_tls_metrics_client_cert_fingerprints: [%s]|"' script -q -c '../bin/operations-center.linux.%s system security edit' /dev/null`
+	removeMetricsFingerprint := `EDITOR='sed -i "/^  - %s/d"' script -q -c '../bin/operations-center.linux.%s system security edit' /dev/null`
+
+	resp = mustRun(t, `curl -sk -o /dev/null -w '%%{http_code}' --cert %s --key %s %s`, metricsCert, metricsKey, metricsURL)
+	require.Equal(t, "401", resp.OutputTrimmed(), "expect the metrics endpoint to reject a certificate that is not trusted")
+
+	mustRun(t, addMetricsFingerprint, metricsFingerprint, cpuArch)
+	t.Cleanup(func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// t.Context() is canceled in t.Cleanup. Use a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		mustRunWithContext(ctx, t, removeMetricsFingerprint, metricsFingerprint, cpuArch)
+	})
+
+	resp = mustRun(t, `curl -sfk --cert %s --key %s %s`, metricsCert, metricsKey, metricsURL)
+	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to accept a metrics only certificate")
+
+	resp = mustRun(t, `curl -sfk --cert %s --key %s https://%s:8443/1.0 | jq -r .metadata.auth`, metricsCert, metricsKey, operationsCenterIPAddress(t))
+	require.Equal(t, "tls", resp.OutputTrimmed(), "expect GET /1.0 to report the authentication method of a metrics only certificate")
+
+	resp = mustRun(t, `curl -sk -o /dev/null -w '%%{http_code}' --cert %s --key %s %s`, metricsCert, metricsKey, settingsURL)
+	require.Equal(t, "403", resp.OutputTrimmed(), "expect a metrics only certificate to be restricted to the metrics endpoint")
+
+	mustRun(t, removeMetricsFingerprint, metricsFingerprint, cpuArch)
+
+	resp = mustRun(t, `../bin/operations-center.linux.%s system security show`, cpuArch)
+	require.NotContains(t, resp.Output(), metricsFingerprint, "expect the metrics only certificate to be removed from the security config")
+
+	resp = mustRun(t, `curl -sk -o /dev/null -w '%%{http_code}' --cert %s --key %s %s`, metricsCert, metricsKey, metricsURL)
+	require.Equal(t, "401", resp.OutputTrimmed(), "expect a removed metrics only certificate to lose access without a restart")
 }
