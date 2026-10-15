@@ -257,6 +257,10 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is already part of cluster %q", serverName, *server.Cluster)
 			}
 
+			if server.Type != newCluster.ServerType {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+			}
+
 			if server.Status != api.ServerStatusReady {
 				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not in ready state and can therefore not be used for clustering", serverName)
 			}
@@ -314,12 +318,17 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		return newCluster, err
 	}
 
-	// Verify, that all the servers that are clustered have the expected server type.
-	for _, server := range servers {
-		if server.Type != newCluster.ServerType {
-			return newCluster, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+	// Until clustering is enabled, nothing depends on the pending record.
+	// Remove it on failure, so a retry with the same name is possible.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err := s.repo.DeleteByName(context.WithoutCancel(ctx), newCluster.Name)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to remove pending cluster record after failed cluster creation", slog.String("cluster", newCluster.Name), logger.Err(err))
 		}
-	}
+	})
 
 	// Perform pre-clustering and clustering API calls.
 
@@ -422,6 +431,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 
 	// Select first server as the bootstrap server.
 	bootstrapServer = servers[0]
+
+	// Clustering might be enabled, even if EnableCluster returns an error.
+	reverter.Success()
 
 	// Bootstrap cluster on bootstrap server (first server of the provided server list).
 	clusterCertificate, err := s.client.EnableCluster(ctx, bootstrapServer)

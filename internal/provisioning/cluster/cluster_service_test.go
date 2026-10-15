@@ -86,6 +86,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoExistsByNameErr                               error
 		repoCreateErr                                     error
 		repoUpdateErr                                     error
+		repoDeleteByNameErr                               error
 		localArtifactRepoCreateClusterArtifactFromPathErr error
 		clientPingErr                                     error
 		clientUpdateOSServiceErr                          error
@@ -117,6 +118,7 @@ func TestClusterService_Create(t *testing.T) {
 		wantProvisionedClientCertificates                 []string
 		wantKnownClientCertificates                       []string
 		wantOSServiceConfig                               []osServiceConfig
+		wantRemovedClusters                               []string
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
@@ -1030,7 +1032,7 @@ func TestClusterService_Create(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "server1",
-						Type:    api.ServerTypeMigrationManager, // wrong type, incus expected.
+						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
@@ -1046,7 +1048,7 @@ func TestClusterService_Create(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "server2",
-						Type:    api.ServerTypeIncus,
+						Type:    api.ServerTypeMigrationManager, // wrong type, incus expected.
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
@@ -1063,7 +1065,7 @@ func TestClusterService_Create(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server "server1" has type "migration-manager" but "incus" was expected`)
+				require.ErrorContains(tt, err, `Server "server2" has type "migration-manager" but "incus" was expected`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -1110,6 +1112,58 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientPingErr: boom.Error,
+
+			wantRemovedClusters: []string{"one"},
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                      "error - client.Ping and repo.DeleteByName",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientPingErr:       boom.Error,
+			repoDeleteByNameErr: errors.New("delete failed"), // Only logged, the error of the ping is returned.
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1160,6 +1214,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", the configuration is not an object`)
@@ -1214,6 +1270,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
+			wantRemovedClusters: []string{"one"},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", "enabled" is not a bool`)
 			},
@@ -1266,6 +1324,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", "tunnel_address" is not a string`)
@@ -1320,6 +1380,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
+			wantRemovedClusters: []string{"one"},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", the "tunnel_address" "10.0.0.1" is not assigned to a network interface with a role on any of the servers`)
 			},
@@ -1372,6 +1434,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "linstor", the host of the "listen_address" "10.0.0.1:3366" is not assigned to a network interface with a role on any of the servers`)
@@ -1426,6 +1490,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `The OS service "lvm" can not be enabled on server "server1"`)
@@ -1483,6 +1549,8 @@ func TestClusterService_Create(t *testing.T) {
 			wantOSServiceConfig: []osServiceConfig{
 				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1557,6 +1625,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "cluster" or "management"`)
@@ -1643,6 +1713,8 @@ func TestClusterService_Create(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1738,6 +1810,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "management"`)
@@ -4108,6 +4182,8 @@ func TestClusterService_Create(t *testing.T) {
 				config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 			})
 
+			var gotRemovedClusters []string
+
 			repo := &mock.ClusterRepoMock{
 				ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
 					return tc.repoExistsByName, tc.repoExistsByNameErr
@@ -4117,6 +4193,10 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.repoUpdateErr
+				},
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					gotRemovedClusters = append(gotRemovedClusters, name)
+					return tc.repoDeleteByNameErr
 				},
 			}
 
@@ -4249,6 +4329,7 @@ func TestClusterService_Create(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig, "expect the service config pushed to each server")
+			require.Equal(t, tc.wantRemovedClusters, gotRemovedClusters, "expect the pending cluster record to be removed, if the creation fails before clustering is enabled")
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.provisionerApply)
