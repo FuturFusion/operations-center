@@ -25,6 +25,19 @@ oc="${OPERATIONS_CENTER_BIN:-bin/operations-center.linux.amd64}"
 missing='not found|doesn.t exist'
 iso_volumes='.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'
 
+# Fingerprint added and removed again by assertOperationsCenterCliSystem.
+test_fingerprint='ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+
+# System settings as set up by the tests.
+default_settings='---
+log_level: INFO
+log_levels:
+  access_log: WARN
+pprof_enabled: false
+metrics_enabled: true
+metrics_components:
+  - runtime'
+
 failed=0
 
 step() {
@@ -139,11 +152,24 @@ clean_operations_center() {
   # if the other part points at a missing service.
   step "Reset security config"
   local config out
-  config=$(list "$oc" system security show -f json | jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" }')
+  config=$(list "$oc" system security show -f json | jq -ce --arg fp "$test_fingerprint" '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" } | .trusted_tls_client_cert_fingerprints -= [$fp]')
   # Without a trusted client certificate, the update would lock out the user.
   if [ -n "$config" ] && printf '%s\n' "$config" | jq -e '.trusted_tls_client_cert_fingerprints | length > 0' > /dev/null; then
     if ! out=$(printf '%s\n' "$config" | "$oc" system security edit 2>&1); then
       report "$out" "$oc" system security edit
+    fi
+  fi
+
+  step "Reset system settings"
+  if ! out=$(printf '%s\n' "$default_settings" | "$oc" system settings edit 2>&1); then
+    report "$out" "$oc" system settings edit
+  fi
+
+  step "Reset updates config"
+  config=$(list "$oc" system updates show -f json | jq -ce '.filter_expression = "\"stable\" in upstream_channels"')
+  if [ -n "$config" ]; then
+    if ! out=$(printf '%s\n' "$config" | "$oc" system updates edit 2>&1); then
+      report "$out" "$oc" system updates edit
     fi
   fi
 }
