@@ -718,6 +718,22 @@ func assertServersRunManualUpdate(t *testing.T, serverNames []string) {
 	}
 }
 
+// assertClusterTemplateApplied verifies, that the cluster has been created with
+// the variables of the cluster template applied. LVM_ENABLED is given
+// explicitly, USER_UI_TITLE uses the default of the variable definition.
+func assertClusterTemplateApplied(t *testing.T, clusterName string, serverNames []string) {
+	t.Helper()
+
+	for _, serverName := range serverNames {
+		resp := run(t, `../bin/operations-center.linux.%s provisioning server os service show %s:lvm -f json | jq -r -e '.config.enabled == true'`, cpuArch, serverName)
+		require.NoError(t, resp.err)
+		require.Truef(t, resp.Success(), "expect LVM to be enabled on %q by the services config of the cluster template", serverName)
+	}
+
+	resp := mustRun(t, `incus config get %s: user.ui.title`, clusterName)
+	require.Equal(t, "E2E Test IncusOS Cluster", resp.OutputTrimmed(), "expect UI title to be set from the default of the cluster template variable")
+}
+
 func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
 	t.Helper()
 
