@@ -30,9 +30,18 @@ export const fetchUpdateFiles = (uuid: string): Promise<UpdateFile[]> => {
   });
 };
 
-export const fetchUpdateChangelog = (uuid: string): Promise<Changelog> => {
+export const fetchUpdateChangelog = (
+  uuid: string,
+  channel: string,
+  upstream: boolean = false,
+): Promise<Changelog> => {
+  const params = new URLSearchParams({ channel });
+  if (upstream) {
+    params.set("upstream", "true");
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/updates/${uuid}/changelog`)
+    fetch(`/1.0/provisioning/updates/${uuid}/changelog?${params.toString()}`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
