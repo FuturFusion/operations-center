@@ -783,8 +783,9 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 	return nil
 }
 
-// mustWaitUpdatesReady waits for at least 1 update to be ready in Operations
-// Center. The test is failed on error.
+// mustWaitUpdatesReady waits for at least 2 updates to be ready in Operations
+// Center. The tests with update channels need an older and a newer update.
+// The test is failed on error.
 func mustWaitUpdatesReady(ctx context.Context, t *testing.T) {
 	t.Helper()
 

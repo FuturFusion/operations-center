@@ -3,66 +3,24 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: combine with createCluster to remove redundant code. createCluster needs
-// to accept the channel as argument.
 func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	// Pre check
-	mustNotBeAlreadyClustered(t)
-
-	// Register cleanup
-	t.Cleanup(clusterCleanup(t))
-
-	// Setup
-	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
-	require.NoError(t, err)
-
-	clientCertificate := getClientCertificate(t)
-
-	err = os.WriteFile(
-		filepath.Join(tmpDir, "application.yaml"),
-		replacePlaceholders(
-			incusOSClusterApplicationConfig,
-			map[string]string{
-				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
-			},
-		),
-		0o600,
-	)
-	require.NoError(t, err)
-
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
-
-	instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
-
-	servers := strings.Join(names, " --server-names ")
-
-	// Run test
-	t.Log("Create cluster")
 	clusterName := "incus-os-cluster"
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel prod --services-config %s --application-seed-config %s`, cpuArch, clusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
-	// Assertions
-	assertIncusRemote(t, clusterName, names)
-	assertInventory(t, clusterName, names)
-	assertTerraformArtifact(t, clusterName)
-	assertWebsocketEventsInventoryUpdate(ctx, t, clusterName)
+	createClusterWithChannelName("prod", names)(ctx, t, tmpDir)
 
 	t.Log("Start some small VMs for the cluster to have some minimal workload.")
 	instanceNames := make([]string, 0, len(names))
@@ -236,30 +194,5 @@ var clusterUpdateStateRegexp = regexp.MustCompile(`\[\s*(\d+)/\s*(\d+)\]`)
 func prodChannelCleanup(t *testing.T) func() {
 	t.Helper()
 
-	return func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		stop := timeTrack(t, "prod channel cleanup")
-		defer stop()
-
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '.[] | select(.channels | index("prod")) | .uuid'`, cpuArch)
-		if !resp.Success() {
-			t.Error(resp.Error())
-			return
-		}
-
-		for updateUUID := range strings.Lines(resp.Output()) {
-			updateUUID = strings.TrimSpace(updateUUID)
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable`, cpuArch, updateUUID)
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
-		}
-	}
+	return channelCleanup(t, "prod")
 }

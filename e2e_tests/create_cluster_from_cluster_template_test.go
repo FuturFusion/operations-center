@@ -66,6 +66,7 @@ func createClusterFromTemplate(ctx context.Context, t *testing.T, tmpDir string)
 	assertInventory(t, "incus-os-cluster", names)
 	assertTerraformArtifact(t, "incus-os-cluster")
 	assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
+	assertClusterTemplateApplied(t, "incus-os-cluster", names)
 }
 
 func clusterTemplateCleanup(t *testing.T) func() {

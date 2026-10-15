@@ -121,6 +121,7 @@ func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir stri
 
 	// Register cleanup
 	t.Cleanup(cleanupIncusOS(t, names))
+	t.Cleanup(channelCleanup(t, "manual"))
 
 	token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
 
@@ -535,6 +536,40 @@ func createProvisioningTokenWithUpdateChannel(t *testing.T, channelName string, 
 	}
 
 	return token
+}
+
+// channelCleanup assigns all the updates of the given channel to the stable
+// channel only. The channel itself is kept, since the provisioning token of the
+// channel and its cached ISO are reused by the next run.
+func channelCleanup(t *testing.T, channelName string) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t, fmt.Sprintf("%s channel cleanup", channelName))
+		defer stop()
+
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '.[] | select(.channels | index("%s")) | .uuid'`, cpuArch, channelName)
+		if !resp.Success() {
+			t.Error(resp.Error())
+			return
+		}
+
+		for updateUUID := range strings.Lines(resp.Output()) {
+			updateUUID = strings.TrimSpace(updateUUID)
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable`, cpuArch, updateUUID)
+			if !resp.Success() {
+				t.Error(resp.Error())
+			}
+		}
+	}
 }
 
 func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string {

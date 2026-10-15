@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func assertOperationsCenterSelfRegistration(t *testing.T) {
@@ -394,7 +395,7 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	require.NoError(t, err)
 
 	// Create seed.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml --public --description "CRUD seed"`, cpuArch, token, tmpDir)
 
 	// List seeds.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed list %s -f json | jq -e -r '. | length == 1'`, cpuArch, token)
@@ -402,8 +403,19 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	// Show seed
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test`, cpuArch, token)
 
+	seed := mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
+	require.True(t, gjson.Get(seed, "public").Bool(), "expect created token seed to be public")
+	require.Equal(t, "CRUD seed", gjson.Get(seed, "description").String(), "expect created token seed to have the given description")
+	require.JSONEq(t, `["incus","debug"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect created token seed to contain the applications of the seed file")
+
 	// Edit seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/token_seed_put.yaml`, cpuArch, token, tmpDir)
+
+	seed = mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
+	require.False(t, gjson.Get(seed, "public").Bool(), "expect edited token seed to be private")
+	require.Equal(t, "E2E test token seed", gjson.Get(seed, "description").String(), "expect edited token seed to have the new description")
+	require.JSONEq(t, `["incus"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect edited token seed to contain the new applications")
+	require.Equal(t, "Europe/Zurich", gjson.Get(seed, "seeds.network.time.timezone").String(), "expect edited token seed to contain the new timezone")
 
 	// Rename seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed rename %s test test-renamed`, cpuArch, token)
@@ -587,9 +599,9 @@ func assertInventory(t *testing.T, clusterName string, names []string) {
 	}
 
 	resp = run(t, `../bin/operations-center.linux.%s inventory project list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
-	require.NoError(t, resp.err, "expect 2 profiles: default, internal")
+	require.NoError(t, resp.err, "expect 2 projects: default, internal")
 	if !resp.Success() {
-		t.Error("expect 2 profiles: default, internal")
+		t.Error("expect 2 projects: default, internal")
 		success = false
 		fmt.Println("====[ Project List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory project list", cpuArch)
@@ -700,6 +712,70 @@ func assertServerGone(t *testing.T, serverName string) {
 	t.Helper()
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, serverName)
+}
+
+// assertClusterFactoryReset verifies, that the factory reset removed the
+// cluster and with it the records of its servers.
+func assertClusterFactoryReset(t *testing.T, clusterName string, serverNames []string) {
+	t.Helper()
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, clusterName)
+	require.NoError(t, resp.err)
+	require.Truef(t, resp.Success(), "expect cluster %q to be removed by the factory reset", clusterName)
+
+	for _, serverName := range serverNames {
+		assertServerGone(t, serverName)
+	}
+}
+
+// assertServersTimezone verifies the timezone, which the server registration
+// scriptlet copies from the network config of the server to its properties.
+func assertServersTimezone(ctx context.Context, t *testing.T, serverNames []string, timezone string) {
+	t.Helper()
+
+	for _, serverName := range serverNames {
+		ok, err := waitForSuccessWithTimeout(ctx, t, fmt.Sprintf("timezone of %s", serverName),
+			`../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == %q) | .properties.timezone == %q'`,
+			1*time.Minute, cpuArch, serverName, timezone)
+		require.NoError(t, err)
+		if !ok {
+			printServerList(t)
+		}
+
+		require.Truef(t, ok, "expect server %q to have the timezone %q", serverName, timezone)
+	}
+}
+
+// assertServersRunManualUpdate verifies, that the servers run an update, which
+// has been uploaded manually and is assigned to the "manual" channel.
+func assertServersRunManualUpdate(t *testing.T, serverNames []string) {
+	t.Helper()
+
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select((.channels | index("manual")) and (.origin | contains("(local)"))) | .version ] | unique | .[]'`, cpuArch)
+	manualVersions := strings.Fields(resp.Output())
+	require.NotEmpty(t, manualVersions, "expect a manually uploaded update to be assigned to the manual channel")
+
+	for _, serverName := range serverNames {
+		server := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -c '.[] | select(.name == %q)'`, cpuArch, serverName).Output()
+		require.Equalf(t, "manual", gjson.Get(server, "version_data.update_channel").String(), "expect server %q to report the manual update channel", serverName)
+		require.Containsf(t, manualVersions, gjson.Get(server, "version_data.os.version").String(), "expect server %q to run a manually uploaded update", serverName)
+	}
+}
+
+// assertClusterTemplateApplied verifies, that the cluster has been created with
+// the variables of the cluster template applied. LVM_ENABLED is given
+// explicitly, USER_UI_TITLE uses the default of the variable definition.
+func assertClusterTemplateApplied(t *testing.T, clusterName string, serverNames []string) {
+	t.Helper()
+
+	for _, serverName := range serverNames {
+		resp := run(t, `../bin/operations-center.linux.%s provisioning server os service show %s:lvm -f json | jq -r -e '.config.enabled == true'`, cpuArch, serverName)
+		require.NoError(t, resp.err)
+		require.Truef(t, resp.Success(), "expect LVM to be enabled on %q by the services config of the cluster template", serverName)
+	}
+
+	resp := mustRun(t, `incus config get %s: user.ui.title`, clusterName)
+	require.Equal(t, "E2E Test IncusOS Cluster", resp.OutputTrimmed(), "expect UI title to be set from the default of the cluster template variable")
 }
 
 func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {

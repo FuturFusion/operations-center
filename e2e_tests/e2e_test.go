@@ -217,7 +217,7 @@ func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 		t,
 		"download update - upload update - create channel - assign manual uploaded update - create cluster",
 		setupIncusOSFromManualUpload,
-		createClusterWithChannelName("manual", []string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		createClusterFromManualUpload([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 	)
 }
 

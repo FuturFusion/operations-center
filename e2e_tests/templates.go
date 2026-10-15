@@ -69,6 +69,8 @@ network:
       - slaac
 `)
 
+	// The content differs from incusOSSeedFileYAMLTemplate, so the effect of an
+	// edit is visible.
 	tokenSeedPutYAMLTemplate = []byte(`---
 description: E2E test token seed
 public: false
@@ -77,7 +79,6 @@ seeds:
     version: "1"
     applications:
       - name: incus
-      - name: debug
   network:
     version: "1"
     interfaces:
@@ -88,6 +89,31 @@ seeds:
         - dhcp4
         - dhcp6
         - slaac
+    time:
+      timezone: Europe/Zurich
+`)
+
+	// The timezone differs from the default UTC. The server registration
+	// scriptlet copies it to the properties of the server, which makes the
+	// effect of the seed visible in Operations Center.
+	incusOSFactoryResetSeedFileYAMLTemplate = []byte(`---
+applications:
+  version: "1"
+  applications:
+    - name: incus
+    - name: debug
+network:
+  version: "1"
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
+  time:
+    timezone: Europe/Zurich
 `)
 
 	deployIncusOSSeedFileYAMLTemplate = []byte(`---

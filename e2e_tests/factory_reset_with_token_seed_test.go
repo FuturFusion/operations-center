@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -59,19 +60,32 @@ func factoryResetClusterWithTokenSeed(ctx context.Context, t *testing.T, tmpDir 
 
 	seedFilename := filepath.Join(tmpDir, "incusos_factory_reset_seed.yaml")
 
-	err = os.WriteFile(seedFilename, incusOSSeedFileYAMLTemplate, 0o600)
+	err = os.WriteFile(seedFilename, incusOSFactoryResetSeedFileYAMLTemplate, 0o600)
 	require.NoError(t, err)
 
 	t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
 	createTokenSeed(t, token, tokenSeedName, seedFilename)
 
+	tokenUsesCmd := `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.uuid == %q) | .uses_remaining'`
+	tokenUsesBefore, err := strconv.Atoi(mustRun(t, tokenUsesCmd, cpuArch, token).OutputTrimmed())
+	require.NoError(t, err)
+
 	t.Log("Factory reset cluster")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster %s %s`, cpuArch, token, tokenSeedName)
+
+	assertClusterFactoryReset(t, "incus-os-cluster", names)
+
 	time.Sleep(strechedTimeout(10 * time.Second)) // Wait for the factory reset to happen.
 
 	mustWaitIncusOSReady(ctx, t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
 
 	mustWaitInventoryReady(ctx, t, instanceNames)
+
+	tokenUses := mustRun(t, tokenUsesCmd, cpuArch, token).OutputTrimmed()
+	require.Equal(t, strconv.Itoa(tokenUsesBefore-len(names)), tokenUses, "expect every server to use the given token for the re-registration")
+
+	// The timezone is only set by the token seed.
+	assertServersTimezone(ctx, t, instanceNames, "Europe/Zurich")
 
 	err = os.WriteFile(
 		filepath.Join(tmpDir, "application-post-factory-reset.yaml"),
