@@ -37,7 +37,7 @@ func (c Chain) CheckPermission(ctx context.Context, details *authz.RequestDetail
 		errs = append(errs, err)
 	}
 
-	slog.DebugContext(ctx, "chain authorizer failed", logger.Err(errors.Join(errs...)), slog.String("user", details.Username), slog.String("entitlement", entitlement.String()), slog.String("object", object.String()))
+	slog.WarnContext(ctx, "chain authorizer failed", logger.Err(errors.Join(errs...)), slog.String("user", details.Username), slog.String("entitlement", entitlement.String()), slog.String("object", object.String()))
 
 	return api.StatusErrorf(http.StatusForbidden, "User does not have entitlement %q on object %q", entitlement, object)
 }

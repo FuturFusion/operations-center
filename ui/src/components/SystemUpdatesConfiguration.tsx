@@ -4,6 +4,7 @@ import SystemUpdatesForm from "components/SystemUpdatesForm";
 import { useNotification } from "context/notificationContext";
 import { SystemUpdates } from "types/settings";
 import { errorMessage } from "util/response";
+import QueryError from "components/QueryError";
 
 const SystemUpdatesConfiguration = () => {
   const { notify } = useNotification();
@@ -36,7 +37,7 @@ const SystemUpdatesConfiguration = () => {
   }
 
   if (error) {
-    return <div>Error while loading system updates</div>;
+    return <QueryError error={error} label="the update settings" />;
   }
 
   return <SystemUpdatesForm updates={updates} onSubmit={onSubmit} />;

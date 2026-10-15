@@ -5,6 +5,7 @@ import YAMLEditor from "components/YAMLEditor";
 import { useNotification } from "context/notificationContext";
 import type { IncusOSConfig } from "types/os";
 import YAML from "yaml";
+import QueryError from "components/QueryError";
 
 interface Props {
   endpoint: string;
@@ -60,7 +61,9 @@ const OSConfigSection: FC<Props> = ({
   }
 
   if (error) {
-    return <div>Error while loading {label.toLowerCase()} data</div>;
+    return (
+      <QueryError error={error} label={`the ${label.toLowerCase()} data`} />
+    );
   }
 
   return (

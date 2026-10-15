@@ -4,6 +4,7 @@ import SystemNetworkForm from "components/SystemNetworkForm";
 import { useNotification } from "context/notificationContext";
 import { SystemNetwork } from "types/settings";
 import { errorMessage } from "util/response";
+import QueryError from "components/QueryError";
 
 const SystemNetworkConfiguration = () => {
   const { notify } = useNotification();
@@ -36,7 +37,7 @@ const SystemNetworkConfiguration = () => {
   }
 
   if (error) {
-    return <div>Error while loading network settings</div>;
+    return <QueryError error={error} label="the network settings" />;
   }
 
   return <SystemNetworkForm network={network} onSubmit={onSubmit} />;

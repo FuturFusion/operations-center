@@ -6,6 +6,7 @@ import YAMLEditor from "components/YAMLEditor";
 import { useNotification } from "context/notificationContext";
 import type { IncusOSConfig } from "types/os";
 import YAML from "yaml";
+import QueryError from "components/QueryError";
 
 interface Props {
   name?: string;
@@ -57,7 +58,7 @@ const OSServiceDetails: FC<Props> = ({ name: nameProp }) => {
   }
 
   if (error) {
-    return <div>Error while loading service data</div>;
+    return <QueryError error={error} label="the service data" />;
   }
 
   return (

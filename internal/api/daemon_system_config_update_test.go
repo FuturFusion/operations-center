@@ -296,6 +296,24 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
+		// Removing the OpenFGA configuration gives all OIDC users unrestricted
+		// access. Only an admin may do this.
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%s/1.0/system/security", port), bytes.NewBufferString(`{
+  "oidc": {
+    "issuer": "`+oidcProvider.Issuer()+`",
+    "client_id": "`+oidcProvider.ClientID+`",
+    "scope": "openid,offline_access,email"
+  }
+}
+`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", "Bearer "+accessTokens[operator])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode, "expect operator not to be able to remove the OpenFGA config")
+
 		t.Log(`7. Expect bad request for an unreachable OIDC issuer or OpenFGA server`)
 		unreachableEndpoint := "http://" + net.JoinHostPort("127.0.0.1", testingnet.FreePort(t, "127.0.0.1"))
 

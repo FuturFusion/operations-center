@@ -82,6 +82,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 		assertEdit   assertCmd
 		assertCreate assertCmd
 		assertDelete assertCmd
+		assertAdmin  assertCmd
 	}{
 		{
 			name: "no role",
@@ -92,6 +93,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			assertEdit:   assertCmdDenied("can_edit"),
 			assertCreate: assertCmdDenied("can_create"),
 			assertDelete: assertCmdDenied("can_delete"),
+			assertAdmin:  assertCmdDenied("can_admin"),
 		},
 		{
 			name: "viewer",
@@ -102,6 +104,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			assertEdit:   assertCmdDenied("can_edit"),
 			assertCreate: assertCmdDenied("can_create"),
 			assertDelete: assertCmdDenied("can_delete"),
+			assertAdmin:  assertCmdDenied("can_admin"),
 		},
 		{
 			name: "user",
@@ -112,6 +115,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			assertEdit:   assertCmdDenied("can_edit"),
 			assertCreate: assertCmdDenied("can_create"),
 			assertDelete: assertCmdDenied("can_delete"),
+			assertAdmin:  assertCmdDenied("can_admin"),
 		},
 		{
 			name: "operator",
@@ -122,6 +126,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			assertEdit:   assertCmdAllowed,
 			assertCreate: assertCmdDenied("can_create"),
 			assertDelete: assertCmdDenied("can_delete"),
+			assertAdmin:  assertCmdDenied("can_admin"),
 		},
 		{
 			name: "admin",
@@ -132,6 +137,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			assertEdit:   assertCmdAllowed,
 			assertCreate: assertCmdAllowed,
 			assertDelete: assertCmdAllowed,
+			assertAdmin:  assertCmdAllowed,
 		},
 	}
 
@@ -153,6 +159,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			editResp := runWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s provisioning token edit %s < %s`, time.Minute, confDir, cpuArch, token.uuid, token.putFilename)
 			createResp := runWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s provisioning token add --description "%s" --uses 1 --lifetime 1h`, time.Minute, confDir, cpuArch, openFGATokenDescription)
 			deleteResp := runWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s provisioning token remove %s`, time.Minute, confDir, cpuArch, token.uuid)
+			adminResp := runWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s system settings show -f json`, time.Minute, confDir, cpuArch)
 
 			// Assertions
 			tc.assertInfo(t, infoResp, "role %q: query /1.0", tc.role)
@@ -160,6 +167,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 			tc.assertEdit(t, editResp, "role %q: provisioning token edit (can_edit)", tc.role)
 			tc.assertCreate(t, createResp, "role %q: provisioning token add (can_create)", tc.role)
 			tc.assertDelete(t, deleteResp, "role %q: provisioning token remove (can_delete)", tc.role)
+			tc.assertAdmin(t, adminResp, "role %q: system settings show (can_admin)", tc.role)
 		})
 	}
 
@@ -169,6 +177,7 @@ func openFGAAuthorization(ctx context.Context, t *testing.T, tmpDir string) {
 
 	token := mustCreateOpenFGATargetToken(t, tmpDir)
 	mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning token remove %s`, time.Minute, cpuArch, token.uuid)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s system settings show -f json`, time.Minute, cpuArch)
 
 	assertUnreachableOpenFGAIsRejected(ctx, t, tmpDir, backend)
 }

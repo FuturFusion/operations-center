@@ -19,6 +19,17 @@ import (
 func Run(t *testing.T) string {
 	t.Helper()
 
+	url, _ := RunStoppable(t)
+
+	return url
+}
+
+// RunStoppable works like Run. It also returns a stop function. The stop
+// function closes the HTTP API before the test ends. Use it to simulate an
+// OpenFGA outage.
+func RunStoppable(t *testing.T) (url string, stop func()) {
+	t.Helper()
+
 	fgaServer, err := server.NewServerWithOpts(server.WithDatastore(memory.New()))
 	require.NoError(t, err, "Failed to create the OpenFGA server")
 
@@ -31,7 +42,8 @@ func Run(t *testing.T) string {
 	require.NoError(t, err, "Failed to register the HTTP API of the OpenFGA server")
 
 	httpServer := httptest.NewServer(mux)
+
 	t.Cleanup(httpServer.Close)
 
-	return httpServer.URL
+	return httpServer.URL, httpServer.Close
 }

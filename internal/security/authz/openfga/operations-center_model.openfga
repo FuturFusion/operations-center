@@ -10,6 +10,7 @@ type server
     define user: [user] or operator
     define viewer: [user] or user
     define authenticated: [user:*]
+    define can_admin: admin
     define can_create: admin
     define can_debug: admin
     define can_delete: admin
