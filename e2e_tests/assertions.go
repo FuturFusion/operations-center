@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -753,24 +754,20 @@ func assertOperationsCenterMetrics(t *testing.T) {
 
 	t.Log("Assert operations-center metrics endpoint")
 
-	homeDir, err := os.UserHomeDir()
-	require.NoError(t, err)
-
-	metricsURL := fmt.Sprintf("https://%s:8443/1.0/metrics", operationsCenterIPAddress(t))
-	clientCert := filepath.Join(homeDir, ".config/incus/client.crt")
-	clientKey := filepath.Join(homeDir, ".config/incus/client.key")
+	ocAPI := newOperationsCenterAPI(t)
+	metricsURL := ocAPI.baseURL + "/metrics"
 
 	disableMetrics := fmt.Sprintf(`EDITOR='sed -i "s|^metrics_enabled: .*|metrics_enabled: false|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
 	enableMetrics := fmt.Sprintf(`EDITOR='sed -i "s|^metrics_enabled: .*|metrics_enabled: true|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
 
-	resp := mustRun(t, `curl -sk -o /dev/null -w '%%{http_code}' %s`, metricsURL)
-	require.Equal(t, "401", resp.OutputTrimmed(), "expect the metrics endpoint to reject an unauthenticated request")
+	// The metrics endpoint rejects an unauthenticated request.
+	mustCurl(t, http.StatusUnauthorized, `-o /dev/null %s`, metricsURL)
 
-	resp = mustRun(t, `curl -sSk --fail-with-body --cert %s --key %s %s`, clientCert, clientKey, metricsURL)
-	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to be enabled by default")
+	body := mustCurl(t, http.StatusOK, `%s %s`, ocAPI.clientAuth, metricsURL)
+	require.Regexp(t, `(?m)^go_goroutines `, body, "expect the metrics endpoint to be enabled by default")
 
-	resp = mustRun(t, `curl -sSk --fail-with-body --cert %s --key %s -H 'Accept: application/openmetrics-text; version=1.0.0' %s`, clientCert, clientKey, metricsURL)
-	require.True(t, strings.HasSuffix(resp.OutputTrimmed(), "# EOF"), "expect the OpenMetrics format to end with the end marker")
+	body = mustCurl(t, http.StatusOK, `%s -H 'Accept: application/openmetrics-text; version=1.0.0' %s`, ocAPI.clientAuth, metricsURL)
+	require.True(t, strings.HasSuffix(strings.TrimSpace(body), "# EOF"), "expect the OpenMetrics format to end with the end marker")
 
 	mustRun(t, "%s", disableMetrics)
 	t.Cleanup(func() {
@@ -785,12 +782,11 @@ func assertOperationsCenterMetrics(t *testing.T) {
 		mustRunWithContext(ctx, t, "%s", enableMetrics)
 	})
 
-	resp = mustRun(t, `curl -sk --cert %s --key %s -w '\n%%{http_code}' %s`, clientCert, clientKey, metricsURL)
-	require.Contains(t, resp.Output(), "metrics_enabled", "expect the disabled metrics endpoint to hint at the setting")
-	require.True(t, strings.HasSuffix(resp.OutputTrimmed(), "\n400"), "expect the disabled metrics endpoint to return status 400")
+	body = mustCurl(t, http.StatusBadRequest, `%s %s`, ocAPI.clientAuth, metricsURL)
+	require.Contains(t, body, "metrics_enabled", "expect the disabled metrics endpoint to hint at the setting")
 
 	mustRun(t, "%s", enableMetrics)
 
-	resp = mustRun(t, `curl -sSk --fail-with-body --cert %s --key %s %s`, clientCert, clientKey, metricsURL)
-	require.Regexp(t, `(?m)^go_goroutines `, resp.Output(), "expect the metrics endpoint to serve metrics after it is enabled again")
+	body = mustCurl(t, http.StatusOK, `%s %s`, ocAPI.clientAuth, metricsURL)
+	require.Regexp(t, `(?m)^go_goroutines `, body, "expect the metrics endpoint to serve metrics after it is enabled again")
 }

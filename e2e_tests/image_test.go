@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -417,8 +418,7 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, sourceName, sourceVersion, "root.squashfs", "")
 
 	// The endpoints are public, the authenticated image API is not.
-	resp := run(t, `curl -sk -o /dev/null -w '%%{http_code}' "https://%s:8443/1.0/images/incus"`, operationsCenterIPAddress(t))
-	require.NotEqual(t, "200", resp.OutputTrimmed(), "expect the authenticated image API to reject an unauthenticated request")
+	mustCurl(t, http.StatusUnauthorized, `-o /dev/null "%s/images/incus"`, newOperationsCenterAPI(t).baseURL)
 }
 
 // assertPublicSimplestreamsFile downloads the given file through the path
