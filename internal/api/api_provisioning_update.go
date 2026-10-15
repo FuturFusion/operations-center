@@ -58,7 +58,12 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	parameters:
 //	  - in: query
 //	    name: channel
-//	    description: Channel to filter for.
+//	    description: Upstream channel to filter for.
+//	    type: string
+//	    x-example: stable
+//	  - in: query
+//	    name: update_channel
+//	    description: Update channel of Operations Center to filter for.
 //	    type: string
 //	    x-example: stable
 //	  - in: query
@@ -90,7 +95,12 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	parameters:
 //	  - in: query
 //	    name: channel
-//	    description: Channel to filter for.
+//	    description: Upstream channel to filter for.
+//	    type: string
+//	    x-example: stable
+//	  - in: query
+//	    name: update_channel
+//	    description: Update channel of Operations Center to filter for.
 //	    type: string
 //	    x-example: stable
 //	  - in: query
@@ -119,6 +129,10 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("channel") != "" {
 		filter.UpstreamChannel = new(r.URL.Query().Get("channel"))
+	}
+
+	if r.URL.Query().Get("update_channel") != "" {
+		filter.Channel = new(r.URL.Query().Get("update_channel"))
 	}
 
 	if r.URL.Query().Get("origin") != "" {
