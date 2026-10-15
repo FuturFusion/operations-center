@@ -702,6 +702,38 @@ func assertServerGone(t *testing.T, serverName string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, serverName)
 }
 
+// assertClusterFactoryReset verifies, that the factory reset removed the
+// cluster and with it the records of its servers.
+func assertClusterFactoryReset(t *testing.T, clusterName string, serverNames []string) {
+	t.Helper()
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, clusterName)
+	require.NoError(t, resp.err)
+	require.Truef(t, resp.Success(), "expect cluster %q to be removed by the factory reset", clusterName)
+
+	for _, serverName := range serverNames {
+		assertServerGone(t, serverName)
+	}
+}
+
+// assertServersTimezone verifies the timezone, which the server registration
+// scriptlet copies from the network config of the server to its properties.
+func assertServersTimezone(ctx context.Context, t *testing.T, serverNames []string, timezone string) {
+	t.Helper()
+
+	for _, serverName := range serverNames {
+		ok, err := waitForSuccessWithTimeout(ctx, t, fmt.Sprintf("timezone of %s", serverName),
+			`../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == %q) | .properties.timezone == %q'`,
+			1*time.Minute, cpuArch, serverName, timezone)
+		require.NoError(t, err)
+		if !ok {
+			printServerList(t)
+		}
+
+		require.Truef(t, ok, "expect server %q to have the timezone %q", serverName, timezone)
+	}
+}
+
 // assertServersRunManualUpdate verifies, that the servers run an update, which
 // has been uploaded manually and is assigned to the "manual" channel.
 func assertServersRunManualUpdate(t *testing.T, serverNames []string) {
