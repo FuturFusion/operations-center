@@ -432,9 +432,10 @@ func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
 		mustRun(t, `incus exec OperationsCenter -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`)
 
 		t.Cleanup(func() {
-			// Restart operations-centerd to flush coverage data.
-			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl restart operations-center`)
+			// Stop operations-centerd to flush coverage data.
+			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl stop operations-center`)
 			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, ocE2EGoCoverDir)
+			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl start operations-center`)
 		})
 	}
 
