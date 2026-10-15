@@ -1069,12 +1069,12 @@ func mustDownloadAlpineImageFiles(t *testing.T, targetDir string, files map[stri
 	err := os.MkdirAll(targetDir, 0o700)
 	require.NoError(t, err)
 
-	resp := mustRunWithTimeout(t, `curl -sf "https://images.linuxcontainers.org/streams/v1/images.json" | jq -r -e '.products."alpine:edge:%s:default".versions | keys | last'`, time.Minute, cpuArch)
+	resp := mustRunWithTimeout(t, `curl -sSf "https://images.linuxcontainers.org/streams/v1/images.json" | jq -r -e '.products."alpine:edge:%s:default".versions | keys | last'`, time.Minute, cpuArch)
 	version := resp.OutputTrimmed()
 	require.NotEmpty(t, version, "Failed to determine the current alpine edge image version")
 
 	for filename, targetFilename := range files {
-		mustRunWithTimeout(t, `curl -sfL "https://images.linuxcontainers.org/images/alpine/edge/%[1]s/default/%[2]s/%[3]s" -o %[4]s`, 5*time.Minute, cpuArch, version, filename, filepath.Join(targetDir, targetFilename))
+		mustRunWithTimeout(t, `curl -sSfL "https://images.linuxcontainers.org/images/alpine/edge/%[1]s/default/%[2]s/%[3]s" -o %[4]s`, 5*time.Minute, cpuArch, version, filename, filepath.Join(targetDir, targetFilename))
 	}
 
 	return version

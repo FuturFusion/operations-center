@@ -331,13 +331,13 @@ func assertIncusImageSourceRefresh(t *testing.T) (release string, version string
 
 	t.Cleanup(ocIncusImageSourceCleanup(t, imageSourceName))
 
-	resp := mustRunWithTimeout(t, `curl -sf "%[1]s/streams/v1/images.json" | jq -r -e '[ .products | keys[] | select(startswith("alpine:") and endswith(":%[2]s:default")) | select(. != "alpine:edge:%[2]s:default") ] | sort | last | split(":")[1]'`, time.Minute, imageSourceURL, cpuArch)
+	resp := mustRunWithTimeout(t, `curl -sSf "%[1]s/streams/v1/images.json" | jq -r -e '[ .products | keys[] | select(startswith("alpine:") and endswith(":%[2]s:default")) | select(. != "alpine:edge:%[2]s:default") ] | sort | last | split(":")[1]'`, time.Minute, imageSourceURL, cpuArch)
 	release = resp.OutputTrimmed()
 	require.NotEmpty(t, release, "Failed to determine a stable alpine release to sync from the image source")
 
 	name := fmt.Sprintf("alpine:%s:%s:default", release, cpuArch)
 
-	resp = mustRunWithTimeout(t, `curl -sf "%s/streams/v1/images.json" | jq -r -e '.products."%s".versions | keys | last'`, time.Minute, imageSourceURL, name)
+	resp = mustRunWithTimeout(t, `curl -sSf "%s/streams/v1/images.json" | jq -r -e '.products."%s".versions | keys | last'`, time.Minute, imageSourceURL, name)
 	version = resp.OutputTrimmed()
 	require.NotEmpty(t, version, "Failed to determine the current version of %q", name)
 
@@ -406,12 +406,12 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 
 	t.Log("Assert public simplestreams endpoints")
 
-	mustRun(t, `curl -sfk "%s/streams/v1/index.json" | jq -r -e '.format == "index:1.0" and .index.images.datatype == "image-downloads" and .index.images.path == "streams/v1/images.json" and .index.images.format == "products:1.0"'`, ocImagesURL)
-	mustRun(t, `curl -sfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") != null) and (index("%[3]s") != null)'`, ocImagesURL, manualName, sourceName)
+	mustRun(t, `curl -sSfk "%s/streams/v1/index.json" | jq -r -e '.format == "index:1.0" and .index.images.datatype == "image-downloads" and .index.images.path == "streams/v1/images.json" and .index.images.format == "products:1.0"'`, ocImagesURL)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") != null) and (index("%[3]s") != null)'`, ocImagesURL, manualName, sourceName)
 
-	mustRun(t, `curl -sfk "%s/streams/v1/images.json" | jq -r -e '.content_id == "images" and .datatype == "image-downloads" and .format == "products:1.0"'`, ocImagesURL)
-	mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"] | .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and .aliases == "e2e/alpine,e2e/alpine/edge"'`, ocImagesURL, manualName, cpuArch)
-	mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | to_entries | all(.value | (.sha256 | length) == 64 and .size > 0 and (.ftype | length) > 0 and (.path | length) > 0)'`, ocImagesURL, manualName, manualVersion)
+	mustRun(t, `curl -sSfk "%s/streams/v1/images.json" | jq -r -e '.content_id == "images" and .datatype == "image-downloads" and .format == "products:1.0"'`, ocImagesURL)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"] | .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and .aliases == "e2e/alpine,e2e/alpine/edge"'`, ocImagesURL, manualName, cpuArch)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | to_entries | all(.value | (.sha256 | length) == 64 and .size > 0 and (.ftype | length) > 0 and (.path | length) > 0)'`, ocImagesURL, manualName, manualVersion)
 
 	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, manualName, manualVersion, "root.squashfs", mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs")))
 	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, sourceName, sourceVersion, "root.squashfs", "")
@@ -427,16 +427,16 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 func assertPublicSimplestreamsFile(t *testing.T, downloadDir string, ocImagesURL string, name string, version string, filename string, wantSHA256 string) {
 	t.Helper()
 
-	resp := mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].path'`, ocImagesURL, name, version, filename)
+	resp := mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].path'`, ocImagesURL, name, version, filename)
 	itemPath := resp.OutputTrimmed()
 
 	if wantSHA256 == "" {
-		resp = mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].sha256'`, ocImagesURL, name, version, filename)
+		resp = mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].sha256'`, ocImagesURL, name, version, filename)
 		wantSHA256 = resp.OutputTrimmed()
 	}
 
 	target := filepath.Join(downloadDir, fmt.Sprintf("public_%s_%s", strings.ReplaceAll(name, ":", "_"), filename))
-	mustRunWithTimeout(t, `curl -sfk -o %s "%s%s"`, 5*time.Minute, target, ocImagesURL, itemPath)
+	mustRunWithTimeout(t, `curl -sSfk -o %s "%s%s"`, 5*time.Minute, target, ocImagesURL, itemPath)
 
 	require.Equalf(t, wantSHA256, mustSHA256(t, target), "expect the path advertised for %q of image %q to serve the file", filename, name)
 }
@@ -509,7 +509,7 @@ func assertIncusImageSourcePrune(t *testing.T, tmpDir string, ocImagesURL string
 	mustRun(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/incus.tar.xz`, sourceRelease, cpuArch, sourceVersion)
 
 	// It is no longer advertised publicly.
-	mustRun(t, `curl -sfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, sourceName, sourceVersion)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, sourceName, sourceVersion)
 }
 
 // assertIncusImageSourceRemove removes the image source and asserts, that the
@@ -535,7 +535,7 @@ func assertIncusImageSourceRemove(t *testing.T, ocImagesURL string, sourceName s
 
 	// The manually uploaded images are not affected.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s" or .name == "%[3]s") ] | length == 2'`, cpuArch, manualName, flagsName)
-	mustRun(t, `curl -sfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") == null) and (index("%[3]s") != null)'`, ocImagesURL, sourceName, manualName)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") == null) and (index("%[3]s") != null)'`, ocImagesURL, sourceName, manualName)
 
 	// Operating on a removed source fails.
 	resp = run(t, `../bin/operations-center.linux.%s image incus source show %s`, cpuArch, imageSourceName)
