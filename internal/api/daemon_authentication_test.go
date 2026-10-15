@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,12 +36,14 @@ const oidcCode = `123`
 const (
 	admin    = "admin"
 	operator = "operator"
+	user     = "user"
 	viewer   = "viewer"
 )
 
 var users = []string{
 	admin,
 	operator,
+	user,
 	viewer,
 }
 
@@ -80,7 +83,7 @@ func TestAuthentication(t *testing.T) {
 	tcpBaseURL := "https://localhost:" + port
 
 	// Test cases
-	tests := []struct {
+	type testCase struct {
 		name     string
 		client   func() *http.Client
 		method   string
@@ -91,7 +94,9 @@ func TestAuthentication(t *testing.T) {
 		wantStatusCode   int
 		wantBodyContains string
 		wantAuth         string // Only used in tests for /1.0 route.
-	}{
+	}
+
+	tests := []testCase{
 		{
 			name: "plain http GET /",
 			client: func() *http.Client {
@@ -839,7 +844,147 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusForbidden,
 		},
+		{
+			name: "client cert http GET /1.0/system/security",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/system/security",
+			body:     http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: openFGAEndpoint,
+		},
+		{
+			name: "oidc http GET /1.0/system/security as admin",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: tcpBaseURL + "/1.0/system/security",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[admin],
+			},
+			body: http.NoBody,
+
+			wantStatusCode:   http.StatusOK,
+			wantBodyContains: openFGAEndpoint,
+		},
+		{
+			name: "oidc http PUT /1.0/system/security removing OpenFGA as operator - forbidden",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPut,
+			resource: tcpBaseURL + "/1.0/system/security",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[operator],
+				"Content-Type":  "application/json",
+			},
+			body: bytes.NewBufferString(`{
+  "oidc": {
+    "issuer": "` + oidcProvider.Issuer() + `",
+    "client_id": "` + oidcProvider.ClientID + `",
+    "scope": "openid,offline_access,email"
+  },
+  "trusted_tls_client_cert_fingerprints": [ "` + certFingerprint + `" ]
+}`),
+
+			wantStatusCode: http.StatusForbidden,
+		},
 	}
+
+	// All routes below /1.0/system, /internal/sql and /os require can_admin.
+	// The check runs before the handler, so an empty body is enough for the
+	// forbidden cases. For admin, the handler runs and rejects most empty
+	// bodies. Any status other than 403 proves the access.
+	adminRoutes := []struct {
+		method string
+		path   string
+
+		wantAdminStatusCode int
+	}{
+		{method: http.MethodGet, path: "/1.0/system/certificate", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPost, path: "/1.0/system/certificate", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodPost, path: "/1.0/system/certificate/:renew", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodGet, path: "/1.0/system/network", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPut, path: "/1.0/system/network", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/1.0/system/security", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPut, path: "/1.0/system/security", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/1.0/system/settings", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPut, path: "/1.0/system/settings", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPut, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodPost, path: "/1.0/system/:clean-cache", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPost, path: "/1.0/system/:backup", wantAdminStatusCode: http.StatusNotFound},
+		{method: http.MethodPost, path: "/1.0/system/:restore", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/internal/sql?dump=1", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodPost, path: "/internal/sql", wantAdminStatusCode: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/os/1.0", wantAdminStatusCode: http.StatusBadRequest},
+	}
+
+	oidcClient := func() *http.Client {
+		return &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	}
+
+	adminRouteTests := make([]testCase, 0, 4*len(adminRoutes))
+	for _, route := range adminRoutes {
+		for _, role := range []string{operator, user, viewer} {
+			adminRouteTests = append(adminRouteTests, testCase{
+				name:     fmt.Sprintf("oidc http %s %s as %s - forbidden", route.method, route.path, role),
+				client:   oidcClient,
+				method:   route.method,
+				resource: tcpBaseURL + route.path,
+				headers: map[string]string{
+					"Authorization": "Bearer " + accessTokens[role],
+				},
+				body: http.NoBody,
+
+				wantStatusCode: http.StatusForbidden,
+			})
+		}
+
+		adminRouteTests = append(adminRouteTests, testCase{
+			name:     fmt.Sprintf("oidc http %s %s as %s - allowed", route.method, route.path, admin),
+			client:   oidcClient,
+			method:   route.method,
+			resource: tcpBaseURL + route.path,
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[admin],
+			},
+			body: http.NoBody,
+
+			wantStatusCode: route.wantAdminStatusCode,
+		})
+	}
+
+	tests = slices.Concat(tests, adminRouteTests)
 
 	env := &mock.EnvironmentMock{
 		IsIncusOSFunc: func() bool {
@@ -983,6 +1128,12 @@ func setupOpenFGA(t *testing.T) (endpoint string, storeID string) {
 
 	openFGAEndpoint := testingopenfga.Run(t)
 
+	return openFGAEndpoint, createOpenFGAStore(t, openFGAEndpoint)
+}
+
+func createOpenFGAStore(t *testing.T, openFGAEndpoint string) string {
+	t.Helper()
+
 	resp, err := http.Post(openFGAEndpoint+"/stores", "application/json", bytes.NewBufferString(`{"name": "operations-center"}`))
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -1001,7 +1152,7 @@ func setupOpenFGA(t *testing.T) (endpoint string, storeID string) {
 	require.NoError(t, err)
 	require.NotEmpty(t, createStoreResponse.ID, "OpenFGA returned no store ID")
 
-	return openFGAEndpoint, createStoreResponse.ID
+	return createStoreResponse.ID
 }
 
 func setupOpenFGATuples(t *testing.T, endpoint string, storeID string) {

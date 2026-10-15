@@ -23,7 +23,7 @@ func registerOSProxy(router Router, prefix string, authorizer *authz.Authorizer,
 		env:    env,
 	}
 
-	router.HandleFunc("/", response.With(handler.apiOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("/", response.With(handler.apiOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 }
 
 func (o *osProxyHandler) apiOSProxy(r *http.Request) response.Response {

@@ -26,8 +26,8 @@ func registerInternalHandler(router Router, authorizer *authz.Authorizer, db dbd
 		db: db,
 	}
 
-	router.HandleFunc("GET /sql", response.With(handler.sqlGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("POST /sql", response.With(handler.sqlPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /sql", response.With(handler.sqlGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	router.HandleFunc("POST /sql", response.With(handler.sqlPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 }
 
 func (i *internalHandler) sqlGet(r *http.Request) response.Response {
