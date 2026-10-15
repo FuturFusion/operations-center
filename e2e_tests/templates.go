@@ -117,6 +117,8 @@ match:
 priority: 1000
 attributes:
   incus.config.user.e2e.bios-profile: "applied"
+deployment:
+  attach_media_call_timeout: 5m
 `)
 
 	// createCluster templates.
