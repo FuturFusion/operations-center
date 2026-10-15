@@ -1628,7 +1628,7 @@ func (d *Daemon) setupBackgroundTasks(
 		scope := api.WarningScope{
 			Scope:      "acme_certificate_update",
 			EntityType: "system",
-			Entity:     "operatons-center",
+			Entity:     "operations-center",
 		}
 
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
