@@ -40,6 +40,17 @@ func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
 	)
 }
 
+func TestE2E_ProvisioningUpdatesChannelsAndTokens(t *testing.T) {
+	runE2ETest(
+		t,
+		"provisioning updates, channels and tokens without servers",
+		func(ctx context.Context, t *testing.T, tmpDir string) {
+			t.Helper()
+		},
+		provisioningUpdatesChannelsAndTokens,
+	)
+}
+
 func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
 	runE2ETest(
 		t,

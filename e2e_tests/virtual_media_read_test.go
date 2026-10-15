@@ -165,7 +165,14 @@ func assertVirtualMediaRandomRead(t *testing.T, name string) {
 func mustRequestMedia(t *testing.T, client *http.Client, method string, mediaURL string, header http.Header, wantStatus int) (http.Header, []byte) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(time.Minute))
+	return mustRequestMediaWithTimeout(t, client, method, mediaURL, header, wantStatus, time.Minute)
+}
+
+// mustRequestMediaWithTimeout is mustRequestMedia with a custom timeout.
+func mustRequestMediaWithTimeout(t *testing.T, client *http.Client, method string, mediaURL string, header http.Header, wantStatus int, timeout time.Duration) (http.Header, []byte) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, method, mediaURL, nil)

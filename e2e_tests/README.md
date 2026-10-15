@@ -376,6 +376,20 @@ test populates Operations Center completely before it registers Operations
 Center as image remote on the server. Everything asserted after that point goes
 through the public endpoints directly instead of through the server.
 
+### Updates, channels and tokens
+
+`TestE2E_ProvisioningUpdatesChannelsAndTokens` covers the updates, the channels
+and the tokens of Operations Center. It needs no IncusOS server.
+
+The test sends server registrations with curl. Each of these registrations
+fails before a server record is created: the body has no server name, or the
+token is exhausted, expired or unknown. This way the test checks the token
+handling of the registration without a VM.
+
+The test reads the ISO and the raw image of a public token seed with byte ranges
+only, so the images are not downloaded. Operations Center still generates each
+image completely, so the first request of an image takes a while.
+
 ### Fake OIDC provider
 
 The OIDC support of Operations Center is tested against a fake OIDC provider,
