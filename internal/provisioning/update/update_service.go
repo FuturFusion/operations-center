@@ -296,7 +296,7 @@ func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioni
 }
 
 func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
-	if filter.UpstreamChannel == nil {
+	if filter == (provisioning.UpdateFilter{}) {
 		updateIDs, err := s.repo.GetAllUUIDs(ctx)
 		if err != nil {
 			return nil, err
@@ -305,17 +305,13 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter provisi
 		return updateIDs, nil
 	}
 
-	updates, err := s.repo.GetAll(ctx)
+	updates, err := s.GetAllWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
 	updateIDs := make([]uuid.UUID, 0, len(updates))
 	for _, update := range updates {
-		if !slices.Contains(update.UpstreamChannels, *filter.UpstreamChannel) {
-			continue
-		}
-
 		updateIDs = append(updateIDs, update.UUID)
 	}
 
