@@ -1269,7 +1269,7 @@ func (d *Daemon) setupBackgroundTasks(
 	delayFirstImageSourcesRefresh := sync.OnceFunc(func() {})
 	if d.env.IsIncusOS() {
 		delayFirstImageSourcesRefresh = sync.OnceFunc(func() {
-			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
+			slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
 			time.Sleep(10 * time.Minute)
 		})
 	}
