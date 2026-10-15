@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -195,30 +194,5 @@ var clusterUpdateStateRegexp = regexp.MustCompile(`\[\s*(\d+)/\s*(\d+)\]`)
 func prodChannelCleanup(t *testing.T) func() {
 	t.Helper()
 
-	return func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		stop := timeTrack(t, "prod channel cleanup")
-		defer stop()
-
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '.[] | select(.channels | index("prod")) | .uuid'`, cpuArch)
-		if !resp.Success() {
-			t.Error(resp.Error())
-			return
-		}
-
-		for updateUUID := range strings.Lines(resp.Output()) {
-			updateUUID = strings.TrimSpace(updateUUID)
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable`, cpuArch, updateUUID)
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
-		}
-	}
+	return channelCleanup(t, "prod")
 }

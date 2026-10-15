@@ -87,6 +87,16 @@ func createClusterAndForceRemoveLostServer() func(ctx context.Context, t *testin
 	}
 }
 
+func createClusterFromManualUpload(serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
+		createClusterWithChannelName("manual", serverNames)(ctx, t, tmpDir)
+
+		assertServersRunManualUpdate(t, serverNames)
+	}
+}
+
 func createClusterWithChannelName(channelName string, serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()

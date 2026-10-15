@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func assertOperationsCenterSelfRegistration(t *testing.T) {
@@ -699,6 +700,22 @@ func assertServerGone(t *testing.T, serverName string) {
 	t.Helper()
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == %q) ] | length == 0'`, cpuArch, serverName)
+}
+
+// assertServersRunManualUpdate verifies, that the servers run an update, which
+// has been uploaded manually and is assigned to the "manual" channel.
+func assertServersRunManualUpdate(t *testing.T, serverNames []string) {
+	t.Helper()
+
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select((.channels | index("manual")) and (.origin | contains("(local)"))) | .version ] | unique | .[]'`, cpuArch)
+	manualVersions := strings.Fields(resp.Output())
+	require.NotEmpty(t, manualVersions, "expect a manually uploaded update to be assigned to the manual channel")
+
+	for _, serverName := range serverNames {
+		server := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -c '.[] | select(.name == %q)'`, cpuArch, serverName).Output()
+		require.Equalf(t, "manual", gjson.Get(server, "version_data.update_channel").String(), "expect server %q to report the manual update channel", serverName)
+		require.Containsf(t, manualVersions, gjson.Get(server, "version_data.os.version").String(), "expect server %q to run a manually uploaded update", serverName)
+	}
 }
 
 func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
