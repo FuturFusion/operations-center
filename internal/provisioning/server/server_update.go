@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -56,31 +57,107 @@ func (s *serverService) claimRollingUpdateStep(server *provisioning.Server, step
 	return nil
 }
 
-// recordRollingUpdateStepFailure accounts for a step, whose outcome is reported
-// as failed, and rewinds the status detail Operations Center set when it
-// triggered the step, so the control loop picks the server up again.
+// stepCallback returns the callback for the outcome of a step, which runs on
+// the server in the background. For a manually triggered step, it is the only
+// thing that rewinds the transient state of the server.
+func (s *serverService) stepCallback(name string, step provisioning.ServerUpdateStep, clusterUpdate bool, previousInMaintenance api.InMaintenanceState) func(ctx context.Context, err error) {
+	// Evacuate and restore share the scope, so a later success of either one
+	// clears the warning.
+	scope := api.WarningScope{
+		Scope:      "lifecycle_operation",
+		EntityType: "server",
+		Entity:     name,
+	}
+
+	return func(ctx context.Context, stepErr error) {
+		// The error comes from the operation directly. It did not pass the error
+		// wrapper middleware of the client.
+		stepErr = domain.RetryableWrapper()(stepErr)
+		if stepErr == nil {
+			s.warning.RemoveStale(ctx, scope, nil)
+			return
+		}
+
+		s.warning.Emit(ctx, warning.NewWarningFromError(api.WarningTypeServerLifecycleOperationFailed, scope, stepErr, "Failed to %s server %q", step, name))
+
+		s.recordStepFailure(ctx, name, step, clusterUpdate, previousInMaintenance, stepErr)
+	}
+}
+
+// recordStepFailure rewinds the status detail and the Incus maintenance state,
+// which Operations Center set when it triggered the step. Only a step of a
+// rolling update counts as a failed attempt of the run.
 //
-// The rewind is guarded on the status detail still being the one of the failed
-// step, so a late report of an earlier attempt can not disturb the current one.
-func (s *serverService) recordRollingUpdateStepFailure(ctx context.Context, name string, step provisioning.ServerUpdateStep, stepErr error) {
+// The rewind only happens if the status detail still belongs to the step. This
+// does not tell apart two attempts of the same step.
+func (s *serverService) recordStepFailure(ctx context.Context, name string, step provisioning.ServerUpdateStep, clusterUpdate bool, previousInMaintenance api.InMaintenanceState, stepErr error) {
+	var server *provisioning.Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByName(ctx, name)
+		var err error
+
+		server, err = s.repo.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		server.StatusInternal.Update.Fail(s.now(), step, stepErr)
+		if clusterUpdate {
+			server.StatusInternal.Update.Fail(s.now(), step, stepErr)
+		}
 
 		if step.OwnsStatusDetail(server.StatusDetail) {
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+
+			rewindIncusInMaintenance(server, previousInMaintenance)
 		}
 
 		return s.repo.Update(ctx, *server)
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to record the failure of a rolling update step", slog.String("server", name), slog.String("step", string(step)), logger.Err(err))
+		slog.ErrorContext(ctx, "Failed to record the failure of a step", slog.String("server", name), slog.String("step", string(step)), logger.Err(err))
+		return
 	}
+
+	server.SignalLifecycleEvent()
+}
+
+func rewindIncusInMaintenance(server *provisioning.Server, previousInMaintenance api.InMaintenanceState) {
+	for i := range server.VersionData.Applications {
+		application := &server.VersionData.Applications[i]
+		if !domain.IsApplicationNameIncusKind(application.Name) {
+			continue
+		}
+
+		// Polling may already have reported the actual state.
+		if application.InMaintenance == api.InMaintenanceEvacuating || application.InMaintenance == api.InMaintenanceRestoring {
+			application.InMaintenance = previousInMaintenance
+		}
+
+		return
+	}
+}
+
+func incusInMaintenance(server provisioning.Server) api.InMaintenanceState {
+	for _, application := range server.VersionData.Applications {
+		if !domain.IsApplicationNameIncusKind(application.Name) {
+			continue
+		}
+
+		// A rewind to a transient state would never resolve, so use the state
+		// before the transition.
+		switch application.InMaintenance {
+		case api.InMaintenanceEvacuating:
+			return api.NotInMaintenance
+
+		case api.InMaintenanceRestoring:
+			return api.InMaintenanceEvacuated
+
+		default:
+			return application.InMaintenance
+		}
+	}
+
+	return api.NotInMaintenance
 }
 
 // BeginUpdateRunByCluster starts a cluster wide rolling update or rolling reboot

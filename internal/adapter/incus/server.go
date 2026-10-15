@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incus "github.com/lxc/incus/v7/client"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -452,6 +454,11 @@ func (c Client) UpdateUpdateConfig(ctx context.Context, server provisioning.Serv
 }
 
 func (c Client) Evacuate(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
+	// The operation outlives the request. The Incus client binds all its
+	// requests, including the wait for the operation, to the context it is
+	// created with.
+	ctx = logger.DetachedContext(ctx)
+
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -466,13 +473,18 @@ func (c Client) Evacuate(ctx context.Context, server provisioning.Server, callba
 	}
 
 	go func() {
-		// Use detached context for async background operation.
-		ctx := logger.DetachedContext(ctx)
-
-		callback(ctx, op.Wait())
+		callback(ctx, waitOperation(ctx, op, provisioning.ServerUpdateStepEvacuate.Timeout()))
 	}()
 
 	return nil
+}
+
+func waitOperation(ctx context.Context, op incus.Operation, timeout time.Duration) error {
+	// On timeout, the operation is canceled, so a stuck operation is reported as failed.
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return op.WaitContext(ctx)
 }
 
 func (c Client) TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
@@ -526,6 +538,9 @@ func (c Client) Reboot(ctx context.Context, server provisioning.Server) error {
 }
 
 func (c Client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
+	// The operation outlives the request, see Evacuate.
+	ctx = logger.DetachedContext(ctx)
+
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -541,14 +556,11 @@ func (c Client) Restore(ctx context.Context, server provisioning.Server, restore
 		Mode:   restoreMode,
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to update cluster member state to restored on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	go func() {
-		// Use detached context for async background operation.
-		ctx := logger.DetachedContext(ctx)
-
-		callback(ctx, op.Wait())
+		callback(ctx, waitOperation(ctx, op, provisioning.ServerUpdateStepRestore.Timeout()))
 	}()
 
 	return nil

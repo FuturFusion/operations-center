@@ -3692,6 +3692,96 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "Evacuate - canceled context",
+			// The wait timeout counts down, so it is not exactly known.
+			wantPathsPrefix: true,
+			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
+				// The context of a request ends before the operation does.
+				ctx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				callbackErr := make(chan error, 1)
+				err := client.Evacuate(ctx, target, func(ctx context.Context, err error) {
+					callbackErr <- err
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				return <-callbackErr, nil
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state", "GET /1.0/operations//wait?timeout="},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.Nil(t, res, "callback receives the outcome of the operation")
+					},
+				},
+				{
+					name: "error - operation failed",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{"status_code":400,"err":"operation failed"}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state", "GET /1.0/operations//wait?timeout="},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.ErrorContains(t, res.(error), "operation failed", "callback receives the outcome of the operation")
+					},
+				},
+			},
+		},
+		{
 			name: "TriggerSystemAction",
 			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
 				return nil, client.TriggerSystemAction(ctx, target, "", "poweroff", nil)
@@ -3903,6 +3993,96 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+			},
+		},
+		{
+			name: "Restore - canceled context",
+			// The wait timeout counts down, so it is not exactly known.
+			wantPathsPrefix: true,
+			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
+				// The context of a request ends before the operation does.
+				ctx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				callbackErr := make(chan error, 1)
+				err := client.Restore(ctx, target, false, func(ctx context.Context, err error) {
+					callbackErr <- err
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				return <-callbackErr, nil
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state", "GET /1.0/operations//wait?timeout="},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.Nil(t, res, "callback receives the outcome of the operation")
+					},
+				},
+				{
+					name: "error - operation failed",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{"status_code":400,"err":"operation failed"}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state", "GET /1.0/operations//wait?timeout="},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.ErrorContains(t, res.(error), "operation failed", "callback receives the outcome of the operation")
+					},
 				},
 			},
 		},

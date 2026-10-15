@@ -1288,31 +1288,6 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	callback := func(ctx context.Context, err error) {
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
-		}
-	}
-
-	if clusterUpdate {
-		// The outcome reported here is an optimization: it turns a fast failure
-		// into an immediate retry instead of one, that waits the step timeout out.
-		// The run never depends on it, since the control loop re-derives the state
-		// of the server from the data it polls.
-		callback = func(ctx context.Context, callbackErr error) {
-			// The error of the operation is delivered here directly, so it has not
-			// passed the error wrapper middleware of the client.
-			callbackErr = domain.RetryableWrapper()(callbackErr)
-			if callbackErr == nil {
-				return
-			}
-
-			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(callbackErr))
-
-			s.recordRollingUpdateStepFailure(ctx, name, provisioning.ServerUpdateStepEvacuate, callbackErr)
-		}
-	}
-
 	var server *provisioning.Server
 	var previousServer provisioning.Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1370,9 +1345,13 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		}
 	})
 
+	callback := s.stepCallback(name, provisioning.ServerUpdateStepEvacuate, clusterUpdate, incusInMaintenance(previousServer))
+
 	err = s.client.Evacuate(ctx, *server, callback)
 	if err != nil {
-		previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepEvacuate, err)
+		if clusterUpdate {
+			previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepEvacuate, err)
+		}
 
 		return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
 	}
@@ -1518,28 +1497,6 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	callback := func(ctx context.Context, err error) {
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
-		}
-	}
-
-	if clusterUpdate {
-		// The outcome reported here is an optimization, see EvacuateSystemByName.
-		callback = func(ctx context.Context, callbackErr error) {
-			// The error of the operation is delivered here directly, so it has not
-			// passed the error wrapper middleware of the client.
-			callbackErr = domain.RetryableWrapper()(callbackErr)
-			if callbackErr == nil {
-				return
-			}
-
-			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(callbackErr))
-
-			s.recordRollingUpdateStepFailure(ctx, name, provisioning.ServerUpdateStepRestore, callbackErr)
-		}
-	}
-
 	var server *provisioning.Server
 	var previousServer provisioning.Server
 
@@ -1598,9 +1555,13 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		}
 	})
 
+	callback := s.stepCallback(name, provisioning.ServerUpdateStepRestore, clusterUpdate, incusInMaintenance(previousServer))
+
 	err = s.client.Restore(ctx, *server, restoreModeSkip, callback)
 	if err != nil {
-		previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepRestore, err)
+		if clusterUpdate {
+			previousServer.StatusInternal.Update.Fail(s.now(), provisioning.ServerUpdateStepRestore, err)
+		}
 
 		return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
 	}

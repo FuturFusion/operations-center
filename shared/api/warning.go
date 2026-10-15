@@ -62,6 +62,11 @@ const (
 	// interface with the "management" role of a server does not report an IP
 	// address.
 	WarningTypeManagementAddressMissing WarningType = "Management address missing"
+
+	// WarningTypeServerLifecycleOperationFailed indicates a warning where a
+	// lifecycle operation on a server, for example an evacuation or a restore,
+	// failed after it has been triggered.
+	WarningTypeServerLifecycleOperationFailed WarningType = "Server lifecycle operation failed"
 )
 
 // WarningScope represents a scope for a warning.
