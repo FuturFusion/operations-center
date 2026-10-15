@@ -69,4 +69,5 @@ in progress, when the backup has been created, are aborted after the restore:
 * Cluster updates are aborted.
 * Server deployments are canceled, the servers are left untouched.
 
-Backup and restore require the `admin` role on the server object.
+Backup and restore require the `can_admin` entitlement on the server. The
+`admin` relation grants this entitlement.

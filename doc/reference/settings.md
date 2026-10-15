@@ -1,5 +1,11 @@
 # System settings
 
+With OpenFGA, all endpoints below `/1.0/system` require the `can_admin`
+entitlement on the server. The `admin` relation grants this entitlement. These
+endpoints include the security settings, backup and restore. The same applies
+to the IncusOS API below `/os` and to the SQL endpoint below `/internal/sql`.
+So only admins can use them.
+
 Several global settings are available to be configured in Operations Center:
 
 ## Network settings
@@ -54,6 +60,21 @@ it is removed from their trust store as well.
 | `api_token`   | API token used for communication with the OpenFGA system | string   |         |
 | `api_url`     | URL of the OpenFGA API                                   | string   |         |
 | `store_id`    | ID of the OpenFGA store                                  | string   |         |
+
+If OpenFGA is configured but not reachable, Operations Center denies all
+requests from OIDC users. Trusted TLS clients and the local Unix socket keep
+working.
+
+Operations Center writes its authorization model to the OpenFGA store. The
+`can_admin` entitlement requires the current model. If the store still has an
+older model, OpenFGA rejects the check for `can_admin`. Then Operations Center
+denies all OIDC users on the endpoints above, including admins. This happens
+if the model update fails, for example because the API token has only read
+access. Operations Center retries the update in the background. Until the
+update succeeds, use a trusted TLS client certificate. Access with a TLS
+client certificate does not depend on OpenFGA. It is the "break glass" access:
+an emergency access for when the normal access fails. Use it to fix the
+OpenFGA configuration in the security settings.
 
 ### ACME
 
