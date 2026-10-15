@@ -15,6 +15,10 @@ server_registration_scriptlet: |
   def server_registration(candidate):
     server.set_description("some description")
     server.set_properties({ "timezone": candidate.os_data.network.config.time.timezone })
+pprof_enabled: false
+metrics_enabled: true
+metrics_components:
+  - runtime
 `)
 
 	operationsCenterSeedTemplate = []byte(`{
@@ -117,6 +121,8 @@ match:
 priority: 1000
 attributes:
   incus.config.user.e2e.bios-profile: "applied"
+deployment:
+  attach_media_call_timeout: 5m
 `)
 
 	// createCluster templates.

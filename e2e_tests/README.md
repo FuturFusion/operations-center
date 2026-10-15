@@ -351,6 +351,11 @@ The proxy fetches the installation media from Operations Center when it is
 attached, so Operations Center needs to be reachable from the end 2 end test
 host at the address it advertises.
 
+The proxy only answers the request to attach the media after it has imported
+the media into Incus. This can take longer than a minute. The BIOS profile
+therefore sets `attach_media_call_timeout` to 5 minutes. The value is lower
+than the default, so a different error does not waste CI time.
+
 The proxy fetches the complete installation media with a single request. A BMC
 streaming the media requests byte ranges instead. The test therefore reads the
 installation media a second time, the way such a BMC does: the start

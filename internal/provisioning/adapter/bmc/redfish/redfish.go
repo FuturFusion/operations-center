@@ -87,11 +87,15 @@ func New(opts ...Option) redfish {
 }
 
 func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *gofish.APIClient, logout func(), _ error) {
+	return r.getClientWithResponseHeaderTimeout(ctx, server, responseHeaderTimeout)
+}
+
+func (r redfish) getClientWithResponseHeaderTimeout(ctx context.Context, server provisioning.Server, headerTimeout time.Duration) (_ *gofish.APIClient, logout func(), _ error) {
 	if transaction.IsActive(ctx) {
 		slog.WarnContext(ctx, "Redfish API call inside of a transaction", logger.AddStacktrace())
 	}
 
-	httpClient, err := newBMCHTTPClient(server, r.retryDelay)
+	httpClient, err := newBMCHTTPClient(server, r.retryDelay, headerTimeout)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,7 +129,7 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 
 // newBMCHTTPClient returns the HTTP client the Redfish requests of a server are
 // issued with.
-func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration) (*http.Client, error) {
+func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, headerTimeout time.Duration) (*http.Client, error) {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   connectionTimeout,
@@ -133,7 +137,7 @@ func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration) (*ht
 		}).DialContext,
 
 		ExpectContinueTimeout: 30 * time.Second,
-		ResponseHeaderTimeout: responseHeaderTimeout,
+		ResponseHeaderTimeout: headerTimeout,
 		TLSHandshakeTimeout:   connectionTimeout,
 		IdleConnTimeout:       30 * time.Second,
 
@@ -196,6 +200,17 @@ func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration) (*ht
 	}
 
 	return httpClient, nil
+}
+
+// responseHeaderTimeoutUntilDeadline extends the response header timeout to the
+// deadline of ctx.
+func responseHeaderTimeoutUntilDeadline(ctx context.Context, now time.Time) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return responseHeaderTimeout
+	}
+
+	return max(responseHeaderTimeout, deadline.Sub(now))
 }
 
 func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server) (certificatePEM string, _ error) {
@@ -1216,7 +1231,7 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot,
 }
 
 func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
-	client, logout, err := r.getClient(ctx, server)
+	client, logout, err := r.getClientWithResponseHeaderTimeout(ctx, server, responseHeaderTimeoutUntilDeadline(ctx, time.Now()))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
 	}
