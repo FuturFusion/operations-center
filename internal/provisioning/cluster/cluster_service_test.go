@@ -9,6 +9,7 @@ import (
 	"io"
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -40,6 +42,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -83,6 +86,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoExistsByNameErr                               error
 		repoCreateErr                                     error
 		repoUpdateErr                                     error
+		repoDeleteByNameErr                               error
 		localArtifactRepoCreateClusterArtifactFromPathErr error
 		clientPingErr                                     error
 		clientUpdateOSServiceErr                          error
@@ -114,6 +118,7 @@ func TestClusterService_Create(t *testing.T) {
 		wantProvisionedClientCertificates                 []string
 		wantKnownClientCertificates                       []string
 		wantOSServiceConfig                               []osServiceConfig
+		wantRemovedClusters                               []string
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
@@ -1027,7 +1032,7 @@ func TestClusterService_Create(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "server1",
-						Type:    api.ServerTypeMigrationManager, // wrong type, incus expected.
+						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
@@ -1043,7 +1048,7 @@ func TestClusterService_Create(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "server2",
-						Type:    api.ServerTypeIncus,
+						Type:    api.ServerTypeMigrationManager, // wrong type, incus expected.
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
@@ -1060,7 +1065,7 @@ func TestClusterService_Create(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server "server1" has type "migration-manager" but "incus" was expected`)
+				require.ErrorContains(tt, err, `Server "server2" has type "migration-manager" but "incus" was expected`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -1107,6 +1112,58 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientPingErr: boom.Error,
+
+			wantRemovedClusters: []string{"one"},
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                      "error - client.Ping and repo.DeleteByName",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientPingErr:       boom.Error,
+			repoDeleteByNameErr: errors.New("delete failed"), // Only logged, the error of the ping is returned.
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1157,6 +1214,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", the configuration is not an object`)
@@ -1211,6 +1270,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
+			wantRemovedClusters: []string{"one"},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "lvm" of server "server1", "enabled" is not a bool`)
 			},
@@ -1263,6 +1324,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", "tunnel_address" is not a string`)
@@ -1317,6 +1380,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
+			wantRemovedClusters: []string{"one"},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "ovn", the "tunnel_address" "10.0.0.1" is not assigned to a network interface with a role on any of the servers`)
 			},
@@ -1369,6 +1434,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid configuration for OS service "linstor", the host of the "listen_address" "10.0.0.1:3366" is not assigned to a network interface with a role on any of the servers`)
@@ -1423,6 +1490,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `The OS service "lvm" can not be enabled on server "server1"`)
@@ -1480,6 +1549,8 @@ func TestClusterService_Create(t *testing.T) {
 			wantOSServiceConfig: []osServiceConfig{
 				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1554,6 +1625,8 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "cluster" or "management"`)
@@ -1640,6 +1713,8 @@ func TestClusterService_Create(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1735,6 +1810,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 			},
+
+			wantRemovedClusters: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `does not have an IP address on a network interface with the role "management"`)
@@ -4105,6 +4182,8 @@ func TestClusterService_Create(t *testing.T) {
 				config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 			})
 
+			var gotRemovedClusters []string
+
 			repo := &mock.ClusterRepoMock{
 				ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
 					return tc.repoExistsByName, tc.repoExistsByNameErr
@@ -4114,6 +4193,10 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.repoUpdateErr
+				},
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					gotRemovedClusters = append(gotRemovedClusters, name)
+					return tc.repoDeleteByNameErr
 				},
 			}
 
@@ -4246,6 +4329,7 @@ func TestClusterService_Create(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig, "expect the service config pushed to each server")
+			require.Equal(t, tc.wantRemovedClusters, gotRemovedClusters, "expect the pending cluster record to be removed, if the creation fails before clustering is enabled")
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.provisionerApply)
@@ -17079,11 +17163,22 @@ func TestClusterService_Rename(t *testing.T) {
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
+			var signalsBeforeCommit int
+			lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
+				signalsBeforeCommit++
+			})
+
+			ctx, trans := transaction.Begin(context.Background())
+
 			// Run test
-			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
+			err := clusterSvc.Rename(ctx, tc.oldName, tc.newName)
+			gotSignalsBeforeCommit := signalsBeforeCommit
+			commitErr := trans.Commit()
 
 			// Assert
 			tc.assertErr(t, err)
+			require.NoError(t, commitErr)
+			require.Zero(t, gotSignalsBeforeCommit, "expect no signal before the rename is committed, because the listeners act on the new name")
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
@@ -17586,14 +17681,24 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 func TestClusterService_ResyncInventory(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name               string
-		ctx                context.Context
-		repoGetAllClusters provisioning.Clusters
-		repoGetAllErr      error
-		inventorySyncerErr error
+	inventoryResyncScope := func(clusterName string) api.WarningScope {
+		return api.WarningScope{
+			Scope:      "inventory_resync",
+			EntityType: "cluster",
+			Entity:     clusterName,
+		}
+	}
 
-		assertErr require.ErrorAssertionFunc
+	tests := []struct {
+		name                string
+		ctx                 context.Context
+		repoGetAllClusters  provisioning.Clusters
+		repoGetAllErr       error
+		inventorySyncerErrs map[string]error
+
+		assertErr                require.ErrorAssertionFunc
+		wantEmittedWarningScopes []api.WarningScope
+		wantRemovedStaleScopes   []api.WarningScope
 	}{
 		{
 			name:               "success - empty cluster list",
@@ -17609,9 +17714,16 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				{
 					Name: "one",
 				},
+				{
+					Name: "two",
+				},
 			},
 
 			assertErr: require.NoError,
+			wantRemovedStaleScopes: []api.WarningScope{
+				inventoryResyncScope("one"),
+				inventoryResyncScope("two"),
+			},
 		},
 		{
 			name:          "error - GetAll",
@@ -17642,10 +17754,21 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				{
 					Name: "one",
 				},
+				{
+					Name: "two",
+				},
 			},
-			inventorySyncerErr: boom.Error,
+			inventorySyncerErrs: map[string]error{
+				"one": boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			wantEmittedWarningScopes: []api.WarningScope{
+				inventoryResyncScope("one"),
+			},
+			wantRemovedStaleScopes: []api.WarningScope{
+				inventoryResyncScope("two"),
+			},
 		},
 	}
 
@@ -17660,11 +17783,27 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 
 			inventorySyncer := &serviceMock.InventorySyncerMock{
 				SyncClusterFunc: func(ctx context.Context, clusterName string) error {
-					return tc.inventorySyncerErr
+					return tc.inventorySyncerErrs[clusterName]
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
+			var gotEmittedWarningScopes []api.WarningScope
+			var gotRemovedStaleScopes []api.WarningScope
+
+			warningSvc := &adapterMock.WarningServicePortMock{
+				EmitFunc: func(ctx context.Context, w warning.Warning) {
+					gotEmittedWarningScopes = append(gotEmittedWarningScopes, api.WarningScope{
+						Scope:      w.Scope,
+						EntityType: w.EntityType,
+						Entity:     w.Entity,
+					})
+				},
+				RemoveStaleFunc: func(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+					gotRemovedStaleScopes = append(gotRemovedStaleScopes, scope)
+				},
+			}
+
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil, provisioningCluster.WithWarningEmitter(warningSvc))
 			clusterSvc.SetInventorySyncers(
 				map[domain.ResourceType]provisioning.InventorySyncer{
 					"test": inventorySyncer,
@@ -17676,6 +17815,8 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantEmittedWarningScopes, gotEmittedWarningScopes, "expect a warning for each cluster with a failed inventory resync")
+			require.Equal(t, tc.wantRemovedStaleScopes, gotRemovedStaleScopes, "expect the warnings to be cleared only for the clusters with a successful inventory resync")
 		})
 	}
 }
@@ -23597,11 +23738,13 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 	tests := []struct {
-		name                         string
-		serverSvcGetAllWithFilterErr error
-		updateMessage                lifecycle.ClusterUpdateMessage
+		name                          string
+		serverSvcGetAllWithFilterErrs map[string]error
+		updateMessage                 lifecycle.ClusterUpdateMessage
 
-		assertLog log.MatcherFunc
+		assertLog        log.MatcherFunc
+		wantRunningNames []string
+		wantStoppedNames []string
 	}{
 		{
 			name: "success register cluster",
@@ -23610,17 +23753,21 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "new",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing", "new"},
 		},
 		{
-			name: "error - startLifecycleEventHandler",
+			name: "error - register cluster - startLifecycleEventHandler",
 			updateMessage: lifecycle.ClusterUpdateMessage{
 				Operation: lifecycle.ClusterUpdateOperationCreate,
 				Name:      "new",
 			},
-			serverSvcGetAllWithFilterErr: boom.Error,
+			serverSvcGetAllWithFilterErrs: map[string]error{
+				"new": boom.Error,
+			},
 
-			assertLog: log.Contains("Failed to start lifecycle monitor"),
+			assertLog:        log.Contains("Failed to start lifecycle monitor"),
+			wantRunningNames: []string{"existing"},
 		},
 		{
 			name: "success delete cluster",
@@ -23629,7 +23776,8 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "existing",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantStoppedNames: []string{"existing"},
 		},
 		{
 			name: "success delete unknown cluster",
@@ -23638,7 +23786,45 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "unknown",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing"},
+		},
+		{
+			name: "success rename cluster",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "existing",
+			},
+
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"renamed"},
+			wantStoppedNames: []string{"existing"},
+		},
+		{
+			name: "success rename cluster without running monitor",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "unknown",
+			},
+
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing", "renamed"},
+		},
+		{
+			name: "error - rename cluster - startLifecycleEventHandler",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "existing",
+			},
+			serverSvcGetAllWithFilterErrs: map[string]error{
+				"renamed": boom.Error,
+			},
+
+			assertLog:        log.Contains("Failed to start lifecycle monitor"),
+			wantStoppedNames: []string{"existing"},
 		},
 	}
 
@@ -23648,7 +23834,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 			cancableCtx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -23664,12 +23850,27 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
+					return provisioning.Servers{
+						{
+							Name:    "server",
+							Cluster: filter.Cluster,
+						},
+					}, tc.serverSvcGetAllWithFilterErrs[*filter.Cluster]
 				},
 			}
 
+			// The context of each subscription tells, if the monitor of the cluster
+			// is still running.
+			subscriptions := map[string]context.Context{}
+			subscriptionsMu := sync.Mutex{}
+
 			client := &adapterMock.ClusterClientPortMock{
 				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+					subscriptionsMu.Lock()
+					defer subscriptionsMu.Unlock()
+
+					subscriptions[endpoint.GetName()] = ctx
+
 					return nil, nil, nil
 				},
 			}
@@ -23703,21 +23904,25 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			lifecycle.ClusterUpdateSignal.Emit(cancableCtx, tc.updateMessage)
 
-			cancel()
-
-			select {
-			case <-cancableCtx.Done():
-			case <-t.Context().Done():
-				t.Fatal("Test context cancelled before test ended")
-
-			case <-time.After(1000 * time.Millisecond):
-				cancel()
-				t.Error("Test timeout reached before test ended")
-			}
-
 			// Assert
 			require.NoError(t, err)
 			tc.assertLog(t, logBuf)
+
+			// The monitors subscribe in their own go routine.
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				subscriptionsMu.Lock()
+				defer subscriptionsMu.Unlock()
+
+				require.ElementsMatch(c, append(slices.Clone(tc.wantRunningNames), tc.wantStoppedNames...), slices.Collect(maps.Keys(subscriptions)), "expect a subscription for each started monitor")
+
+				for _, name := range tc.wantRunningNames {
+					require.NoError(c, subscriptions[name].Err(), "expect monitor of cluster %q to be running", name)
+				}
+
+				for _, name := range tc.wantStoppedNames {
+					require.Error(c, subscriptions[name].Err(), "expect monitor of cluster %q to be stopped", name)
+				}
+			}, 1*time.Second, 10*time.Millisecond)
 		})
 	}
 }

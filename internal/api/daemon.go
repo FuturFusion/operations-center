@@ -341,7 +341,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter)
 	if err != nil {
 		return err
 	}
@@ -952,6 +952,7 @@ func (d *Daemon) setupClusterService(
 	serverSvc provisioning.ServerService,
 	tokenSvc provisioning.TokenService,
 	inventoryAggregateSvc inventory.InventoryAggregateService,
+	warningSvc provisioning.WarningServicePort,
 ) (provisioning.ClusterService, error) {
 	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
 	if err != nil {
@@ -991,6 +992,7 @@ func (d *Daemon) setupClusterService(
 			nil,
 			terraformProvisioner,
 			inventoryAggregateSvc,
+			provisioningCluster.WithWarningEmitter(warningSvc),
 		),
 	), nil
 }
@@ -1267,7 +1269,7 @@ func (d *Daemon) setupBackgroundTasks(
 	delayFirstImageSourcesRefresh := sync.OnceFunc(func() {})
 	if d.env.IsIncusOS() {
 		delayFirstImageSourcesRefresh = sync.OnceFunc(func() {
-			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
+			slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
 			time.Sleep(10 * time.Minute)
 		})
 	}
@@ -1626,7 +1628,7 @@ func (d *Daemon) setupBackgroundTasks(
 		scope := api.WarningScope{
 			Scope:      "acme_certificate_update",
 			EntityType: "system",
-			Entity:     "operatons-center",
+			Entity:     "operations-center",
 		}
 
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)

@@ -257,6 +257,10 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is already part of cluster %q", serverName, *server.Cluster)
 			}
 
+			if server.Type != newCluster.ServerType {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+			}
+
 			if server.Status != api.ServerStatusReady {
 				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not in ready state and can therefore not be used for clustering", serverName)
 			}
@@ -314,12 +318,17 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		return newCluster, err
 	}
 
-	// Verify, that all the servers that are clustered have the expected server type.
-	for _, server := range servers {
-		if server.Type != newCluster.ServerType {
-			return newCluster, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+	// Until clustering is enabled, nothing depends on the pending record.
+	// Remove it on failure, so a retry with the same name is possible.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err := s.repo.DeleteByName(context.WithoutCancel(ctx), newCluster.Name)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to remove pending cluster record after failed cluster creation", slog.String("cluster", newCluster.Name), logger.Err(err))
 		}
-	}
+	})
 
 	// Perform pre-clustering and clustering API calls.
 
@@ -422,6 +431,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 
 	// Select first server as the bootstrap server.
 	bootstrapServer = servers[0]
+
+	// Clustering might be enabled, even if EnableCluster returns an error.
+	reverter.Success()
 
 	// Bootstrap cluster on bootstrap server (first server of the provided server list).
 	clusterCertificate, err := s.client.EnableCluster(ctx, bootstrapServer)
@@ -2413,15 +2425,19 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 		return err
 	}
 
-	s.clusterUpdateProgress.reset(oldName)
+	// The listeners act on the new name, so they must only learn about it, once
+	// the rename is committed. They must not use the transaction.
+	return transaction.AfterCommit(ctx, func() error {
+		s.clusterUpdateProgress.reset(oldName)
 
-	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
-		Operation: lifecycle.ClusterUpdateOperationRename,
-		Name:      newName,
-		OldName:   oldName,
+		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+			Operation: lifecycle.ClusterUpdateOperationRename,
+			Name:      newName,
+			OldName:   oldName,
+		})
+
+		return nil
 	})
-
-	return nil
 }
 
 func (s *clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
@@ -2624,7 +2640,7 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 		scope := api.WarningScope{
 			Scope:      "inventory_resync",
 			EntityType: "cluster",
-			Entity:     "cluster",
+			Entity:     cluster.Name,
 		}
 
 		err = s.ResyncInventoryByName(ctx, cluster.Name)
@@ -4122,6 +4138,23 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 
 			cancel()
 			delete(lifecycleMonitors, cum.Name)
+
+		case lifecycle.ClusterUpdateOperationRename:
+			// The handler uses the cluster name for the endpoint lookup and the
+			// inventory resync, so it is restarted under the new name.
+			cancel, ok := lifecycleMonitors[cum.OldName]
+			if ok {
+				cancel()
+				delete(lifecycleMonitors, cum.OldName)
+			}
+
+			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				return
+			}
+
+			lifecycleMonitors[cum.Name] = cancel
 		}
 	})
 
