@@ -447,8 +447,9 @@ func TestChannelService_GetChangelog(t *testing.T) {
 		updateSvcGetAllWithFilter []queue.Item[provisioning.Updates]
 		updateSvcGetChangelog     []queue.Item[api.UpdateChangelog]
 
-		assertErr     require.ErrorAssertionFunc
-		wantChangelog api.UpdateChangelogs
+		assertErr               require.ErrorAssertionFunc
+		wantChangelog           api.UpdateChangelogs
+		wantGetChangelogUpdates [][2]uuid.UUID
 	}{
 		{
 			name:            "success",
@@ -518,6 +519,10 @@ func TestChannelService_GetChangelog(t *testing.T) {
 					},
 				},
 			},
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV3UUID, updateV2UUID},
+				{updateV2UUID, updateV1UUID},
+			},
 		},
 		{
 			name:            "success - single entry",
@@ -556,6 +561,9 @@ func TestChannelService_GetChangelog(t *testing.T) {
 						},
 					},
 				},
+			},
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV1UUID, uuid.Nil},
 			},
 		},
 
@@ -606,6 +614,9 @@ func TestChannelService_GetChangelog(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV1UUID, uuid.Nil},
+			},
 		},
 		{
 			name:            "error - updateSvc.GetChangelog",
@@ -632,6 +643,9 @@ func TestChannelService_GetChangelog(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV2UUID, updateV1UUID},
+			},
 		},
 	}
 
@@ -658,6 +672,13 @@ func TestChannelService_GetChangelog(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantChangelog, changelog)
+
+			var gotGetChangelogUpdates [][2]uuid.UUID
+			for _, call := range updateSvc.GetChangelogCalls() {
+				gotGetChangelogUpdates = append(gotGetChangelogUpdates, [2]uuid.UUID{call.CurrentID, call.PriorID})
+			}
+
+			require.Equal(t, tc.wantGetChangelogUpdates, gotGetChangelogUpdates, "expect each changelog to compare an update with the next older one")
 
 			require.Empty(t, tc.updateSvcGetAllWithFilter)
 			require.Empty(t, tc.updateSvcGetChangelog)

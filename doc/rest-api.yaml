@@ -14079,9 +14079,14 @@ paths:
                 Versions are date strings of the form yyyymmddHHMM, most recent date first.
             operationId: updates_get
             parameters:
-                - description: Channel to filter for.
+                - description: Upstream channel to filter for.
                   in: query
                   name: channel
+                  type: string
+                  x-example: stable
+                - description: Update channel of Operations Center to filter for.
+                  in: query
+                  name: update_channel
                   type: string
                   x-example: stable
                 - description: Origin to filter for.
@@ -14320,9 +14325,14 @@ paths:
                 Versions are date strings of the form yyyymmddHHMM, most recent date first.
             operationId: updates_get_recursion
             parameters:
-                - description: Channel to filter for.
+                - description: Upstream channel to filter for.
                   in: query
                   name: channel
+                  type: string
+                  x-example: stable
+                - description: Update channel of Operations Center to filter for.
+                  in: query
+                  name: update_channel
                   type: string
                   x-example: stable
                 - description: Origin to filter for.

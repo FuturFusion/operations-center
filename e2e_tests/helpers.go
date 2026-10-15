@@ -1054,6 +1054,47 @@ func operationsCenterIPAddress(t *testing.T) string {
 	return address
 }
 
+// operationsCenterAPI holds what is needed to send requests to the API of
+// Operations Center with curl.
+type operationsCenterAPI struct {
+	baseURL string
+
+	// clientAuth holds the curl arguments to authenticate with the client
+	// certificate of the operations-center CLI.
+	clientAuth string
+}
+
+func newOperationsCenterAPI(t *testing.T) operationsCenterAPI {
+	t.Helper()
+
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	return operationsCenterAPI{
+		baseURL:    fmt.Sprintf("https://%s:8443/1.0", operationsCenterIPAddress(t)),
+		clientAuth: fmt.Sprintf("--cert %s --key %s", filepath.Join(homeDir, ".config/incus/client.crt"), filepath.Join(homeDir, ".config/incus/client.key")),
+	}
+}
+
+// mustCurl sends a request with curl and returns the body of the response.
+// curlArgs is a format string for args. The test fails, if the status code of
+// the response is not wantStatus.
+func mustCurl(t *testing.T, wantStatus int, curlArgs string, args ...any) string {
+	t.Helper()
+
+	resp := mustRun(t, `curl -sSk -w '\n%%{http_code}' `+curlArgs, args...)
+
+	// The status code is written on the last line.
+	output := resp.Output()
+	lastNewline := strings.LastIndex(output, "\n")
+	require.GreaterOrEqual(t, lastNewline, 0, "expect curl to write the status code on the last line")
+
+	body, statusCode := output[:lastNewline], output[lastNewline+1:]
+	require.Equalf(t, strconv.Itoa(wantStatus), statusCode, "expect status %d for %q, got body: %s", wantStatus, resp.command, body)
+
+	return body
+}
+
 // mustDownloadAlpineImageFiles downloads the most recent alpine edge image for
 // the CPU architecture under test into targetDir and returns the version
 // identifier of the downloaded image.

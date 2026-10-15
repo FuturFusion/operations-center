@@ -148,6 +148,10 @@ func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("status", f.Status.String())
 	}
 
+	if f.Channel != nil {
+		query.Add("update_channel", *f.Channel)
+	}
+
 	return query
 }
 
