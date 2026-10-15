@@ -2413,15 +2413,19 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 		return err
 	}
 
-	s.clusterUpdateProgress.reset(oldName)
+	// The listeners act on the new name, so they must only learn about it, once
+	// the rename is committed. They must not use the transaction.
+	return transaction.AfterCommit(ctx, func() error {
+		s.clusterUpdateProgress.reset(oldName)
 
-	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
-		Operation: lifecycle.ClusterUpdateOperationRename,
-		Name:      newName,
-		OldName:   oldName,
+		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+			Operation: lifecycle.ClusterUpdateOperationRename,
+			Name:      newName,
+			OldName:   oldName,
+		})
+
+		return nil
 	})
-
-	return nil
 }
 
 func (s *clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
@@ -4122,6 +4126,23 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 
 			cancel()
 			delete(lifecycleMonitors, cum.Name)
+
+		case lifecycle.ClusterUpdateOperationRename:
+			// The handler uses the cluster name for the endpoint lookup and the
+			// inventory resync, so it is restarted under the new name.
+			cancel, ok := lifecycleMonitors[cum.OldName]
+			if ok {
+				cancel()
+				delete(lifecycleMonitors, cum.OldName)
+			}
+
+			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				return
+			}
+
+			lifecycleMonitors[cum.Name] = cancel
 		}
 	})
 

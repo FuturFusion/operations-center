@@ -9,6 +9,7 @@ import (
 	"io"
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -17080,11 +17082,22 @@ func TestClusterService_Rename(t *testing.T) {
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
+			var signalsBeforeCommit int
+			lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
+				signalsBeforeCommit++
+			})
+
+			ctx, trans := transaction.Begin(context.Background())
+
 			// Run test
-			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
+			err := clusterSvc.Rename(ctx, tc.oldName, tc.newName)
+			gotSignalsBeforeCommit := signalsBeforeCommit
+			commitErr := trans.Commit()
 
 			// Assert
 			tc.assertErr(t, err)
+			require.NoError(t, commitErr)
+			require.Zero(t, gotSignalsBeforeCommit, "expect no signal before the rename is committed, because the listeners act on the new name")
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
@@ -23644,11 +23657,13 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 	tests := []struct {
-		name                         string
-		serverSvcGetAllWithFilterErr error
-		updateMessage                lifecycle.ClusterUpdateMessage
+		name                          string
+		serverSvcGetAllWithFilterErrs map[string]error
+		updateMessage                 lifecycle.ClusterUpdateMessage
 
-		assertLog log.MatcherFunc
+		assertLog        log.MatcherFunc
+		wantRunningNames []string
+		wantStoppedNames []string
 	}{
 		{
 			name: "success register cluster",
@@ -23657,17 +23672,21 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "new",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing", "new"},
 		},
 		{
-			name: "error - startLifecycleEventHandler",
+			name: "error - register cluster - startLifecycleEventHandler",
 			updateMessage: lifecycle.ClusterUpdateMessage{
 				Operation: lifecycle.ClusterUpdateOperationCreate,
 				Name:      "new",
 			},
-			serverSvcGetAllWithFilterErr: boom.Error,
+			serverSvcGetAllWithFilterErrs: map[string]error{
+				"new": boom.Error,
+			},
 
-			assertLog: log.Contains("Failed to start lifecycle monitor"),
+			assertLog:        log.Contains("Failed to start lifecycle monitor"),
+			wantRunningNames: []string{"existing"},
 		},
 		{
 			name: "success delete cluster",
@@ -23676,7 +23695,8 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "existing",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantStoppedNames: []string{"existing"},
 		},
 		{
 			name: "success delete unknown cluster",
@@ -23685,7 +23705,45 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "unknown",
 			},
 
-			assertLog: log.Noop,
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing"},
+		},
+		{
+			name: "success rename cluster",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "existing",
+			},
+
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"renamed"},
+			wantStoppedNames: []string{"existing"},
+		},
+		{
+			name: "success rename cluster without running monitor",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "unknown",
+			},
+
+			assertLog:        log.Noop,
+			wantRunningNames: []string{"existing", "renamed"},
+		},
+		{
+			name: "error - rename cluster - startLifecycleEventHandler",
+			updateMessage: lifecycle.ClusterUpdateMessage{
+				Operation: lifecycle.ClusterUpdateOperationRename,
+				Name:      "renamed",
+				OldName:   "existing",
+			},
+			serverSvcGetAllWithFilterErrs: map[string]error{
+				"renamed": boom.Error,
+			},
+
+			assertLog:        log.Contains("Failed to start lifecycle monitor"),
+			wantStoppedNames: []string{"existing"},
 		},
 	}
 
@@ -23695,7 +23753,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 			cancableCtx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -23711,12 +23769,27 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
+					return provisioning.Servers{
+						{
+							Name:    "server",
+							Cluster: filter.Cluster,
+						},
+					}, tc.serverSvcGetAllWithFilterErrs[*filter.Cluster]
 				},
 			}
 
+			// The context of each subscription tells, if the monitor of the cluster
+			// is still running.
+			subscriptions := map[string]context.Context{}
+			subscriptionsMu := sync.Mutex{}
+
 			client := &adapterMock.ClusterClientPortMock{
 				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+					subscriptionsMu.Lock()
+					defer subscriptionsMu.Unlock()
+
+					subscriptions[endpoint.GetName()] = ctx
+
 					return nil, nil, nil
 				},
 			}
@@ -23750,21 +23823,25 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			lifecycle.ClusterUpdateSignal.Emit(cancableCtx, tc.updateMessage)
 
-			cancel()
-
-			select {
-			case <-cancableCtx.Done():
-			case <-t.Context().Done():
-				t.Fatal("Test context cancelled before test ended")
-
-			case <-time.After(1000 * time.Millisecond):
-				cancel()
-				t.Error("Test timeout reached before test ended")
-			}
-
 			// Assert
 			require.NoError(t, err)
 			tc.assertLog(t, logBuf)
+
+			// The monitors subscribe in their own go routine.
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				subscriptionsMu.Lock()
+				defer subscriptionsMu.Unlock()
+
+				require.ElementsMatch(c, append(slices.Clone(tc.wantRunningNames), tc.wantStoppedNames...), slices.Collect(maps.Keys(subscriptions)), "expect a subscription for each started monitor")
+
+				for _, name := range tc.wantRunningNames {
+					require.NoError(c, subscriptions[name].Err(), "expect monitor of cluster %q to be running", name)
+				}
+
+				for _, name := range tc.wantStoppedNames {
+					require.Error(c, subscriptions[name].Err(), "expect monitor of cluster %q to be stopped", name)
+				}
+			}, 1*time.Second, 10*time.Millisecond)
 		})
 	}
 }
