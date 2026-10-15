@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -2545,7 +2546,10 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 				Type:    api.ServerTypeIncus,
 			},
 
-			assertErr: errassert.OperationNotPermittedError,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember)(tt, err, a...)
+				errassert.HintIs("Remove the server from the cluster first. This also factory resets the server.")(tt, err, a...)
+			},
 		},
 		{
 			name:    "error - client.Ping",

@@ -1846,7 +1846,7 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 
 	if server.Type.IsIncus() && server.Cluster != nil && !force {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q, a factory reset of a cluster member is not permitted", name, *server.Cluster).
-			WithHintf("Remove the server from the cluster first or use the force option.").
+			WithHintf("Remove the server from the cluster first. This also factory resets the server.").
 			WithDetail("server", name).
 			WithDetail("cluster", *server.Cluster)
 	}
