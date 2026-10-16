@@ -6943,6 +6943,37 @@ definitions:
                 x-go-name: Used
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
+    SupportBundlePost:
+        properties:
+            cluster:
+                description: Cluster holds the name of the cluster, required for the types cluster, project and instance.
+                example: cluster01
+                type: string
+                x-go-name: Cluster
+            name:
+                description: Name holds the name of the instance, required for the type instance.
+                example: c1
+                type: string
+                x-go-name: Name
+            project:
+                description: Project holds the name of the project, required for the types project and instance.
+                example: default
+                type: string
+                x-go-name: Project
+            server:
+                description: Server holds the name of the server, required for the type server.
+                example: server01
+                type: string
+                x-go-name: Server
+            type:
+                description: Type of the affected resource, one of cluster, project, instance or server.
+                example: instance
+                type: string
+                x-go-name: Type
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.SupportBundleType
+        title: SupportBundlePost selects the affected resource a support bundle is created for.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemACMEChallengeType:
         title: ACMEChallengeType represents challenge types for ACME configuration.
         type: string
@@ -14359,6 +14390,43 @@ paths:
             summary: Get the updates
             tags:
                 - updates
+    /1.0/support-bundle:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Create and return a zip archive with diagnostic data of a cluster, a
+                project, an instance or a server. The data is collected live, a part,
+                which can not be collected, is replaced by an error file in the archive.
+                Secrets in the configuration are redacted, logs are included as is.
+            operationId: support_bundle_post
+            parameters:
+                - description: Affected resource
+                  in: body
+                  name: support_bundle_post
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SupportBundlePost'
+            produces:
+                - application/json
+                - application/zip
+            responses:
+                "200":
+                    description: zip archive
+                    schema:
+                        format: binary
+                        type: string
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Create a support bundle
+            tags:
+                - support-bundle
     /1.0/system/:backup:
         post:
             consumes:

@@ -1,5 +1,6 @@
 acked
 ACL
+ACLs
 ACPI
 api
 Backend
@@ -84,6 +85,7 @@ snapshotted
 sso
 starlark
 struct
+supportbundle
 Terraform
 ThinkSystem
 TLS
