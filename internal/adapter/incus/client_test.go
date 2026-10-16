@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/websocket"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
@@ -48,6 +49,11 @@ type methodTestCase struct {
 type response struct {
 	statusCode   int
 	responseBody []byte
+
+	// eventStream upgrades the request to the websocket of the event stream.
+	eventStream bool
+	// events are sent on the event stream after the response is written.
+	events []string
 }
 
 func noResult(t *testing.T, res any) {
@@ -87,6 +93,7 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 					// Setup
 					var gotPaths []string
 					var gotBodies []string
+					eventStreams := make(chan *websocket.Conn, 1)
 					server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						gotPaths = append(gotPaths, fmt.Sprintf("%s %s", r.Method, r.URL.String()))
 
@@ -94,8 +101,17 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 						gotBodies = append(gotBodies, string(body))
 
 						response, _ := queue.Pop(t, &tc.response)
+						if response.eventStream {
+							serveEventStream(t, w, r, eventStreams)
+							return
+						}
+
 						w.WriteHeader(response.statusCode)
 						_, _ = w.Write(response.responseBody)
+
+						if len(response.events) > 0 {
+							sendEvents(t, <-eventStreams, response.events)
+						}
 					}))
 					server.TLS = &tls.Config{
 						NextProtos: []string{"h2", "http/1.1"},
@@ -141,6 +157,41 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 				})
 			}
 		})
+	}
+}
+
+// serveEventStream upgrades the request to the event stream, hands it over for
+// sending events and keeps it open until the client disconnects.
+func serveEventStream(t *testing.T, w http.ResponseWriter, r *http.Request, eventStreams chan<- *websocket.Conn) {
+	t.Helper()
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		t.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+
+	defer conn.Close()
+
+	eventStreams <- conn
+
+	for {
+		_, _, err = conn.ReadMessage()
+		if err != nil {
+			return
+		}
+	}
+}
+
+func sendEvents(t *testing.T, conn *websocket.Conn, events []string) {
+	t.Helper()
+
+	for _, event := range events {
+		err := conn.WriteMessage(websocket.TextMessage, []byte(event))
+		if err != nil {
+			t.Errorf("Failed to write event: %v", err)
+			return
+		}
 	}
 }
 
