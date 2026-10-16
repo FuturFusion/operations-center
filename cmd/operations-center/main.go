@@ -134,6 +134,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	app.AddCommand(systemCmd.Command())
 
+	supportBundleCmd := cmds.CmdSupportBundle{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(supportBundleCmd.Command())
+
 	warningCmd := cmds.CmdWarning{
 		OCClient: globalCmd.ocClient,
 	}
