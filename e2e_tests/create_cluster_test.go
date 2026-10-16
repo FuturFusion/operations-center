@@ -17,6 +17,16 @@ func createCluster(serverNames []string) func(ctx context.Context, t *testing.T,
 	return createClusterWithChannelName("stable", serverNames)
 }
 
+func createClusterAndSupportBundle(serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
+		createClusterWithChannelName("stable", serverNames)(ctx, t, tmpDir)
+
+		assertSupportBundle(t, tmpDir, "incus-os-cluster", serverNames)
+	}
+}
+
 func createClusterAndAddServerAndRemoveServer() func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()

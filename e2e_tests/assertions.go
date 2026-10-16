@@ -1,12 +1,16 @@
 package e2e
 
 import (
+	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -865,4 +869,126 @@ func assertOperationsCenterMetrics(t *testing.T) {
 
 	body = mustCurl(t, http.StatusOK, `%s %s`, ocAPI.clientAuth, metricsURL)
 	require.Regexp(t, `(?m)^go_goroutines `, body, "expect the metrics endpoint to serve metrics after it is enabled again")
+}
+
+func assertSupportBundle(t *testing.T, tmpDir string, clusterName string, serverNames []string) {
+	t.Helper()
+
+	t.Log("Assert operations-center cli support bundle")
+
+	bundles := []struct {
+		args     string
+		sections []string
+	}{
+		{
+			args:     "cluster " + clusterName,
+			sections: []string{"cluster/members.json", "cluster/instances.json"},
+		},
+		{
+			args:     "instance " + clusterName + " c1",
+			sections: []string{"instances/default/c1/instance.json", "instances/default/c1/volumes.json"},
+		},
+		{
+			args:     "server " + serverNames[0],
+			sections: []string{"cluster/members.json"},
+		},
+	}
+
+	for i, bundle := range bundles {
+		target := filepath.Join(tmpDir, fmt.Sprintf("support-bundle-%d.zip", i))
+		mustRun(t, `../bin/operations-center.linux.%s support-bundle %s -o %s`, cpuArch, bundle.args, target)
+
+		files, m := readSupportBundle(t, target)
+
+		for _, section := range m.Sections {
+			if section.Status != "ok" {
+				t.Logf("Support bundle %q section %q: %s %s", bundle.args, section.Path, section.Status, section.Error)
+			}
+		}
+
+		involved := serverNames
+		if strings.HasPrefix(bundle.args, "server ") {
+			involved = serverNames[:1]
+		}
+
+		expected := bundle.sections
+		for _, name := range involved {
+			if strings.HasPrefix(bundle.args, "instance ") && !slices.Contains(m.servers(), name) {
+				continue
+			}
+
+			expected = append(expected,
+				"servers/"+name+"/os/debug/journal.json",
+				"servers/"+name+"/os/debug/incus-logs.tar.gz",
+				"servers/"+name+"/os/system/security.json",
+			)
+
+			require.NotRegexp(t, `"encryption_recovery_keys":\s*\[`, files["servers/"+name+"/os/system/security.json"], "expect recovery keys to be redacted")
+		}
+
+		for _, section := range expected {
+			require.Equal(t, "ok", m.status(section), "expect support bundle %q section %q to be collected", bundle.args, section)
+		}
+	}
+}
+
+type supportBundleManifest struct {
+	Sections []struct {
+		Path   string `json:"path"`
+		Status string `json:"status"`
+		Error  string `json:"error"`
+	} `json:"sections"`
+}
+
+func (m supportBundleManifest) status(path string) string {
+	for _, section := range m.Sections {
+		if section.Path == path {
+			return section.Status
+		}
+	}
+
+	return "missing"
+}
+
+// servers returns the servers, for which data is collected.
+func (m supportBundleManifest) servers() []string {
+	var names []string
+	for _, section := range m.Sections {
+		if strings.HasPrefix(section.Path, "servers/") && strings.HasSuffix(section.Path, "/os/os.json") {
+			names = append(names, strings.Split(section.Path, "/")[1])
+		}
+	}
+
+	return names
+}
+
+// readSupportBundle returns the files of the support bundle relative to its root directory and the manifest.
+func readSupportBundle(t *testing.T, filename string) (map[string]string, supportBundleManifest) {
+	t.Helper()
+
+	archive, err := zip.OpenReader(filename)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, archive.Close())
+	}()
+
+	files := map[string]string{}
+	for _, f := range archive.File {
+		_, name, _ := strings.Cut(f.Name, "/")
+
+		r, err := f.Open()
+		require.NoError(t, err)
+
+		content, err := io.ReadAll(r)
+		require.NoError(t, err)
+		require.NoError(t, r.Close())
+
+		files[name] = string(content)
+	}
+
+	var m supportBundleManifest
+	err = json.Unmarshal([]byte(files["manifest.json"]), &m)
+	require.NoError(t, err)
+
+	return files, m
 }

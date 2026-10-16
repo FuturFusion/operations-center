@@ -100,7 +100,7 @@ func TestE2E_WithToken_CreateCluster(t *testing.T) {
 		t,
 		"token - create cluster",
 		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		createClusterAndSupportBundle([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 	)
 }
 
