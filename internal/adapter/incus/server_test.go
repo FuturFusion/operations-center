@@ -2975,30 +2975,21 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {}
-}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {
-    "metadata":{
-      "certificate": "certificate"
-    }
-  }
-}`),
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									// Ignored, other operation.
+									`{"type": "operation", "metadata": {"id": "other-op-id", "status_code": 200}}`,
+									// Ignored, operation not yet done.
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 103}}`,
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 200, "metadata": {"certificate": "certificate"}}}`,
+								},
 							},
 						},
 					},
@@ -3008,7 +2999,7 @@ func TestClientServer(t *testing.T) {
 						t.Helper()
 						require.Equal(t, "certificate", res)
 					},
-					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 				{
 					name: "success - no certificate returned",
@@ -3016,36 +3007,24 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {}
-}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {
-    "metadata":{
-    }
-  }
-}`), // no certificate returned
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 200, "metadata": {}}}`, // no certificate returned
+								},
 							},
 						},
 					},
 
 					assertErr:    require.NoError,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 				{
 					name: "success - invalid type for certificate",
@@ -3053,37 +3032,40 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {}
-}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {
-    "metadata":{
-      "certificate": {}
-    }
-  }
-}`), // invalid type for certificate
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 200, "metadata": {"certificate": {}}}}`, // invalid type for certificate
+								},
 							},
 						},
 					},
 
 					assertErr:    require.NoError,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "error - GetEvents",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events"},
 				},
 				{
 					name: "error - UpdateCluster - unexpected http status code",
@@ -3091,8 +3073,7 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
@@ -3108,34 +3089,29 @@ func TestClientServer(t *testing.T) {
 					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 				{
-					name: "error - fail op.WaitContext",
+					name: "error - operation failed",
 					response: []queue.Item[response]{
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
 								statusCode:   http.StatusOK,
-								responseBody: []byte(`{"metadata":{}}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode:   http.StatusInternalServerError, // fail op.WaitContext
-								responseBody: []byte(`{}`),
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 400, "err": "Failed to bootstrap cluster"}}`,
+								},
 							},
 						},
 					},
 
 					assertErr:    require.Error,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 			},
 		},
@@ -4133,28 +4109,38 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
 								statusCode:   http.StatusOK,
-								responseBody: []byte(`{"metadata":{}}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode:   http.StatusOK,
-								responseBody: []byte(`{"metadata":{}}`),
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 200}}`,
+								},
 							},
 						},
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "error - GetEvents",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`),
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events"},
 				},
 				{
 					name: "error - UpdateCluster - unexpected status code",
@@ -4162,8 +4148,7 @@ func TestClientServer(t *testing.T) {
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
@@ -4178,33 +4163,28 @@ func TestClientServer(t *testing.T) {
 					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 				{
-					name: "error - fail op.WaitContext",
+					name: "error - operation failed",
 					response: []queue.Item[response]{
 						// GET /1.0/events
 						{
 							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+								eventStream: true,
 							},
 						},
 						// PUT /1.0/cluster
 						{
 							Value: response{
 								statusCode:   http.StatusOK,
-								responseBody: []byte(`{"metadata":{}}`),
-							},
-						},
-						// GET /1.0/operations//wait?timeout=-1
-						{
-							Value: response{
-								statusCode:   http.StatusInternalServerError, // fail op.WaitContext
-								responseBody: []byte(`{}`),
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status_code": 400, "err": "Failed to join cluster"}}`,
+								},
 							},
 						},
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
 			},
 		},
