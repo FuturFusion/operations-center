@@ -6,6 +6,7 @@ import { deleteCluster, fetchCluster } from "api/cluster";
 import Breadcrumbs from "components/Breadcrumbs";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ClusterArtifacts from "pages/ClusterArtifacts";
@@ -94,6 +95,10 @@ const ClusterDetail = () => {
       <div className="fixed-footer p-3">
         {(!activeTab || activeTab == "overview") && (
           <div className="d-flex justify-content-end gap-2">
+            <SupportBundleBtn
+              target={{ type: "cluster", cluster: name }}
+              asButton
+            />
             <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
               Delete
             </Button>

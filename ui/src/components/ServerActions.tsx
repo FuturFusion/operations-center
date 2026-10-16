@@ -10,6 +10,7 @@ import ServerPoweroffBtn from "components/ServerPoweroffBtn";
 import ServerRebootBtn from "components/ServerRebootBtn";
 import ServerRestoreBtn from "components/ServerRestoreBtn";
 import ServerUpdateBtn from "components/ServerUpdateBtn";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import { useNotification } from "context/notificationContext";
 import type { Server } from "types/server";
 import { ServerAction, ServerStatus, ServerType } from "util/server";
@@ -149,6 +150,7 @@ const ServerActions: FC<Props> = ({ server }) => {
         <ServerDeployCancelBtn server={server} />
       )}
       <ServerDeploymentStatusBtn server={server} />
+      <SupportBundleBtn target={{ type: "server", server: server.name }} />
     </div>
   );
 };

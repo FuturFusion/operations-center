@@ -6,6 +6,7 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import type { Project } from "types/project";
 import { formatDate } from "util/date";
 
@@ -28,7 +29,7 @@ const Project = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Last updated"];
+  const headers = ["Name", "Cluster", "Last updated", "Actions"];
   const rows = projects.map((item) => {
     return {
       cols: [
@@ -45,6 +46,17 @@ const Project = () => {
         {
           content: formatDate(item.last_updated),
           sortKey: item.last_updated,
+        },
+        {
+          content: (
+            <SupportBundleBtn
+              target={{
+                type: "project",
+                cluster: item.cluster,
+                project: item.name,
+              }}
+            />
+          ),
         },
       ],
     };
