@@ -2,10 +2,13 @@ package incus
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/url"
 
+	incus "github.com/lxc/incus/v7/client"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -50,17 +53,12 @@ func (c Client) EnableCluster(ctx context.Context, server provisioning.Server) (
 		},
 	}
 
-	op, err := client.UpdateCluster(req, "")
+	op, err := updateCluster(ctx, client, req)
 	if err != nil {
 		return "", fmt.Errorf("Failed to update cluster on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
-	err = op.WaitContext(ctx)
-	if err != nil {
-		return "", fmt.Errorf("Failed to update cluster on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
-	}
-
-	anyClusterCertificate, ok := op.Get().Metadata["certificate"]
+	anyClusterCertificate, ok := op.Metadata["certificate"]
 	if !ok {
 		return "", nil
 	}
@@ -118,7 +116,7 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	// Ignore error, connection URL has been parsed by incus client already.
 	clusterAddressURL, _ := url.Parse(endpoint.GetConnectionURL())
 
-	op, err := client.UpdateCluster(incusapi.ClusterPut{
+	_, err = updateCluster(ctx, client, incusapi.ClusterPut{
 		Cluster: incusapi.Cluster{
 			ServerName:   server.Name,
 			Enabled:      true,
@@ -128,17 +126,64 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 		ServerAddress:      serverAddressOfClusterRole,
 		ClusterToken:       joinToken,
 		ClusterAddress:     clusterAddressURL.Host,
-	}, "")
+	})
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster during cluster join on %q (%s): %w", server.GetName(), server.GetConnectionURL(), err)
 	}
 
-	err = op.WaitContext(ctx)
+	return nil
+}
+
+// updateCluster updates the cluster configuration and waits for the operation.
+//
+// Explicitly reuse the events websocket connection to avoid attempting new
+// connections (with op.WaitContext) with the server certificate after the
+// server has switched to the cluster cert, without depending on internal
+// connection reuse.
+//
+// The server switches to the cluster certificate meanwhile, failing new pinned
+// connections, so the operation is followed on the events websocket opened upfront.
+func updateCluster(ctx context.Context, client incus.InstanceServer, req incusapi.ClusterPut) (incusapi.Operation, error) {
+	// Closes the events websocket, including the listener of the operation.
+	defer client.Disconnect()
+
+	listener, err := client.GetEvents()
 	if err != nil {
-		return fmt.Errorf("Failed to wait for update operation during cluster join on %q (%s): %w", server.GetName(), server.GetConnectionURL(), err)
+		return incusapi.Operation{}, fmt.Errorf("Failed to connect to the event listener: %w", err)
 	}
 
-	return nil
+	events := listener.AddChannel([]string{incusapi.EventTypeOperation}, 0)
+
+	op, err := client.UpdateCluster(req, "")
+	if err != nil {
+		return incusapi.Operation{}, err
+	}
+
+	opID := op.Get().ID
+
+	for {
+		select {
+		case <-ctx.Done():
+			return incusapi.Operation{}, ctx.Err()
+
+		case event, ok := <-events:
+			if !ok {
+				return incusapi.Operation{}, fmt.Errorf("Lost connection to the event listener while waiting for operation %q: %w", opID, listener.Wait())
+			}
+
+			opAPI := incusapi.Operation{}
+			err = json.Unmarshal(event.Metadata, &opAPI)
+			if err != nil || opAPI.ID != opID || !opAPI.StatusCode.IsFinal() {
+				continue
+			}
+
+			if opAPI.Err != "" {
+				return incusapi.Operation{}, errors.New(opAPI.Err)
+			}
+
+			return opAPI, nil
+		}
+	}
 }
 
 func (c Client) UpdateClusterCertificate(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error {
