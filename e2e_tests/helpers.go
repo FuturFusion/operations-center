@@ -1320,6 +1320,7 @@ var transientStorageErrors = []string{
 	"failed unmounting instance",
 	"dataset is busy",
 	"device or resource busy",
+	"is busy running a",
 }
 
 func isTransientStorageError(resp cmdResponse) bool {
@@ -1380,6 +1381,13 @@ func stopInstanceWithContext(ctx context.Context, t *testing.T, name string) err
 
 		if status != instanceStatusRunning {
 			t.Logf("Instance %q is in status %q, tolerating the error of stop attempt %d: %v", name, status, attempt+1, lastErr)
+
+			// The stop operation can still hold the instance lock after the
+			// status changed. Wait for the operation to finish.
+			err = waitInstanceStopped(ctx, t, name)
+			if err != nil {
+				return errors.Join(lastErr, err)
+			}
 
 			// Give the storage backend the chance to release the volume of the
 			// instance before it is activated again.
