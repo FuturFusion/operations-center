@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -188,122 +189,128 @@ func driveRebootToCompletion(t *testing.T, ctx context.Context, clusterSvc provi
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopSingleNodeCluster(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	clusterSvc, world, logBuf := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootCycleSingleNodeCluster", clusterMemberServer(t, "one"))
+		clusterSvc, world, logBuf := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootCycleSingleNodeCluster", clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.NoError(t, err)
 
-	c, err := clusterSvc.GetByName(ctx, "clusterA")
-	require.NoError(t, err)
-	require.Equal(t, api.ClusterUpdateInProgressRollingReboot, c.UpdateStatus.InProgressStatus.InProgress)
-	require.Equal(t, []string{"one"}, c.UpdateStatus.InProgressStatus.PendingReboot)
+		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		require.NoError(t, err)
+		require.Equal(t, api.ClusterUpdateInProgressRollingReboot, c.UpdateStatus.InProgressStatus.InProgress)
+		require.Equal(t, []string{"one"}, c.UpdateStatus.InProgressStatus.PendingReboot)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100)
+		observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100)
 
-	requireProgressOnlyMovesForward(t, observed)
+		requireProgressOnlyMovesForward(t, observed)
 
-	require.Equal(t, []string{
-		`[1/7] evacuation pending server "one"`,
-		`[2/7] evacuating server "one"`,
-		`[3/7] in maintenance, reboot pending server "one"`,
-		`[4/7] in maintenance, rebooting server "one"`,
-		`[5/7] in maintenance, restore pending server "one"`,
-		`[6/7] restoring server "one"`,
-		`[7/7] post restore server "one"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		require.Equal(t, []string{
+			`[1/7] evacuation pending server "one"`,
+			`[2/7] evacuating server "one"`,
+			`[3/7] in maintenance, reboot pending server "one"`,
+			`[4/7] in maintenance, rebooting server "one"`,
+			`[5/7] in maintenance, restore pending server "one"`,
+			`[6/7] restoring server "one"`,
+			`[7/7] post restore server "one"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
+	})
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopMultiNodeCluster(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*100)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*100)
+		defer cancel()
 
-	clusterSvc, world, logBuf := setupRebootOnlyCluster(
-		t, ctx, "ClusterRollingRebootCycleMultiNodeCluster",
-		clusterMemberServer(t, "serverA"),
-		clusterMemberServer(t, "serverB"),
-		clusterMemberServer(t, "serverC"),
-	)
+		clusterSvc, world, logBuf := setupRebootOnlyCluster(
+			t, ctx, "ClusterRollingRebootCycleMultiNodeCluster",
+			clusterMemberServer(t, "serverA"),
+			clusterMemberServer(t, "serverB"),
+			clusterMemberServer(t, "serverC"),
+		)
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.NoError(t, err)
 
-	c, err := clusterSvc.GetByName(ctx, "clusterA")
-	require.NoError(t, err)
-	require.Equal(t, []string{"serverA", "serverB", "serverC"}, c.UpdateStatus.InProgressStatus.PendingReboot)
+		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		require.NoError(t, err)
+		require.Equal(t, []string{"serverA", "serverB", "serverC"}, c.UpdateStatus.InProgressStatus.PendingReboot)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 200)
+		observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 200)
 
-	requireProgressOnlyMovesForward(t, observed)
+		requireProgressOnlyMovesForward(t, observed)
 
-	require.Equal(t, []string{
-		`[ 1/21] evacuation pending server "serverA"`,
-		`[ 2/21] evacuating server "serverA"`,
-		`[ 3/21] in maintenance, reboot pending server "serverA"`,
-		`[ 4/21] in maintenance, rebooting server "serverA"`,
-		`[ 5/21] in maintenance, restore pending server "serverA"`,
-		`[ 6/21] restoring server "serverA"`,
-		`[ 7/21] post restore server "serverA"`,
-		`[ 8/21] evacuation pending server "serverB"`,
-		`[ 9/21] evacuating server "serverB"`,
-		`[10/21] in maintenance, reboot pending server "serverB"`,
-		`[11/21] in maintenance, rebooting server "serverB"`,
-		`[12/21] in maintenance, restore pending server "serverB"`,
-		`[13/21] restoring server "serverB"`,
-		`[14/21] post restore server "serverB"`,
-		`[15/21] evacuation pending server "serverC"`,
-		`[16/21] evacuating server "serverC"`,
-		`[17/21] in maintenance, reboot pending server "serverC"`,
-		`[18/21] in maintenance, rebooting server "serverC"`,
-		`[19/21] in maintenance, restore pending server "serverC"`,
-		`[20/21] restoring server "serverC"`,
-		`[21/21] post restore server "serverC"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		require.Equal(t, []string{
+			`[ 1/21] evacuation pending server "serverA"`,
+			`[ 2/21] evacuating server "serverA"`,
+			`[ 3/21] in maintenance, reboot pending server "serverA"`,
+			`[ 4/21] in maintenance, rebooting server "serverA"`,
+			`[ 5/21] in maintenance, restore pending server "serverA"`,
+			`[ 6/21] restoring server "serverA"`,
+			`[ 7/21] post restore server "serverA"`,
+			`[ 8/21] evacuation pending server "serverB"`,
+			`[ 9/21] evacuating server "serverB"`,
+			`[10/21] in maintenance, reboot pending server "serverB"`,
+			`[11/21] in maintenance, rebooting server "serverB"`,
+			`[12/21] in maintenance, restore pending server "serverB"`,
+			`[13/21] restoring server "serverB"`,
+			`[14/21] post restore server "serverB"`,
+			`[15/21] evacuation pending server "serverC"`,
+			`[16/21] evacuating server "serverC"`,
+			`[17/21] in maintenance, reboot pending server "serverC"`,
+			`[18/21] in maintenance, rebooting server "serverC"`,
+			`[19/21] in maintenance, restore pending server "serverC"`,
+			`[20/21] restoring server "serverC"`,
+			`[21/21] post restore server "serverC"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
+	})
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopMarksServerRebooted(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	clusterSvc, world, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootCycleMarksServerRebooted", clusterMemberServer(t, "one"))
+		clusterSvc, world, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootCycleMarksServerRebooted", clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.NoError(t, err)
 
-	// Drive the loop until the reboot of the single server has been triggered.
-	rebooted := false
-	for range 100 {
+		// Drive the loop until the reboot of the single server has been triggered.
+		rebooted := false
+		for range 100 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
+			require.NoError(t, err)
+			require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+
+			if !slices.Contains(c.UpdateStatus.InProgressStatus.PendingReboot, "one") {
+				rebooted = true
+				break
+			}
+
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				world.release(ctx)
+			}
+
+			time.Sleep(controlLoopInterval)
+		}
+
+		require.True(t, rebooted, "server was not dropped from the pending reboot list")
+
 		c, err := clusterSvc.GetByName(ctx, "clusterA")
 		require.NoError(t, err)
-		require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
-
-		if !slices.Contains(c.UpdateStatus.InProgressStatus.PendingReboot, "one") {
-			rebooted = true
-			break
-		}
-
-		pending := world.pendingCount()
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) {
-			require.NoError(t, err)
-		}
-
-		if pending > 0 {
-			world.release(ctx)
-		}
-
-		time.Sleep(controlLoopInterval)
-	}
-
-	require.True(t, rebooted, "server was not dropped from the pending reboot list")
-
-	c, err := clusterSvc.GetByName(ctx, "clusterA")
-	require.NoError(t, err)
-	require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
-	require.Equal(t, api.ClusterUpdateInProgressRollingReboot, c.UpdateStatus.InProgressStatus.InProgress)
+		require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
+		require.Equal(t, api.ClusterUpdateInProgressRollingReboot, c.UpdateStatus.InProgressStatus.InProgress)
+	})
 }
 
 func TestClusterService_LaunchClusterRebootRejectsUnsuitableServers(t *testing.T) {
@@ -323,233 +330,243 @@ func TestClusterService_LaunchClusterRebootRejectsUnsuitableServers(t *testing.T
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-			defer cancel()
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+				defer cancel()
 
-			server := clusterMemberServer(t, "one")
-			tc.mutate(&server)
+				server := clusterMemberServer(t, "one")
+				tc.mutate(&server)
 
-			clusterSvc, _, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootReject"+tc.name, server)
+				clusterSvc, _, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootReject"+tc.name, server)
 
-			err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-			var verr domain.ErrValidation
-			require.ErrorAs(t, err, &verr)
-			require.ErrorContains(t, err, tc.wantErrIs)
+				err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+				var verr domain.ErrValidation
+				require.ErrorAs(t, err, &verr)
+				require.ErrorContains(t, err, tc.wantErrIs)
 
-			c, err := clusterSvc.GetByName(ctx, "clusterA")
-			require.NoError(t, err)
-			require.Equal(t, api.ClusterUpdateInProgressInactive, c.UpdateStatus.InProgressStatus.InProgress)
-			require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
+				c, err := clusterSvc.GetByName(ctx, "clusterA")
+				require.NoError(t, err)
+				require.Equal(t, api.ClusterUpdateInProgressInactive, c.UpdateStatus.InProgressStatus.InProgress)
+				require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
+			})
 		})
 	}
 }
 
 func TestClusterService_LaunchClusterRebootRejectsSecondRun(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	clusterSvc, _, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootRejectsSecondRun", clusterMemberServer(t, "one"))
+		clusterSvc, _, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootRejectsSecondRun", clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.NoError(t, err)
 
-	err = clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.ErrorIs(t, err, domain.ErrOperationNotPermitted)
+		err = clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.ErrorIs(t, err, domain.ErrOperationNotPermitted)
 
-	err = clusterSvc.AbortClusterOperation(ctx, "clusterA")
-	require.NoError(t, err)
+		err = clusterSvc.AbortClusterOperation(ctx, "clusterA")
+		require.NoError(t, err)
 
-	c, err := clusterSvc.GetByName(ctx, "clusterA")
-	require.NoError(t, err)
-	require.Equal(t, api.ClusterUpdateInProgressInactive, c.UpdateStatus.InProgressStatus.InProgress)
-	require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
+		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		require.NoError(t, err)
+		require.Equal(t, api.ClusterUpdateInProgressInactive, c.UpdateStatus.InProgressStatus.InProgress)
+		require.Empty(t, c.UpdateStatus.InProgressStatus.PendingReboot)
+	})
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopFailingRestore(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
+		defer cancel()
 
-	clusterSvc, world, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootFailingRestore", clusterMemberServer(t, "one"))
+		clusterSvc, world, _ := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootFailingRestore", clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
-
-	restoreAttempts := 0
-	terminal := ""
-	var observed []string
-
-	for range 300 {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
 		require.NoError(t, err)
 
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressError {
-			terminal = c.UpdateStatus.InProgressStatus.Error
-			break
-		}
+		restoreAttempts := 0
+		terminal := ""
+		var observed []string
 
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
-			break
-		}
-
-		description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
-		observed = append(observed, description)
-
-		pending := world.pendingCount()
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) && !errors.Is(err, domain.ErrTerminal) {
+		for range 300 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
 			require.NoError(t, err)
-		}
 
-		if pending > 0 {
-			if strings.Contains(description, "restoring") {
-				restoreAttempts++
-				world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
-			} else {
-				world.release(ctx)
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressError {
+				terminal = c.UpdateStatus.InProgressStatus.Error
+				break
 			}
+
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
+				break
+			}
+
+			description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
+			observed = append(observed, description)
+
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) && !errors.Is(err, domain.ErrTerminal) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				if strings.Contains(description, "restoring") {
+					restoreAttempts++
+					world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
+				} else {
+					world.release(ctx)
+				}
+			}
+
+			time.Sleep(controlLoopInterval)
 		}
 
-		time.Sleep(controlLoopInterval)
-	}
+		t.Logf("restore attempts: %d, observed: %v", restoreAttempts, dedupe(observed))
 
-	t.Logf("restore attempts: %d, observed: %v", restoreAttempts, dedupe(observed))
-
-	require.NotEmpty(t, terminal, "rolling reboot did not report a terminal error, observed: %v", dedupe(observed))
-	require.GreaterOrEqual(t, restoreAttempts, 2, "restore has not been retried")
+		require.NotEmpty(t, terminal, "rolling reboot did not report a terminal error, observed: %v", dedupe(observed))
+		require.GreaterOrEqual(t, restoreAttempts, 2, "restore has not been retried")
+	})
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopBacksOffBetweenRestoreAttempts(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
+		defer cancel()
 
-	const retryBackoff = 30 * time.Second
+		const retryBackoff = 30 * time.Second
 
-	clusterSvc, world, env := setupRebootOnlyClusterWithRetryBackoff(t, ctx, "ClusterRollingRebootBacksOffBetweenRestoreAttempts", retryBackoff, clusterMemberServer(t, "one"))
+		clusterSvc, world, env := setupRebootOnlyClusterWithRetryBackoff(t, ctx, "ClusterRollingRebootBacksOffBetweenRestoreAttempts", retryBackoff, clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
-
-	restoreAttempts := 0
-
-	// drive advances the rolling reboot by one iteration of the control loop and
-	// fails every restore, which the previous iteration has triggered.
-	drive := func() {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
 		require.NoError(t, err)
 
-		description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
-		pending := world.pendingCount()
+		restoreAttempts := 0
 
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) && !errors.Is(err, domain.ErrTerminal) {
+		// drive advances the rolling reboot by one iteration of the control loop and
+		// fails every restore, which the previous iteration has triggered.
+		drive := func() {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
 			require.NoError(t, err)
-		}
 
-		if pending > 0 {
-			if strings.Contains(description, "restoring") {
-				restoreAttempts++
-				world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
-			} else {
-				world.release(ctx)
+			description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) && !errors.Is(err, domain.ErrTerminal) {
+				require.NoError(t, err)
 			}
+
+			if pending > 0 {
+				if strings.Contains(description, "restoring") {
+					restoreAttempts++
+					world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
+				} else {
+					world.release(ctx)
+				}
+			}
+
+			time.Sleep(controlLoopInterval)
 		}
 
-		time.Sleep(controlLoopInterval)
-	}
+		// Drive the rolling reboot up to the first failed restore.
+		for range 300 {
+			if restoreAttempts > 0 {
+				break
+			}
 
-	// Drive the rolling reboot up to the first failed restore.
-	for range 300 {
-		if restoreAttempts > 0 {
-			break
+			drive()
 		}
 
-		drive()
-	}
+		require.Equal(t, 1, restoreAttempts, "the restore has not been attempted at all")
 
-	require.Equal(t, 1, restoreAttempts, "the restore has not been attempted at all")
-
-	// For as long as the backoff has not elapsed, the failed attempt is not
-	// retried, no matter how often the control loop picks the server up.
-	for range 50 {
-		drive()
-	}
-
-	require.Equal(t, 1, restoreAttempts, "the restore has been retried within the backoff")
-
-	// Past the backoff, the next attempt is granted.
-	env.clock.advance(retryBackoff + time.Second)
-
-	for range 300 {
-		if restoreAttempts > 1 {
-			break
+		// For as long as the backoff has not elapsed, the failed attempt is not
+		// retried, no matter how often the control loop picks the server up.
+		for range 50 {
+			drive()
 		}
 
-		drive()
-	}
+		require.Equal(t, 1, restoreAttempts, "the restore has been retried within the backoff")
 
-	require.Equal(t, 2, restoreAttempts, "the restore has not been retried after the backoff")
+		// Past the backoff, the next attempt is granted.
+		env.clock.advance(retryBackoff + time.Second)
+
+		for range 300 {
+			if restoreAttempts > 1 {
+				break
+			}
+
+			drive()
+		}
+
+		require.Equal(t, 2, restoreAttempts, "the restore has not been retried after the backoff")
+	})
 }
 
 func TestClusterService_ClusterRollingRebootControlLoopTransientRestoreFailure(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*200)
+		defer cancel()
 
-	clusterSvc, world, logBuf := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootTransientRestoreFailure", clusterMemberServer(t, "one"))
+		clusterSvc, world, logBuf := setupRebootOnlyCluster(t, ctx, "ClusterRollingRebootTransientRestoreFailure", clusterMemberServer(t, "one"))
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
-
-	restoreFailed := false
-	success := false
-	var observed []string
-
-	for range 300 {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
 		require.NoError(t, err)
-		require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
 
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
-			success = true
-			break
-		}
+		restoreFailed := false
+		success := false
+		var observed []string
 
-		description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
-		observed = append(observed, description)
-
-		pending := world.pendingCount()
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) {
+		for range 300 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
 			require.NoError(t, err)
-		}
+			require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
 
-		if pending > 0 {
-			if !restoreFailed && strings.Contains(description, "restoring") {
-				restoreFailed = true
-				world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
-			} else {
-				world.release(ctx)
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
+				success = true
+				break
 			}
+
+			description := ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription)
+			observed = append(observed, description)
+
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				if !restoreFailed && strings.Contains(description, "restoring") {
+					restoreFailed = true
+					world.releaseWithErr(ctx, versionDataRebootOnlyEvacuated, errors.New("restore failed"))
+				} else {
+					world.release(ctx)
+				}
+			}
+
+			time.Sleep(controlLoopInterval)
 		}
 
-		time.Sleep(controlLoopInterval)
-	}
+		require.True(t, restoreFailed, "restore did not fail, observed: %v", dedupe(observed))
+		require.True(t, success, "rolling reboot did not complete, observed: %v", dedupe(observed))
 
-	require.True(t, restoreFailed, "restore did not fail, observed: %v", dedupe(observed))
-	require.True(t, success, "rolling reboot did not complete, observed: %v", dedupe(observed))
+		requireProgressOnlyMovesForward(t, observed)
 
-	requireProgressOnlyMovesForward(t, observed)
-
-	require.Equal(t, []string{
-		`[1/7] evacuation pending server "one"`,
-		`[2/7] evacuating server "one"`,
-		`[3/7] in maintenance, reboot pending server "one"`,
-		`[4/7] in maintenance, rebooting server "one"`,
-		`[5/7] in maintenance, restore pending server "one"`,
-		`[6/7] restoring server "one"`,
-		`[5/7] in maintenance, restore pending server "one"`,
-		`[6/7] restoring server "one"`,
-		`[7/7] post restore server "one"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		require.Equal(t, []string{
+			`[1/7] evacuation pending server "one"`,
+			`[2/7] evacuating server "one"`,
+			`[3/7] in maintenance, reboot pending server "one"`,
+			`[4/7] in maintenance, rebooting server "one"`,
+			`[5/7] in maintenance, restore pending server "one"`,
+			`[6/7] restoring server "one"`,
+			`[5/7] in maintenance, restore pending server "one"`,
+			`[6/7] restoring server "one"`,
+			`[7/7] post restore server "one"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
+	})
 }

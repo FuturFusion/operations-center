@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -82,10 +83,9 @@ func clusterMemberServer(t *testing.T, name string) provisioning.Server {
 	}
 }
 
-// testClock is the clock of the services under test. It passes in real time, so
-// the millisecond scale delays, the tests configure, elapse on their own, and it
-// can additionally be jumped forward, so the deadlines of a rolling update, which
-// are compile time constants on the minute to hour scale, are reachable.
+// testClock is the clock of the services under test. It follows the fake time
+// of the synctest bubble. advance jumps it forward. This makes the rolling
+// update deadlines reachable. These deadlines are constants of minutes to hours.
 type testClock struct {
 	mu     sync.Mutex
 	offset time.Duration
@@ -107,6 +107,21 @@ func (c *testClock) advance(d time.Duration) {
 	defer c.mu.Unlock()
 
 	c.offset += d
+}
+
+// drainDelayedLifecycleSignals lets the delayed server lifecycle signals fire
+// before the test ends. The services emit them after a delay of 3 seconds.
+// Fake time stops when the test function returns. A signal that is still
+// waiting then makes synctest.Test fail with a deadlock. Call it before
+// anything else registers a cleanup, so its cleanup runs last, after the
+// listeners are removed. It panics outside a synctest bubble.
+func drainDelayedLifecycleSignals(t *testing.T) {
+	t.Helper()
+
+	// Wait panics outside a synctest bubble.
+	synctest.Wait()
+
+	t.Cleanup(func() { time.Sleep(time.Minute) })
 }
 
 // controlLoopEnv is everything of a control loop test, that outlives the
@@ -135,8 +150,12 @@ func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName str
 }
 
 // setupControlLoopEnv seeds the database of a control loop test.
+//
+// It panics outside a synctest bubble.
 func setupControlLoopEnv(t *testing.T, ctx context.Context, servers ...provisioning.Server) *controlLoopEnv {
 	t.Helper()
+
+	drainDelayedLifecycleSignals(t)
 
 	certPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)

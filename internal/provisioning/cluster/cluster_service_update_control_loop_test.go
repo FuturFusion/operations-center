@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -40,521 +41,529 @@ const (
 )
 
 func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) {
-	// Test data
-	certPEM, _, err := incustls.GenerateMemCert(false, false)
-	require.NoError(t, err)
+	synctest.Test(t, func(t *testing.T) {
+		drainDelayedLifecycleSignals(t)
 
-	fingerprint, err := incustls.CertFingerprintStr(string(certPEM))
-	require.NoError(t, err)
-
-	clusterA := provisioning.Cluster{
-		Name:          "clusterA",
-		ConnectionURL: "https://cluster-one/",
-		Certificate:   new(string(certPEM)),
-		Fingerprint:   fingerprint,
-		Status:        api.ClusterStatusReady,
-		ServerNames:   []string{"serverA"},
-		Channel:       "stable",
-		Config: api.ClusterConfig{
-			RollingRestart: api.ClusterConfigRollingRestart{
-				PostRestoreDelay: (2 * controlLoopInterval).String(),
-			},
-		},
-	}
-
-	serverA := provisioning.Server{
-		Name:          "one",
-		Cluster:       new("clusterA"),
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		Certificate:   new(string(certPEM)),
-		Fingerprint:   fingerprint,
-		HardwareData:  api.HardwareData{},
-		VersionData: api.ServerVersionData{
-			OS: api.OSVersionData{
-				Name:        "incusos",
-				Version:     "1",
-				VersionNext: "1",
-				NeedsReboot: true,
-			},
-			Applications: []api.ApplicationVersionData{
-				{
-					Name:          "incus",
-					Version:       "1",
-					InMaintenance: api.NotInMaintenance,
-				},
-			},
-			NeedsUpdate:   new(true),
-			InMaintenance: new(api.NotInMaintenance),
-			UpdateChannel: "stable",
-		},
-		Status:       api.ServerStatusReady,
-		StatusDetail: api.ServerStatusDetailNone,
-		Channel:      "stable",
-	}
-
-	world := newServerWorld(map[string]api.ServerVersionData{
-		"one": {
-			OS: api.OSVersionData{
-				Name:        "incusos",
-				Version:     "1",
-				VersionNext: "1",
-				NeedsReboot: false,
-			},
-			Applications: []api.ApplicationVersionData{
-				{
-					Name:          "incus",
-					Version:       "1",
-					InMaintenance: api.NotInMaintenance,
-				},
-			},
-			UpdateChannel: "stable",
-		},
-	})
-
-	// Setup
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
-
-	logBuf := &bytes.Buffer{}
-	var logSink io.Writer = logBuf
-	if testing.Verbose() {
-		logSink = io.MultiWriter(os.Stdout, logBuf)
-	}
-
-	err = logger.InitLogger(logSink, "", false, true, true)
-	require.NoError(t, err)
-
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
+		// Test data
+		certPEM, _, err := incustls.GenerateMemCert(false, false)
 		require.NoError(t, err)
-	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
-	require.NoError(t, err)
+		fingerprint, err := incustls.CertFingerprintStr(string(certPEM))
+		require.NoError(t, err)
 
-	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
-	require.NoError(t, err)
+		clusterA := provisioning.Cluster{
+			Name:          "clusterA",
+			ConnectionURL: "https://cluster-one/",
+			Certificate:   new(string(certPEM)),
+			Fingerprint:   fingerprint,
+			Status:        api.ClusterStatusReady,
+			ServerNames:   []string{"serverA"},
+			Channel:       "stable",
+			Config: api.ClusterConfig{
+				RollingRestart: api.ClusterConfigRollingRestart{
+					PostRestoreDelay: (2 * controlLoopInterval).String(),
+				},
+			},
+		}
 
-	clusterDB := sqlite.NewCluster(tx)
-	serverDB := sqlite.NewServer(tx)
-
-	_, err = clusterDB.Create(ctx, clusterA)
-	require.NoError(t, err)
-	_, err = serverDB.Create(ctx, serverA)
-	require.NoError(t, err)
-
-	channelSvc := &serviceMock.ChannelServiceMock{
-		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
-			return &provisioning.Channel{}, nil
-		},
-	}
-
-	updateSvc := &serviceMock.UpdateServiceMock{
-		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-			return provisioning.Updates{
-				{
-					ID:      2,
-					UUID:    uuidgen.FromPattern(t, "2"),
-					Version: "2",
-					Files: provisioning.UpdateFiles{
-						{
-							Filename: "x86_64/IncusOS_20260610.img.gz",
-						},
-						{
-							Filename: "x86_64/incus.raw.gz",
-						},
+		serverA := provisioning.Server{
+			Name:          "one",
+			Cluster:       new("clusterA"),
+			Type:          api.ServerTypeIncus,
+			ConnectionURL: "https://one/",
+			Certificate:   new(string(certPEM)),
+			Fingerprint:   fingerprint,
+			HardwareData:  api.HardwareData{},
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "1",
+					VersionNext: "1",
+					NeedsReboot: true,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          "incus",
+						Version:       "1",
+						InMaintenance: api.NotInMaintenance,
 					},
 				},
-			}, nil
-		},
-	}
-
-	serverClient := rollingUpdateServerClient(world)
-
-	serverSvc := provisioningServer.New(
-		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
-		provisioningServer.WithRebootStatusUpdateGracePeriod(0),
-	)
-
-	clusterSvc := provisioningCluster.New(
-		clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
-		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
-		provisioningCluster.WithWarningEmitter(provisioning.LogWarningService{}),
-	)
-
-	serverSvc.SetClusterService(clusterSvc)
-
-	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
-	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
-		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+				NeedsUpdate:   new(true),
+				InMaintenance: new(api.NotInMaintenance),
+				UpdateChannel: "stable",
+			},
+			Status:       api.ServerStatusReady,
+			StatusDetail: api.ServerStatusDetailNone,
+			Channel:      "stable",
 		}
 
-		return err
-	}, "ClusterUpdateCycleSingleNodeCluster")
-	t.Cleanup(func() {
-		lifecycle.ServerLifecycleSignal.RemoveListener("ClusterUpdateCycleSingleNodeCluster")
-	})
+		world := newServerWorld(map[string]api.ServerVersionData{
+			"one": {
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "1",
+					VersionNext: "1",
+					NeedsReboot: false,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          "incus",
+						Version:       "1",
+						InMaintenance: api.NotInMaintenance,
+					},
+				},
+				UpdateChannel: "stable",
+			},
+		})
 
-	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
-	require.NoError(t, err)
+		// Setup
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	var observed []string
+		logBuf := &bytes.Buffer{}
+		var logSink io.Writer = logBuf
+		if testing.Verbose() {
+			logSink = io.MultiWriter(os.Stdout, logBuf)
+		}
 
-	success := false
-	for range 100 {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		err = logger.InitLogger(logSink, "", false, true, true)
 		require.NoError(t, err)
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
-			success = true
-			break
-		}
 
-		require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+		tmpDir := t.TempDir()
+		db, err := dbdriver.Open(tmpDir)
+		require.NoError(t, err)
 
-		// Observe the progress the same way a user does.
-		observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
-
-		// A server completes an action, which has been triggered on it, asynchronously.
-		// Let it complete only if it was already running before this iteration, so that
-		// the state, the action leads to, is reported at least once.
-		pending := world.pendingCount()
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) {
+		t.Cleanup(func() {
+			err = db.Close()
 			require.NoError(t, err)
+		})
+
+		_, err = dbschema.Ensure(ctx, db, tmpDir)
+		require.NoError(t, err)
+
+		tx := transaction.Enable(db)
+		entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+		require.NoError(t, err)
+
+		clusterDB := sqlite.NewCluster(tx)
+		serverDB := sqlite.NewServer(tx)
+
+		_, err = clusterDB.Create(ctx, clusterA)
+		require.NoError(t, err)
+		_, err = serverDB.Create(ctx, serverA)
+		require.NoError(t, err)
+
+		channelSvc := &serviceMock.ChannelServiceMock{
+			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+				return &provisioning.Channel{}, nil
+			},
 		}
 
-		if pending > 0 {
-			world.release(ctx)
+		updateSvc := &serviceMock.UpdateServiceMock{
+			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+				return provisioning.Updates{
+					{
+						ID:      2,
+						UUID:    uuidgen.FromPattern(t, "2"),
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Filename: "x86_64/IncusOS_20260610.img.gz",
+							},
+							{
+								Filename: "x86_64/incus.raw.gz",
+							},
+						},
+					},
+				}, nil
+			},
 		}
 
-		time.Sleep(controlLoopInterval)
-	}
+		serverClient := rollingUpdateServerClient(world)
 
-	require.True(t, success)
+		serverSvc := provisioningServer.New(
+			serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+			provisioningServer.WithRebootStatusUpdateGracePeriod(0),
+		)
 
-	requireProgressOnlyMovesForward(t, observed)
+		clusterSvc := provisioningCluster.New(
+			clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
+			provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
+			provisioningCluster.WithWarningEmitter(provisioning.LogWarningService{}),
+		)
 
-	require.Equal(t, []string{
-		`[1/9] update pending server "one"`,
-		`[2/9] updating server "one"`,
-		`[3/9] evacuation pending server "one"`,
-		`[4/9] evacuating server "one"`,
-		`[5/9] in maintenance, reboot pending server "one"`,
-		`[6/9] in maintenance, rebooting server "one"`,
-		`[7/9] in maintenance, restore pending server "one"`,
-		`[8/9] restoring server "one"`,
-		`[9/9] post restore server "one"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		serverSvc.SetClusterService(clusterSvc)
+
+		// Trigger ClusterUpdateControlLoop also from server lifecycle events.
+		lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
+			err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+			}
+
+			return err
+		}, "ClusterUpdateCycleSingleNodeCluster")
+		t.Cleanup(func() {
+			lifecycle.ServerLifecycleSignal.RemoveListener("ClusterUpdateCycleSingleNodeCluster")
+		})
+
+		// Run test
+		err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
+		require.NoError(t, err)
+
+		var observed []string
+
+		success := false
+		for range 100 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
+			require.NoError(t, err)
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
+				success = true
+				break
+			}
+
+			require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+
+			// Observe the progress the same way a user does.
+			observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
+
+			// A server completes an action, which has been triggered on it, asynchronously.
+			// Let it complete only if it was already running before this iteration, so that
+			// the state, the action leads to, is reported at least once.
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				world.release(ctx)
+			}
+
+			time.Sleep(controlLoopInterval)
+		}
+
+		require.True(t, success)
+
+		requireProgressOnlyMovesForward(t, observed)
+
+		require.Equal(t, []string{
+			`[1/9] update pending server "one"`,
+			`[2/9] updating server "one"`,
+			`[3/9] evacuation pending server "one"`,
+			`[4/9] evacuating server "one"`,
+			`[5/9] in maintenance, reboot pending server "one"`,
+			`[6/9] in maintenance, rebooting server "one"`,
+			`[7/9] in maintenance, restore pending server "one"`,
+			`[8/9] restoring server "one"`,
+			`[9/9] post restore server "one"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
+	})
 }
 
 func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
-	// Test data
-	certPEMA, _, err := incustls.GenerateMemCert(false, false)
-	require.NoError(t, err)
+	synctest.Test(t, func(t *testing.T) {
+		drainDelayedLifecycleSignals(t)
 
-	certPEMB, _, err := incustls.GenerateMemCert(false, false)
-	require.NoError(t, err)
-
-	certPEMC, _, err := incustls.GenerateMemCert(false, false)
-	require.NoError(t, err)
-
-	fingerprintA, err := incustls.CertFingerprintStr(string(certPEMA))
-	require.NoError(t, err)
-
-	fingerprintB, err := incustls.CertFingerprintStr(string(certPEMB))
-	require.NoError(t, err)
-
-	fingerprintC, err := incustls.CertFingerprintStr(string(certPEMC))
-	require.NoError(t, err)
-
-	clusterA := provisioning.Cluster{
-		Name:          "clusterA",
-		ConnectionURL: "https://cluster-one/",
-		Certificate:   new(string(certPEMA)),
-		Fingerprint:   fingerprintA,
-		Status:        api.ClusterStatusReady,
-		ServerNames:   []string{"serverA", "serverB", "serverC"},
-		Channel:       "stable",
-		Config: api.ClusterConfig{
-			RollingRestart: api.ClusterConfigRollingRestart{
-				PostRestoreDelay: (2 * controlLoopInterval).String(),
-			},
-		},
-	}
-
-	serverA := provisioning.Server{
-		Name:          "serverA",
-		Cluster:       new("clusterA"),
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://serverA/",
-		Certificate:   new(string(certPEMA)),
-		Fingerprint:   fingerprintA,
-		HardwareData:  api.HardwareData{},
-		VersionData: api.ServerVersionData{
-			OS: api.OSVersionData{
-				Name:        "incusos",
-				Version:     "1",
-				VersionNext: "1",
-				NeedsReboot: true,
-			},
-			Applications: []api.ApplicationVersionData{
-				{
-					Name:          "incus",
-					Version:       "1",
-					InMaintenance: api.NotInMaintenance,
-				},
-			},
-			NeedsUpdate:   new(true),
-			InMaintenance: new(api.NotInMaintenance),
-			UpdateChannel: "stable",
-		},
-		Status:       api.ServerStatusReady,
-		StatusDetail: api.ServerStatusDetailNone,
-		Channel:      "stable",
-	}
-
-	serverB := provisioning.Server{
-		Name:          "serverB",
-		Cluster:       new("clusterA"),
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://serverB/",
-		Certificate:   new(string(certPEMB)),
-		Fingerprint:   fingerprintB,
-		HardwareData:  api.HardwareData{},
-		VersionData: api.ServerVersionData{
-			OS: api.OSVersionData{
-				Name:        "incusos",
-				Version:     "1",
-				VersionNext: "1",
-				NeedsReboot: true,
-			},
-			Applications: []api.ApplicationVersionData{
-				{
-					Name:          "incus",
-					Version:       "1",
-					InMaintenance: api.NotInMaintenance,
-				},
-			},
-			NeedsUpdate:   new(true),
-			InMaintenance: new(api.NotInMaintenance),
-			UpdateChannel: "stable",
-		},
-		Status:       api.ServerStatusReady,
-		StatusDetail: api.ServerStatusDetailNone,
-		Channel:      "stable",
-	}
-
-	serverC := provisioning.Server{
-		Name:          "serverC",
-		Cluster:       new("clusterA"),
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://serverC/",
-		Certificate:   new(string(certPEMC)),
-		Fingerprint:   fingerprintC,
-		HardwareData:  api.HardwareData{},
-		VersionData: api.ServerVersionData{
-			OS: api.OSVersionData{
-				Name:        "incusos",
-				Version:     "1",
-				VersionNext: "1",
-				NeedsReboot: true,
-			},
-			Applications: []api.ApplicationVersionData{
-				{
-					Name:          "incus",
-					Version:       "1",
-					InMaintenance: api.NotInMaintenance,
-				},
-			},
-			NeedsUpdate:   new(true),
-			InMaintenance: new(api.NotInMaintenance),
-			UpdateChannel: "stable",
-		},
-		Status:       api.ServerStatusReady,
-		StatusDetail: api.ServerStatusDetailNone,
-		Channel:      "stable",
-	}
-
-	world := newServerWorld(map[string]api.ServerVersionData{
-		"serverA": versionDataInitial,
-		"serverB": versionDataInitial,
-		"serverC": versionDataInitial,
-	})
-
-	// Setup
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*75)
-	defer cancel()
-
-	logBuf := &bytes.Buffer{}
-	var logSink io.Writer = logBuf
-	if testing.Verbose() {
-		logSink = io.MultiWriter(os.Stdout, logBuf)
-	}
-
-	err = logger.InitLogger(logSink, "", false, true, true)
-	require.NoError(t, err)
-
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
+		// Test data
+		certPEMA, _, err := incustls.GenerateMemCert(false, false)
 		require.NoError(t, err)
-	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
-	require.NoError(t, err)
+		certPEMB, _, err := incustls.GenerateMemCert(false, false)
+		require.NoError(t, err)
 
-	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
-	require.NoError(t, err)
+		certPEMC, _, err := incustls.GenerateMemCert(false, false)
+		require.NoError(t, err)
 
-	clusterDB := sqlite.NewCluster(tx)
-	serverDB := sqlite.NewServer(tx)
+		fingerprintA, err := incustls.CertFingerprintStr(string(certPEMA))
+		require.NoError(t, err)
 
-	_, err = clusterDB.Create(ctx, clusterA)
-	require.NoError(t, err)
-	_, err = serverDB.Create(ctx, serverA)
-	require.NoError(t, err)
-	_, err = serverDB.Create(ctx, serverB)
-	require.NoError(t, err)
-	_, err = serverDB.Create(ctx, serverC)
-	require.NoError(t, err)
+		fingerprintB, err := incustls.CertFingerprintStr(string(certPEMB))
+		require.NoError(t, err)
 
-	channelSvc := &serviceMock.ChannelServiceMock{
-		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
-			return &provisioning.Channel{}, nil
-		},
-	}
+		fingerprintC, err := incustls.CertFingerprintStr(string(certPEMC))
+		require.NoError(t, err)
 
-	updateSvc := &serviceMock.UpdateServiceMock{
-		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-			return provisioning.Updates{
-				{
-					ID:      2,
-					UUID:    uuidgen.FromPattern(t, "2"),
-					Version: "2",
-					Files: provisioning.UpdateFiles{
-						{
-							Filename: "x86_64/IncusOS_20260610.img.gz",
-						},
-						{
-							Filename: "x86_64/incus.raw.gz",
-						},
+		clusterA := provisioning.Cluster{
+			Name:          "clusterA",
+			ConnectionURL: "https://cluster-one/",
+			Certificate:   new(string(certPEMA)),
+			Fingerprint:   fingerprintA,
+			Status:        api.ClusterStatusReady,
+			ServerNames:   []string{"serverA", "serverB", "serverC"},
+			Channel:       "stable",
+			Config: api.ClusterConfig{
+				RollingRestart: api.ClusterConfigRollingRestart{
+					PostRestoreDelay: (2 * controlLoopInterval).String(),
+				},
+			},
+		}
+
+		serverA := provisioning.Server{
+			Name:          "serverA",
+			Cluster:       new("clusterA"),
+			Type:          api.ServerTypeIncus,
+			ConnectionURL: "https://serverA/",
+			Certificate:   new(string(certPEMA)),
+			Fingerprint:   fingerprintA,
+			HardwareData:  api.HardwareData{},
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "1",
+					VersionNext: "1",
+					NeedsReboot: true,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          "incus",
+						Version:       "1",
+						InMaintenance: api.NotInMaintenance,
 					},
 				},
-			}, nil
-		},
-	}
-
-	serverClient := rollingUpdateServerClient(world)
-
-	serverSvc := provisioningServer.New(
-		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
-		provisioningServer.WithRebootStatusUpdateGracePeriod(0),
-	)
-
-	clusterSvc := provisioningCluster.New(
-		clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
-		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
-	)
-
-	serverSvc.SetClusterService(clusterSvc)
-
-	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
-	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
-		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+				NeedsUpdate:   new(true),
+				InMaintenance: new(api.NotInMaintenance),
+				UpdateChannel: "stable",
+			},
+			Status:       api.ServerStatusReady,
+			StatusDetail: api.ServerStatusDetailNone,
+			Channel:      "stable",
 		}
 
-		return err
-	}, "ClusterUpdateCycleMultiNodeCluster")
-	t.Cleanup(func() {
-		lifecycle.ServerLifecycleSignal.RemoveListener("ClusterUpdateCycleMultiNodeCluster")
-	})
+		serverB := provisioning.Server{
+			Name:          "serverB",
+			Cluster:       new("clusterA"),
+			Type:          api.ServerTypeIncus,
+			ConnectionURL: "https://serverB/",
+			Certificate:   new(string(certPEMB)),
+			Fingerprint:   fingerprintB,
+			HardwareData:  api.HardwareData{},
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "1",
+					VersionNext: "1",
+					NeedsReboot: true,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          "incus",
+						Version:       "1",
+						InMaintenance: api.NotInMaintenance,
+					},
+				},
+				NeedsUpdate:   new(true),
+				InMaintenance: new(api.NotInMaintenance),
+				UpdateChannel: "stable",
+			},
+			Status:       api.ServerStatusReady,
+			StatusDetail: api.ServerStatusDetailNone,
+			Channel:      "stable",
+		}
 
-	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
-	require.NoError(t, err)
+		serverC := provisioning.Server{
+			Name:          "serverC",
+			Cluster:       new("clusterA"),
+			Type:          api.ServerTypeIncus,
+			ConnectionURL: "https://serverC/",
+			Certificate:   new(string(certPEMC)),
+			Fingerprint:   fingerprintC,
+			HardwareData:  api.HardwareData{},
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "1",
+					VersionNext: "1",
+					NeedsReboot: true,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          "incus",
+						Version:       "1",
+						InMaintenance: api.NotInMaintenance,
+					},
+				},
+				NeedsUpdate:   new(true),
+				InMaintenance: new(api.NotInMaintenance),
+				UpdateChannel: "stable",
+			},
+			Status:       api.ServerStatusReady,
+			StatusDetail: api.ServerStatusDetailNone,
+			Channel:      "stable",
+		}
 
-	var observed []string
+		world := newServerWorld(map[string]api.ServerVersionData{
+			"serverA": versionDataInitial,
+			"serverB": versionDataInitial,
+			"serverC": versionDataInitial,
+		})
 
-	success := false
-	for range 200 {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		// Setup
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*75)
+		defer cancel()
+
+		logBuf := &bytes.Buffer{}
+		var logSink io.Writer = logBuf
+		if testing.Verbose() {
+			logSink = io.MultiWriter(os.Stdout, logBuf)
+		}
+
+		err = logger.InitLogger(logSink, "", false, true, true)
 		require.NoError(t, err)
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
-			success = true
-			break
-		}
 
-		require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+		tmpDir := t.TempDir()
+		db, err := dbdriver.Open(tmpDir)
+		require.NoError(t, err)
 
-		// Observe the progress the same way a user does.
-		observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
-
-		// A server completes an action, which has been triggered on it, asynchronously.
-		// Let it complete only if it was already running before this iteration, so that
-		// the state, the action leads to, is reported at least once.
-		pending := world.pendingCount()
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) {
+		t.Cleanup(func() {
+			err = db.Close()
 			require.NoError(t, err)
+		})
+
+		_, err = dbschema.Ensure(ctx, db, tmpDir)
+		require.NoError(t, err)
+
+		tx := transaction.Enable(db)
+		entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+		require.NoError(t, err)
+
+		clusterDB := sqlite.NewCluster(tx)
+		serverDB := sqlite.NewServer(tx)
+
+		_, err = clusterDB.Create(ctx, clusterA)
+		require.NoError(t, err)
+		_, err = serverDB.Create(ctx, serverA)
+		require.NoError(t, err)
+		_, err = serverDB.Create(ctx, serverB)
+		require.NoError(t, err)
+		_, err = serverDB.Create(ctx, serverC)
+		require.NoError(t, err)
+
+		channelSvc := &serviceMock.ChannelServiceMock{
+			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+				return &provisioning.Channel{}, nil
+			},
 		}
 
-		if pending > 0 {
-			world.release(ctx)
+		updateSvc := &serviceMock.UpdateServiceMock{
+			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+				return provisioning.Updates{
+					{
+						ID:      2,
+						UUID:    uuidgen.FromPattern(t, "2"),
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Filename: "x86_64/IncusOS_20260610.img.gz",
+							},
+							{
+								Filename: "x86_64/incus.raw.gz",
+							},
+						},
+					},
+				}, nil
+			},
 		}
 
-		time.Sleep(controlLoopInterval)
-	}
+		serverClient := rollingUpdateServerClient(world)
 
-	require.True(t, success)
+		serverSvc := provisioningServer.New(
+			serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+			provisioningServer.WithRebootStatusUpdateGracePeriod(0),
+		)
 
-	requireProgressOnlyMovesForward(t, observed)
+		clusterSvc := provisioningCluster.New(
+			clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
+			provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
+		)
 
-	require.Equal(t, []string{
-		`[ 1/27] update pending server "serverA"`,
-		`[ 2/27] updating server "serverA"`,
-		`[ 3/27] update pending server "serverB"`,
-		`[ 4/27] updating server "serverB"`,
-		`[ 5/27] update pending server "serverC"`,
-		`[ 6/27] updating server "serverC"`,
-		`[ 7/27] evacuation pending server "serverA"`,
-		`[ 8/27] evacuating server "serverA"`,
-		`[ 9/27] in maintenance, reboot pending server "serverA"`,
-		`[10/27] in maintenance, rebooting server "serverA"`,
-		`[11/27] in maintenance, restore pending server "serverA"`,
-		`[12/27] restoring server "serverA"`,
-		`[13/27] post restore server "serverA"`,
-		`[14/27] evacuation pending server "serverB"`,
-		`[15/27] evacuating server "serverB"`,
-		`[16/27] in maintenance, reboot pending server "serverB"`,
-		`[17/27] in maintenance, rebooting server "serverB"`,
-		`[18/27] in maintenance, restore pending server "serverB"`,
-		`[19/27] restoring server "serverB"`,
-		`[20/27] post restore server "serverB"`,
-		`[21/27] evacuation pending server "serverC"`,
-		`[22/27] evacuating server "serverC"`,
-		`[23/27] in maintenance, reboot pending server "serverC"`,
-		`[24/27] in maintenance, rebooting server "serverC"`,
-		`[25/27] in maintenance, restore pending server "serverC"`,
-		`[26/27] restoring server "serverC"`,
-		`[27/27] post restore server "serverC"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		serverSvc.SetClusterService(clusterSvc)
+
+		// Trigger ClusterUpdateControlLoop also from server lifecycle events.
+		lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
+			err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+			}
+
+			return err
+		}, "ClusterUpdateCycleMultiNodeCluster")
+		t.Cleanup(func() {
+			lifecycle.ServerLifecycleSignal.RemoveListener("ClusterUpdateCycleMultiNodeCluster")
+		})
+
+		// Run test
+		err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
+		require.NoError(t, err)
+
+		var observed []string
+
+		success := false
+		for range 200 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
+			require.NoError(t, err)
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
+				success = true
+				break
+			}
+
+			require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+
+			// Observe the progress the same way a user does.
+			observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
+
+			// A server completes an action, which has been triggered on it, asynchronously.
+			// Let it complete only if it was already running before this iteration, so that
+			// the state, the action leads to, is reported at least once.
+			pending := world.pendingCount()
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				world.release(ctx)
+			}
+
+			time.Sleep(controlLoopInterval)
+		}
+
+		require.True(t, success)
+
+		requireProgressOnlyMovesForward(t, observed)
+
+		require.Equal(t, []string{
+			`[ 1/27] update pending server "serverA"`,
+			`[ 2/27] updating server "serverA"`,
+			`[ 3/27] update pending server "serverB"`,
+			`[ 4/27] updating server "serverB"`,
+			`[ 5/27] update pending server "serverC"`,
+			`[ 6/27] updating server "serverC"`,
+			`[ 7/27] evacuation pending server "serverA"`,
+			`[ 8/27] evacuating server "serverA"`,
+			`[ 9/27] in maintenance, reboot pending server "serverA"`,
+			`[10/27] in maintenance, rebooting server "serverA"`,
+			`[11/27] in maintenance, restore pending server "serverA"`,
+			`[12/27] restoring server "serverA"`,
+			`[13/27] post restore server "serverA"`,
+			`[14/27] evacuation pending server "serverB"`,
+			`[15/27] evacuating server "serverB"`,
+			`[16/27] in maintenance, reboot pending server "serverB"`,
+			`[17/27] in maintenance, rebooting server "serverB"`,
+			`[18/27] in maintenance, restore pending server "serverB"`,
+			`[19/27] restoring server "serverB"`,
+			`[20/27] post restore server "serverB"`,
+			`[21/27] evacuation pending server "serverC"`,
+			`[22/27] evacuating server "serverC"`,
+			`[23/27] in maintenance, reboot pending server "serverC"`,
+			`[24/27] in maintenance, rebooting server "serverC"`,
+			`[25/27] in maintenance, restore pending server "serverC"`,
+			`[26/27] restoring server "serverC"`,
+			`[27/27] post restore server "serverC"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
+	})
 }
 
 func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
@@ -1462,59 +1471,61 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 }
 
 func TestClusterService_ClusterUpdateControlLoopApplicationsOnlyAcrossRestart(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*100)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*100)
+		defer cancel()
 
-	server := clusterMemberServer(t, "one")
+		server := clusterMemberServer(t, "one")
 
-	// The OS is named after its update file, so it is reported as outdated as well.
-	versionDataOutdated := versionData("1", "1", false, "1", api.NotInMaintenance)
-	versionDataOutdated.OS.Name = "IncusOS"
-	versionDataApplicationUpdated := versionData("1", "1", false, "2", api.NotInMaintenance)
-	versionDataApplicationUpdated.OS.Name = "IncusOS"
+		// The OS is named after its update file, so it is reported as outdated as well.
+		versionDataOutdated := versionData("1", "1", false, "1", api.NotInMaintenance)
+		versionDataOutdated.OS.Name = "IncusOS"
+		versionDataApplicationUpdated := versionData("1", "1", false, "2", api.NotInMaintenance)
+		versionDataApplicationUpdated.OS.Name = "IncusOS"
 
-	world := newServerWorld(map[string]api.ServerVersionData{
-		"one": versionDataOutdated,
-	})
-
-	serverClient := rollingUpdateServerClient(world)
-	serverClient.UpdateApplicationFunc = func(ctx context.Context, server provisioning.Server, application string) error {
-		world.deferTransition(serverWorldTransition{
-			server:      server.Name,
-			versionData: versionDataApplicationUpdated,
+		world := newServerWorld(map[string]api.ServerVersionData{
+			"one": versionDataOutdated,
 		})
 
-		return nil
-	}
+		serverClient := rollingUpdateServerClient(world)
+		serverClient.UpdateApplicationFunc = func(ctx context.Context, server provisioning.Server, application string) error {
+			world.deferTransition(serverWorldTransition{
+				server:      server.Name,
+				versionData: versionDataApplicationUpdated,
+			})
 
-	env := setupControlLoopEnv(t, ctx, server)
-	clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
-
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Applications: []string{"incus"}})
-	require.NoError(t, err)
-
-	restarted := false
-
-	success := driveRollingUpdate(t, ctx, clusterSvc, world, func(i int) bool {
-		if restarted || world.pendingCount() == 0 {
-			return false
+			return nil
 		}
 
-		// The scope of the run has to survive the restart, it is only kept in the database.
-		clusterSvc, _ = newControlLoopServices(t, env, t.Name()+"Restarted", serverClient, "2")
-		restarted = true
+		env := setupControlLoopEnv(t, ctx, server)
+		clusterSvc, _ := newControlLoopServices(t, env, t.Name(), serverClient, "2")
 
-		return false
+		err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Applications: []string{"incus"}})
+		require.NoError(t, err)
+
+		restarted := false
+
+		success := driveRollingUpdate(t, ctx, clusterSvc, world, func(i int) bool {
+			if restarted || world.pendingCount() == 0 {
+				return false
+			}
+
+			// The scope of the run has to survive the restart, it is only kept in the database.
+			clusterSvc, _ = newControlLoopServices(t, env, t.Name()+"Restarted", serverClient, "2")
+			restarted = true
+
+			return false
+		})
+
+		require.True(t, restarted, "the application update was never triggered")
+		require.True(t, success, "the rolling update did not complete")
+
+		require.Empty(t, serverClient.UpdateOSCalls())
+		require.Len(t, serverClient.UpdateApplicationCalls(), 1)
+
+		cluster, err := clusterSvc.GetByName(ctx, "clusterA")
+		require.NoError(t, err)
+		require.Empty(t, cluster.UpdateStatus.InProgressStatus.Applications)
+		require.Contains(t, cluster.UpdateStatus.NeedsUpdate, "one")
 	})
-
-	require.True(t, restarted, "the application update was never triggered")
-	require.True(t, success, "the rolling update did not complete")
-
-	require.Empty(t, serverClient.UpdateOSCalls())
-	require.Len(t, serverClient.UpdateApplicationCalls(), 1)
-
-	cluster, err := clusterSvc.GetByName(ctx, "clusterA")
-	require.NoError(t, err)
-	require.Empty(t, cluster.UpdateStatus.InProgressStatus.Applications)
-	require.Contains(t, cluster.UpdateStatus.NeedsUpdate, "one")
 }
