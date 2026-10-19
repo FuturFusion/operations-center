@@ -136,13 +136,10 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 
 // updateCluster updates the cluster configuration and waits for the operation.
 //
-// Explicitly reuse the events websocket connection to avoid attempting new
-// connections (with op.WaitContext) with the server certificate after the
-// server has switched to the cluster cert, without depending on internal
-// connection reuse.
-//
-// The server switches to the cluster certificate meanwhile, failing new pinned
-// connections, so the operation is followed on the events websocket opened upfront.
+// The server switches to the cluster certificate while the operation runs.
+// New connections then fail the verification against the pinned server
+// certificate. Therefore follow the operation on the events websocket, which
+// is opened before the update.
 func updateCluster(ctx context.Context, client incus.InstanceServer, req incusapi.ClusterPut) (incusapi.Operation, error) {
 	// Closes the events websocket, including the listener of the operation.
 	defer client.Disconnect()
