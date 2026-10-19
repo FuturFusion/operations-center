@@ -737,7 +737,7 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					return err
 				}
 
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device remove %s boot-media`, name))
+				err = retryStorageCmdWithContext(errgrpctx, t, fmt.Sprintf("remove boot media of instance %q", name), `incus config device remove %s boot-media`, name)
 				if err != nil {
 					return err
 				}

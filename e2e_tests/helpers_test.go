@@ -98,6 +98,12 @@ func Test_isTransientStorageError(t *testing.T) {
 			want: true,
 		},
 		{
+			name:   "instance is busy running a stop operation",
+			output: "Error: Failed to create instance update operation: Instance is busy running a \"stop\" operation\n",
+
+			want: true,
+		},
+		{
 			name:   "instance not found",
 			output: "Error: Instance not found\n",
 
