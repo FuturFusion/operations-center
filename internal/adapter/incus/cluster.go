@@ -165,7 +165,12 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 
 		case event, ok := <-events:
 			if !ok {
-				return incusapi.Operation{}, fmt.Errorf("Lost connection to the event listener while waiting for operation %q: %w", opID, listener.Wait())
+				err = listener.Wait()
+				if err == nil {
+					err = errors.New("Event listener was disconnected")
+				}
+
+				return incusapi.Operation{}, fmt.Errorf("Lost connection to the event listener while waiting for operation %q: %w", opID, err)
 			}
 
 			opAPI := incusapi.Operation{}
