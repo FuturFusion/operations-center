@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/uuid"
@@ -2674,130 +2675,140 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 	}
 
 	t.Run("attach reports everything needed to prepare the image", func(t *testing.T) {
-		serverSvc, messages, resyncDone, _ := setup(t)
+		synctest.Test(t, func(t *testing.T) {
+			serverSvc, messages, resyncDone, _ := setup(t)
 
-		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
-			TokenUUID:      tokenUUID,
-			Seed:           "default",
-			Type:           "iso",
-			Architecture:   "x86_64",
-			Channel:        "stable",
-			VirtualMediaID: "system:1",
+			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				Channel:        "stable",
+				VirtualMediaID: "system:1",
+			})
+			require.NoError(t, err)
+
+			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+				Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+				Server:         "one",
+				VirtualMediaID: "system:1",
+				TokenUUID:      uuid.MustParse(tokenUUID),
+				Seed:           "default",
+				ImageType:      api.ImageTypeISO,
+				Architecture:   images.UpdateFileArchitecture64BitX86,
+				Channel:        "stable",
+			}, awaitMessage(t, messages))
+
+			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+				Operation:      lifecycle.BMCVirtualMediaOperationAttach,
+				Server:         "one",
+				VirtualMediaID: "system:1",
+				TokenUUID:      uuid.MustParse(tokenUUID),
+				Seed:           "default",
+				ImageType:      api.ImageTypeISO,
+				Architecture:   images.UpdateFileArchitecture64BitX86,
+				Channel:        "stable",
+			}, awaitMessage(t, messages))
+
+			awaitResync(t, resyncDone)
 		})
-		require.NoError(t, err)
-
-		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-			Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
-			Server:         "one",
-			VirtualMediaID: "system:1",
-			TokenUUID:      uuid.MustParse(tokenUUID),
-			Seed:           "default",
-			ImageType:      api.ImageTypeISO,
-			Architecture:   images.UpdateFileArchitecture64BitX86,
-			Channel:        "stable",
-		}, awaitMessage(t, messages))
-
-		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-			Operation:      lifecycle.BMCVirtualMediaOperationAttach,
-			Server:         "one",
-			VirtualMediaID: "system:1",
-			TokenUUID:      uuid.MustParse(tokenUUID),
-			Seed:           "default",
-			ImageType:      api.ImageTypeISO,
-			Architecture:   images.UpdateFileArchitecture64BitX86,
-			Channel:        "stable",
-		}, awaitMessage(t, messages))
-
-		awaitResync(t, resyncDone)
 	})
 
 	t.Run("detach reports the virtual media it has been detached from", func(t *testing.T) {
-		serverSvc, messages, resyncDone, _ := setup(t)
+		synctest.Test(t, func(t *testing.T) {
+			serverSvc, messages, resyncDone, _ := setup(t)
 
-		err := serverSvc.BMCDetachMediaByName(t.Context(), "one", "system:1")
-		require.NoError(t, err)
+			err := serverSvc.BMCDetachMediaByName(t.Context(), "one", "system:1")
+			require.NoError(t, err)
 
-		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-			Operation:      lifecycle.BMCVirtualMediaOperationDetach,
-			Server:         "one",
-			VirtualMediaID: "system:1",
-		}, awaitMessage(t, messages))
+			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+				Operation:      lifecycle.BMCVirtualMediaOperationDetach,
+				Server:         "one",
+				VirtualMediaID: "system:1",
+			}, awaitMessage(t, messages))
 
-		awaitResync(t, resyncDone)
+			awaitResync(t, resyncDone)
+		})
 	})
 
 	t.Run("the preparation is reported before the BMC is instructed", func(t *testing.T) {
-		serverSvc, messages, resyncDone, bmcClient := setup(t)
+		synctest.Test(t, func(t *testing.T) {
+			serverSvc, messages, resyncDone, bmcClient := setup(t)
 
-		var reportedBeforeAttach []lifecycle.BMCVirtualMediaMessage
+			var reportedBeforeAttach []lifecycle.BMCVirtualMediaMessage
 
-		bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
-			for len(messages) > 0 {
-				reportedBeforeAttach = append(reportedBeforeAttach, <-messages)
+			bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+				for len(messages) > 0 {
+					reportedBeforeAttach = append(reportedBeforeAttach, <-messages)
+				}
+
+				return nil, nil
 			}
 
-			return nil, nil
-		}
+			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				Channel:        "stable",
+				VirtualMediaID: "system:1",
+			})
+			require.NoError(t, err)
 
-		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
-			TokenUUID:      tokenUUID,
-			Seed:           "default",
-			Type:           "iso",
-			Architecture:   "x86_64",
-			Channel:        "stable",
-			VirtualMediaID: "system:1",
+			require.Len(t, reportedBeforeAttach, 1, "the installation media has to be reported before the BMC is instructed to attach it")
+			require.Equal(t, lifecycle.BMCVirtualMediaOperationPreAttach, reportedBeforeAttach[0].Operation)
+
+			awaitResync(t, resyncDone)
 		})
-		require.NoError(t, err)
-
-		require.Len(t, reportedBeforeAttach, 1, "the installation media has to be reported before the BMC is instructed to attach it")
-		require.Equal(t, lifecycle.BMCVirtualMediaOperationPreAttach, reportedBeforeAttach[0].Operation)
-
-		awaitResync(t, resyncDone)
 	})
 
 	t.Run("a failed attach only reports the preparation", func(t *testing.T) {
-		serverSvc, messages, _, bmcClient := setup(t)
+		synctest.Test(t, func(t *testing.T) {
+			serverSvc, messages, _, bmcClient := setup(t)
 
-		bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
-			return nil, boom.Error
-		}
+			bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+				return nil, boom.Error
+			}
 
-		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
-			TokenUUID:      tokenUUID,
-			Seed:           "default",
-			Type:           "iso",
-			Architecture:   "x86_64",
-			Channel:        "stable",
-			VirtualMediaID: "system:1",
+			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				Channel:        "stable",
+				VirtualMediaID: "system:1",
+			})
+			boom.ErrorIs(t, err)
+
+			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+				Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+				Server:         "one",
+				VirtualMediaID: "system:1",
+				TokenUUID:      uuid.MustParse(tokenUUID),
+				Seed:           "default",
+				ImageType:      api.ImageTypeISO,
+				Architecture:   images.UpdateFileArchitecture64BitX86,
+				Channel:        "stable",
+			}, awaitMessage(t, messages))
+
+			require.Empty(t, messages)
 		})
-		boom.ErrorIs(t, err)
-
-		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-			Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
-			Server:         "one",
-			VirtualMediaID: "system:1",
-			TokenUUID:      uuid.MustParse(tokenUUID),
-			Seed:           "default",
-			ImageType:      api.ImageTypeISO,
-			Architecture:   images.UpdateFileArchitecture64BitX86,
-			Channel:        "stable",
-		}, awaitMessage(t, messages))
-
-		require.Empty(t, messages)
 	})
 
 	t.Run("a rejected attach request reports nothing", func(t *testing.T) {
-		serverSvc, messages, _, _ := setup(t)
+		synctest.Test(t, func(t *testing.T) {
+			serverSvc, messages, _, _ := setup(t)
 
-		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
-			TokenUUID:      tokenUUID,
-			Seed:           "default",
-			Type:           "exe",
-			Architecture:   "x86_64",
-			VirtualMediaID: "system:1",
+			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "exe",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			})
+			require.Error(t, err)
+			require.Empty(t, messages)
 		})
-		require.Error(t, err)
-		require.Empty(t, messages)
 	})
 }
 

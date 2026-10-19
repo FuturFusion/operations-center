@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -27,37 +28,45 @@ func TestServer_SignalLifecycleEvent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			oldSignalLifecycleEventDelay := signalLifecycleEventDelay
-			signalLifecycleEventDelay = 0
-			defer func() {
-				signalLifecycleEventDelay = oldSignalLifecycleEventDelay
-			}()
+			synctest.Test(t, func(t *testing.T) {
+				signaled := make(chan struct{})
+				lifecycle.ServerLifecycleSignal.AddListener(func(_ context.Context, _ lifecycle.ServerLifecycleMessage) {
+					close(signaled)
+				}, "TestServer_SignalLifecycleEvent")
+				t.Cleanup(func() {
+					lifecycle.ServerLifecycleSignal.RemoveListener("TestServer_SignalLifecycleEvent")
+				})
 
-			signaled := make(chan struct{})
-			lifecycle.ServerLifecycleSignal.AddListener(func(_ context.Context, _ lifecycle.ServerLifecycleMessage) {
-				close(signaled)
-			}, "TestServer_SignalLifecycleEvent")
-			t.Cleanup(func() {
-				lifecycle.ServerLifecycleSignal.RemoveListener("TestServer_SignalLifecycleEvent")
+				logBuf := &log.SyncBuffer{}
+				err := logger.InitLogger(logBuf, "", false, false, false)
+				require.NoError(t, err)
+
+				server := Server{}
+
+				// Run test
+				server.SignalLifecycleEvent()
+
+				time.Sleep(signalLifecycleEventDelay - time.Nanosecond)
+				synctest.Wait()
+				require.False(t, isClosed(signaled), "Lifecycle signal emitted before the delay")
+
+				time.Sleep(time.Nanosecond)
+				synctest.Wait()
+
+				// Assert
+				require.True(t, isClosed(signaled), "Lifecycle signal not emitted after the delay")
+				tc.assertLog(t, logBuf)
 			})
-
-			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
-
-			server := Server{}
-
-			// Run test
-			server.SignalLifecycleEvent()
-
-			select {
-			case <-signaled:
-			case <-time.After(time.Second):
-				t.Fatal("Lifecycle signal not emitted")
-			}
-
-			// Assert
-			tc.assertLog(t, logBuf)
 		})
+	}
+}
+
+func isClosed(ch chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+
+	default:
+		return false
 	}
 }
