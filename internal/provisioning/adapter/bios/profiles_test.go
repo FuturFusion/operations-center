@@ -3,6 +3,7 @@ package bios_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -36,6 +37,11 @@ func dellPowerEdgeR740(mutators ...func(data *api.BMCData)) api.BMCData {
 	}
 
 	return data
+}
+
+func dellPowerEdgeR770(data *api.BMCData) {
+	data.BMCModel = "17G Monolithic"
+	data.ServerModel = "PowerEdge R770"
 }
 
 // vendorSecureBoot is the secure boot allow list every built-in vendor profile
@@ -119,6 +125,67 @@ func TestCatalog_builtinProfiles(t *testing.T) {
 			name: "manufacturer reported with surrounding whitespace still matches",
 			data: dellPowerEdgeR740(func(data *api.BMCData) {
 				data.ServerManufacturer = " Dell Inc. "
+			}),
+
+			want: &provisioning.BIOSProfileResolution{
+				Profiles: []string{"dell", "dell-with-tpm"},
+				Attributes: map[string]any{
+					"SecureBoot":       "Enabled",
+					"SecureBootMode":   "UserMode",
+					"SecureBootPolicy": "Custom",
+					"TpmSecurity":      "On",
+				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
+				SecureBoot: vendorSecureBoot(),
+			},
+		},
+		{
+			name: "Dell PowerEdge R770 with TPM",
+			data: dellPowerEdgeR740(dellPowerEdgeR770),
+
+			want: &provisioning.BIOSProfileResolution{
+				Profiles: []string{"dell", "dell-with-tpm", "dell-r770"},
+				Attributes: map[string]any{
+					"SecureBoot":       "Enabled",
+					"SecureBootMode":   "UserMode",
+					"SecureBootPolicy": "Custom",
+					"TpmSecurity":      "On",
+				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
+				SecureBoot: vendorSecureBoot(),
+				Deployment: api.ServerDeploymentSettings{
+					PostSettleDelay: new(api.Duration(6 * time.Minute)),
+				},
+			},
+		},
+		{
+			name: "Dell PowerEdge R770 without TPM does not get TpmSecurity",
+			data: dellPowerEdgeR740(dellPowerEdgeR770, func(data *api.BMCData) {
+				data.ServerHasTPM = false
+			}),
+
+			want: &provisioning.BIOSProfileResolution{
+				Profiles: []string{"dell", "dell-r770"},
+				Attributes: map[string]any{
+					"SecureBoot":       "Enabled",
+					"SecureBootMode":   "UserMode",
+					"SecureBootPolicy": "Custom",
+				},
+				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
+				Deployment: api.ServerDeploymentSettings{
+					PostSettleDelay: new(api.Duration(6 * time.Minute)),
+				},
+			},
+		},
+		{
+			name: "Dell model sharing the prefix of the R770 does not get the R770 settings",
+			data: dellPowerEdgeR740(func(data *api.BMCData) {
+				data.ServerModel = "PowerEdge R7700"
 			}),
 
 			want: &provisioning.BIOSProfileResolution{

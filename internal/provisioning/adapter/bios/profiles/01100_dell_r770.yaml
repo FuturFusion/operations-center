@@ -1,0 +1,11 @@
+---
+
+- name: dell-r770
+  description: Dell PowerEdge R770
+  match:
+    - manufacturer: "Dell Inc\\."
+      model: "PowerEdge R770"
+  priority: 1100
+  deployment:
+    # The power on self test of the R770 takes longer than the default.
+    post_settle_delay: "6m"
