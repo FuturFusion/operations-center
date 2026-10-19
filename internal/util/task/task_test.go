@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -14,95 +15,111 @@ import (
 
 // The given task is executed immediately by the scheduler.
 func TestTask_ExecuteImmediately(t *testing.T) {
-	f, wait := newFunc(t, 1)
-	stop := startTask(t, f, task.Every(time.Second))
-	defer stop()
+	synctest.Test(t, func(t *testing.T) {
+		f, wait := newFunc(t, 1)
+		stop := startTask(t, f, task.Every(time.Second))
+		defer stop()
 
-	wait(100 * time.Millisecond)
+		wait(100 * time.Millisecond)
+	})
 }
 
 // The given task is executed again after the specified time interval has
 // elapsed.
 func TestTask_ExecutePeriodically(t *testing.T) {
-	f, wait := newFunc(t, 2)
-	stop := startTask(t, f, task.Every(250*time.Millisecond))
-	defer stop()
+	synctest.Test(t, func(t *testing.T) {
+		f, wait := newFunc(t, 2)
+		stop := startTask(t, f, task.Every(250*time.Millisecond))
+		defer stop()
 
-	wait(100 * time.Millisecond)
-	wait(400 * time.Millisecond)
+		wait(100 * time.Millisecond)
+		wait(400 * time.Millisecond)
+	})
 }
 
 // If the scheduler is reset, the task is re-executed immediately and then
 // again after the interval.
 func TestTask_Reset(t *testing.T) {
-	f, wait := newFunc(t, 3)
-	stop, reset := task.Start(context.Background(), f, task.Every(250*time.Millisecond))
-	defer func() { _ = stop(time.Second) }()
+	synctest.Test(t, func(t *testing.T) {
+		f, wait := newFunc(t, 3)
+		stop, reset := task.Start(context.Background(), f, task.Every(250*time.Millisecond))
+		defer func() { _ = stop(time.Second) }()
 
-	wait(50 * time.Millisecond)  // First execution, immediately
-	reset()                      // Trigger a reset
-	wait(50 * time.Millisecond)  // Second execution, immediately after reset
-	wait(400 * time.Millisecond) // Third execution, after the timeout
+		wait(50 * time.Millisecond)  // First execution, immediately
+		reset()                      // Trigger a reset
+		wait(50 * time.Millisecond)  // Second execution, immediately after reset
+		wait(400 * time.Millisecond) // Third execution, after the timeout
+	})
 }
 
 // If the interval is zero, the task function is never run.
 func TestTask_ZeroInterval(t *testing.T) {
-	f, _ := newFunc(t, 0)
-	stop := startTask(t, f, task.Every(0*time.Millisecond))
-	defer stop()
+	synctest.Test(t, func(t *testing.T) {
+		f, _ := newFunc(t, 0)
+		stop := startTask(t, f, task.Every(0*time.Millisecond))
+		defer stop()
 
-	// Sleep a little bit to prove that the task function does not get run.
-	time.Sleep(100 * time.Millisecond)
+		// Wait until all goroutines block. The task function must not run.
+		time.Sleep(time.Second)
+		synctest.Wait()
+	})
 }
 
 // If the schedule returns an error, the task is aborted.
 func TestTask_ScheduleError(t *testing.T) {
-	schedule := func() (time.Duration, error) {
-		return 0, fmt.Errorf("boom")
-	}
+	synctest.Test(t, func(t *testing.T) {
+		schedule := func() (time.Duration, error) {
+			return 0, fmt.Errorf("boom")
+		}
 
-	f, _ := newFunc(t, 0)
-	stop := startTask(t, f, schedule)
-	defer stop()
+		f, _ := newFunc(t, 0)
+		stop := startTask(t, f, schedule)
+		defer stop()
 
-	// Sleep a little bit to prove that the task function does not get run.
-	time.Sleep(100 * time.Millisecond)
+		// Wait until all goroutines block. The task function must not run.
+		time.Sleep(time.Second)
+		synctest.Wait()
+	})
 }
 
 // If the schedule returns an error, but its interval is positive, the task will
 // try again to invoke the schedule function after that interval.
 func TestTask_ScheduleTemporaryError(t *testing.T) {
-	errored := false
-	schedule := func() (time.Duration, error) {
-		if !errored {
-			errored = true
-			return time.Millisecond, fmt.Errorf("boom")
+	synctest.Test(t, func(t *testing.T) {
+		errored := false
+		schedule := func() (time.Duration, error) {
+			if !errored {
+				errored = true
+				return time.Millisecond, fmt.Errorf("boom")
+			}
+
+			return time.Second, nil
 		}
 
-		return time.Second, nil
-	}
+		f, wait := newFunc(t, 1)
+		stop := startTask(t, f, schedule)
+		defer stop()
 
-	f, wait := newFunc(t, 1)
-	stop := startTask(t, f, schedule)
-	defer stop()
-
-	// The task gets executed since the schedule error is temporary and gets
-	// resolved.
-	wait(50 * time.Millisecond)
+		// The task gets executed since the schedule error is temporary and gets
+		// resolved.
+		wait(50 * time.Millisecond)
+	})
 }
 
 // If SkipFirst is passed, the given task is only executed at the second round.
 func TestTask_SkipFirst(t *testing.T) {
-	var i atomic.Int32
-	f := func(context.Context) {
-		i.Add(1)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		var i atomic.Int32
+		f := func(context.Context) {
+			i.Add(1)
+		}
 
-	stop := startTask(t, f, task.Every(250*time.Millisecond, task.SkipFirst))
-	defer stop()
+		stop := startTask(t, f, task.Every(250*time.Millisecond, task.SkipFirst))
+		defer stop()
 
-	time.Sleep(400 * time.Millisecond)
-	assert.Equal(t, int32(1), i.Load()) // The function got executed only once, not twice.
+		time.Sleep(400 * time.Millisecond)
+		assert.Equal(t, int32(1), i.Load()) // The function got executed only once, not twice.
+	})
 }
 
 // Create a new task function that sends a notification to a channel every time

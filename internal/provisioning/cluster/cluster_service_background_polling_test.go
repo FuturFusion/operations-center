@@ -3,6 +3,7 @@ package cluster_test
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -82,124 +83,128 @@ func daemonBackgroundPolling(t *testing.T, serverSvc provisioning.ServerService)
 // action exactly once, while the background polling of the daemon refreshes the
 // state of the servers in a transient state in parallel.
 func TestClusterService_ClusterUpdateControlLoopWithBackgroundPolling(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	server := clusterMemberServer(t, "one")
+		server := clusterMemberServer(t, "one")
 
-	world := newServerWorld(map[string]api.ServerVersionData{
-		"one": versionDataInitial,
-	})
+		world := newServerWorld(map[string]api.ServerVersionData{
+			"one": versionDataInitial,
+		})
 
-	serverClient := rollingUpdateServerClient(world)
+		serverClient := rollingUpdateServerClient(world)
 
-	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterUpdateCycleWithBackgroundPolling", serverClient, "2", server)
+		clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterUpdateCycleWithBackgroundPolling", serverClient, "2", server)
 
-	backgroundPolling := daemonBackgroundPolling(t, serverSvc)
+		backgroundPolling := daemonBackgroundPolling(t, serverSvc)
 
-	err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
-	require.NoError(t, err)
-
-	var observed []string
-
-	success := false
-	for range 100 {
-		c, err := clusterSvc.GetByName(ctx, "clusterA")
+		err := clusterSvc.LaunchClusterUpdate(ctx, "clusterA", api.ClusterUpdatePost{Reboot: true})
 		require.NoError(t, err)
-		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
-			success = true
-			break
-		}
 
-		require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+		var observed []string
 
-		// Observe the progress the same way a user does.
-		observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
-
-		// A server completes an action, which has been triggered on it, asynchronously.
-		// Let it complete only if it was already running before this iteration, so that
-		// the state, the action leads to, is reported at least once.
-		pending := world.pendingCount()
-
-		backgroundPolling(ctx)
-
-		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		if !domain.IsRetryableError(err) {
+		success := false
+		for range 100 {
+			c, err := clusterSvc.GetByName(ctx, "clusterA")
 			require.NoError(t, err)
+			if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
+				success = true
+				break
+			}
+
+			require.Empty(t, c.UpdateStatus.InProgressStatus.Error)
+
+			// Observe the progress the same way a user does.
+			observed = append(observed, ptr.From(c.UpdateStatus.InProgressStatus.StatusDescription))
+
+			// A server completes an action, which has been triggered on it, asynchronously.
+			// Let it complete only if it was already running before this iteration, so that
+			// the state, the action leads to, is reported at least once.
+			pending := world.pendingCount()
+
+			backgroundPolling(ctx)
+
+			err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+			if !domain.IsRetryableError(err) {
+				require.NoError(t, err)
+			}
+
+			if pending > 0 {
+				world.release(ctx)
+			}
+
+			time.Sleep(controlLoopInterval)
 		}
 
-		if pending > 0 {
-			world.release(ctx)
-		}
+		require.True(t, success)
 
-		time.Sleep(controlLoopInterval)
-	}
+		requireProgressOnlyMovesForward(t, observed)
 
-	require.True(t, success)
+		require.Equal(t, []string{
+			`[1/9] update pending server "one"`,
+			`[2/9] updating server "one"`,
+			`[3/9] evacuation pending server "one"`,
+			`[4/9] evacuating server "one"`,
+			`[5/9] in maintenance, reboot pending server "one"`,
+			`[6/9] in maintenance, rebooting server "one"`,
+			`[7/9] in maintenance, restore pending server "one"`,
+			`[8/9] restoring server "one"`,
+			`[9/9] post restore server "one"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
 
-	requireProgressOnlyMovesForward(t, observed)
+		// The background polling must not cause any action to be triggered a second
+		// time, e.g. because it reports state from before the action.
+		require.Len(t, serverClient.UpdateOSCalls(), 1)
+		require.Len(t, serverClient.EvacuateCalls(), 1)
+		require.Len(t, serverClient.RebootCalls(), 1)
+		require.Len(t, serverClient.RestoreCalls(), 1)
 
-	require.Equal(t, []string{
-		`[1/9] update pending server "one"`,
-		`[2/9] updating server "one"`,
-		`[3/9] evacuation pending server "one"`,
-		`[4/9] evacuating server "one"`,
-		`[5/9] in maintenance, reboot pending server "one"`,
-		`[6/9] in maintenance, rebooting server "one"`,
-		`[7/9] in maintenance, restore pending server "one"`,
-		`[8/9] restoring server "one"`,
-		`[9/9] post restore server "one"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
-
-	// The background polling must not cause any action to be triggered a second
-	// time, e.g. because it reports state from before the action.
-	require.Len(t, serverClient.UpdateOSCalls(), 1)
-	require.Len(t, serverClient.EvacuateCalls(), 1)
-	require.Len(t, serverClient.RebootCalls(), 1)
-	require.Len(t, serverClient.RestoreCalls(), 1)
-
-	// The server is reported as up to date, the state, the server reports after the
-	// update, has been picked up.
-	updatedServer, err := serverSvc.GetByName(ctx, "one")
-	require.NoError(t, err)
-	require.Equal(t, api.ServerUpdateStateUpToDate, updatedServer.UpdateState())
+		// The server is reported as up to date, the state, the server reports after the
+		// update, has been picked up.
+		updatedServer, err := serverSvc.GetByName(ctx, "one")
+		require.NoError(t, err)
+		require.Equal(t, api.ServerUpdateStateUpToDate, updatedServer.UpdateState())
+	})
 }
 
 // An on demand rolling reboot passes through the very same states and triggers
 // every action exactly once, while the background polling of the daemon refreshes
 // the state of the servers in a transient state in parallel.
 func TestClusterService_ClusterRollingRebootControlLoopWithBackgroundPolling(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
-	defer cancel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
+		defer cancel()
 
-	server := clusterMemberServer(t, "one")
+		server := clusterMemberServer(t, "one")
 
-	world := rebootOnlyWorld(server)
-	serverClient := rebootOnlyServerClient(world)
+		world := rebootOnlyWorld(server)
+		serverClient := rebootOnlyServerClient(world)
 
-	clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterRollingRebootCycleWithBackgroundPolling", serverClient, "1", server)
+		clusterSvc, serverSvc, logBuf := setupControlLoopCluster(t, ctx, "ClusterRollingRebootCycleWithBackgroundPolling", serverClient, "1", server)
 
-	err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
-	require.NoError(t, err)
+		err := clusterSvc.LaunchClusterReboot(ctx, "clusterA")
+		require.NoError(t, err)
 
-	observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100, daemonBackgroundPolling(t, serverSvc))
+		observed := driveRebootToCompletion(t, ctx, clusterSvc, world, 100, daemonBackgroundPolling(t, serverSvc))
 
-	requireProgressOnlyMovesForward(t, observed)
+		requireProgressOnlyMovesForward(t, observed)
 
-	require.Equal(t, []string{
-		`[1/7] evacuation pending server "one"`,
-		`[2/7] evacuating server "one"`,
-		`[3/7] in maintenance, reboot pending server "one"`,
-		`[4/7] in maintenance, rebooting server "one"`,
-		`[5/7] in maintenance, restore pending server "one"`,
-		`[6/7] restoring server "one"`,
-		`[7/7] post restore server "one"`,
-	}, clusterUpdateStatesFromLog(t, logBuf.String()))
+		require.Equal(t, []string{
+			`[1/7] evacuation pending server "one"`,
+			`[2/7] evacuating server "one"`,
+			`[3/7] in maintenance, reboot pending server "one"`,
+			`[4/7] in maintenance, rebooting server "one"`,
+			`[5/7] in maintenance, restore pending server "one"`,
+			`[6/7] restoring server "one"`,
+			`[7/7] post restore server "one"`,
+		}, clusterUpdateStatesFromLog(t, logBuf.String()))
 
-	// The background polling must not cause any action to be triggered a second
-	// time, in particular the reboot, which is synthesized from the list of servers
-	// with a pending reboot.
-	require.Len(t, serverClient.EvacuateCalls(), 1)
-	require.Len(t, serverClient.RebootCalls(), 1)
-	require.Len(t, serverClient.RestoreCalls(), 1)
+		// The background polling must not cause any action to be triggered a second
+		// time, in particular the reboot, which is synthesized from the list of servers
+		// with a pending reboot.
+		require.Len(t, serverClient.EvacuateCalls(), 1)
+		require.Len(t, serverClient.RebootCalls(), 1)
+		require.Len(t, serverClient.RestoreCalls(), 1)
+	})
 }

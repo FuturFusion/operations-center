@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/uuid"
@@ -217,56 +218,60 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	t.Run("generates the image only once for concurrent requests", func(t *testing.T) {
 		t.Parallel()
 
-		flasher := testFlasher(t)
+		synctest.Test(t, func(t *testing.T) {
+			flasher := testFlasher(t)
 
-		const concurrency = 8
+			const concurrency = 8
 
-		var (
-			wg      sync.WaitGroup
-			started atomic.Int64
-		)
+			var (
+				wg      sync.WaitGroup
+				started atomic.Int64
+			)
 
-		release := make(chan struct{})
+			release := make(chan struct{})
 
-		sources := make([]*blockingReadCloser, concurrency)
-		bodies := make([]string, concurrency)
-		errs := make([]error, concurrency)
+			sources := make([]*blockingReadCloser, concurrency)
+			bodies := make([]string, concurrency)
+			errs := make([]error, concurrency)
 
-		for i := range concurrency {
-			sources[i] = &blockingReadCloser{
-				ReadCloser: gzipSource(t, content),
-				started:    &started,
-				release:    release,
-			}
-
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
-				image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, sources[i])
-				if err != nil {
-					errs[i] = err
-
-					return
+			for i := range concurrency {
+				sources[i] = &blockingReadCloser{
+					ReadCloser: gzipSource(t, content),
+					started:    &started,
+					release:    release,
 				}
 
-				body, err := io.ReadAll(image)
-				errs[i] = errors.Join(err, image.Close())
-				bodies[i] = string(body)
-			}()
-		}
+				wg.Add(1)
 
-		close(release)
-		wg.Wait()
+				go func() {
+					defer wg.Done()
 
-		for i := range concurrency {
-			require.NoError(t, errs[i])
-			require.Equal(t, content, bodies[i])
-		}
+					image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, sources[i])
+					if err != nil {
+						errs[i] = err
 
-		// Only the request, which won the race, ever read from its source.
-		require.Equal(t, int64(1), started.Load())
+						return
+					}
+
+					body, err := io.ReadAll(image)
+					errs[i] = errors.Join(err, image.Close())
+					bodies[i] = string(body)
+				}()
+			}
+
+			synctest.Wait()
+			require.Equal(t, int64(1), started.Load(), "expect only one request to generate the image")
+
+			close(release)
+			wg.Wait()
+
+			for i := range concurrency {
+				require.NoError(t, errs[i])
+				require.Equal(t, content, bodies[i])
+			}
+
+			require.Equal(t, int64(1), started.Load(), "expect the other requests to reuse the generated image")
+		})
 	})
 
 	t.Run("serves an image, which appeared between the cache miss and the generation being acquired", func(t *testing.T) {
@@ -435,67 +440,66 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	t.Run("waits for an image, which is being generated right now", func(t *testing.T) {
 		t.Parallel()
 
-		flasher := testFlasher(t)
+		synctest.Test(t, func(t *testing.T) {
+			flasher := testFlasher(t)
 
-		var started atomic.Int64
+			var started atomic.Int64
 
-		release := make(chan struct{})
+			release := make(chan struct{})
 
-		id := fingerprintID(t, flasher, "fingerprint")
+			id := fingerprintID(t, flasher, "fingerprint")
 
-		source := &blockingReadCloser{
-			ReadCloser: gzipSource(t, content),
-			started:    &started,
-			release:    release,
-		}
+			source := &blockingReadCloser{
+				ReadCloser: gzipSource(t, content),
+				started:    &started,
+				release:    release,
+			}
 
-		go func() {
-			image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
-			if err == nil {
+			go func() {
+				image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+				if err == nil {
+					_ = image.Close()
+				}
+			}()
+
+			synctest.Wait()
+			require.Equal(t, int64(1), started.Load(), "the generation has started")
+
+			opened := make(chan string, 1)
+
+			go func() {
+				image, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
+				if err != nil {
+					opened <- err.Error()
+
+					return
+				}
+
+				body, err := io.ReadAll(image)
+				if err != nil {
+					opened <- err.Error()
+
+					return
+				}
+
 				_ = image.Close()
-			}
-		}()
 
-		require.Eventually(t, func() bool { return started.Load() == 1 }, time.Second, time.Millisecond)
+				opened <- string(body)
+			}()
 
-		opened := make(chan string, 1)
+			synctest.Wait()
 
-		go func() {
-			image, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
-			if err != nil {
-				opened <- err.Error()
+			select {
+			case got := <-opened:
+				t.Fatalf("the image must not be served before it is generated, got %q", got)
 
-				return
+			default:
 			}
 
-			body, err := io.ReadAll(image)
-			if err != nil {
-				opened <- err.Error()
+			close(release)
 
-				return
-			}
-
-			_ = image.Close()
-
-			opened <- string(body)
-		}()
-
-		select {
-		case got := <-opened:
-			t.Fatalf("the image must not be served before it is generated, got %q", got)
-
-		case <-time.After(50 * time.Millisecond):
-		}
-
-		close(release)
-
-		select {
-		case got := <-opened:
-			require.Equal(t, content, got)
-
-		case <-time.After(10 * time.Second):
-			t.Fatal("the image has not been served after the generation completed")
-		}
+			require.Equal(t, content, <-opened, "the image is served after the generation completed")
+		})
 	})
 
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
@@ -640,40 +644,43 @@ func TestFlasher_RemoveSeededImages(t *testing.T) {
 	})
 
 	t.Run("does not store an image being generated", func(t *testing.T) {
-		flasher := testFlasher(t)
+		synctest.Test(t, func(t *testing.T) {
+			flasher := testFlasher(t)
 
-		var started atomic.Int64
+			var started atomic.Int64
 
-		release := make(chan struct{})
+			release := make(chan struct{})
 
-		source := &blockingReadCloser{
-			ReadCloser: gzipSource(t, content),
-			started:    &started,
-			release:    release,
-		}
-
-		generation := flasher.SeedImageCacheGeneration(ctx, cachePrefix)
-
-		generated := make(chan error, 1)
-
-		go func() {
-			image, _, err := flasher.GenerateSeededImage(ctx, cacheID, generation, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, source)
-			if err == nil {
-				err = image.Close()
+			source := &blockingReadCloser{
+				ReadCloser: gzipSource(t, content),
+				started:    &started,
+				release:    release,
 			}
 
-			generated <- err
-		}()
+			generation := flasher.SeedImageCacheGeneration(ctx, cachePrefix)
 
-		require.Eventually(t, func() bool { return started.Load() == 1 }, time.Second, time.Millisecond)
+			generated := make(chan error, 1)
 
-		err := flasher.RemoveSeededImages(ctx, cachePrefix)
-		require.NoError(t, err)
+			go func() {
+				image, _, err := flasher.GenerateSeededImage(ctx, cacheID, generation, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, source)
+				if err == nil {
+					err = image.Close()
+				}
 
-		close(release)
+				generated <- err
+			}()
 
-		require.ErrorIs(t, <-generated, domain.ErrOperationNotPermitted, "The token seed has changed since the generation has been read.")
-		requireNoLeftovers(t, flasher, false)
+			synctest.Wait()
+			require.Equal(t, int64(1), started.Load(), "the generation has started")
+
+			err := flasher.RemoveSeededImages(ctx, cachePrefix)
+			require.NoError(t, err)
+
+			close(release)
+
+			require.ErrorIs(t, <-generated, domain.ErrOperationNotPermitted, "The token seed has changed since the generation has been read.")
+			requireNoLeftovers(t, flasher, false)
+		})
 	})
 
 	t.Run("rejects a request, which has read the generation before the removal", func(t *testing.T) {

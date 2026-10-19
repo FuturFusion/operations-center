@@ -4116,15 +4116,16 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 		lifecycleMonitors[cluster.Name] = cancel
 	}
 
-	lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
+	lifecycle.ClusterUpdateSignal.AddListener(func(signalCtx context.Context, cum lifecycle.ClusterUpdateMessage) {
 		lifecycleMonitorsMu.Lock()
 		defer lifecycleMonitorsMu.Unlock()
 
 		switch cum.Operation {
 		case lifecycle.ClusterUpdateOperationCreate:
-			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
+			// Use the monitor context, not the signal context. The handler must stop when the monitor stops.
+			cancel, err := s.startLifecycleEventHandler(ctx, cum.Name)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				slog.ErrorContext(signalCtx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
 				return
 			}
 
@@ -4148,9 +4149,9 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 				delete(lifecycleMonitors, cum.OldName)
 			}
 
-			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
+			cancel, err := s.startLifecycleEventHandler(ctx, cum.Name)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				slog.ErrorContext(signalCtx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
 				return
 			}
 
