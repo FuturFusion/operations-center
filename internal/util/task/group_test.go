@@ -3,6 +3,7 @@ package task_test
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -11,36 +12,40 @@ import (
 )
 
 func TestGroup_Add(t *testing.T) {
-	group := &task.Group{}
-	ok := make(chan struct{})
-	f := func(context.Context) { close(ok) }
+	synctest.Test(t, func(t *testing.T) {
+		group := &task.Group{}
+		ok := make(chan struct{})
+		f := func(context.Context) { close(ok) }
 
-	group.Add(f, task.Every(time.Second))
-	group.Start(context.Background())
+		group.Add(f, task.Every(time.Second))
+		group.Start(context.Background())
 
-	assertRecv(t, ok)
+		assertRecv(t, ok)
 
-	assert.NoError(t, group.Stop(time.Second))
+		assert.NoError(t, group.Stop(time.Second))
+	})
 }
 
 func TestGroup_StopUngracefully(t *testing.T) {
-	group := &task.Group{}
+	synctest.Test(t, func(t *testing.T) {
+		group := &task.Group{}
 
-	// Create a task function that blocks.
-	ok := make(chan struct{})
-	defer close(ok)
+		// Create a task function that blocks.
+		ok := make(chan struct{})
+		defer close(ok)
 
-	f := func(context.Context) {
-		ok <- struct{}{}
-		<-ok
-	}
+		f := func(context.Context) {
+			ok <- struct{}{}
+			<-ok
+		}
 
-	group.Add(f, task.Every(time.Second))
-	group.Start(context.Background())
+		group.Add(f, task.Every(time.Second))
+		group.Start(context.Background())
 
-	assertRecv(t, ok)
+		assertRecv(t, ok)
 
-	assert.EqualError(t, group.Stop(time.Millisecond), "Task(s) still running: IDs [0]")
+		assert.EqualError(t, group.Stop(time.Millisecond), "Task(s) still running: IDs [0]")
+	})
 }
 
 // Assert that the given channel receives an object within a second.
