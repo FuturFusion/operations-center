@@ -54,6 +54,8 @@ type response struct {
 	eventStream bool
 	// events are sent on the event stream after the response is written.
 	events []string
+	// closeEventStream closes the event stream after the events are sent.
+	closeEventStream bool
 }
 
 func noResult(t *testing.T, res any) {
@@ -109,8 +111,13 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 						w.WriteHeader(response.statusCode)
 						_, _ = w.Write(response.responseBody)
 
-						if len(response.events) > 0 {
-							sendEvents(t, <-eventStreams, response.events)
+						if len(response.events) > 0 || response.closeEventStream {
+							conn := <-eventStreams
+							sendEvents(t, conn, response.events)
+
+							if response.closeEventStream {
+								_ = conn.Close()
+							}
 						}
 					}))
 					server.TLS = &tls.Config{
