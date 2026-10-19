@@ -3113,6 +3113,54 @@ func TestClientServer(t *testing.T) {
 					assertResult: noResult,
 					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
 				},
+				{
+					name: "error - lost connection to the event listener",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:       http.StatusOK,
+								responseBody:     []byte(`{"metadata": {"id": "op-id"}}`),
+								closeEventStream: true,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "error - operation cancelled",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id"}}`),
+								events: []string{
+									`{"type": "operation", "metadata": {"id": "op-id", "status": "Cancelled", "status_code": 401}}`, // final, but without error
+								},
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
 			},
 		},
 		{
@@ -4185,6 +4233,125 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "success - recovered after lost connection to the event listener",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:       http.StatusOK,
+								responseBody:     []byte(`{"metadata": {"id": "op-id"}}`),
+								closeEventStream: true,
+							},
+						},
+						// GET /1.0/operations/op-id/wait?timeout=-1
+						// The empty cluster certificate fails verification, the one of the server succeeds.
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id", "status_code": 200}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations/op-id/wait?timeout=-1"},
+				},
+				{
+					name: "error - recovered operation failed",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:       http.StatusOK,
+								responseBody:     []byte(`{"metadata": {"id": "op-id"}}`),
+								closeEventStream: true,
+							},
+						},
+						// GET /1.0/operations/op-id/wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata": {"id": "op-id", "status_code": 400, "err": "Failed to join cluster"}}`),
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations/op-id/wait?timeout=-1"},
+				},
+				{
+					name: "error - recovery failed",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:       http.StatusOK,
+								responseBody:     []byte(`{"metadata": {"id": "op-id"}}`),
+								closeEventStream: true,
+							},
+						},
+						// GET /1.0/operations/op-id/wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusInternalServerError,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations/op-id/wait?timeout=-1"},
+				},
+				{
+					name: "error - recovery failed, operation no longer exists",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								eventStream: true,
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:       http.StatusOK,
+								responseBody:     []byte(`{"metadata": {"id": "op-id"}}`),
+								closeEventStream: true,
+							},
+						},
+						// GET /1.0/operations/op-id/wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusNotFound,
+								responseBody: []byte(`{"type": "error", "error_code": 404, "error": "Operation not found"}`),
+							},
+						},
+					},
+
+					assertErr: func(tt require.TestingT, err error, a ...any) {
+						require.ErrorContains(tt, err, "no longer exists", a...)
+					},
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations/op-id/wait?timeout=-1"},
 				},
 			},
 		},

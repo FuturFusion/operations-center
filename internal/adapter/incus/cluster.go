@@ -2,16 +2,21 @@ package incus
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
+	"net/http"
 	"net/url"
+	"time"
 
 	incus "github.com/lxc/incus/v7/client"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -116,7 +121,7 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	// Ignore error, connection URL has been parsed by incus client already.
 	clusterAddressURL, _ := url.Parse(endpoint.GetConnectionURL())
 
-	_, err = updateCluster(ctx, client, incusapi.ClusterPut{
+	op, err := updateCluster(ctx, client, incusapi.ClusterPut{
 		Cluster: incusapi.Cluster{
 			ServerName:   server.Name,
 			Enabled:      true,
@@ -127,12 +132,96 @@ func (c Client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 		ClusterToken:       joinToken,
 		ClusterAddress:     clusterAddressURL.Host,
 	})
+	if errors.Is(err, errLostEventListener) {
+		err = c.recoverClusterJoin(ctx, server, endpoint.GetCertificate(), op.ID, err)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster during cluster join on %q (%s): %w", server.GetName(), server.GetConnectionURL(), err)
 	}
 
 	return nil
 }
+
+// recoverClusterJoin reconnects and waits for the join operation if the event listener
+// got lost, using both the cluster certificate and the server certificate.
+func (c Client) recoverClusterJoin(ctx context.Context, server provisioning.Server, clusterCertificate string, opID string, lostErr error) error {
+	timeout := -1
+	deadline, ok := ctx.Deadline()
+	if ok {
+		timeout = int(time.Until(deadline).Seconds())
+	}
+
+	endpoints := []struct {
+		whichCert string
+		endpoint  provisioning.Endpoint
+	}{
+		{
+			whichCert: "the cluster",
+			endpoint: provisioning.Server{
+				Name:          server.Name,
+				ConnectionURL: server.ConnectionURL,
+				Certificate:   new(clusterCertificate),
+			},
+		},
+		{
+			whichCert: "its own",
+			endpoint:  server,
+		},
+	}
+
+	var err error
+	for _, e := range endpoints {
+		var op *incusapi.Operation
+		op, err = c.getOperationWait(ctx, e.endpoint, opID, timeout)
+
+		var certErr *tls.CertificateVerificationError
+		if errors.As(err, &certErr) {
+			continue // try the other certificate
+		}
+
+		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			err = fmt.Errorf("Operation %q no longer exists, it likely finished over 5s ago (server presents %s certificate), check whether %q joined the cluster: %w", opID, e.whichCert, server.Name, err)
+			break
+		}
+
+		if err != nil {
+			break
+		}
+
+		if op.Err != "" {
+			return errors.New(op.Err)
+		}
+
+		if !op.StatusCode.IsFinal() {
+			err = fmt.Errorf("Operation %q was still running when the wait timed out", opID)
+			break
+		}
+
+		if op.StatusCode != incusapi.Success {
+			return fmt.Errorf("Operation %q ended with status %q", opID, op.Status)
+		}
+
+		slog.WarnContext(ctx, "Recovered cluster join after losing the event listener", slog.String("server", server.Name), slog.String("operation", opID), logger.Err(lostErr))
+
+		return nil
+	}
+
+	return fmt.Errorf("%w, failed to recover: %w", lostErr, err)
+}
+
+func (c Client) getOperationWait(ctx context.Context, endpoint provisioning.Endpoint, opID string, timeout int) (*incusapi.Operation, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	op, _, err := client.GetOperationWait(opID, timeout)
+
+	return op, err
+}
+
+var errLostEventListener = errors.New("Lost connection to the event listener")
 
 // updateCluster updates the cluster configuration and waits for the operation.
 //
@@ -151,6 +240,7 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 
 	events := listener.AddChannel([]string{incusapi.EventTypeOperation}, 0)
 
+	start := time.Now()
 	op, err := client.UpdateCluster(req, "")
 	if err != nil {
 		return incusapi.Operation{}, err
@@ -170,7 +260,7 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 					err = errors.New("Event listener was disconnected")
 				}
 
-				return incusapi.Operation{}, fmt.Errorf("Lost connection to the event listener while waiting for operation %q: %w", opID, err)
+				return op.Get(), fmt.Errorf("%w %s into operation %q, its outcome is unknown: %w", errLostEventListener, time.Since(start).Round(time.Second), opID, err)
 			}
 
 			opAPI := incusapi.Operation{}
@@ -181,6 +271,10 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 
 			if opAPI.Err != "" {
 				return incusapi.Operation{}, errors.New(opAPI.Err)
+			}
+
+			if opAPI.StatusCode != incusapi.Success {
+				return incusapi.Operation{}, fmt.Errorf("Operation %q ended with status %q", opID, opAPI.Status)
 			}
 
 			return opAPI, nil
