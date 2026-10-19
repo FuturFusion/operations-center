@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,6 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -23651,87 +23651,90 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			cancableCtx, cancel := context.WithCancel(t.Context())
-			defer cancel()
+			synctest.Test(t, func(t *testing.T) {
+				// Setup
+				cancableCtx, cancel := context.WithCancel(t.Context())
+				defer cancel()
 
-			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+				logBuf := &log.SyncBuffer{}
+				err := logger.InitLogger(logBuf, "", false, false, false)
+				require.NoError(t, err)
 
-			done := tc.initDone()
+				done := tc.initDone()
 
-			repo := &mock.ClusterRepoMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return tc.repoGetAllClusters, tc.repoGetAllErr
-				},
-			}
+				repo := &mock.ClusterRepoMock{
+					GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+						return tc.repoGetAllClusters, tc.repoGetAllErr
+					},
+				}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
-				},
-			}
+				serverSvc := &serviceMock.ServerServiceMock{
+					GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+						return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
+					},
+				}
 
-			client := &adapterMock.ClusterClientPortMock{
-				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
-					call, _ := queue.PopRetainLast(t, &tc.clientSubscribeLifecycleEvent)
-					return call(cancel)
-				},
-			}
+				client := &adapterMock.ClusterClientPortMock{
+					SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+						call, _ := queue.PopRetainLast(t, &tc.clientSubscribeLifecycleEvent)
+						return call(cancel)
+					},
+				}
 
-			processedEvents := 0
-			processedEventsMu := sync.Mutex{}
+				processedEvents := 0
+				processedEventsMu := sync.Mutex{}
 
-			inventorySyncer := &serviceMock.InventorySyncerMock{
-				ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
-					processedEventsMu.Lock()
-					defer processedEventsMu.Unlock()
+				inventorySyncer := &serviceMock.InventorySyncerMock{
+					ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+						processedEventsMu.Lock()
+						defer processedEventsMu.Unlock()
 
-					processedEvents++
+						processedEvents++
 
-					if processedEvents == tc.wantProcessedEvents {
-						defer close(done)
-					}
+						if processedEvents == tc.wantProcessedEvents {
+							defer close(done)
+						}
 
-					return tc.inventorySyncerResyncByNameErr
-				},
-			}
+						return tc.inventorySyncerResyncByNameErr
+					},
+				}
 
-			clusterSvc := provisioningCluster.New(
-				repo,
-				nil,
-				client,
-				serverSvc,
-				nil,
-				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
-				nil,
-				nil,
-			)
+				clusterSvc := provisioningCluster.New(
+					repo,
+					nil,
+					client,
+					serverSvc,
+					nil,
+					map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
+					nil,
+					nil,
+				)
 
-			// Run test
-			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
-			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
+				// Run test
+				err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+				t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
 
-			select {
-			case <-done:
+				select {
+				case <-done:
+				case <-cancableCtx.Done():
+				case <-t.Context().Done():
+					t.Fatal("Test context cancelled before test ended")
+
+				case <-time.After(1000 * time.Millisecond):
+					t.Error("Test timeout reached before test ended")
+				}
+
+				// Wait for the handler goroutines to exit, so all log entries are written.
 				cancel()
+				synctest.Wait()
 
-			case <-cancableCtx.Done():
-			case <-t.Context().Done():
-				t.Fatal("Test context cancelled before test ended")
-
-			case <-time.After(1000 * time.Millisecond):
-				cancel()
-				t.Error("Test timeout reached before test ended")
-			}
-
-			// Assert
-			tc.assertErr(t, err)
-			processedEventsMu.Lock()
-			require.Equal(t, tc.wantProcessedEvents, processedEvents)
-			processedEventsMu.Unlock()
-			tc.assertLog(t, logBuf)
+				// Assert
+				tc.assertErr(t, err)
+				processedEventsMu.Lock()
+				require.Equal(t, tc.wantProcessedEvents, processedEvents)
+				processedEventsMu.Unlock()
+				tc.assertLog(t, logBuf)
+			})
 		})
 	}
 }
@@ -23830,99 +23833,112 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			cancableCtx, cancel := context.WithCancel(t.Context())
-			defer cancel()
+			synctest.Test(t, func(t *testing.T) {
+				// Setup
+				cancableCtx, cancel := context.WithCancel(t.Context())
+				defer cancel()
 
-			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+				logBuf := &log.SyncBuffer{}
+				err := logger.InitLogger(logBuf, "", false, false, false)
+				require.NoError(t, err)
 
-			repo := &mock.ClusterRepoMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return provisioning.Clusters{
-						{
-							Name: "existing",
-						},
-					}, nil
-				},
-			}
+				repo := &mock.ClusterRepoMock{
+					GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+						return provisioning.Clusters{
+							{
+								Name: "existing",
+							},
+						}, nil
+					},
+				}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return provisioning.Servers{
-						{
-							Name:    "server",
-							Cluster: filter.Cluster,
-						},
-					}, tc.serverSvcGetAllWithFilterErrs[*filter.Cluster]
-				},
-			}
+				serverSvc := &serviceMock.ServerServiceMock{
+					GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+						return provisioning.Servers{
+							{
+								Name:    "server",
+								Cluster: filter.Cluster,
+							},
+						}, tc.serverSvcGetAllWithFilterErrs[*filter.Cluster]
+					},
+				}
 
-			// The context of each subscription tells, if the monitor of the cluster
-			// is still running.
-			subscriptions := map[string]context.Context{}
-			subscriptionsMu := sync.Mutex{}
+				// The context of each subscription tells, if the monitor of the cluster
+				// is still running.
+				subscriptions := map[string]context.Context{}
+				subscriptionsMu := sync.Mutex{}
 
-			client := &adapterMock.ClusterClientPortMock{
-				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
-					subscriptionsMu.Lock()
-					defer subscriptionsMu.Unlock()
+				client := &adapterMock.ClusterClientPortMock{
+					SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+						subscriptionsMu.Lock()
+						defer subscriptionsMu.Unlock()
 
-					subscriptions[endpoint.GetName()] = ctx
+						subscriptions[endpoint.GetName()] = ctx
 
-					return nil, nil, nil
-				},
-			}
+						return nil, nil, nil
+					},
+				}
 
-			inventorySyncer := &serviceMock.InventorySyncerMock{
-				ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
-					return nil
-				},
-			}
+				inventorySyncer := &serviceMock.InventorySyncerMock{
+					ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+						return nil
+					},
+				}
 
-			oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
-			lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
-			defer func() {
-				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
-			}()
+				oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
+				lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
+				defer func() {
+					lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
+				}()
 
-			clusterSvc := provisioningCluster.New(
-				repo,
-				nil,
-				client,
-				serverSvc,
-				nil,
-				map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer},
-				nil,
-				nil,
-			)
+				clusterSvc := provisioningCluster.New(
+					repo,
+					nil,
+					client,
+					serverSvc,
+					nil,
+					map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer},
+					nil,
+					nil,
+				)
 
-			// Run test
-			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
-			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
+				// Run test
+				err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+				t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
 
-			lifecycle.ClusterUpdateSignal.Emit(cancableCtx, tc.updateMessage)
+				lifecycle.ClusterUpdateSignal.Emit(cancableCtx, tc.updateMessage)
 
-			// Assert
-			require.NoError(t, err)
-			tc.assertLog(t, logBuf)
+				// The monitors subscribe in their own goroutine.
+				synctest.Wait()
 
-			// The monitors subscribe in their own go routine.
-			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				// Assert
+				require.NoError(t, err)
+				tc.assertLog(t, logBuf)
+
 				subscriptionsMu.Lock()
-				defer subscriptionsMu.Unlock()
-
-				require.ElementsMatch(c, append(slices.Clone(tc.wantRunningNames), tc.wantStoppedNames...), slices.Collect(maps.Keys(subscriptions)), "expect a subscription for each started monitor")
+				require.ElementsMatch(t, append(slices.Clone(tc.wantRunningNames), tc.wantStoppedNames...), slices.Collect(maps.Keys(subscriptions)), "expect a subscription for each started monitor")
 
 				for _, name := range tc.wantRunningNames {
-					require.NoError(c, subscriptions[name].Err(), "expect monitor of cluster %q to be running", name)
+					require.NoError(t, subscriptions[name].Err(), "expect monitor of cluster %q to be running", name)
 				}
 
 				for _, name := range tc.wantStoppedNames {
-					require.Error(c, subscriptions[name].Err(), "expect monitor of cluster %q to be stopped", name)
+					require.Error(t, subscriptions[name].Err(), "expect monitor of cluster %q to be stopped", name)
 				}
-			}, 1*time.Second, 10*time.Millisecond)
+
+				subscriptionsMu.Unlock()
+
+				// Stop the handlers, so the synctest bubble can end.
+				cancel()
+				synctest.Wait()
+
+				subscriptionsMu.Lock()
+				for _, name := range tc.wantRunningNames {
+					require.Error(t, subscriptions[name].Err(), "expect monitor of cluster %q to be stopped with the monitor context", name)
+				}
+
+				subscriptionsMu.Unlock()
+			})
 		})
 	}
 }
