@@ -251,6 +251,11 @@ const (
 	// Threshold before expiration, at which a certificate expiration warning is emitted.
 	CertificateExpiryWarningThreshold = 30 * 24 * time.Hour
 
+	// Share of the validity period, after which an expiration warning is emitted
+	// for an ACME managed certificate. ACME renews after 80%, so a warning means
+	// the renewal is overdue.
+	ACMECertificateExpiryWarningLifetimeRatio = 0.9
+
 	// Filename of the client certificate.
 	ClientCertificateFilename = "client.crt"
 

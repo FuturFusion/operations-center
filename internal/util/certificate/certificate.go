@@ -66,6 +66,24 @@ func Validate(certPEM string, expiryThreshold time.Duration) (valid bool, _ erro
 		return false, err
 	}
 
+	return validate(cert, expiryThreshold)
+}
+
+// ValidateLifetime reports whether the PEM encoded certificate is currently
+// valid. A true return together with a non nil error means the certificate is
+// valid, but more than lifetimeRatio of its validity period has passed.
+func ValidateLifetime(certPEM string, lifetimeRatio float64) (valid bool, _ error) {
+	cert, err := Decode([]byte(certPEM))
+	if err != nil {
+		return false, err
+	}
+
+	validity := cert.NotAfter.Sub(cert.NotBefore)
+
+	return validate(cert, time.Duration(float64(validity)*(1-lifetimeRatio)))
+}
+
+func validate(cert *x509.Certificate, expiryThreshold time.Duration) (valid bool, _ error) {
 	if time.Now().Before(cert.NotBefore) {
 		return false, fmt.Errorf("The provided certificate isn't valid yet")
 	}

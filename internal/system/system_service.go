@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -230,12 +231,18 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 }
 
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, config.GetSecurity().ACME, force)
+	cfg := config.GetSecurity().ACME
+
+	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}
 
 	if newCert == nil {
+		if !acme.IsEnabled(cfg) {
+			slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
+		}
+
 		return false, nil
 	}
 
@@ -243,6 +250,8 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 	if err != nil {
 		return false, fmt.Errorf("Update server certificate with ACME certificate/key failed: %w", err)
 	}
+
+	slog.InfoContext(ctx, "ACME server certificate renewed", slog.String("domain", cfg.Domain))
 
 	return true, nil
 }
