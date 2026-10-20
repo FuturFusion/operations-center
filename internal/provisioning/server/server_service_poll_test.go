@@ -25,10 +25,12 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -2421,6 +2423,9 @@ func TestServerService_ResyncByName(t *testing.T) {
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
 				},
+				GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+					return provisioning.ServerSystemProvider{}, nil
+				},
 			}
 
 			clusterSvc := &svcMock.ClusterServiceMock{
@@ -2509,5 +2514,294 @@ func pollServerVersionData(incusVersion string) api.ServerVersionData {
 			},
 		},
 		UpdateChannel: "stable",
+	}
+}
+
+func TestServerService_PollServer_reconcileServerCertificate(t *testing.T) {
+	t.Parallel()
+
+	_, intermediatePEM, leafPEM, leafKeyPEM := certs.GenerateChain(t)
+	chainPEM := string(leafPEM) + string(intermediatePEM)
+
+	serverCertificate, err := tls.X509KeyPair([]byte(chainPEM), leafKeyPEM)
+	require.NoError(t, err)
+
+	otherCertPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	providerConfigWithPin := func(pin string) provisioning.ServerSystemProvider {
+		return incusosapi.SystemProvider{
+			Config: incusosapi.SystemProviderConfig{
+				Name: "operations-center",
+				Config: map[string]string{
+					"server_certificate": pin,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name                          string
+		serverArg                     provisioning.Server
+		updateServerConfigArg         bool
+		clientGetServerType           api.ServerType
+		clientGetProviderConfig       provisioning.ServerSystemProvider
+		clientGetProviderConfigErr    error
+		clientUpdateProviderConfigErr error
+
+		wantGetProviderConfigCalls int
+		wantProviderCertificate    []string
+		wantSyncWarningEmitted     int
+		wantSyncWarningRemoveStale int
+	}{
+		{
+			name: "success - pinned certificate is up to date",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg:   true,
+			clientGetServerType:     api.ServerTypeIncus,
+			clientGetProviderConfig: providerConfigWithPin(chainPEM),
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{},
+			wantSyncWarningRemoveStale: 1,
+		},
+		{
+			name: "success - pinned certificate is outdated",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusOffline,
+			},
+			updateServerConfigArg:   true,
+			clientGetServerType:     api.ServerTypeIncus,
+			clientGetProviderConfig: providerConfigWithPin(string(otherCertPEM)),
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{chainPEM},
+			wantSyncWarningRemoveStale: 1,
+		},
+		{
+			name: "success - pending server with outdated pinned certificate from seed",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg:   true,
+			clientGetServerType:     api.ServerTypeIncus,
+			clientGetProviderConfig: providerConfigWithPin(string(otherCertPEM)),
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{chainPEM},
+			wantSyncWarningRemoveStale: 1,
+		},
+		{
+			name: "success - pinned certificate is not PEM encoded",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg:   true,
+			clientGetServerType:     api.ServerTypeIncus,
+			clientGetProviderConfig: providerConfigWithPin("invalid"),
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{chainPEM},
+			wantSyncWarningRemoveStale: 1,
+		},
+		{
+			name: "success - no pinned certificate",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg:   true,
+			clientGetServerType:     api.ServerTypeIncus,
+			clientGetProviderConfig: provisioning.ServerSystemProvider{},
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{},
+			wantSyncWarningRemoveStale: 1,
+		},
+		{
+			name: "success - server configuration is not updated",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg: false,
+			clientGetServerType:   api.ServerTypeIncus,
+
+			wantGetProviderConfigCalls: 0,
+			wantProviderCertificate:    []string{},
+		},
+		{
+			name: "success - operations-center server",
+			serverArg: provisioning.Server{
+				Name:   "operations-center",
+				Type:   api.ServerTypeOperationsCenter,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg: true,
+			clientGetServerType:   api.ServerTypeIncus,
+
+			wantGetProviderConfigCalls: 0,
+			wantProviderCertificate:    []string{},
+		},
+		{
+			name: "success - server reports type operations-center",
+			serverArg: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			clientGetServerType:   api.ServerTypeOperationsCenter,
+
+			wantGetProviderConfigCalls: 0,
+			wantProviderCertificate:    []string{},
+		},
+		{
+			name: "error - client.GetProviderConfig",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg:      true,
+			clientGetServerType:        api.ServerTypeIncus,
+			clientGetProviderConfigErr: boom.Error,
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{},
+			wantSyncWarningEmitted:     1,
+		},
+		{
+			name: "error - client.UpdateProviderConfig",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+			},
+			updateServerConfigArg:         true,
+			clientGetServerType:           api.ServerTypeIncus,
+			clientGetProviderConfig:       providerConfigWithPin(string(otherCertPEM)),
+			clientUpdateProviderConfigErr: boom.Error,
+
+			wantGetProviderConfigCalls: 1,
+			wantProviderCertificate:    []string{chainPEM},
+			wantSyncWarningEmitted:     1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					server := tc.serverArg
+					return &server, nil
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
+			}
+
+			getProviderConfigCalls := 0
+			gotProviderCertificate := []string{}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return tc.clientGetServerType, nil
+				},
+				GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+					getProviderConfigCalls++
+					return tc.clientGetProviderConfig, tc.clientGetProviderConfigErr
+				},
+				UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
+					require.Equal(t, "operations-center", providerConfig.Config.Name, "provider name is kept")
+					gotProviderCertificate = append(gotProviderCertificate, providerConfig.Config.Config["server_certificate"])
+					return tc.clientUpdateProviderConfigErr
+				},
+			}
+
+			runner := &adapterMock.ServerScriptletPortMock{
+				ServerRegistrationRunFunc: func(ctx context.Context, server *provisioning.Server) error {
+					return nil
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			syncWarningScope := api.WarningScope{
+				Scope:      "server_certificate_sync",
+				EntityType: "server",
+				Entity:     tc.serverArg.Name,
+			}
+
+			gotSyncWarningEmitted := 0
+			gotSyncWarningRemoveStale := 0
+
+			warningSvc := &adapterMock.WarningServicePortMock{
+				EmitFunc: func(ctx context.Context, w warning.Warning) {
+					if w.Type != api.WarningTypeServerCertificateSyncFailed {
+						return
+					}
+
+					gotScope := api.WarningScope{Scope: w.Scope, EntityType: w.EntityType, Entity: w.Entity}
+					require.Equal(t, syncWarningScope, gotScope, "scope of the emitted warning")
+					gotSyncWarningEmitted++
+				},
+				RemoveStaleFunc: func(ctx context.Context, scope api.WarningScope, newWarnings warning.Warnings) {
+					if scope == syncWarningScope {
+						gotSyncWarningRemoveStale++
+					}
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, client, runner, nil, nil, nil, updateSvc, serverCertificate,
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.WithWarningEmitter(warningSvc),
+			)
+
+			// Run test
+			err := serverSvc.PollServer(t.Context(), tc.serverArg, tc.updateServerConfigArg)
+
+			// Assert
+			require.NoError(t, err, "a failed certificate sync does not fail the poll")
+			require.Equal(t, tc.wantGetProviderConfigCalls, getProviderConfigCalls, "calls of GetProviderConfig")
+			require.Equal(t, tc.wantProviderCertificate, gotProviderCertificate, "server certificates pushed with UpdateProviderConfig")
+			require.Equal(t, tc.wantSyncWarningEmitted, gotSyncWarningEmitted, "emitted certificate sync warnings")
+			require.Equal(t, tc.wantSyncWarningRemoveStale, gotSyncWarningRemoveStale, "removed stale certificate sync warnings")
+		})
 	}
 }

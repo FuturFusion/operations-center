@@ -2479,6 +2479,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
 				},
+				GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+					return provisioning.ServerSystemProvider{}, nil
+				},
 			}
 
 			updateSvc := &svcMock.UpdateServiceMock{

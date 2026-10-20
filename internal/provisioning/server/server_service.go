@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -153,6 +154,51 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	s.mu.Unlock()
 
 	return s.SelfRegisterOperationsCenter(ctx)
+}
+
+// reconcileServerCertificate updates the server certificate in the provider
+// config of the server, if the server still pins an outdated certificate.
+// This covers servers, that were not reachable during the certificate update.
+func (s *serverService) reconcileServerCertificate(ctx context.Context, server provisioning.Server) error {
+	s.mu.Lock()
+	serverCertificate := s.serverCertificate
+	s.mu.Unlock()
+
+	if len(serverCertificate.Certificate) == 0 {
+		return nil
+	}
+
+	providerConfig, err := s.client.GetProviderConfig(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to get provider config: %w", err)
+	}
+
+	// IncusOS removes the pinned certificate, if it trusts Operations Center
+	// through the system CA pool.
+	pinnedCertificatePEM := providerConfig.Config.Config["server_certificate"]
+	if pinnedCertificatePEM == "" {
+		return nil
+	}
+
+	// A certificate, that can not be parsed, is replaced as well.
+	pinnedCertificate, err := certificate.Decode([]byte(pinnedCertificatePEM))
+	if err == nil && bytes.Equal(pinnedCertificate.Raw, serverCertificate.Certificate[0]) {
+		return nil
+	}
+
+	var certificatePEM strings.Builder
+	for _, der := range serverCertificate.Certificate {
+		certificatePEM.WriteString(certificate.EncodeToPEM(der))
+	}
+
+	providerConfig.Config.Config["server_certificate"] = certificatePEM.String()
+
+	err = s.client.UpdateProviderConfig(ctx, server, providerConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update provider config: %w", err)
+	}
+
+	return nil
 }
 
 func New(
@@ -2284,6 +2330,30 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// For now, we ignore the error and we are fine to persist type "unknown",
 		// if we are not able to determine the server type.
 		serverType, _ = s.client.GetServerType(ctx, server)
+
+		if server.Type != api.ServerTypeOperationsCenter && serverType != api.ServerTypeOperationsCenter {
+			certificateScope := api.WarningScope{
+				Scope:      "server_certificate_sync",
+				EntityType: "server",
+				Entity:     server.Name,
+			}
+
+			// A failed sync must not fail the poll. The next poll retries it.
+			err = s.reconcileServerCertificate(ctx, server)
+			if err != nil {
+				s.warning.Emit(
+					ctx,
+					warning.NewWarningFromError(
+						api.WarningTypeServerCertificateSyncFailed,
+						certificateScope,
+						err,
+						"Failed to update the server certificate of Operations Center on server %q", server.Name,
+					),
+				)
+			} else {
+				s.warning.RemoveStale(ctx, certificateScope, nil)
+			}
+		}
 	}
 
 	// The scriptlet calls the server API, so it runs before the transaction.
