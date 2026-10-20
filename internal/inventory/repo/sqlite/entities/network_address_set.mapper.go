@@ -67,7 +67,7 @@ func GetNetworkAddressSetID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64
 		_err = mapErr(_err, "Network_address_set")
 	}()
 
-	stmt, err := Stmt(db, networkAddressSetID)
+	stmt, err := StmtContext(ctx, db, networkAddressSetID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkAddressSetID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkAddressSetExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bo
 		_err = mapErr(_err, "Network_address_set")
 	}()
 
-	stmt, err := Stmt(db, networkAddressSetID)
+	stmt, err := StmtContext(ctx, db, networkAddressSetID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkAddressSetID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkAddressSets(ctx context.Context, db dbtx, filters ...inventory.Ne
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkAddressSetObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkAddressSetObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkAddressSetObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkAddressSets(ctx context.Context, db dbtx, filters ...inventory.Ne
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkAddressSetObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkAddressSetObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkAddressSetObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkAddressSetNames(ctx context.Context, db dbtx, filters ...inventor
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkAddressSetNames)
+		sqlStmt, err = StmtContext(ctx, db, networkAddressSetNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkAddressSetNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateNetworkAddressSet(ctx context.Context, db dbtx, object inventory.Netw
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkAddressSetCreate)
+	stmt, err := StmtContext(ctx, db, networkAddressSetCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkAddressSetCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateNetworkAddressSet(ctx context.Context, db tx, uuid uuid.UUID, object 
 		return err
 	}
 
-	stmt, err := Stmt(db, networkAddressSetUpdate)
+	stmt, err := StmtContext(ctx, db, networkAddressSetUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAddressSetUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameNetworkAddressSet(ctx context.Context, db dbtx, uuid uuid.UUID, to st
 		_err = mapErr(_err, "Network_address_set")
 	}()
 
-	stmt, err := Stmt(db, networkAddressSetRename)
+	stmt, err := StmtContext(ctx, db, networkAddressSetRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAddressSetRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteNetworkAddressSet(ctx context.Context, db dbtx, uuid uuid.UUID) (_err
 		_err = mapErr(_err, "Network_address_set")
 	}()
 
-	stmt, err := Stmt(db, networkAddressSetDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkAddressSetDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAddressSetDeleteByUUID\" prepared statement: %w", err)
 	}

@@ -67,7 +67,7 @@ func GetProfileID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err err
 		_err = mapErr(_err, "Profile")
 	}()
 
-	stmt, err := Stmt(db, profileID)
+	stmt, err := StmtContext(ctx, db, profileID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"profileID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func ProfileExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err e
 		_err = mapErr(_err, "Profile")
 	}()
 
-	stmt, err := Stmt(db, profileID)
+	stmt, err := StmtContext(ctx, db, profileID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"profileID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetProfiles(ctx context.Context, db dbtx, filters ...inventory.ProfileFilte
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, profileObjects)
+		sqlStmt, err = StmtContext(ctx, db, profileObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"profileObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetProfiles(ctx context.Context, db dbtx, filters ...inventory.ProfileFilte
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, profileObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, profileObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"profileObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetProfileNames(ctx context.Context, db dbtx, filters ...inventory.ProfileF
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, profileNames)
+		sqlStmt, err = StmtContext(ctx, db, profileNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"profileNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateProfile(ctx context.Context, db dbtx, object inventory.Profile) (_ in
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, profileCreate)
+	stmt, err := StmtContext(ctx, db, profileCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"profileCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateProfile(ctx context.Context, db tx, uuid uuid.UUID, object inventory.
 		return err
 	}
 
-	stmt, err := Stmt(db, profileUpdate)
+	stmt, err := StmtContext(ctx, db, profileUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"profileUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameProfile(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (_er
 		_err = mapErr(_err, "Profile")
 	}()
 
-	stmt, err := Stmt(db, profileRename)
+	stmt, err := StmtContext(ctx, db, profileRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"profileRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteProfile(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Profile")
 	}()
 
-	stmt, err := Stmt(db, profileDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, profileDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"profileDeleteByUUID\" prepared statement: %w", err)
 	}

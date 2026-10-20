@@ -69,7 +69,7 @@ func GetStorageVolumeID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _e
 		_err = mapErr(_err, "Storage_volume")
 	}()
 
-	stmt, err := Stmt(db, storageVolumeID)
+	stmt, err := StmtContext(ctx, db, storageVolumeID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storageVolumeID\" prepared statement: %w", err)
 	}
@@ -95,7 +95,7 @@ func StorageVolumeExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, 
 		_err = mapErr(_err, "Storage_volume")
 	}()
 
-	stmt, err := Stmt(db, storageVolumeID)
+	stmt, err := StmtContext(ctx, db, storageVolumeID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"storageVolumeID\" prepared statement: %w", err)
 	}
@@ -211,7 +211,7 @@ func GetStorageVolumes(ctx context.Context, db dbtx, filters ...inventory.Storag
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storageVolumeObjects)
+		sqlStmt, err = StmtContext(ctx, db, storageVolumeObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storageVolumeObjects\" prepared statement: %w", err)
 		}
@@ -221,7 +221,7 @@ func GetStorageVolumes(ctx context.Context, db dbtx, filters ...inventory.Storag
 		if filter.UUID != nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.StoragePoolName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, storageVolumeObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, storageVolumeObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"storageVolumeObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -282,7 +282,7 @@ func GetStorageVolumeNames(ctx context.Context, db dbtx, filters ...inventory.St
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storageVolumeNames)
+		sqlStmt, err = StmtContext(ctx, db, storageVolumeNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storageVolumeNames\" prepared statement: %w", err)
 		}
@@ -349,7 +349,7 @@ func CreateStorageVolume(ctx context.Context, db dbtx, object inventory.StorageV
 	args[8] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, storageVolumeCreate)
+	stmt, err := StmtContext(ctx, db, storageVolumeCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storageVolumeCreate\" prepared statement: %w", err)
 	}
@@ -384,7 +384,7 @@ func UpdateStorageVolume(ctx context.Context, db tx, uuid uuid.UUID, object inve
 		return err
 	}
 
-	stmt, err := Stmt(db, storageVolumeUpdate)
+	stmt, err := StmtContext(ctx, db, storageVolumeUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageVolumeUpdate\" prepared statement: %w", err)
 	}
@@ -413,7 +413,7 @@ func RenameStorageVolume(ctx context.Context, db dbtx, uuid uuid.UUID, to string
 		_err = mapErr(_err, "Storage_volume")
 	}()
 
-	stmt, err := Stmt(db, storageVolumeRename)
+	stmt, err := StmtContext(ctx, db, storageVolumeRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageVolumeRename\" prepared statement: %w", err)
 	}
@@ -442,7 +442,7 @@ func DeleteStorageVolume(ctx context.Context, db dbtx, uuid uuid.UUID) (_err err
 		_err = mapErr(_err, "Storage_volume")
 	}()
 
-	stmt, err := Stmt(db, storageVolumeDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, storageVolumeDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageVolumeDeleteByUUID\" prepared statement: %w", err)
 	}

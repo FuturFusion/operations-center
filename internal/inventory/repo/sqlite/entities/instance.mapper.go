@@ -69,7 +69,7 @@ func GetInstanceID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err er
 		_err = mapErr(_err, "Instance")
 	}()
 
-	stmt, err := Stmt(db, instanceID)
+	stmt, err := StmtContext(ctx, db, instanceID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"instanceID\" prepared statement: %w", err)
 	}
@@ -95,7 +95,7 @@ func InstanceExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err 
 		_err = mapErr(_err, "Instance")
 	}()
 
-	stmt, err := Stmt(db, instanceID)
+	stmt, err := StmtContext(ctx, db, instanceID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"instanceID\" prepared statement: %w", err)
 	}
@@ -211,7 +211,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...inventory.InstanceFil
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, instanceObjects)
+		sqlStmt, err = StmtContext(ctx, db, instanceObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"instanceObjects\" prepared statement: %w", err)
 		}
@@ -221,7 +221,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...inventory.InstanceFil
 		if filter.UUID != nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, instanceObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"instanceObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -282,7 +282,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...inventory.Instanc
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, instanceNames)
+		sqlStmt, err = StmtContext(ctx, db, instanceNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"instanceNames\" prepared statement: %w", err)
 		}
@@ -347,7 +347,7 @@ func CreateInstance(ctx context.Context, db dbtx, object inventory.Instance) (_ 
 	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, instanceCreate)
+	stmt, err := StmtContext(ctx, db, instanceCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"instanceCreate\" prepared statement: %w", err)
 	}
@@ -382,7 +382,7 @@ func UpdateInstance(ctx context.Context, db tx, uuid uuid.UUID, object inventory
 		return err
 	}
 
-	stmt, err := Stmt(db, instanceUpdate)
+	stmt, err := StmtContext(ctx, db, instanceUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"instanceUpdate\" prepared statement: %w", err)
 	}
@@ -411,7 +411,7 @@ func RenameInstance(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (_e
 		_err = mapErr(_err, "Instance")
 	}()
 
-	stmt, err := Stmt(db, instanceRename)
+	stmt, err := StmtContext(ctx, db, instanceRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"instanceRename\" prepared statement: %w", err)
 	}
@@ -440,7 +440,7 @@ func DeleteInstance(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Instance")
 	}()
 
-	stmt, err := Stmt(db, instanceDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, instanceDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"instanceDeleteByUUID\" prepared statement: %w", err)
 	}

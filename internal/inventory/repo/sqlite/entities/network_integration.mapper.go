@@ -67,7 +67,7 @@ func GetNetworkIntegrationID(ctx context.Context, db tx, uuid uuid.UUID) (_ int6
 		_err = mapErr(_err, "Network_integration")
 	}()
 
-	stmt, err := Stmt(db, networkIntegrationID)
+	stmt, err := StmtContext(ctx, db, networkIntegrationID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkIntegrationID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkIntegrationExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ b
 		_err = mapErr(_err, "Network_integration")
 	}()
 
-	stmt, err := Stmt(db, networkIntegrationID)
+	stmt, err := StmtContext(ctx, db, networkIntegrationID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkIntegrationID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkIntegrations(ctx context.Context, db dbtx, filters ...inventory.N
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkIntegrationObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkIntegrationObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkIntegrationObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkIntegrations(ctx context.Context, db dbtx, filters ...inventory.N
 		if filter.UUID != nil && filter.Cluster == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkIntegrationObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkIntegrationObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkIntegrationObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkIntegrationNames(ctx context.Context, db dbtx, filters ...invento
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkIntegrationNames)
+		sqlStmt, err = StmtContext(ctx, db, networkIntegrationNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkIntegrationNames\" prepared statement: %w", err)
 		}
@@ -343,7 +343,7 @@ func CreateNetworkIntegration(ctx context.Context, db dbtx, object inventory.Net
 	args[4] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkIntegrationCreate)
+	stmt, err := StmtContext(ctx, db, networkIntegrationCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkIntegrationCreate\" prepared statement: %w", err)
 	}
@@ -378,7 +378,7 @@ func UpdateNetworkIntegration(ctx context.Context, db tx, uuid uuid.UUID, object
 		return err
 	}
 
-	stmt, err := Stmt(db, networkIntegrationUpdate)
+	stmt, err := StmtContext(ctx, db, networkIntegrationUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkIntegrationUpdate\" prepared statement: %w", err)
 	}
@@ -407,7 +407,7 @@ func RenameNetworkIntegration(ctx context.Context, db dbtx, uuid uuid.UUID, to s
 		_err = mapErr(_err, "Network_integration")
 	}()
 
-	stmt, err := Stmt(db, networkIntegrationRename)
+	stmt, err := StmtContext(ctx, db, networkIntegrationRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkIntegrationRename\" prepared statement: %w", err)
 	}
@@ -436,7 +436,7 @@ func DeleteNetworkIntegration(ctx context.Context, db dbtx, uuid uuid.UUID) (_er
 		_err = mapErr(_err, "Network_integration")
 	}()
 
-	stmt, err := Stmt(db, networkIntegrationDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkIntegrationDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkIntegrationDeleteByUUID\" prepared statement: %w", err)
 	}

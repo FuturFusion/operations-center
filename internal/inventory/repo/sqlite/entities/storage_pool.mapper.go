@@ -67,7 +67,7 @@ func GetStoragePoolID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err
 		_err = mapErr(_err, "Storage_pool")
 	}()
 
-	stmt, err := Stmt(db, storagePoolID)
+	stmt, err := StmtContext(ctx, db, storagePoolID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storagePoolID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func StoragePoolExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _e
 		_err = mapErr(_err, "Storage_pool")
 	}()
 
-	stmt, err := Stmt(db, storagePoolID)
+	stmt, err := StmtContext(ctx, db, storagePoolID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"storagePoolID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetStoragePools(ctx context.Context, db dbtx, filters ...inventory.StorageP
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storagePoolObjects)
+		sqlStmt, err = StmtContext(ctx, db, storagePoolObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storagePoolObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetStoragePools(ctx context.Context, db dbtx, filters ...inventory.StorageP
 		if filter.UUID != nil && filter.Cluster == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, storagePoolObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, storagePoolObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"storagePoolObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetStoragePoolNames(ctx context.Context, db dbtx, filters ...inventory.Stor
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storagePoolNames)
+		sqlStmt, err = StmtContext(ctx, db, storagePoolNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storagePoolNames\" prepared statement: %w", err)
 		}
@@ -343,7 +343,7 @@ func CreateStoragePool(ctx context.Context, db dbtx, object inventory.StoragePoo
 	args[4] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, storagePoolCreate)
+	stmt, err := StmtContext(ctx, db, storagePoolCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storagePoolCreate\" prepared statement: %w", err)
 	}
@@ -378,7 +378,7 @@ func UpdateStoragePool(ctx context.Context, db tx, uuid uuid.UUID, object invent
 		return err
 	}
 
-	stmt, err := Stmt(db, storagePoolUpdate)
+	stmt, err := StmtContext(ctx, db, storagePoolUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storagePoolUpdate\" prepared statement: %w", err)
 	}
@@ -407,7 +407,7 @@ func RenameStoragePool(ctx context.Context, db dbtx, uuid uuid.UUID, to string) 
 		_err = mapErr(_err, "Storage_pool")
 	}()
 
-	stmt, err := Stmt(db, storagePoolRename)
+	stmt, err := StmtContext(ctx, db, storagePoolRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storagePoolRename\" prepared statement: %w", err)
 	}
@@ -436,7 +436,7 @@ func DeleteStoragePool(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error
 		_err = mapErr(_err, "Storage_pool")
 	}()
 
-	stmt, err := Stmt(db, storagePoolDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, storagePoolDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storagePoolDeleteByUUID\" prepared statement: %w", err)
 	}

@@ -69,7 +69,7 @@ func GetStorageBucketID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _e
 		_err = mapErr(_err, "Storage_bucket")
 	}()
 
-	stmt, err := Stmt(db, storageBucketID)
+	stmt, err := StmtContext(ctx, db, storageBucketID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storageBucketID\" prepared statement: %w", err)
 	}
@@ -95,7 +95,7 @@ func StorageBucketExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, 
 		_err = mapErr(_err, "Storage_bucket")
 	}()
 
-	stmt, err := Stmt(db, storageBucketID)
+	stmt, err := StmtContext(ctx, db, storageBucketID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"storageBucketID\" prepared statement: %w", err)
 	}
@@ -211,7 +211,7 @@ func GetStorageBuckets(ctx context.Context, db dbtx, filters ...inventory.Storag
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storageBucketObjects)
+		sqlStmt, err = StmtContext(ctx, db, storageBucketObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storageBucketObjects\" prepared statement: %w", err)
 		}
@@ -221,7 +221,7 @@ func GetStorageBuckets(ctx context.Context, db dbtx, filters ...inventory.Storag
 		if filter.UUID != nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.StoragePoolName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, storageBucketObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, storageBucketObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"storageBucketObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -282,7 +282,7 @@ func GetStorageBucketNames(ctx context.Context, db dbtx, filters ...inventory.St
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, storageBucketNames)
+		sqlStmt, err = StmtContext(ctx, db, storageBucketNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"storageBucketNames\" prepared statement: %w", err)
 		}
@@ -348,7 +348,7 @@ func CreateStorageBucket(ctx context.Context, db dbtx, object inventory.StorageB
 	args[7] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, storageBucketCreate)
+	stmt, err := StmtContext(ctx, db, storageBucketCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storageBucketCreate\" prepared statement: %w", err)
 	}
@@ -383,7 +383,7 @@ func UpdateStorageBucket(ctx context.Context, db tx, uuid uuid.UUID, object inve
 		return err
 	}
 
-	stmt, err := Stmt(db, storageBucketUpdate)
+	stmt, err := StmtContext(ctx, db, storageBucketUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageBucketUpdate\" prepared statement: %w", err)
 	}
@@ -412,7 +412,7 @@ func RenameStorageBucket(ctx context.Context, db dbtx, uuid uuid.UUID, to string
 		_err = mapErr(_err, "Storage_bucket")
 	}()
 
-	stmt, err := Stmt(db, storageBucketRename)
+	stmt, err := StmtContext(ctx, db, storageBucketRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageBucketRename\" prepared statement: %w", err)
 	}
@@ -441,7 +441,7 @@ func DeleteStorageBucket(ctx context.Context, db dbtx, uuid uuid.UUID) (_err err
 		_err = mapErr(_err, "Storage_bucket")
 	}()
 
-	stmt, err := Stmt(db, storageBucketDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, storageBucketDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageBucketDeleteByUUID\" prepared statement: %w", err)
 	}

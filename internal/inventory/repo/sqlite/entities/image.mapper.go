@@ -67,7 +67,7 @@ func GetImageID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err error
 		_err = mapErr(_err, "Image")
 	}()
 
-	stmt, err := Stmt(db, imageID)
+	stmt, err := StmtContext(ctx, db, imageID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"imageID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func ImageExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err err
 		_err = mapErr(_err, "Image")
 	}()
 
-	stmt, err := Stmt(db, imageID)
+	stmt, err := StmtContext(ctx, db, imageID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"imageID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetImages(ctx context.Context, db dbtx, filters ...inventory.ImageFilter) (
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, imageObjects)
+		sqlStmt, err = StmtContext(ctx, db, imageObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"imageObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetImages(ctx context.Context, db dbtx, filters ...inventory.ImageFilter) (
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, imageObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, imageObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"imageObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetImageNames(ctx context.Context, db dbtx, filters ...inventory.ImageFilte
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, imageNames)
+		sqlStmt, err = StmtContext(ctx, db, imageNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"imageNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateImage(ctx context.Context, db dbtx, object inventory.Image) (_ int64,
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, imageCreate)
+	stmt, err := StmtContext(ctx, db, imageCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"imageCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateImage(ctx context.Context, db tx, uuid uuid.UUID, object inventory.Im
 		return err
 	}
 
-	stmt, err := Stmt(db, imageUpdate)
+	stmt, err := StmtContext(ctx, db, imageUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"imageUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameImage(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (_err 
 		_err = mapErr(_err, "Image")
 	}()
 
-	stmt, err := Stmt(db, imageRename)
+	stmt, err := StmtContext(ctx, db, imageRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"imageRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteImage(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Image")
 	}()
 
-	stmt, err := Stmt(db, imageDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, imageDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"imageDeleteByUUID\" prepared statement: %w", err)
 	}
