@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"crypto/x509"
 	"slices"
 	"testing"
 	"time"
@@ -11,8 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -1465,4 +1468,119 @@ func Test_memberConfigForServer(t *testing.T) {
 		{Entity: "storage-pool", Name: "local", Key: "source", Value: "local/incus"},
 		{Entity: "network", Name: "meshbr0", Key: "tunnel.mesh.interface", Value: "eth1"},
 	}, got)
+}
+
+func TestClusterService_waitBootstrapServerJoined(t *testing.T) {
+	t.Parallel()
+
+	cancelledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// The clock of Operations Center is behind the clock of the bootstrap
+	// server, which created the cluster certificate.
+	certificateNotYetValid := x509.CertificateInvalidError{Reason: x509.Expired}
+
+	tests := []struct {
+		name                string
+		ctx                 context.Context
+		timeout             time.Duration
+		retryDelay          time.Duration
+		getClusterNodeNames []queue.Item[[]string]
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "joined on first attempt",
+			ctx:     context.Background(),
+			timeout: time.Minute,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Value: []string{"one"}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "joined once the cluster certificate is valid",
+			ctx:     context.Background(),
+			timeout: time.Minute,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Err: certificateNotYetValid},
+				{Err: certificateNotYetValid},
+				{Value: []string{"one"}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "joined once the bootstrap server is a member",
+			ctx:     context.Background(),
+			timeout: time.Minute,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Value: []string{}},
+				{Value: []string{"one"}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - timeout exceeded",
+			ctx:     context.Background(),
+			timeout: 0,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - timeout exceeded without members",
+			ctx:     context.Background(),
+			timeout: 0,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Value: []string{}},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Bootstrap server is not a cluster member yet", a...)
+			},
+		},
+		{
+			name:       "error - context cancelled",
+			ctx:        cancelledCtx,
+			timeout:    time.Minute,
+			retryDelay: time.Hour,
+			getClusterNodeNames: []queue.Item[[]string]{
+				{Err: certificateNotYetValid},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, context.Canceled, a...)
+				require.ErrorIs(tt, err, certificateNotYetValid, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			s := &clusterService{
+				client: &adapterMock.ClusterClientPortMock{
+					GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
+						return queue.Pop(t, &tc.getClusterNodeNames)
+					},
+				},
+				createClusterConnectionTestTimeout: tc.timeout,
+				createClusterRetryTimeout:          tc.retryDelay,
+			}
+
+			// Run test
+			err := s.waitBootstrapServerJoined(tc.ctx, provisioning.ClusterEndpoint{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.getClusterNodeNames, "expect all the responses of GetClusterNodeNames to be consumed")
+		})
+	}
 }

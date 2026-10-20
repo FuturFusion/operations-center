@@ -54,7 +54,7 @@ type clusterService struct {
 		GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error)
 	}
 
-	createClusterRetries                   int
+	createClusterConnectionTestTimeout     time.Duration
 	createClusterRetryTimeout              time.Duration
 	createClusterCertificateNotBeforeDelay time.Duration
 
@@ -84,6 +84,12 @@ type Option func(s *clusterService)
 func WithCreateRetryTimeout(timeout time.Duration) Option {
 	return func(s *clusterService) {
 		s.createClusterRetryTimeout = timeout
+	}
+}
+
+func WithCreateClusterConnectionTestTimeout(timeout time.Duration) Option {
+	return func(s *clusterService) {
+		s.createClusterConnectionTestTimeout = timeout
 	}
 }
 
@@ -159,7 +165,7 @@ func New(
 		inventorySvc:     inventorySvc,
 		warning:          provisioning.LogWarningService{},
 
-		createClusterRetries:                   6,
+		createClusterConnectionTestTimeout:     30 * time.Second,
 		createClusterRetryTimeout:              200 * time.Millisecond,
 		createClusterCertificateNotBeforeDelay: 5 * time.Second,
 
@@ -452,21 +458,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		},
 	}
 
-	// Ensure, that the bootstrap server has joined the cluster.
-	var i int
-	for i = range s.createClusterRetries {
-		var nodeNames []string
-		nodeNames, err = s.client.GetClusterNodeNames(ctx, clusterEndpoint)
-		if err == nil && len(nodeNames) > 0 {
-			break
-		}
-
-		// TODO: Should also consider context done.
-		time.Sleep(s.createClusterRetryTimeout)
-	}
-
+	err = s.waitBootstrapServerJoined(ctx, clusterEndpoint)
 	if err != nil {
-		return newCluster, fmt.Errorf("Failed to perform connection test to the bootstrap node using the cluster certificate in %d attempts: %w", i, err)
+		return newCluster, err
 	}
 
 	// Get join tokens on from the cluster, skip the bootstrap server.
@@ -2082,6 +2076,36 @@ func (s *clusterService) refreshOSDataForMeshTunnelInterface(ctx context.Context
 			return errors.Join(ctx.Err(), err)
 
 		case <-time.After(s.meshTunnelInterfaceDetectionRetryDelay):
+		}
+	}
+}
+
+// waitBootstrapServerJoined waits until the bootstrap server answers with the
+// cluster certificate. The certificate is only valid from the time of its
+// creation on the bootstrap server. Retry long enough to tolerate a clock skew
+// between Operations Center and the bootstrap server.
+func (s *clusterService) waitBootstrapServerJoined(ctx context.Context, clusterEndpoint provisioning.ClusterEndpoint) error {
+	deadline := time.Now().Add(s.createClusterConnectionTestTimeout)
+
+	for attempt := 1; ; attempt++ {
+		nodeNames, err := s.client.GetClusterNodeNames(ctx, clusterEndpoint)
+		if err == nil && len(nodeNames) > 0 {
+			return nil
+		}
+
+		if err == nil {
+			err = errors.New("Bootstrap server is not a cluster member yet")
+		}
+
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("Failed to perform connection test to the bootstrap node using the cluster certificate in %d attempts: %w", attempt, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return errors.Join(ctx.Err(), err)
+
+		case <-time.After(s.createClusterRetryTimeout):
 		}
 	}
 }
