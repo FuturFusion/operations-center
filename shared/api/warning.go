@@ -67,6 +67,10 @@ const (
 	// lifecycle operation on a server, for example an evacuation or a restore,
 	// failed after it has been triggered.
 	WarningTypeServerLifecycleOperationFailed WarningType = "Server lifecycle operation failed"
+
+	// WarningTypeServerCertificateSyncFailed indicates a warning where Operations
+	// Center failed to update its server certificate on a server.
+	WarningTypeServerCertificateSyncFailed WarningType = "Server certificate sync failed"
 )
 
 // WarningScope represents a scope for a warning.
