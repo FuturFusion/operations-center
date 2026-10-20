@@ -69,6 +69,7 @@ import (
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
+	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	authnmiddleware "github.com/FuturFusion/operations-center/internal/security/authn/middleware"
 	authnoidc "github.com/FuturFusion/operations-center/internal/security/authn/oidc"
@@ -261,6 +262,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			_, err := d.systemSvc.TriggerCertificateRenew(ctx, true)
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
+				return
 			}
 
 			slog.InfoContext(ctx, "Async ACME renewal completed")
@@ -1649,6 +1651,7 @@ func (d *Daemon) setupBackgroundTasks(
 
 		if !changed {
 			slog.InfoContext(ctx, "ACME server certificate renewal completed, no change")
+			return
 		}
 
 		slog.InfoContext(ctx, "ACME server certificate renewal completed")
@@ -1706,6 +1709,7 @@ func (d *Daemon) setupBackgroundTasks(
 			slog.ErrorContext(ctx, "Failed to get servers during certificates validity check", logger.Err(err))
 		}
 
+		acmeCfg := config.GetSecurity().ACME
 		warnings = warning.Warnings{}
 		for _, server := range servers {
 			if server.Certificate == nil {
@@ -1718,7 +1722,7 @@ func (d *Daemon) setupBackgroundTasks(
 				Entity:     server.Name,
 			}
 
-			valid, err := certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
+			valid, err := validateServerCertificate(server, acmeCfg)
 			if err != nil {
 				if valid {
 					warnings = append(warnings, warning.NewWarningFromError(api.WarningTypeCertificateExpiration, scope, err, ""))
@@ -2005,6 +2009,15 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.SecurityACME) (valid bool, _ error) {
+	// ACME renews late in the validity period. A fixed threshold warns before the renewal starts.
+	if server.Type == api.ServerTypeOperationsCenter && acme.IsEnabled(acmeCfg) {
+		return certificate.ValidateLifetime(*server.Certificate, config.ACMECertificateExpiryWarningLifetimeRatio)
+	}
+
+	return certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
 }
 
 func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.ServerService) error {
