@@ -3,16 +3,25 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -1048,11 +1057,30 @@ func mustDeleteClusterImages(t *testing.T, clusterName string) {
 func operationsCenterIPAddress(t *testing.T) string {
 	t.Helper()
 
-	resp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address ] | first'`)
-	address := resp.OutputTrimmed()
-	require.NotNilf(t, net.ParseIP(address), "Failed to determine the address of the OperationsCenter VM, got %q", address)
+	address, err := operationsCenterIPAddressWithContext(t.Context(), t)
+	require.NoError(t, err)
 
 	return address
+}
+
+// operationsCenterIPAddressWithContext is operationsCenterIPAddress for
+// cleanups, where t.Context() is already cancelled.
+func operationsCenterIPAddressWithContext(ctx context.Context, t *testing.T) (string, error) {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address ] | first'`)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return "", err
+	}
+
+	address := resp.OutputTrimmed()
+	if net.ParseIP(address) == nil {
+		return "", fmt.Errorf("Failed to determine the address of the OperationsCenter VM, got %q", address)
+	}
+
+	return address, nil
 }
 
 // operationsCenterAPI holds what is needed to send requests to the API of
@@ -1905,4 +1933,112 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			}
 		}
 	}
+}
+
+// mustGenerateSelfSignedCertificate generates a self signed certificate for a
+// service of the tests, which is reachable at hostAddress. The address is the
+// only SAN of the certificate. The certificate is a CA, so it can be added as a
+// trust anchor, e.g. to the custom CA certificates of IncusOS. It returns the
+// certificate together with its PEM encoding.
+func mustGenerateSelfSignedCertificate(t *testing.T, hostAddress string, commonName string) (tls.Certificate, string) {
+	t.Helper()
+
+	ip := net.ParseIP(hostAddress)
+	require.NotNilf(t, ip, "Address %q of %q is not an IP address", hostAddress, commonName)
+
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoErrorf(t, err, "Failed to generate the key for %q", commonName)
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	require.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Operations Center end 2 end tests"},
+			CommonName:   commonName,
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           []net.IP{ip},
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	require.NoErrorf(t, err, "Failed to create the certificate for %q", commonName)
+
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	require.NoErrorf(t, err, "Failed to load the certificate for %q", commonName)
+
+	err = tlsCert.Leaf.VerifyHostname(hostAddress)
+	require.NoErrorf(t, err, "Certificate of %q is not valid for %q", commonName, hostAddress)
+
+	return tlsCert, string(certPEM)
+}
+
+// servedOperationsCenterCertificate returns the certificate chain, which
+// Operations Center presents, leaf first.
+func servedOperationsCenterCertificate(ctx context.Context, t *testing.T) ([]*x509.Certificate, error) {
+	t.Helper()
+
+	dialer := &tls.Dialer{
+		Config: &tls.Config{
+			InsecureSkipVerify: true, // nolint: gosec // The test verifies the certificate itself.
+		},
+	}
+
+	address, err := operationsCenterIPAddressWithContext(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(address, "8443"))
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		return nil, fmt.Errorf("Connection to Operations Center is not a TLS connection")
+	}
+
+	return tlsConn.ConnectionState().PeerCertificates, nil
+}
+
+// operationsCenterRemoteNeedsRetrust reports, whether the CLI pins a different
+// certificate than the one, which Operations Center presents. This happens after
+// a failed run of a test, which changes the certificate, without cleanup.
+func operationsCenterRemoteNeedsRetrust(ctx context.Context, t *testing.T) bool {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s remote list -f json | jq -r '.["e2e-test"].server_cert // empty'`, cpuArch)
+	if fmtRunErr(resp) != nil || resp.OutputTrimmed() == "" {
+		return false
+	}
+
+	block, _ := pem.Decode([]byte(resp.OutputTrimmed()))
+	if block == nil {
+		return true
+	}
+
+	chain, err := servedOperationsCenterCertificate(ctx, t)
+	if err != nil {
+		return false
+	}
+
+	return !slices.Equal(block.Bytes, chain[0].Raw)
 }

@@ -470,7 +470,7 @@ func setupLocalOperationsCenterConfig(ctx context.Context, t *testing.T, freshIn
 	remoteAddrResp := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r '.["e2e-test"].addr // empty'`, cpuArch)
 	remoteAddr := remoteAddrResp.OutputTrimmed()
 
-	if remoteAddr != "" && (freshInstall || remoteAddr != operationsCenterAddress) {
+	if remoteAddr != "" && (freshInstall || remoteAddr != operationsCenterAddress || operationsCenterRemoteNeedsRetrust(ctx, t)) {
 		mustRun(t, `../bin/operations-center.linux.%s remote remove e2e-test`, cpuArch)
 		remoteAddr = ""
 	}

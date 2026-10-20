@@ -414,6 +414,28 @@ certificate, which is not trusted by Operations Center, so authentication can
 only succeed through OIDC, and the remotes used by the other tests stay
 untouched.
 
+### Fake ACME server
+
+The ACME support of Operations Center is tested against
+[Pebble](https://github.com/letsencrypt/pebble), the ACME test server of
+Let's Encrypt. Pebble is served in-process by the test on an ephemeral port of
+the end 2 end test host (see `startACMEProvider`), so no additional service
+needs to be installed.
+
+Pebble skips the validation of the challenges, so it needs no access to
+Operations Center. The certificate of its directory is self signed and the root
+CA of the issued certificates is new for every run. So neither is in any
+default CA bundle, like with the internal ACME server of a company.
+
+The test adds both CA certificates to the custom CA certificates of the IncusOS
+host of Operations Center, before it deploys the servers. This way the seed of
+the servers contains them as well.
+
+The test changes the certificate of Operations Center. The CLI pins this
+certificate, so the test adds the remote of the CLI again after every change.
+On cleanup, the test disables ACME, restores the original certificate and the
+custom CA certificates of the host.
+
 ### OpenFGA server
 
 The OpenFGA authorization of Operations Center is tested against a real OpenFGA
