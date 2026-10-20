@@ -4315,6 +4315,7 @@ func TestClusterService_Create(t *testing.T) {
 				provisioner,
 				nil,
 				provisioningCluster.WithCreateRetryTimeout(0),
+				provisioningCluster.WithCreateClusterConnectionTestTimeout(0),
 				provisioningCluster.WithCreateClusterCertificateNotBeforeDelay(0),
 				provisioningCluster.WithMeshTunnelInterfaceDetectionTimeout(tc.meshTunnelInterfaceDetectionTimeout),
 				provisioningCluster.WithMeshTunnelInterfaceDetectionRetryDelay(0),
