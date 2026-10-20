@@ -54,7 +54,7 @@ func GetClusterArtifactID(ctx context.Context, db tx, cluster string, name strin
 		_err = mapErr(_err, "Cluster_artifact")
 	}()
 
-	stmt, err := Stmt(db, clusterArtifactID)
+	stmt, err := StmtContext(ctx, db, clusterArtifactID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterArtifactID\" prepared statement: %w", err)
 	}
@@ -80,7 +80,7 @@ func ClusterArtifactExists(ctx context.Context, db dbtx, cluster string, name st
 		_err = mapErr(_err, "Cluster_artifact")
 	}()
 
-	stmt, err := Stmt(db, clusterArtifactID)
+	stmt, err := StmtContext(ctx, db, clusterArtifactID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"clusterArtifactID\" prepared statement: %w", err)
 	}
@@ -197,7 +197,7 @@ func GetClusterArtifacts(ctx context.Context, db dbtx, filters ...ClusterArtifac
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, clusterArtifactObjects)
+		sqlStmt, err = StmtContext(ctx, db, clusterArtifactObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"clusterArtifactObjects\" prepared statement: %w", err)
 		}
@@ -207,7 +207,7 @@ func GetClusterArtifacts(ctx context.Context, db dbtx, filters ...ClusterArtifac
 		if filter.Cluster != nil && filter.Name != nil {
 			args = append(args, []any{filter.Cluster, filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, clusterArtifactObjectsByClusterAndName)
+				sqlStmt, err = StmtContext(ctx, db, clusterArtifactObjectsByClusterAndName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"clusterArtifactObjectsByClusterAndName\" prepared statement: %w", err)
 				}
@@ -231,7 +231,7 @@ func GetClusterArtifacts(ctx context.Context, db dbtx, filters ...ClusterArtifac
 		} else if filter.Cluster != nil && filter.Name == nil {
 			args = append(args, []any{filter.Cluster}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, clusterArtifactObjectsByCluster)
+				sqlStmt, err = StmtContext(ctx, db, clusterArtifactObjectsByCluster)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"clusterArtifactObjectsByCluster\" prepared statement: %w", err)
 				}
@@ -292,7 +292,7 @@ func CreateClusterArtifact(ctx context.Context, db dbtx, object provisioning.Clu
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, clusterArtifactCreate)
+	stmt, err := StmtContext(ctx, db, clusterArtifactCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterArtifactCreate\" prepared statement: %w", err)
 	}

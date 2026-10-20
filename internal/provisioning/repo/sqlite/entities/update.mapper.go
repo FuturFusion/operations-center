@@ -103,7 +103,7 @@ func GetUpdateID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err erro
 		_err = mapErr(_err, "Update")
 	}()
 
-	stmt, err := Stmt(db, updateID)
+	stmt, err := StmtContext(ctx, db, updateID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"updateID\" prepared statement: %w", err)
 	}
@@ -129,7 +129,7 @@ func UpdateExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err er
 		_err = mapErr(_err, "Update")
 	}()
 
-	stmt, err := Stmt(db, updateID)
+	stmt, err := StmtContext(ctx, db, updateID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"updateID\" prepared statement: %w", err)
 	}
@@ -245,7 +245,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, updateObjects)
+		sqlStmt, err = StmtContext(ctx, db, updateObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"updateObjects\" prepared statement: %w", err)
 		}
@@ -255,7 +255,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 		if filter.Origin != nil && filter.Status != nil && filter.ID == nil && filter.UUID == nil {
 			args = append(args, []any{filter.Origin, filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateObjectsByOriginAndStatus)
+				sqlStmt, err = StmtContext(ctx, db, updateObjectsByOriginAndStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateObjectsByOriginAndStatus\" prepared statement: %w", err)
 				}
@@ -279,7 +279,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 		} else if filter.UUID != nil && filter.ID == nil && filter.Origin == nil && filter.Status == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, updateObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -303,7 +303,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 		} else if filter.Status != nil && filter.ID == nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateObjectsByStatus)
+				sqlStmt, err = StmtContext(ctx, db, updateObjectsByStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateObjectsByStatus\" prepared statement: %w", err)
 				}
@@ -327,7 +327,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 		} else if filter.Origin != nil && filter.ID == nil && filter.UUID == nil && filter.Status == nil {
 			args = append(args, []any{filter.Origin}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateObjectsByOrigin)
+				sqlStmt, err = StmtContext(ctx, db, updateObjectsByOrigin)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateObjectsByOrigin\" prepared statement: %w", err)
 				}
@@ -388,7 +388,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, updateNames)
+		sqlStmt, err = StmtContext(ctx, db, updateNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"updateNames\" prepared statement: %w", err)
 		}
@@ -398,7 +398,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 		if filter.Origin != nil && filter.Status != nil && filter.ID == nil && filter.UUID == nil {
 			args = append(args, []any{filter.Origin, filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateNamesByOriginAndStatus)
+				sqlStmt, err = StmtContext(ctx, db, updateNamesByOriginAndStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateNamesByOriginAndStatus\" prepared statement: %w", err)
 				}
@@ -422,7 +422,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 		} else if filter.Status != nil && filter.ID == nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateNamesByStatus)
+				sqlStmt, err = StmtContext(ctx, db, updateNamesByStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateNamesByStatus\" prepared statement: %w", err)
 				}
@@ -446,7 +446,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 		} else if filter.Origin != nil && filter.ID == nil && filter.UUID == nil && filter.Status == nil {
 			args = append(args, []any{filter.Origin}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, updateNamesByOrigin)
+				sqlStmt, err = StmtContext(ctx, db, updateNamesByOrigin)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"updateNamesByOrigin\" prepared statement: %w", err)
 				}
@@ -528,7 +528,7 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, updateCreate)
+	stmt, err := StmtContext(ctx, db, updateCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"updateCreate\" prepared statement: %w", err)
 	}
@@ -563,7 +563,7 @@ func UpdateUpdate(ctx context.Context, db tx, uuid uuid.UUID, object provisionin
 		return err
 	}
 
-	stmt, err := Stmt(db, updateUpdate)
+	stmt, err := StmtContext(ctx, db, updateUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"updateUpdate\" prepared statement: %w", err)
 	}
@@ -592,7 +592,7 @@ func DeleteUpdate(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Update")
 	}()
 
-	stmt, err := Stmt(db, updateDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, updateDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"updateDeleteByUUID\" prepared statement: %w", err)
 	}

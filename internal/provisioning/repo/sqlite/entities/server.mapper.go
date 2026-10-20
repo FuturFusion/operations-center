@@ -156,7 +156,7 @@ func GetServerID(ctx context.Context, db tx, name string) (_ int64, _err error) 
 		_err = mapErr(_err, "Server")
 	}()
 
-	stmt, err := Stmt(db, serverID)
+	stmt, err := StmtContext(ctx, db, serverID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"serverID\" prepared statement: %w", err)
 	}
@@ -182,7 +182,7 @@ func ServerExists(ctx context.Context, db dbtx, name string) (_ bool, _err error
 		_err = mapErr(_err, "Server")
 	}()
 
-	stmt, err := Stmt(db, serverID)
+	stmt, err := StmtContext(ctx, db, serverID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"serverID\" prepared statement: %w", err)
 	}
@@ -334,7 +334,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, serverObjects)
+		sqlStmt, err = StmtContext(ctx, db, serverObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"serverObjects\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		if filter.Status != nil && filter.StatusDetail != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Status, filter.StatusDetail}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByStatusAndStatusDetail)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByStatusAndStatusDetail)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByStatusAndStatusDetail\" prepared statement: %w", err)
 				}
@@ -368,7 +368,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Cluster != nil && filter.Status != nil && filter.ID == nil && filter.Name == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Cluster, filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByClusterAndStatus)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByClusterAndStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByClusterAndStatus\" prepared statement: %w", err)
 				}
@@ -392,7 +392,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Cluster != nil && filter.Name != nil && filter.ID == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Cluster, filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByClusterAndName)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByClusterAndName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByClusterAndName\" prepared statement: %w", err)
 				}
@@ -416,7 +416,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Type != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Type}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByType)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByType)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByType\" prepared statement: %w", err)
 				}
@@ -440,7 +440,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.SystemUUID != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.SystemUUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsBySystemUUID)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsBySystemUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsBySystemUUID\" prepared statement: %w", err)
 				}
@@ -464,7 +464,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Status != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByStatus)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByStatus)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByStatus\" prepared statement: %w", err)
 				}
@@ -488,7 +488,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Name != nil && filter.ID == nil && filter.Cluster == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByName\" prepared statement: %w", err)
 				}
@@ -512,7 +512,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.MachineID != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil {
 			args = append(args, []any{filter.MachineID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByMachineID)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByMachineID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByMachineID\" prepared statement: %w", err)
 				}
@@ -536,7 +536,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Cluster != nil && filter.ID == nil && filter.Name == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Cluster}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByCluster)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByCluster)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByCluster\" prepared statement: %w", err)
 				}
@@ -560,7 +560,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 		} else if filter.Certificate != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Certificate}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverObjectsByCertificate)
+				sqlStmt, err = StmtContext(ctx, db, serverObjectsByCertificate)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverObjectsByCertificate\" prepared statement: %w", err)
 				}
@@ -621,7 +621,7 @@ func GetServerNames(ctx context.Context, db dbtx, filters ...provisioning.Server
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, serverNames)
+		sqlStmt, err = StmtContext(ctx, db, serverNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"serverNames\" prepared statement: %w", err)
 		}
@@ -631,7 +631,7 @@ func GetServerNames(ctx context.Context, db dbtx, filters ...provisioning.Server
 		if filter.Cluster != nil && filter.ID == nil && filter.Name == nil && filter.Status == nil && filter.StatusDetail == nil && filter.Certificate == nil && filter.Type == nil && filter.SystemUUID == nil && filter.MachineID == nil {
 			args = append(args, []any{filter.Cluster}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, serverNamesByCluster)
+				sqlStmt, err = StmtContext(ctx, db, serverNamesByCluster)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"serverNamesByCluster\" prepared statement: %w", err)
 				}
@@ -741,7 +741,7 @@ func CreateServer(ctx context.Context, db dbtx, object provisioning.Server) (_ i
 	args[22] = object.LastStatusUpdated
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, serverCreate)
+	stmt, err := StmtContext(ctx, db, serverCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"serverCreate\" prepared statement: %w", err)
 	}
@@ -776,7 +776,7 @@ func UpdateServer(ctx context.Context, db tx, name string, object provisioning.S
 		return err
 	}
 
-	stmt, err := Stmt(db, serverUpdate)
+	stmt, err := StmtContext(ctx, db, serverUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"serverUpdate\" prepared statement: %w", err)
 	}
@@ -820,7 +820,7 @@ func RenameServer(ctx context.Context, db dbtx, name string, to string) (_err er
 		_err = mapErr(_err, "Server")
 	}()
 
-	stmt, err := Stmt(db, serverRename)
+	stmt, err := StmtContext(ctx, db, serverRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"serverRename\" prepared statement: %w", err)
 	}
@@ -849,7 +849,7 @@ func DeleteServer(ctx context.Context, db dbtx, name string) (_err error) {
 		_err = mapErr(_err, "Server")
 	}()
 
-	stmt, err := Stmt(db, serverDeleteByName)
+	stmt, err := StmtContext(ctx, db, serverDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"serverDeleteByName\" prepared statement: %w", err)
 	}

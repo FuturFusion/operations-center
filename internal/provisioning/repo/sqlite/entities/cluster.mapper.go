@@ -65,7 +65,7 @@ func GetClusterID(ctx context.Context, db tx, name string) (_ int64, _err error)
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	stmt, err := Stmt(db, clusterID)
+	stmt, err := StmtContext(ctx, db, clusterID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterID\" prepared statement: %w", err)
 	}
@@ -91,7 +91,7 @@ func ClusterExists(ctx context.Context, db dbtx, name string) (_ bool, _err erro
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	stmt, err := Stmt(db, clusterID)
+	stmt, err := StmtContext(ctx, db, clusterID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"clusterID\" prepared statement: %w", err)
 	}
@@ -207,7 +207,7 @@ func GetClusters(ctx context.Context, db dbtx, filters ...provisioning.ClusterFi
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, clusterObjects)
+		sqlStmt, err = StmtContext(ctx, db, clusterObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"clusterObjects\" prepared statement: %w", err)
 		}
@@ -217,7 +217,7 @@ func GetClusters(ctx context.Context, db dbtx, filters ...provisioning.ClusterFi
 		if filter.Name != nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, clusterObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, clusterObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"clusterObjectsByName\" prepared statement: %w", err)
 				}
@@ -278,7 +278,7 @@ func GetClusterNames(ctx context.Context, db dbtx, filters ...provisioning.Clust
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, clusterNames)
+		sqlStmt, err = StmtContext(ctx, db, clusterNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"clusterNames\" prepared statement: %w", err)
 		}
@@ -346,7 +346,7 @@ func CreateCluster(ctx context.Context, db dbtx, object provisioning.Cluster) (_
 	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, clusterCreate)
+	stmt, err := StmtContext(ctx, db, clusterCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterCreate\" prepared statement: %w", err)
 	}
@@ -381,7 +381,7 @@ func UpdateCluster(ctx context.Context, db tx, name string, object provisioning.
 		return err
 	}
 
-	stmt, err := Stmt(db, clusterUpdate)
+	stmt, err := StmtContext(ctx, db, clusterUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterUpdate\" prepared statement: %w", err)
 	}
@@ -410,7 +410,7 @@ func RenameCluster(ctx context.Context, db dbtx, name string, to string) (_err e
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	stmt, err := Stmt(db, clusterRename)
+	stmt, err := StmtContext(ctx, db, clusterRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterRename\" prepared statement: %w", err)
 	}
@@ -439,7 +439,7 @@ func DeleteCluster(ctx context.Context, db dbtx, name string) (_err error) {
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	stmt, err := Stmt(db, clusterDeleteByName)
+	stmt, err := StmtContext(ctx, db, clusterDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterDeleteByName\" prepared statement: %w", err)
 	}

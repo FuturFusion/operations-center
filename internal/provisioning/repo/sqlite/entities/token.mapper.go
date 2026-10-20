@@ -62,7 +62,7 @@ func GetTokenID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err error
 		_err = mapErr(_err, "Token")
 	}()
 
-	stmt, err := Stmt(db, tokenID)
+	stmt, err := StmtContext(ctx, db, tokenID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"tokenID\" prepared statement: %w", err)
 	}
@@ -88,7 +88,7 @@ func TokenExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err err
 		_err = mapErr(_err, "Token")
 	}()
 
-	stmt, err := Stmt(db, tokenID)
+	stmt, err := StmtContext(ctx, db, tokenID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"tokenID\" prepared statement: %w", err)
 	}
@@ -204,7 +204,7 @@ func GetTokens(ctx context.Context, db dbtx, filters ...TokenFilter) (_ []provis
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, tokenObjects)
+		sqlStmt, err = StmtContext(ctx, db, tokenObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"tokenObjects\" prepared statement: %w", err)
 		}
@@ -214,7 +214,7 @@ func GetTokens(ctx context.Context, db dbtx, filters ...TokenFilter) (_ []provis
 		if filter.UUID != nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, tokenObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, tokenObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"tokenObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -275,7 +275,7 @@ func GetTokenNames(ctx context.Context, db dbtx, filters ...TokenFilter) (_ []uu
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, tokenNames)
+		sqlStmt, err = StmtContext(ctx, db, tokenNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"tokenNames\" prepared statement: %w", err)
 		}
@@ -339,7 +339,7 @@ func CreateToken(ctx context.Context, db dbtx, object provisioning.Token) (_ int
 	args[5] = object.AutoRemove
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, tokenCreate)
+	stmt, err := StmtContext(ctx, db, tokenCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"tokenCreate\" prepared statement: %w", err)
 	}
@@ -374,7 +374,7 @@ func UpdateToken(ctx context.Context, db tx, uuid uuid.UUID, object provisioning
 		return err
 	}
 
-	stmt, err := Stmt(db, tokenUpdate)
+	stmt, err := StmtContext(ctx, db, tokenUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"tokenUpdate\" prepared statement: %w", err)
 	}
@@ -403,7 +403,7 @@ func DeleteToken(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Token")
 	}()
 
-	stmt, err := Stmt(db, tokenDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, tokenDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"tokenDeleteByUUID\" prepared statement: %w", err)
 	}

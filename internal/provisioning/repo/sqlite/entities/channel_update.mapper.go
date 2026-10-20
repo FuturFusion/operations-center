@@ -123,7 +123,7 @@ func GetChannelUpdates(ctx context.Context, db tx, channelID int) (_ []provision
 	// Result slice.
 	objects := make([]provisioning.ChannelUpdate, 0)
 
-	sqlStmt, err := Stmt(db, channelUpdateObjectsByChannelID)
+	sqlStmt, err := StmtContext(ctx, db, channelUpdateObjectsByChannelID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get \"channelUpdateObjectsByChannelID\" prepared statement: %w", err)
 	}
@@ -156,7 +156,7 @@ func DeleteChannelUpdates(ctx context.Context, db tx, channelID int) (_err error
 		_err = mapErr(_err, "Channel_update")
 	}()
 
-	stmt, err := Stmt(db, channelUpdateDeleteByChannelID)
+	stmt, err := StmtContext(ctx, db, channelUpdateDeleteByChannelID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"channelUpdateDeleteByChannelID\" prepared statement: %w", err)
 	}
@@ -189,7 +189,7 @@ func CreateChannelUpdates(ctx context.Context, db tx, objects []provisioning.Cha
 		args[1] = object.UpdateID
 
 		// Prepared statement to use.
-		stmt, err := Stmt(db, channelUpdateCreate)
+		stmt, err := StmtContext(ctx, db, channelUpdateCreate)
 		if err != nil {
 			return fmt.Errorf("Failed to get \"channelUpdateCreate\" prepared statement: %w", err)
 		}
@@ -253,7 +253,7 @@ func GetUpdateChannels(ctx context.Context, db tx, updateID int) (_ []provisioni
 	// Result slice.
 	objects := make([]provisioning.ChannelUpdate, 0)
 
-	sqlStmt, err := Stmt(db, channelUpdateObjectsByUpdateID)
+	sqlStmt, err := StmtContext(ctx, db, channelUpdateObjectsByUpdateID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get \"channelUpdateObjectsByUpdateID\" prepared statement: %w", err)
 	}
@@ -286,7 +286,7 @@ func DeleteUpdateChannels(ctx context.Context, db tx, updateID int) (_err error)
 		_err = mapErr(_err, "Channel_update")
 	}()
 
-	stmt, err := Stmt(db, channelUpdateDeleteByUpdateID)
+	stmt, err := StmtContext(ctx, db, channelUpdateDeleteByUpdateID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"channelUpdateDeleteByUpdateID\" prepared statement: %w", err)
 	}
@@ -319,7 +319,7 @@ func CreateUpdateChannels(ctx context.Context, db tx, objects []provisioning.Cha
 		args[1] = object.UpdateID
 
 		// Prepared statement to use.
-		stmt, err := Stmt(db, channelUpdateCreate)
+		stmt, err := StmtContext(ctx, db, channelUpdateCreate)
 		if err != nil {
 			return fmt.Errorf("Failed to get \"channelUpdateCreate\" prepared statement: %w", err)
 		}
