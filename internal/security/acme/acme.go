@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v7/shared/tls"
 	"github.com/lxc/incus/v7/shared/validate"
@@ -63,6 +64,15 @@ func ValidateACMEConfig(s system.SecurityACME) error {
 	return s.Challenge.Validate()
 }
 
+// Matches the threshold of github.com/lxc/incus/v7/shared/tls.CertificateNeedsUpdate.
+const renewalLifetimeRatio = 0.8
+
+// IsEnabled returns whether the ACME config is complete, so the server
+// certificate is managed through ACME.
+func IsEnabled(cfg system.SecurityACME) bool {
+	return cfg.Domain != "" && cfg.Email != "" && cfg.CAURL != "" && cfg.AgreeTOS
+}
+
 // ACMEConfigChanged returns whether the new config has changed from the old one.
 func ACMEConfigChanged(oldCfg, newCfg system.SecurityACME) bool {
 	if oldCfg.AgreeTOS != newCfg.AgreeTOS ||
@@ -91,7 +101,7 @@ func UpdateCertificate(
 	force bool,
 ) (*system.CertificatePost, error) {
 	log := slog.With(slog.String("domain", cfg.Domain), slog.String("ca_url", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
-	if cfg.Domain == "" || cfg.Email == "" || cfg.CAURL == "" || !cfg.AgreeTOS {
+	if !IsEnabled(cfg) {
 		return nil, nil
 	}
 
@@ -107,7 +117,8 @@ func UpdateCertificate(
 	}
 
 	if !force && !tls.CertificateNeedsUpdate(cfg.Domain, cert) {
-		log.Debug("Skipping renewal for certificate that has not reached 80% of its validity period")
+		renewalAfter := cert.NotBefore.Add(time.Duration(float64(cert.NotAfter.Sub(cert.NotBefore)) * renewalLifetimeRatio))
+		log.InfoContext(ctx, "Skipping renewal for certificate that is not due for renewal", slog.Time("renewal_after", renewalAfter), slog.Time("not_after", cert.NotAfter))
 		return nil, nil
 	}
 
