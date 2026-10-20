@@ -266,7 +266,8 @@ Deferred attributes:
 ```
 
 The attributes are accumulated from all the BIOS profiles matching the data
-reported by the BMC, processed by priority ascending. The catalog shipped with
+reported by the BMC. The [BIOS profile priority rules](https://github.com/FuturFusion/operations-center/blob/main/internal/provisioning/adapter/bios/profiles/README.md#priority-and-resolution-order)
+describes the order in which they are applied. The catalog shipped with
 Operations Center currently covers Dell, Lenovo and HPE systems. A deployment of
 a server, that no profile matches, is rejected.
 

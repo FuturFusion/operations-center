@@ -30,8 +30,9 @@ from the BIOS profiles matching the server.
 For the development of BIOS profiles, the request optionally carries a list of
 BIOS profiles in the format of the catalog. The catalog is not consulted at all
 then: the provided profiles take its place and are resolved exactly like it,
-matched against the BMC data of the server and accumulated by priority. A
-request, none of whose profiles matches the server, is rejected. The profiles
+matched against the BMC data of the server and accumulated in priority order
+(see [BIOS profile priority rules](https://github.com/FuturFusion/operations-center/blob/main/internal/provisioning/adapter/bios/profiles/README.md#priority-and-resolution-order)).
+A request, none of whose profiles matches the server, is rejected. The profiles
 are used for this request only: they are not kept, only what they resolve to is
 snapshotted onto the deployment, the same way it is for the profiles of the
 catalog.
@@ -575,7 +576,8 @@ not keyed by state: a setting like `power_off_settle_delay` feeds every power
 off wait, and the states are free to change.
 
 * The settings are resolved together with the BIOS attributes, a profile with a
-  higher priority overriding single settings, and are snapshotted on the
+  higher priority overriding single settings (see
+  [priority and resolution order](https://github.com/FuturFusion/operations-center/blob/main/internal/provisioning/adapter/bios/profiles/README.md#priority-and-resolution-order)), and are snapshotted on the
   deployment as `Settings`. A deployment therefore keeps its timings across a
   restart and a change of the profiles.
 * The dispatcher applies the snapshot to the definition of the state it is about

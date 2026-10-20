@@ -49,6 +49,10 @@ This requires `--bios-profiles` and `--secure-boot-enrollment-media`, and at
 most 16 certificates can be provided. A deployment, which could not enroll a
 certificate kept by the provided profiles, is rejected.
 
+When several BIOS profiles match a server, the later applied profile overrides
+the earlier ones. The order and the merge rules are described in the
+[BIOS profile priority rules](https://github.com/FuturFusion/operations-center/blob/main/internal/provisioning/adapter/bios/profiles/README.md#priority-and-resolution-order).
+
 BIOS profiles are also able to adjust the timings of the deployment, e.g. the
 timeouts, for hardware, that needs more time than the defaults grant. The
 settings deviating from the defaults for a server are shown by
