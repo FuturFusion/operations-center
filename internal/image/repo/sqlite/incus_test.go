@@ -16,6 +16,8 @@ import (
 )
 
 func TestIncusImageDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	incusImageA := image.IncusImage{
 		Name:            "almalinux:10:amd64:default",
 		OperatingSystem: "almalinux",
@@ -59,8 +61,10 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	// update := sqlite.NewUpdate(tx)
 	incusImage := sqlite.NewIncusImage(tx)
