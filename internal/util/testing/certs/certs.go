@@ -101,6 +101,27 @@ func GenerateChain(t *testing.T) (rootPEM []byte, intermediatePEM []byte, leafPE
 	return rootPEM, intermediatePEM, leafPEM, leafKeyPEM
 }
 
+// GenerateWithValidity returns a PEM encoded self signed certificate with the
+// given validity period.
+func GenerateWithValidity(t *testing.T, notBefore time.Time, notAfter time.Time) string {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: serialNumber(t),
+		Subject:      pkix.Name{CommonName: "operations-center"},
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+}
+
 func serialNumber(t *testing.T) *big.Int {
 	t.Helper()
 
