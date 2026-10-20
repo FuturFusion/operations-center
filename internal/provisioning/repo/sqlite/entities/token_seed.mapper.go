@@ -66,7 +66,7 @@ func GetTokenSeedID(ctx context.Context, db tx, token uuid.UUID, name string) (_
 		_err = mapErr(_err, "Token_seed")
 	}()
 
-	stmt, err := Stmt(db, tokenSeedID)
+	stmt, err := StmtContext(ctx, db, tokenSeedID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"tokenSeedID\" prepared statement: %w", err)
 	}
@@ -92,7 +92,7 @@ func TokenSeedExists(ctx context.Context, db dbtx, token uuid.UUID, name string)
 		_err = mapErr(_err, "Token_seed")
 	}()
 
-	stmt, err := Stmt(db, tokenSeedID)
+	stmt, err := StmtContext(ctx, db, tokenSeedID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"tokenSeedID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetTokenSeeds(ctx context.Context, db dbtx, filters ...TokenSeedFilter) (_ 
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, tokenSeedObjects)
+		sqlStmt, err = StmtContext(ctx, db, tokenSeedObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"tokenSeedObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetTokenSeeds(ctx context.Context, db dbtx, filters ...TokenSeedFilter) (_ 
 		if filter.Name != nil && filter.Token != nil {
 			args = append(args, []any{filter.Name, filter.Token}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, tokenSeedObjectsByNameAndToken)
+				sqlStmt, err = StmtContext(ctx, db, tokenSeedObjectsByNameAndToken)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"tokenSeedObjectsByNameAndToken\" prepared statement: %w", err)
 				}
@@ -243,7 +243,7 @@ func GetTokenSeeds(ctx context.Context, db dbtx, filters ...TokenSeedFilter) (_ 
 		} else if filter.Token != nil && filter.Name == nil {
 			args = append(args, []any{filter.Token}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, tokenSeedObjectsByToken)
+				sqlStmt, err = StmtContext(ctx, db, tokenSeedObjectsByToken)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"tokenSeedObjectsByToken\" prepared statement: %w", err)
 				}
@@ -304,7 +304,7 @@ func CreateTokenSeed(ctx context.Context, db dbtx, object provisioning.TokenSeed
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, tokenSeedCreate)
+	stmt, err := StmtContext(ctx, db, tokenSeedCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"tokenSeedCreate\" prepared statement: %w", err)
 	}
@@ -339,7 +339,7 @@ func UpdateTokenSeed(ctx context.Context, db tx, token uuid.UUID, name string, o
 		return err
 	}
 
-	stmt, err := Stmt(db, tokenSeedUpdate)
+	stmt, err := StmtContext(ctx, db, tokenSeedUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"tokenSeedUpdate\" prepared statement: %w", err)
 	}
@@ -368,7 +368,7 @@ func DeleteTokenSeed(ctx context.Context, db dbtx, name string, token uuid.UUID)
 		_err = mapErr(_err, "Token_seed")
 	}()
 
-	stmt, err := Stmt(db, tokenSeedDeleteByNameAndToken)
+	stmt, err := StmtContext(ctx, db, tokenSeedDeleteByNameAndToken)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"tokenSeedDeleteByNameAndToken\" prepared statement: %w", err)
 	}

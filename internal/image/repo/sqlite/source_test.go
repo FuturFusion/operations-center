@@ -16,6 +16,8 @@ import (
 )
 
 func TestImageSourceDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	imageSourceA := image.IncusImageSource{
 		Name:             "linuxcontainers.org",
 		URL:              "https://images.linuxcontainers.org",
@@ -44,8 +46,10 @@ func TestImageSourceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	// update := sqlite.NewUpdate(tx)
 	imageSource := sqlite.NewImageSource(tx)

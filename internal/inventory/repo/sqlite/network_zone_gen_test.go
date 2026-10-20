@@ -23,6 +23,8 @@ import (
 )
 
 func TestNetworkZoneDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
@@ -115,8 +117,10 @@ server-two
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	networkZone := inventorySqlite.NewNetworkZone(tx)
 

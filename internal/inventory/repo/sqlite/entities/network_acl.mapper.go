@@ -67,7 +67,7 @@ func GetNetworkAclID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err 
 		_err = mapErr(_err, "Network_acl")
 	}()
 
-	stmt, err := Stmt(db, networkAclID)
+	stmt, err := StmtContext(ctx, db, networkAclID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkAclID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkAclExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _er
 		_err = mapErr(_err, "Network_acl")
 	}()
 
-	stmt, err := Stmt(db, networkAclID)
+	stmt, err := StmtContext(ctx, db, networkAclID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkAclID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkAcls(ctx context.Context, db dbtx, filters ...inventory.NetworkAc
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkAclObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkAclObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkAclObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkAcls(ctx context.Context, db dbtx, filters ...inventory.NetworkAc
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkAclObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkAclObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkAclObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkAclNames(ctx context.Context, db dbtx, filters ...inventory.Netwo
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkAclNames)
+		sqlStmt, err = StmtContext(ctx, db, networkAclNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkAclNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateNetworkAcl(ctx context.Context, db dbtx, object inventory.NetworkAcl)
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkAclCreate)
+	stmt, err := StmtContext(ctx, db, networkAclCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkAclCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateNetworkAcl(ctx context.Context, db tx, uuid uuid.UUID, object invento
 		return err
 	}
 
-	stmt, err := Stmt(db, networkAclUpdate)
+	stmt, err := StmtContext(ctx, db, networkAclUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAclUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameNetworkAcl(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (
 		_err = mapErr(_err, "Network_acl")
 	}()
 
-	stmt, err := Stmt(db, networkAclRename)
+	stmt, err := StmtContext(ctx, db, networkAclRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAclRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteNetworkAcl(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error)
 		_err = mapErr(_err, "Network_acl")
 	}()
 
-	stmt, err := Stmt(db, networkAclDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkAclDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkAclDeleteByUUID\" prepared statement: %w", err)
 	}

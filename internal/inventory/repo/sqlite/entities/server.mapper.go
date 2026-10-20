@@ -29,7 +29,7 @@ func GetServerID(ctx context.Context, db tx, name string) (_ int64, _err error) 
 		_err = mapErr(_err, "Server")
 	}()
 
-	stmt, err := Stmt(db, serverID)
+	stmt, err := StmtContext(ctx, db, serverID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"serverID\" prepared statement: %w", err)
 	}

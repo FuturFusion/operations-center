@@ -67,7 +67,7 @@ func GetNetworkZoneID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err
 		_err = mapErr(_err, "Network_zone")
 	}()
 
-	stmt, err := Stmt(db, networkZoneID)
+	stmt, err := StmtContext(ctx, db, networkZoneID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkZoneID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkZoneExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _e
 		_err = mapErr(_err, "Network_zone")
 	}()
 
-	stmt, err := Stmt(db, networkZoneID)
+	stmt, err := StmtContext(ctx, db, networkZoneID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkZoneID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkZones(ctx context.Context, db dbtx, filters ...inventory.NetworkZ
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkZoneObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkZoneObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkZoneObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkZones(ctx context.Context, db dbtx, filters ...inventory.NetworkZ
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkZoneObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkZoneObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkZoneObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkZoneNames(ctx context.Context, db dbtx, filters ...inventory.Netw
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkZoneNames)
+		sqlStmt, err = StmtContext(ctx, db, networkZoneNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkZoneNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateNetworkZone(ctx context.Context, db dbtx, object inventory.NetworkZon
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkZoneCreate)
+	stmt, err := StmtContext(ctx, db, networkZoneCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkZoneCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateNetworkZone(ctx context.Context, db tx, uuid uuid.UUID, object invent
 		return err
 	}
 
-	stmt, err := Stmt(db, networkZoneUpdate)
+	stmt, err := StmtContext(ctx, db, networkZoneUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkZoneUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameNetworkZone(ctx context.Context, db dbtx, uuid uuid.UUID, to string) 
 		_err = mapErr(_err, "Network_zone")
 	}()
 
-	stmt, err := Stmt(db, networkZoneRename)
+	stmt, err := StmtContext(ctx, db, networkZoneRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkZoneRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteNetworkZone(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error
 		_err = mapErr(_err, "Network_zone")
 	}()
 
-	stmt, err := Stmt(db, networkZoneDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkZoneDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkZoneDeleteByUUID\" prepared statement: %w", err)
 	}

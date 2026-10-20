@@ -431,6 +431,7 @@ type ExprOsapiSystemStorageDriveSMART struct {
 	Passed             bool   `json:"passed"          yaml:"passed" expr:"passed"`
 	Error              string `json:"error,omitempty" yaml:"error,omitempty" expr:"error"`
 	PowerOnHours       int    `json:"power_on_hours,omitempty"      yaml:"power_on_hours,omitempty" expr:"power_on_hours"`
+	TemperatureCelsius int    `json:"temperature_celsius,omitempty" yaml:"temperature_celsius,omitempty" expr:"temperature_celsius"`
 	DataUnitsRead      int    `json:"data_units_read,omitempty"     yaml:"data_units_read,omitempty" expr:"data_units_read"`
 	DataUnitsWritten   int    `json:"data_units_written,omitempty"  yaml:"data_units_written,omitempty" expr:"data_units_written"`
 	AvailableSpare     int    `json:"available_spare,omitempty"     yaml:"available_spare,omitempty" expr:"available_spare"`
@@ -1128,6 +1129,7 @@ func ToExprOsapiSystemStorageDriveSMART(s osapi.SystemStorageDriveSMART) ExprOsa
 		Passed:             s.Passed,
 		Error:              s.Error,
 		PowerOnHours:       s.PowerOnHours,
+		TemperatureCelsius: s.TemperatureCelsius,
 		DataUnitsRead:      s.DataUnitsRead,
 		DataUnitsWritten:   s.DataUnitsWritten,
 		AvailableSpare:     s.AvailableSpare,

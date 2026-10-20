@@ -66,7 +66,7 @@ func GetChannelID(ctx context.Context, db tx, name string) (_ int64, _err error)
 		_err = mapErr(_err, "Channel")
 	}()
 
-	stmt, err := Stmt(db, channelID)
+	stmt, err := StmtContext(ctx, db, channelID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"channelID\" prepared statement: %w", err)
 	}
@@ -92,7 +92,7 @@ func ChannelExists(ctx context.Context, db dbtx, name string) (_ bool, _err erro
 		_err = mapErr(_err, "Channel")
 	}()
 
-	stmt, err := Stmt(db, channelID)
+	stmt, err := StmtContext(ctx, db, channelID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"channelID\" prepared statement: %w", err)
 	}
@@ -208,7 +208,7 @@ func GetChannels(ctx context.Context, db dbtx, filters ...provisioning.ChannelFi
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, channelObjects)
+		sqlStmt, err = StmtContext(ctx, db, channelObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"channelObjects\" prepared statement: %w", err)
 		}
@@ -218,7 +218,7 @@ func GetChannels(ctx context.Context, db dbtx, filters ...provisioning.ChannelFi
 		if filter.Name != nil && filter.ID == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, channelObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, channelObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"channelObjectsByName\" prepared statement: %w", err)
 				}
@@ -242,7 +242,7 @@ func GetChannels(ctx context.Context, db dbtx, filters ...provisioning.ChannelFi
 		} else if filter.ID != nil && filter.Name == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, channelObjectsByID)
+				sqlStmt, err = StmtContext(ctx, db, channelObjectsByID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"channelObjectsByID\" prepared statement: %w", err)
 				}
@@ -303,7 +303,7 @@ func GetChannelNames(ctx context.Context, db dbtx, filters ...provisioning.Chann
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, channelNames)
+		sqlStmt, err = StmtContext(ctx, db, channelNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"channelNames\" prepared statement: %w", err)
 		}
@@ -364,7 +364,7 @@ func CreateChannel(ctx context.Context, db dbtx, object provisioning.Channel) (_
 	args[2] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, channelCreate)
+	stmt, err := StmtContext(ctx, db, channelCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"channelCreate\" prepared statement: %w", err)
 	}
@@ -399,7 +399,7 @@ func UpdateChannel(ctx context.Context, db tx, name string, object provisioning.
 		return err
 	}
 
-	stmt, err := Stmt(db, channelUpdate)
+	stmt, err := StmtContext(ctx, db, channelUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"channelUpdate\" prepared statement: %w", err)
 	}
@@ -428,7 +428,7 @@ func DeleteChannel(ctx context.Context, db dbtx, name string) (_err error) {
 		_err = mapErr(_err, "Channel")
 	}()
 
-	stmt, err := Stmt(db, channelDeleteByName)
+	stmt, err := StmtContext(ctx, db, channelDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"channelDeleteByName\" prepared statement: %w", err)
 	}

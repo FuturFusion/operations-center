@@ -67,7 +67,7 @@ func GetNetworkLoadBalancerID(ctx context.Context, db tx, uuid uuid.UUID) (_ int
 		_err = mapErr(_err, "Network_load_balancer")
 	}()
 
-	stmt, err := Stmt(db, networkLoadBalancerID)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkLoadBalancerID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkLoadBalancerExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ 
 		_err = mapErr(_err, "Network_load_balancer")
 	}()
 
-	stmt, err := Stmt(db, networkLoadBalancerID)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkLoadBalancerID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkLoadBalancers(ctx context.Context, db dbtx, filters ...inventory.
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkLoadBalancerObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkLoadBalancerObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkLoadBalancerObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkLoadBalancers(ctx context.Context, db dbtx, filters ...inventory.
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkLoadBalancerObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkLoadBalancerObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkLoadBalancerObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkLoadBalancerNames(ctx context.Context, db dbtx, filters ...invent
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkLoadBalancerNames)
+		sqlStmt, err = StmtContext(ctx, db, networkLoadBalancerNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkLoadBalancerNames\" prepared statement: %w", err)
 		}
@@ -345,7 +345,7 @@ func CreateNetworkLoadBalancer(ctx context.Context, db dbtx, object inventory.Ne
 	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkLoadBalancerCreate)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkLoadBalancerCreate\" prepared statement: %w", err)
 	}
@@ -380,7 +380,7 @@ func UpdateNetworkLoadBalancer(ctx context.Context, db tx, uuid uuid.UUID, objec
 		return err
 	}
 
-	stmt, err := Stmt(db, networkLoadBalancerUpdate)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkLoadBalancerUpdate\" prepared statement: %w", err)
 	}
@@ -409,7 +409,7 @@ func RenameNetworkLoadBalancer(ctx context.Context, db dbtx, uuid uuid.UUID, to 
 		_err = mapErr(_err, "Network_load_balancer")
 	}()
 
-	stmt, err := Stmt(db, networkLoadBalancerRename)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkLoadBalancerRename\" prepared statement: %w", err)
 	}
@@ -438,7 +438,7 @@ func DeleteNetworkLoadBalancer(ctx context.Context, db dbtx, uuid uuid.UUID) (_e
 		_err = mapErr(_err, "Network_load_balancer")
 	}()
 
-	stmt, err := Stmt(db, networkLoadBalancerDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkLoadBalancerDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkLoadBalancerDeleteByUUID\" prepared statement: %w", err)
 	}

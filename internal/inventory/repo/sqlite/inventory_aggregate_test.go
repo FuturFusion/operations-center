@@ -17,6 +17,8 @@ import (
 )
 
 func TestInventoryAggregateDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	// Create a new temporary database.
@@ -33,15 +35,17 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	err = seed.DB(ctx, db, seed.Config{})
 	require.NoError(t, err)
 
 	aggregateRepo := inventorySqlite.NewInventoryAggregate(db)
 
-	aggregates, err := aggregateRepo.GetAllWithFilter(context.Background(), inventory.InventoryAggregateFilter{
+	aggregates, err := aggregateRepo.GetAllWithFilter(ctx, inventory.InventoryAggregateFilter{
 		Clusters: []string{"cluster-00000001"},
 	})
 	require.NoError(t, err)

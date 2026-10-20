@@ -67,7 +67,7 @@ func GetProjectID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err err
 		_err = mapErr(_err, "Project")
 	}()
 
-	stmt, err := Stmt(db, projectID)
+	stmt, err := StmtContext(ctx, db, projectID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"projectID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func ProjectExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err e
 		_err = mapErr(_err, "Project")
 	}()
 
-	stmt, err := Stmt(db, projectID)
+	stmt, err := StmtContext(ctx, db, projectID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"projectID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetProjects(ctx context.Context, db dbtx, filters ...inventory.ProjectFilte
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, projectObjects)
+		sqlStmt, err = StmtContext(ctx, db, projectObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"projectObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetProjects(ctx context.Context, db dbtx, filters ...inventory.ProjectFilte
 		if filter.UUID != nil && filter.Cluster == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, projectObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, projectObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"projectObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetProjectNames(ctx context.Context, db dbtx, filters ...inventory.ProjectF
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, projectNames)
+		sqlStmt, err = StmtContext(ctx, db, projectNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"projectNames\" prepared statement: %w", err)
 		}
@@ -343,7 +343,7 @@ func CreateProject(ctx context.Context, db dbtx, object inventory.Project) (_ in
 	args[4] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, projectCreate)
+	stmt, err := StmtContext(ctx, db, projectCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"projectCreate\" prepared statement: %w", err)
 	}
@@ -378,7 +378,7 @@ func UpdateProject(ctx context.Context, db tx, uuid uuid.UUID, object inventory.
 		return err
 	}
 
-	stmt, err := Stmt(db, projectUpdate)
+	stmt, err := StmtContext(ctx, db, projectUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"projectUpdate\" prepared statement: %w", err)
 	}
@@ -407,7 +407,7 @@ func RenameProject(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (_er
 		_err = mapErr(_err, "Project")
 	}()
 
-	stmt, err := Stmt(db, projectRename)
+	stmt, err := StmtContext(ctx, db, projectRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"projectRename\" prepared statement: %w", err)
 	}
@@ -436,7 +436,7 @@ func DeleteProject(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Project")
 	}()
 
-	stmt, err := Stmt(db, projectDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, projectDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"projectDeleteByUUID\" prepared statement: %w", err)
 	}

@@ -124,6 +124,8 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 }
 
 func TestLocalArtifactDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	clusterA := provisioning.Cluster{
 		Name:    "clusterOne",
 		Channel: "stable",
@@ -180,10 +182,14 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	clusterEntities.PreparedStmts, err = clusterEntities.PrepareStmts(tx, false)
+	clusterStmts, err := clusterEntities.PrepareStmts(tx, false)
 	require.NoError(t, err)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+
+	artifactStmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = clusterEntities.WithPreparedStmts(ctx, clusterStmts)
+	ctx = entities.WithPreparedStmts(ctx, artifactStmts)
 
 	cluster := sqlite.NewCluster(tx)
 

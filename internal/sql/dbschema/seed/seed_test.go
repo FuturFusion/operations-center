@@ -14,6 +14,8 @@ import (
 )
 
 func TestSeedDB(t *testing.T) {
+	t.Parallel()
+
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 
@@ -34,8 +36,10 @@ PRAGMA temp_store = MEMORY;
 	require.NoError(t, err)
 
 	dbWithTransaction := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	stmts, err := entities.PrepareStmts(dbWithTransaction, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	err = seed.DB(ctx, db, seed.Config{
 		ClustersCount:           3,

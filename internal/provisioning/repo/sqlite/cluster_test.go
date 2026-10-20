@@ -18,6 +18,8 @@ import (
 )
 
 func TestClusterDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	certPEMA, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -66,8 +68,10 @@ func TestClusterDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	cluster := sqlite.NewCluster(tx)
 
@@ -154,6 +158,8 @@ func TestClusterDatabaseActions(t *testing.T) {
 }
 
 func TestClusterNullCert(t *testing.T) {
+	t.Parallel()
+
 	clusterCertNull1 := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
@@ -188,8 +194,10 @@ func TestClusterNullCert(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	cluster := sqlite.NewCluster(tx)
 

@@ -67,7 +67,7 @@ func GetNetworkID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err err
 		_err = mapErr(_err, "Network")
 	}()
 
-	stmt, err := Stmt(db, networkID)
+	stmt, err := StmtContext(ctx, db, networkID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _err e
 		_err = mapErr(_err, "Network")
 	}()
 
-	stmt, err := Stmt(db, networkID)
+	stmt, err := StmtContext(ctx, db, networkID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...inventory.NetworkFilte
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...inventory.NetworkFilte
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkNames(ctx context.Context, db dbtx, filters ...inventory.NetworkF
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkNames)
+		sqlStmt, err = StmtContext(ctx, db, networkNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkNames\" prepared statement: %w", err)
 		}
@@ -344,7 +344,7 @@ func CreateNetwork(ctx context.Context, db dbtx, object inventory.Network) (_ in
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkCreate)
+	stmt, err := StmtContext(ctx, db, networkCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkCreate\" prepared statement: %w", err)
 	}
@@ -379,7 +379,7 @@ func UpdateNetwork(ctx context.Context, db tx, uuid uuid.UUID, object inventory.
 		return err
 	}
 
-	stmt, err := Stmt(db, networkUpdate)
+	stmt, err := StmtContext(ctx, db, networkUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkUpdate\" prepared statement: %w", err)
 	}
@@ -408,7 +408,7 @@ func RenameNetwork(ctx context.Context, db dbtx, uuid uuid.UUID, to string) (_er
 		_err = mapErr(_err, "Network")
 	}()
 
-	stmt, err := Stmt(db, networkRename)
+	stmt, err := StmtContext(ctx, db, networkRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkRename\" prepared statement: %w", err)
 	}
@@ -437,7 +437,7 @@ func DeleteNetwork(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error) {
 		_err = mapErr(_err, "Network")
 	}()
 
-	stmt, err := Stmt(db, networkDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkDeleteByUUID\" prepared statement: %w", err)
 	}

@@ -67,7 +67,7 @@ func GetNetworkPeerID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _err
 		_err = mapErr(_err, "Network_peer")
 	}()
 
-	stmt, err := Stmt(db, networkPeerID)
+	stmt, err := StmtContext(ctx, db, networkPeerID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkPeerID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkPeerExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool, _e
 		_err = mapErr(_err, "Network_peer")
 	}()
 
-	stmt, err := Stmt(db, networkPeerID)
+	stmt, err := StmtContext(ctx, db, networkPeerID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkPeerID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkPeers(ctx context.Context, db dbtx, filters ...inventory.NetworkP
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkPeerObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkPeerObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkPeerObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkPeers(ctx context.Context, db dbtx, filters ...inventory.NetworkP
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkPeerObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkPeerObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkPeerObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkPeerNames(ctx context.Context, db dbtx, filters ...inventory.Netw
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkPeerNames)
+		sqlStmt, err = StmtContext(ctx, db, networkPeerNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkPeerNames\" prepared statement: %w", err)
 		}
@@ -345,7 +345,7 @@ func CreateNetworkPeer(ctx context.Context, db dbtx, object inventory.NetworkPee
 	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkPeerCreate)
+	stmt, err := StmtContext(ctx, db, networkPeerCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkPeerCreate\" prepared statement: %w", err)
 	}
@@ -380,7 +380,7 @@ func UpdateNetworkPeer(ctx context.Context, db tx, uuid uuid.UUID, object invent
 		return err
 	}
 
-	stmt, err := Stmt(db, networkPeerUpdate)
+	stmt, err := StmtContext(ctx, db, networkPeerUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkPeerUpdate\" prepared statement: %w", err)
 	}
@@ -409,7 +409,7 @@ func RenameNetworkPeer(ctx context.Context, db dbtx, uuid uuid.UUID, to string) 
 		_err = mapErr(_err, "Network_peer")
 	}()
 
-	stmt, err := Stmt(db, networkPeerRename)
+	stmt, err := StmtContext(ctx, db, networkPeerRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkPeerRename\" prepared statement: %w", err)
 	}
@@ -438,7 +438,7 @@ func DeleteNetworkPeer(ctx context.Context, db dbtx, uuid uuid.UUID) (_err error
 		_err = mapErr(_err, "Network_peer")
 	}()
 
-	stmt, err := Stmt(db, networkPeerDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkPeerDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkPeerDeleteByUUID\" prepared statement: %w", err)
 	}

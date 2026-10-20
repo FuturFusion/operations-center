@@ -67,7 +67,7 @@ func GetNetworkForwardID(ctx context.Context, db tx, uuid uuid.UUID) (_ int64, _
 		_err = mapErr(_err, "Network_forward")
 	}()
 
-	stmt, err := Stmt(db, networkForwardID)
+	stmt, err := StmtContext(ctx, db, networkForwardID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkForwardID\" prepared statement: %w", err)
 	}
@@ -93,7 +93,7 @@ func NetworkForwardExists(ctx context.Context, db dbtx, uuid uuid.UUID) (_ bool,
 		_err = mapErr(_err, "Network_forward")
 	}()
 
-	stmt, err := Stmt(db, networkForwardID)
+	stmt, err := StmtContext(ctx, db, networkForwardID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"networkForwardID\" prepared statement: %w", err)
 	}
@@ -209,7 +209,7 @@ func GetNetworkForwards(ctx context.Context, db dbtx, filters ...inventory.Netwo
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkForwardObjects)
+		sqlStmt, err = StmtContext(ctx, db, networkForwardObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkForwardObjects\" prepared statement: %w", err)
 		}
@@ -219,7 +219,7 @@ func GetNetworkForwards(ctx context.Context, db dbtx, filters ...inventory.Netwo
 		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkForwardObjectsByUUID)
+				sqlStmt, err = StmtContext(ctx, db, networkForwardObjectsByUUID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"networkForwardObjectsByUUID\" prepared statement: %w", err)
 				}
@@ -280,7 +280,7 @@ func GetNetworkForwardNames(ctx context.Context, db dbtx, filters ...inventory.N
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, networkForwardNames)
+		sqlStmt, err = StmtContext(ctx, db, networkForwardNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"networkForwardNames\" prepared statement: %w", err)
 		}
@@ -345,7 +345,7 @@ func CreateNetworkForward(ctx context.Context, db dbtx, object inventory.Network
 	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, networkForwardCreate)
+	stmt, err := StmtContext(ctx, db, networkForwardCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"networkForwardCreate\" prepared statement: %w", err)
 	}
@@ -380,7 +380,7 @@ func UpdateNetworkForward(ctx context.Context, db tx, uuid uuid.UUID, object inv
 		return err
 	}
 
-	stmt, err := Stmt(db, networkForwardUpdate)
+	stmt, err := StmtContext(ctx, db, networkForwardUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkForwardUpdate\" prepared statement: %w", err)
 	}
@@ -409,7 +409,7 @@ func RenameNetworkForward(ctx context.Context, db dbtx, uuid uuid.UUID, to strin
 		_err = mapErr(_err, "Network_forward")
 	}()
 
-	stmt, err := Stmt(db, networkForwardRename)
+	stmt, err := StmtContext(ctx, db, networkForwardRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkForwardRename\" prepared statement: %w", err)
 	}
@@ -438,7 +438,7 @@ func DeleteNetworkForward(ctx context.Context, db dbtx, uuid uuid.UUID) (_err er
 		_err = mapErr(_err, "Network_forward")
 	}()
 
-	stmt, err := Stmt(db, networkForwardDeleteByUUID)
+	stmt, err := StmtContext(ctx, db, networkForwardDeleteByUUID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"networkForwardDeleteByUUID\" prepared statement: %w", err)
 	}

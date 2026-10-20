@@ -63,7 +63,7 @@ func GetClusterTemplateID(ctx context.Context, db tx, name string) (_ int64, _er
 		_err = mapErr(_err, "Cluster_template")
 	}()
 
-	stmt, err := Stmt(db, clusterTemplateID)
+	stmt, err := StmtContext(ctx, db, clusterTemplateID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterTemplateID\" prepared statement: %w", err)
 	}
@@ -89,7 +89,7 @@ func ClusterTemplateExists(ctx context.Context, db dbtx, name string) (_ bool, _
 		_err = mapErr(_err, "Cluster_template")
 	}()
 
-	stmt, err := Stmt(db, clusterTemplateID)
+	stmt, err := StmtContext(ctx, db, clusterTemplateID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"clusterTemplateID\" prepared statement: %w", err)
 	}
@@ -205,7 +205,7 @@ func GetClusterTemplates(ctx context.Context, db dbtx, filters ...ClusterTemplat
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, clusterTemplateObjects)
+		sqlStmt, err = StmtContext(ctx, db, clusterTemplateObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"clusterTemplateObjects\" prepared statement: %w", err)
 		}
@@ -215,7 +215,7 @@ func GetClusterTemplates(ctx context.Context, db dbtx, filters ...ClusterTemplat
 		if filter.Name != nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, clusterTemplateObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, clusterTemplateObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"clusterTemplateObjectsByName\" prepared statement: %w", err)
 				}
@@ -276,7 +276,7 @@ func GetClusterTemplateNames(ctx context.Context, db dbtx, filters ...ClusterTem
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, clusterTemplateNames)
+		sqlStmt, err = StmtContext(ctx, db, clusterTemplateNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"clusterTemplateNames\" prepared statement: %w", err)
 		}
@@ -340,7 +340,7 @@ func CreateClusterTemplate(ctx context.Context, db dbtx, object provisioning.Clu
 	args[5] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, clusterTemplateCreate)
+	stmt, err := StmtContext(ctx, db, clusterTemplateCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterTemplateCreate\" prepared statement: %w", err)
 	}
@@ -375,7 +375,7 @@ func UpdateClusterTemplate(ctx context.Context, db tx, name string, object provi
 		return err
 	}
 
-	stmt, err := Stmt(db, clusterTemplateUpdate)
+	stmt, err := StmtContext(ctx, db, clusterTemplateUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterTemplateUpdate\" prepared statement: %w", err)
 	}
@@ -404,7 +404,7 @@ func RenameClusterTemplate(ctx context.Context, db dbtx, name string, to string)
 		_err = mapErr(_err, "Cluster_template")
 	}()
 
-	stmt, err := Stmt(db, clusterTemplateRename)
+	stmt, err := StmtContext(ctx, db, clusterTemplateRename)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterTemplateRename\" prepared statement: %w", err)
 	}
@@ -433,7 +433,7 @@ func DeleteClusterTemplate(ctx context.Context, db dbtx, name string) (_err erro
 		_err = mapErr(_err, "Cluster_template")
 	}()
 
-	stmt, err := Stmt(db, clusterTemplateDeleteByName)
+	stmt, err := StmtContext(ctx, db, clusterTemplateDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterTemplateDeleteByName\" prepared statement: %w", err)
 	}

@@ -28,7 +28,7 @@ func GetClusterID(ctx context.Context, db tx, name string) (_ int64, _err error)
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	stmt, err := Stmt(db, clusterID)
+	stmt, err := StmtContext(ctx, db, clusterID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterID\" prepared statement: %w", err)
 	}
