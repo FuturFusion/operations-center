@@ -82,7 +82,7 @@ func GetIncusImageID(ctx context.Context, db tx, name string) (_ int64, _err err
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	stmt, err := Stmt(db, incusImageID)
+	stmt, err := StmtContext(ctx, db, incusImageID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageID\" prepared statement: %w", err)
 	}
@@ -108,7 +108,7 @@ func IncusImageExists(ctx context.Context, db dbtx, name string) (_ bool, _err e
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	stmt, err := Stmt(db, incusImageID)
+	stmt, err := StmtContext(ctx, db, incusImageID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"incusImageID\" prepared statement: %w", err)
 	}
@@ -236,7 +236,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, incusImageObjects)
+		sqlStmt, err = StmtContext(ctx, db, incusImageObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"incusImageObjects\" prepared statement: %w", err)
 		}
@@ -246,7 +246,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 		if filter.Source != nil && filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
 			args = append(args, []any{filter.Source}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, incusImageObjectsBySource)
+				sqlStmt, err = StmtContext(ctx, db, incusImageObjectsBySource)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"incusImageObjectsBySource\" prepared statement: %w", err)
 				}
@@ -270,7 +270,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 		} else if filter.Name != nil && filter.ID == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, incusImageObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, incusImageObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"incusImageObjectsByName\" prepared statement: %w", err)
 				}
@@ -294,7 +294,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 		} else if filter.ID != nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, incusImageObjectsByID)
+				sqlStmt, err = StmtContext(ctx, db, incusImageObjectsByID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"incusImageObjectsByID\" prepared statement: %w", err)
 				}
@@ -355,7 +355,7 @@ func GetIncusImageNames(ctx context.Context, db dbtx, filters ...image.IncusImag
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, incusImageNames)
+		sqlStmt, err = StmtContext(ctx, db, incusImageNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"incusImageNames\" prepared statement: %w", err)
 		}
@@ -428,7 +428,7 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, incusImageCreate)
+	stmt, err := StmtContext(ctx, db, incusImageCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageCreate\" prepared statement: %w", err)
 	}
@@ -478,7 +478,7 @@ func CreateOrReplaceIncusImage(ctx context.Context, db dbtx, object image.IncusI
 	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, incusImageCreateOrReplace)
+	stmt, err := StmtContext(ctx, db, incusImageCreateOrReplace)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageCreateOrReplace\" prepared statement: %w", err)
 	}
@@ -513,7 +513,7 @@ func UpdateIncusImage(ctx context.Context, db tx, name string, object image.Incu
 		return err
 	}
 
-	stmt, err := Stmt(db, incusImageUpdate)
+	stmt, err := StmtContext(ctx, db, incusImageUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"incusImageUpdate\" prepared statement: %w", err)
 	}
@@ -547,7 +547,7 @@ func DeleteIncusImage(ctx context.Context, db dbtx, name string) (_err error) {
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	stmt, err := Stmt(db, incusImageDeleteByName)
+	stmt, err := StmtContext(ctx, db, incusImageDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"incusImageDeleteByName\" prepared statement: %w", err)
 	}

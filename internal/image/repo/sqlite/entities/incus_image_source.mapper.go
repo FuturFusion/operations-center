@@ -66,7 +66,7 @@ func GetIncusImageSourceID(ctx context.Context, db tx, name string) (_ int64, _e
 		_err = mapErr(_err, "Incus_image_source")
 	}()
 
-	stmt, err := Stmt(db, incusImageSourceID)
+	stmt, err := StmtContext(ctx, db, incusImageSourceID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageSourceID\" prepared statement: %w", err)
 	}
@@ -92,7 +92,7 @@ func IncusImageSourceExists(ctx context.Context, db dbtx, name string) (_ bool, 
 		_err = mapErr(_err, "Incus_image_source")
 	}()
 
-	stmt, err := Stmt(db, incusImageSourceID)
+	stmt, err := StmtContext(ctx, db, incusImageSourceID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get \"incusImageSourceID\" prepared statement: %w", err)
 	}
@@ -208,7 +208,7 @@ func GetIncusImageSources(ctx context.Context, db dbtx, filters ...image.IncusIm
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, incusImageSourceObjects)
+		sqlStmt, err = StmtContext(ctx, db, incusImageSourceObjects)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"incusImageSourceObjects\" prepared statement: %w", err)
 		}
@@ -218,7 +218,7 @@ func GetIncusImageSources(ctx context.Context, db dbtx, filters ...image.IncusIm
 		if filter.Name != nil && filter.ID == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, incusImageSourceObjectsByName)
+				sqlStmt, err = StmtContext(ctx, db, incusImageSourceObjectsByName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"incusImageSourceObjectsByName\" prepared statement: %w", err)
 				}
@@ -242,7 +242,7 @@ func GetIncusImageSources(ctx context.Context, db dbtx, filters ...image.IncusIm
 		} else if filter.ID != nil && filter.Name == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, incusImageSourceObjectsByID)
+				sqlStmt, err = StmtContext(ctx, db, incusImageSourceObjectsByID)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get \"incusImageSourceObjectsByID\" prepared statement: %w", err)
 				}
@@ -303,7 +303,7 @@ func GetIncusImageSourceNames(ctx context.Context, db dbtx, filters ...image.Inc
 	queryParts := [2]string{}
 
 	if len(filters) == 0 {
-		sqlStmt, err = Stmt(db, incusImageSourceNames)
+		sqlStmt, err = StmtContext(ctx, db, incusImageSourceNames)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get \"incusImageSourceNames\" prepared statement: %w", err)
 		}
@@ -365,7 +365,7 @@ func CreateIncusImageSource(ctx context.Context, db dbtx, object image.IncusImag
 	args[3] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
-	stmt, err := Stmt(db, incusImageSourceCreate)
+	stmt, err := StmtContext(ctx, db, incusImageSourceCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageSourceCreate\" prepared statement: %w", err)
 	}
@@ -400,7 +400,7 @@ func UpdateIncusImageSource(ctx context.Context, db tx, name string, object imag
 		return err
 	}
 
-	stmt, err := Stmt(db, incusImageSourceUpdate)
+	stmt, err := StmtContext(ctx, db, incusImageSourceUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"incusImageSourceUpdate\" prepared statement: %w", err)
 	}
@@ -429,7 +429,7 @@ func DeleteIncusImageSource(ctx context.Context, db dbtx, name string) (_err err
 		_err = mapErr(_err, "Incus_image_source")
 	}()
 
-	stmt, err := Stmt(db, incusImageSourceDeleteByName)
+	stmt, err := StmtContext(ctx, db, incusImageSourceDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"incusImageSourceDeleteByName\" prepared statement: %w", err)
 	}
