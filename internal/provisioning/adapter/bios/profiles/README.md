@@ -1,5 +1,48 @@
 # BIOS Profiles
 
+## Priority and resolution order
+
+Operations Center selects all profiles that match the BMC data of a server.
+It then applies them in this order:
+
+1. By `priority`, lowest first.
+2. By `name`, for profiles with the same priority.
+
+A profile applied later overrides what the profiles before it set. The rule
+depends on the section:
+
+* `attributes` and `deferred_attributes`: a value replaces the earlier value of
+  the same key. A `null` value removes the key.
+* `secure_boot`: `true` and `false` replace the earlier entry. A `null` value
+  removes the entry.
+* `deployment`: a setting that is set replaces the earlier value. A setting that
+  is not set, or set to `null`, keeps the earlier value.
+
+For example, assume both profiles match a Dell server with a TPM:
+
+```yaml
+- name: dell
+  priority: 1000
+  attributes:
+    SecureBoot: "Enabled"
+    TpmSecurity: "Off"
+
+- name: dell-with-tpm
+  priority: 1010
+  attributes:
+    TpmSecurity: "On"
+```
+
+The server gets `SecureBoot: "Enabled"` and `TpmSecurity: "On"`. The
+`dell-with-tpm` profile wins on `TpmSecurity`, because its priority is higher.
+
+The shipped profiles use a file name prefix equal to their priority, e.g.
+`01010_dell_with_tpm.yaml`. Keep this convention for new profiles.
+
+To see which profiles match a server, and in which order they are applied, run
+`operations-center provisioning server bios-profile <server-name>`. The
+`Profiles` line lists them in the order of application.
+
 ## Deferred attributes
 
 `attributes` are applied in one go and picked up by the firmware on the next
