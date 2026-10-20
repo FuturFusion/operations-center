@@ -16,6 +16,8 @@ import (
 )
 
 func TestUpdateChannelDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	channelA := provisioning.Channel{
 		Name:        "one",
 		Description: "one description",
@@ -42,8 +44,10 @@ func TestUpdateChannelDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	// update := sqlite.NewUpdate(tx)
 	channel := sqlite.NewChannel(tx)

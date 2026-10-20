@@ -28,6 +28,8 @@ import (
 )
 
 func TestServerDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	certPEMA, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -230,8 +232,10 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	cannelSvc := provisioningChannel.New(sqlite.NewChannel(tx), nil)
 	updateSvc := provisioningUpdate.New(sqlite.NewUpdate(tx), nil, nil, nil)
@@ -368,6 +372,8 @@ func TestServerDatabaseActions(t *testing.T) {
 // server, that has registered itself, owns its status again while its deployment
 // is still finalizing, so no status tells them apart.
 func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	tmpDir := t.TempDir()
@@ -383,8 +389,10 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	server := sqlite.NewServer(tx)
 
@@ -468,6 +476,8 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 }
 
 func TestServerDatabaseActions_preRegisteredWithoutCertificate(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	tmpDir := t.TempDir()
@@ -483,8 +493,10 @@ func TestServerDatabaseActions_preRegisteredWithoutCertificate(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	server := sqlite.NewServer(tx)
 

@@ -21,6 +21,8 @@ import (
 )
 
 func TestUpdateDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	updateA := provisioning.Update{
 		UUID:             uuid.MustParse(`e399698d-db42-53f6-97d7-1ad04dac34ba`),
 		Version:          "202505110348",
@@ -85,8 +87,10 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	cannelSvc := provisioningChannel.New(sqlite.NewChannel(tx), nil)
 

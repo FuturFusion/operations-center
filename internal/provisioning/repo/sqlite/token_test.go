@@ -20,6 +20,8 @@ import (
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
+	t.Parallel()
+
 	tokenA := provisioning.Token{
 		UUID:          uuidgen.FromPattern(t, "1"),
 		UsesRemaining: 1,
@@ -88,8 +90,10 @@ func TestTokenDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
+
+	ctx = entities.WithPreparedStmts(ctx, stmts)
 
 	token := sqlite.NewToken(tx)
 
