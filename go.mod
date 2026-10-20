@@ -75,9 +75,11 @@ require (
 	github.com/knadh/koanf/providers/structs v1.0.1 // indirect
 	github.com/knadh/koanf/v2 v2.3.6 // indirect
 	github.com/kr/fs v0.1.0 // indirect
+	github.com/letsencrypt/challtestsrv v1.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.31 // indirect
+	github.com/miekg/dns v1.1.73 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -182,6 +184,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0
 	github.com/hashicorp/hcl/v2 v2.25.0
+	github.com/letsencrypt/pebble/v2 v2.10.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/lxc/incus-os/incus-osd v0.0.0-20261014165810-965e4e38c84c
 	github.com/lxc/incus/v7 v7.5.2-0.20261019195747-07687bff1252
