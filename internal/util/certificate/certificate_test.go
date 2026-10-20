@@ -1,15 +1,9 @@
 package certificate_test
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha256"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/pem"
-	"math/big"
 	"testing"
 	"time"
 
@@ -17,27 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
+	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 )
-
-// newCertPEM returns a PEM encoded certificate with the given validity period.
-func newCertPEM(t *testing.T, notBefore time.Time, notAfter time.Time) string {
-	t.Helper()
-
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: "operations-center"},
-		NotBefore:    notBefore,
-		NotAfter:     notAfter,
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	require.NoError(t, err)
-
-	return certificate.EncodeToPEM(der)
-}
 
 func TestDecode(t *testing.T) {
 	t.Parallel()
@@ -205,7 +180,7 @@ func TestValidate(t *testing.T) {
 	}{
 		{
 			name:            "success",
-			certPEM:         newCertPEM(t, now.Add(-24*time.Hour), now.Add(365*24*time.Hour)),
+			certPEM:         certs.GenerateWithValidity(t, now.Add(-24*time.Hour), now.Add(365*24*time.Hour)),
 			expiryThreshold: 30 * 24 * time.Hour,
 
 			wantValid: true,
@@ -213,7 +188,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name:            "valid - expires within threshold",
-			certPEM:         newCertPEM(t, now.Add(-24*time.Hour), now.Add(10*24*time.Hour)),
+			certPEM:         certs.GenerateWithValidity(t, now.Add(-24*time.Hour), now.Add(10*24*time.Hour)),
 			expiryThreshold: 30 * 24 * time.Hour,
 
 			wantValid: true,
@@ -221,7 +196,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name:            "invalid - not yet valid",
-			certPEM:         newCertPEM(t, now.Add(24*time.Hour), now.Add(365*24*time.Hour)),
+			certPEM:         certs.GenerateWithValidity(t, now.Add(24*time.Hour), now.Add(365*24*time.Hour)),
 			expiryThreshold: 30 * 24 * time.Hour,
 
 			wantValid: false,
@@ -229,7 +204,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name:            "invalid - expired",
-			certPEM:         newCertPEM(t, now.Add(-365*24*time.Hour), now.Add(-24*time.Hour)),
+			certPEM:         certs.GenerateWithValidity(t, now.Add(-365*24*time.Hour), now.Add(-24*time.Hour)),
 			expiryThreshold: 30 * 24 * time.Hour,
 
 			wantValid: false,
@@ -251,6 +226,67 @@ func TestValidate(t *testing.T) {
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantValid, valid)
+		})
+	}
+}
+
+func TestValidateLifetime(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+
+	tests := []struct {
+		name          string
+		certPEM       string
+		lifetimeRatio float64
+
+		wantValid bool
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:          "success - 61 of 90 days passed",
+			certPEM:       certs.GenerateWithValidity(t, now.Add(-61*24*time.Hour), now.Add(29*24*time.Hour)),
+			lifetimeRatio: 0.9,
+
+			wantValid: true,
+			assertErr: require.NoError,
+		},
+		{
+			name:          "valid - 82 of 90 days passed",
+			certPEM:       certs.GenerateWithValidity(t, now.Add(-82*24*time.Hour), now.Add(8*24*time.Hour)),
+			lifetimeRatio: 0.9,
+
+			wantValid: true,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "expires within", a...)
+			},
+		},
+		{
+			name:          "invalid - expired",
+			certPEM:       certs.GenerateWithValidity(t, now.Add(-91*24*time.Hour), now.Add(-24*time.Hour)),
+			lifetimeRatio: 0.9,
+
+			wantValid: false,
+			assertErr: require.Error,
+		},
+		{
+			name:          "invalid - not PEM encoded",
+			certPEM:       "invalid",
+			lifetimeRatio: 0.9,
+
+			wantValid: false,
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			valid, err := certificate.ValidateLifetime(tc.certPEM, tc.lifetimeRatio)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantValid, valid, "Validity of the certificate")
 		})
 	}
 }
