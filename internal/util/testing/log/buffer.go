@@ -27,3 +27,11 @@ func (b *SyncBuffer) String() string {
 
 	return b.buf.String()
 }
+
+// Reset removes all content from the buffer.
+func (b *SyncBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.buf.Reset()
+}
