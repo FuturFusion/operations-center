@@ -15,7 +15,7 @@ func serverBMCPowerOffAndOn(serverName string) func(ctx context.Context, t *test
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "serverBMCPowerOffAndOn "+serverName)
 		defer stop()
 
 		// The Redfish proxy acts as the BMC of the IncusOS instance.

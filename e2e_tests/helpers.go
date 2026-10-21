@@ -1731,8 +1731,7 @@ func timeTrack(t *testing.T, optionals ...string) (stop func()) {
 		name = optionals[0]
 	} else {
 		pc, _, _, _ := runtime.Caller(1)
-		funcName := runtime.FuncForPC(pc).Name()
-		name = funcName[strings.LastIndex(funcName, ".")+1:]
+		name = shortFuncName(runtime.FuncForPC(pc).Name())
 	}
 
 	indent := 1
@@ -1759,6 +1758,14 @@ func timeTrack(t *testing.T, optionals ...string) (stop func()) {
 
 		t.Logf("<%s Stop  : %s 🕛 %v", strings.Repeat("<", indentLevel*2), name, time.Since(start))
 	}
+}
+
+// shortFuncName returns the name of the function without the package path.
+// For anonymous functions, it keeps the enclosing function, e.g.
+// "setupIncusOSWithToken.func1".
+func shortFuncName(fullName string) string {
+	name := fullName[strings.LastIndex(fullName, "/")+1:]
+	return name[strings.Index(name, ".")+1:]
 }
 
 // strechedTimeout returns the provided timeout multiplied by the global

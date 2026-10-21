@@ -14,7 +14,7 @@ func updateServerOSOnly(name string) func(ctx context.Context, t *testing.T, tmp
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "updateServerOSOnly "+name)
 		defer stop()
 
 		// Register cleanup

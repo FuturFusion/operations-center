@@ -59,7 +59,7 @@ func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "setupIncusOSWithToken "+strings.Join(names, ", "))
 		defer stop()
 
 		// Register cleanup
@@ -83,7 +83,7 @@ func setupIncusOSWithTokenAndUpdateChannel(names []string) func(ctx context.Cont
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "setupIncusOSWithTokenAndUpdateChannel "+strings.Join(names, ", "))
 		defer stop()
 
 		// Register cleanup

@@ -27,7 +27,7 @@ func setupEmptyInstance(name string) func(ctx context.Context, t *testing.T, tmp
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "setupEmptyInstance "+name)
 		defer stop()
 
 		t.Cleanup(serverDeploymentCleanup(t, name, removeDeployMedia))
@@ -116,7 +116,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "serverDeployment "+name)
 		defer stop()
 
 		endpoint := startRedfishProxy(t, name)
