@@ -2,7 +2,24 @@ package e2e
 
 import (
 	"bytes"
+	"fmt"
+	"time"
+
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 )
+
+// redfishProxyBIOSProfileYAML renders redfishProxyBIOSProfileYAMLTemplate.
+// Operations Center enforces these timeouts during the deployment, so they
+// are stretched like the timeouts of the tests.
+func redfishProxyBIOSProfileYAML() []byte {
+	return fmt.Appendf(nil, string(redfishProxyBIOSProfileYAMLTemplate),
+		strechedTimeout(5*time.Minute),
+		strechedTimeout(config.ServerDeploymentStepCallTimeout),
+		strechedTimeout(config.ServerDeploymentStepTimeout),
+		strechedTimeout(config.ServerDeploymentMediaIdlePeriod),
+		strechedTimeout(config.ServerDeploymentRebootTimeout),
+	)
+}
 
 var (
 	operationsCenterSettingsWithRegistrationScriptletYAML = []byte(`---
@@ -148,7 +165,11 @@ priority: 1000
 attributes:
   incus.config.user.e2e.bios-profile: "applied"
 deployment:
-  attach_media_call_timeout: 5m
+  attach_media_call_timeout: %[1]s
+  call_timeout: %[2]s
+  step_timeout: %[3]s
+  install_media_idle_period: %[4]s
+  reboot_timeout: %[5]s
 `)
 
 	// createCluster templates.

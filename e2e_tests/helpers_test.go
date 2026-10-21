@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
+
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Prevent functions from being seen as unused.
@@ -432,4 +436,27 @@ func Test_incusOSStartupError(t *testing.T) {
 			require.Equal(t, tc.wantFragment, fragment)
 		})
 	}
+}
+
+func Test_redfishProxyBIOSProfileYAML(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	decoder := yaml.NewDecoder(bytes.NewReader(redfishProxyBIOSProfileYAML()))
+	decoder.KnownFields(true)
+
+	profile := api.BIOSProfile{}
+
+	// Run test
+	err := decoder.Decode(&profile)
+
+	// Assert
+	require.NoError(t, err, "expect the rendered BIOS profile to be valid YAML with known fields only")
+
+	settings := profile.Deployment
+	require.Equal(t, strechedTimeout(5*time.Minute), time.Duration(*settings.AttachMediaCallTimeout), "attach_media_call_timeout")
+	require.Equal(t, strechedTimeout(config.ServerDeploymentStepCallTimeout), time.Duration(*settings.CallTimeout), "call_timeout")
+	require.Equal(t, strechedTimeout(config.ServerDeploymentStepTimeout), time.Duration(*settings.StepTimeout), "step_timeout")
+	require.Equal(t, strechedTimeout(config.ServerDeploymentMediaIdlePeriod), time.Duration(*settings.InstallMediaIdlePeriod), "install_media_idle_period")
+	require.Equal(t, strechedTimeout(config.ServerDeploymentRebootTimeout), time.Duration(*settings.RebootTimeout), "reboot_timeout")
 }
