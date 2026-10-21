@@ -266,6 +266,76 @@ func Test_tailMsg(t *testing.T) {
 	}
 }
 
+func Test_shortFuncName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		fullName string
+
+		want string
+	}{
+		{
+			name:     "plain function",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.setupIncusOS",
+
+			want: "setupIncusOS",
+		},
+		{
+			name:     "anonymous function",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.setupIncusOSWithToken.func1",
+
+			want: "setupIncusOSWithToken.func1",
+		},
+		{
+			name:     "nested anonymous function",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.foo.func1.2",
+
+			want: "foo.func1.2",
+		},
+		{
+			name:     "anonymous function in method",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.(*bar).baz.func3",
+
+			want: "(*bar).baz.func3",
+		},
+		{
+			name:     "go statement wrapper",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.foo.gowrap1",
+
+			want: "foo.gowrap1",
+		},
+		{
+			name:     "defer statement wrapper",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.foo.deferwrap2",
+
+			want: "foo.deferwrap2",
+		},
+		{
+			name:     "method",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.(*bar).baz",
+
+			want: "(*bar).baz",
+		},
+		{
+			name:     "no package path",
+			fullName: "main.foo.func1",
+
+			want: "foo.func1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := shortFuncName(tc.fullName)
+
+			require.Equal(t, tc.want, got, "short name of %q", tc.fullName)
+		})
+	}
+}
+
 func Test_sanitizeConsoleLog(t *testing.T) {
 	tests := []struct {
 		name     string

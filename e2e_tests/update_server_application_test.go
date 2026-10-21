@@ -13,7 +13,7 @@ func updateServerApplication(name string) func(ctx context.Context, t *testing.T
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "updateServerApplication "+name)
 		defer stop()
 
 		// Register cleanup
