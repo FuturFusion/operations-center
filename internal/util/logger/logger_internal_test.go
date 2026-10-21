@@ -1,16 +1,17 @@
 package logger
 
 import (
-	"bytes"
 	"log/slog"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 func TestSetLevelsKeepsLevelsOnHandlerFailure(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, InitLogger(logBuf, "", false, false, true), "logger initialization must not fail")
 
@@ -31,7 +32,7 @@ func TestSetLevelsKeepsLevelsOnHandlerFailure(t *testing.T) {
 }
 
 func TestSetLevelsRebuildsHandlerOnlyOnRenderingChange(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, InitLogger(logBuf, "", false, false, true), "logger initialization must not fail")
 
@@ -73,7 +74,7 @@ func TestAddStacktrace(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 
 			require.NoError(t, InitLogger(logBuf, "", false, false, true), "logger initialization must not fail")
 

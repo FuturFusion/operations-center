@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"bytes"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 func TestLevelSetLevelFor(t *testing.T) {
@@ -85,7 +86,7 @@ func TestLevelSetEnabled(t *testing.T) {
 }
 
 func TestComponentLevelFiltering(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	err := InitLogger(logBuf, "", false, false, true)
 	require.NoError(t, err, "logger initialization must not fail")
@@ -224,7 +225,7 @@ func TestUnknownComponents(t *testing.T) {
 }
 
 func TestComponentLevelFilteringWithGroup(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	err := InitLogger(logBuf, "", false, false, true)
 	require.NoError(t, err, "logger initialization must not fail")
