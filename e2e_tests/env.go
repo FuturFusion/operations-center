@@ -1,10 +1,23 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"sync"
+	"testing"
 	"time"
 )
+
+// envSetting records an environment variable together with its effective value.
+type envSetting struct {
+	name      string
+	raw       string
+	effective string
+}
+
+// envSettings collects the environment variables in the order they are read.
+var envSettings []envSetting
 
 var (
 	diskSize             = envOrDefault("OPERATIONS_CENTER_E2E_TEST_DISK_SIZE", "50GiB")
@@ -35,56 +48,72 @@ func init() {
 		goCoverDir = tmpDir
 	}
 
+	recordEnv("GOCOVERDIR", goCoverDir)
+
 	ocE2EGoCoverDir = envOrDefault("OPERATIONS_CENTER_E2E_GOCOVERDIR", goCoverDir)
+}
+
+var logEnvSettingsOnce sync.Once
+
+// logEnvSettings logs the configuration of the end 2 end tests once per test run.
+func logEnvSettings(t *testing.T) {
+	t.Helper()
+
+	logEnvSettingsOnce.Do(func() {
+		t.Log("End 2 end test configuration:")
+		for _, setting := range envSettings {
+			t.Logf("  %s=%q (effective: %q)", setting.name, setting.raw, setting.effective)
+		}
+	})
+}
+
+func recordEnv(envVar string, effective any) {
+	envSettings = append(envSettings, envSetting{
+		name:      envVar,
+		raw:       os.Getenv(envVar),
+		effective: fmt.Sprint(effective),
+	})
 }
 
 func envOrDefault(envVar string, defaultValue string) string {
 	value := os.Getenv(envVar)
 	if value == "" {
-		return defaultValue
+		value = defaultValue
 	}
+
+	recordEnv(envVar, value)
 
 	return value
 }
 
 func envFloatOrDefault(envVar string, defaultValue float64) float64 {
-	value := os.Getenv(envVar)
-	if value == "" {
-		return defaultValue
-	}
-
-	f, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return defaultValue
-	}
-
-	return f
+	return envParsedOrDefault(envVar, defaultValue, func(value string) (float64, error) {
+		return strconv.ParseFloat(value, 64)
+	})
 }
 
 func envDurationOrDefault(envVar string, defaultValue time.Duration) time.Duration {
-	value := os.Getenv(envVar)
-	if value == "" {
-		return defaultValue
-	}
-
-	d, err := time.ParseDuration(value)
-	if err != nil {
-		return defaultValue
-	}
-
-	return d
+	return envParsedOrDefault(envVar, defaultValue, time.ParseDuration)
 }
 
 func envBoolOrDefault(envVar string, defaultValue bool) bool {
-	value := os.Getenv(envVar)
-	if value == "" {
-		return defaultValue
+	return envParsedOrDefault(envVar, defaultValue, strconv.ParseBool)
+}
+
+// envParsedOrDefault falls back to the default value, if the value is not set or
+// does not parse.
+func envParsedOrDefault[T any](envVar string, defaultValue T, parse func(string) (T, error)) T {
+	value := defaultValue
+
+	raw := os.Getenv(envVar)
+	if raw != "" {
+		parsed, err := parse(raw)
+		if err == nil {
+			value = parsed
+		}
 	}
 
-	b, err := strconv.ParseBool(value)
-	if err != nil {
-		return defaultValue
-	}
+	recordEnv(envVar, value)
 
-	return b
+	return value
 }

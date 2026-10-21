@@ -235,6 +235,8 @@ func runE2ETest(
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
+	logEnvSettings(t)
+
 	reason := setupBrokenReason()
 	if reason != "" {
 		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
