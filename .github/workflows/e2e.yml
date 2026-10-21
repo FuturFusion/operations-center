@@ -31,7 +31,7 @@ jobs:
           esac
 
   api-tests:
-    name: Operations Center End-to-End System Tests
+    name: Operations Center E2E Tests
     needs: authorize
     if: >-
       always() && (
@@ -77,6 +77,9 @@ jobs:
           echo "initializing incus with zfs backend and 200MB loop device"
           incus admin init --auto --storage-backend=zfs --storage-create-loop=200
           incus remote generate-certificate
+
+          echo "enabling security.nesting on the default profile"
+          incus profile set default security.nesting=true
 
           echo "setting zfs sync to disabled for better performance in CI environment"
           sudo zfs set sync=disabled default
