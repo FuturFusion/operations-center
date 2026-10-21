@@ -1,7 +1,6 @@
 package incus
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -184,7 +183,7 @@ func generateCertChain(t *testing.T, domainName string) (caCert []byte, cert []b
 }
 
 func Test_getClient(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 	err := logger.InitLogger(logBuf, "", false, false, false)
 	require.NoError(t, err)
 

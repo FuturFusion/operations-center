@@ -1,7 +1,6 @@
 package incus_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/pem"
@@ -111,7 +110,7 @@ func TestClient_in_transaction(t *testing.T) {
 	// Setup
 	caPool, certPEM, keyPEM := setupCerts(t)
 
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 	err := logger.InitLogger(logBuf, "", false, false, false)
 	require.NoError(t, err)
 
