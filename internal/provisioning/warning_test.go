@@ -1,7 +1,6 @@
 package provisioning
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestLogWarningService(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 	err := logger.InitLogger(logBuf, "", false, true, true)
 	require.NoError(t, err)
 

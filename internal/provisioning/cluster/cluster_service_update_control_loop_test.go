@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -30,6 +29,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -120,7 +120,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*50)
 		defer cancel()
 
-		logBuf := &bytes.Buffer{}
+		logBuf := &log.SyncBuffer{}
 		var logSink io.Writer = logBuf
 		if testing.Verbose() {
 			logSink = io.MultiWriter(os.Stdout, logBuf)
@@ -403,7 +403,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), asyncActionsDelay*75)
 		defer cancel()
 
-		logBuf := &bytes.Buffer{}
+		logBuf := &log.SyncBuffer{}
 		var logSink io.Writer = logBuf
 		if testing.Verbose() {
 			logSink = io.MultiWriter(os.Stdout, logBuf)

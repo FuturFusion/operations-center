@@ -260,7 +260,7 @@ func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err, "logger initialization must not fail")
 

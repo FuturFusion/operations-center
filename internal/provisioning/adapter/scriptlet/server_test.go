@@ -1,7 +1,6 @@
 package scriptlet_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -635,7 +634,7 @@ def server_registration(candidate):
 				},
 			}, nil)
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", true, false, true)
 			require.NoError(t, err)
 

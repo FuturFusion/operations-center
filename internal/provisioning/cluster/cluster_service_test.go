@@ -16153,7 +16153,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -17055,7 +17055,7 @@ func TestClusterService_Update(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -19090,7 +19090,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -20176,7 +20176,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -20592,7 +20592,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -20875,7 +20875,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -21159,7 +21159,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -21686,7 +21686,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -22051,7 +22051,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -22362,7 +22362,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -22673,7 +22673,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -23010,7 +23010,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
@@ -23375,7 +23375,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 

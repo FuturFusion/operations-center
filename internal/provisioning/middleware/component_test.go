@@ -1,7 +1,6 @@
 package middleware_test
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"testing"
@@ -12,12 +11,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 // TestComponentFiltering covers the component wiring of the generated slog
 // decorators, which is identical for all of them.
 func TestComponentFiltering(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
 

@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/pem"
@@ -699,7 +698,7 @@ foobar
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -1780,7 +1779,7 @@ func TestServerService_PollServer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -2062,7 +2061,7 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -2120,7 +2119,7 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 
 func TestServerService_PollServer_in_transaction(t *testing.T) {
 	// Setup
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 	err := logger.InitLogger(logBuf, "", false, true, true)
 	require.NoError(t, err)
 

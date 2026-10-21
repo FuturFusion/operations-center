@@ -95,7 +95,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
 			require.NoError(t, err)
 
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err = logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 

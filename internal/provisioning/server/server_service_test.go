@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -1888,7 +1887,7 @@ func TestServerService_Update(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -2411,7 +2410,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
