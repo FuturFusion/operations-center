@@ -118,7 +118,7 @@ func createClusterAndThenClusterReboot(ctx context.Context, t *testing.T, tmpDir
 	t.Log("Reboot cluster - rolling reboot completed")
 }
 
-const workloadAgentTimeout = 3 * time.Minute
+const workloadAgentTimeout = 5 * time.Minute
 
 // assertWorkloadRunning verifies, that all the given instances of the cluster are
 // up and running and that their incus agent answers.

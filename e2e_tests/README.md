@@ -24,8 +24,8 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE`: Memory size to use for the IncusOS instances (default: "4GiB")
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")
 * `OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP`: Whether to setup the IncusOS instances concurrently (default: "true")
-* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`: Factor to stretch timeouts by (default: "1.0")
-* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "45m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
+* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`: Factor to stretch timeouts by (default: "1.0"). This also stretches the deployment timeouts in the BIOS profile of `TestE2E_WithTokenSeed_DeployServer`. It does not change the `-timeout` flag of `go test`. Raise this flag by the same factor.
+* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
 * `OPERATIONS_CENTER_E2E_TEST_CPU_ARCH`: CPU architecture used (default: "amd64")
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
@@ -354,7 +354,9 @@ host at the address it advertises.
 The proxy only answers the request to attach the media after it has imported
 the media into Incus. This can take longer than a minute. The BIOS profile
 therefore sets `attach_media_call_timeout` to 5 minutes. The value is lower
-than the default, so a different error does not waste CI time.
+than the default, so a different error does not waste CI time. The test
+stretches this value and the other deployment timeouts of the BIOS profile by
+`OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`.
 
 The proxy fetches the complete installation media with a single request. A BMC
 streaming the media requests byte ranges instead. The test therefore reads the

@@ -130,7 +130,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 
 		biosProfileFilename := filepath.Join(tmpDir, "bios_profile.yaml")
 
-		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAMLTemplate, 0o600)
+		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAML(), 0o600)
 		require.NoError(t, err)
 
 		// Run test

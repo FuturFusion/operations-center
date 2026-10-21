@@ -429,7 +429,7 @@ func logVMDebugInfo(t *testing.T, vms ...string) {
 	// Use detached contexts, since the context of the failing operation is
 	// likely already cancelled at this stage.
 	logCmd := func(what string, truncate func(string) string, command string, args ...any) {
-		debugCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		debugCtx, cancel := context.WithTimeout(context.Background(), strechedTimeout(15*time.Second))
 		defer cancel()
 
 		resp := runQuietWithContext(debugCtx, t, command, args...)
@@ -596,7 +596,7 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 						t.Logf("failed to restart %s: %v", vm, restartErr)
 					}
 
-					nextStartupProbe = time.Now().Add(incusOSStartupRestartGrace)
+					nextStartupProbe = time.Now().Add(strechedTimeout(incusOSStartupRestartGrace))
 				}
 			}
 		}
