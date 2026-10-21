@@ -1,0 +1,141 @@
+name: End-to-End Tests
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  authorize:
+    name: Authorize
+    # Only users with write, maintain or admin role may start or re-run it.
+    # Only scheduled and manual runs on main skip this.
+    # Any other event must pass the check.
+    if: ${{ !((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check role of triggering actor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          role=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${ACTOR}/permission" --jq .role_name)
+          case "${role}" in
+            admin|maintain|write)
+              echo "${ACTOR} has role '${role}', E2E tests are allowed."
+              ;;
+            *)
+              echo "::error::${ACTOR} has role '${role}'. Only users with write, maintain or admin role may run the E2E tests."
+              exit 1
+              ;;
+          esac
+
+  api-tests:
+    name: Operations Center End-to-End System Tests
+    needs: authorize
+    if: >-
+      always() && (
+        needs.authorize.result == 'success' || (
+          needs.authorize.result == 'skipped' &&
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+          github.ref == 'refs/heads/main'
+        )
+      )
+    # Nightly and PR runs share the self-hosted runner. Queue them.
+    concurrency:
+      group: e2e-self-hosted
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+    timeout-minutes: 245
+    runs-on:
+      - self-hosted
+      - arch-amd64
+      - futurfusion-operations-center-daily
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+
+      - name: Setup Incus
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt install -y linux-headers-$(uname -r)
+          sudo --preserve-env=DEBIAN_FRONTEND apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
+
+          sudo systemctl enable systemd-timesyncd
+          sudo systemctl restart systemd-timesyncd
+
+          curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
+          sudo chmod 666 /var/lib/incus/unix.socket
+
+          echo "initializing incus with zfs backend and 200MB loop device"
+          incus admin init --auto --storage-backend=zfs --storage-create-loop=200
+          incus remote generate-certificate
+
+          echo "setting zfs sync to disabled for better performance in CI environment"
+          sudo zfs set sync=disabled default
+
+      - name: Install opentofu
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+          chmod +x install-opentofu.sh
+          sudo ./install-opentofu.sh --install-method deb
+          rm -f install-opentofu.sh
+          tofu -version
+
+      - name: Build binaries
+        run: |
+          go version
+          mkdir -p ./bin
+          CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
+          go build -o ./bin/operations-centerd ./cmd/operations-centerd
+
+      - name: Run End-to-End Tests
+        env:
+          OPERATIONS_CENTER_E2E_TEST: "true"
+          OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
+        run: |
+          set -o pipefail
+          mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
+          rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out
+          go test -v ./e2e_tests -timeout 240m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+
+      - name: Compute artifact name
+        id: artifact
+        if: always()
+        run: |
+          echo "name=operations-center-e2e-logs-$(date -u +%Y-%m-%d)-run-${GITHUB_RUN_NUMBER}-attempt-${GITHUB_RUN_ATTEMPT}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          # Only the logs, the tmp dir also holds the cached multi GiB ISO images.
+          path: |
+            ${{ github.workspace }}/tmp-e2e/*.log
+            ${{ github.workspace }}/tmp-e2e/*.out
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Show logs on failure
+        if: failure()
+        env:
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
+        run: |
+          # The test output is already in the job log through the tee above and
+          # the complete logs are available as the operations-center-e2e-logs-*
+          # artifact, so only tail them here.
+          for log in ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log; do
+            [ -e "${log}" ] || continue
+            echo "===[ $(basename "${log}") (last 200 lines) ]==="
+            tail -n 200 "${log}"
+            echo
+          done
