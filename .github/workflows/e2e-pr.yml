@@ -1,0 +1,19 @@
+---
+
+name: PR End-to-End Tests
+on:
+  # Only "labeled": new pushes do not re-run the tests on the self-hosted
+  # runner. Remove and re-add the label to run again.
+  pull_request:
+    types:
+      - labeled
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E
+    if: github.event.label.name == 'run-e2e'
+    # Load the workflow from main. A PR can not change the authorization check.
+    uses: FuturFusion/operations-center/.github/workflows/e2e.yml@main
