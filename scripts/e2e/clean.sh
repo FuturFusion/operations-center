@@ -149,10 +149,11 @@ clean_operations_center() {
 
   # Reset the OIDC part and the OpenFGA part of the security config in a single update.
   # Both services of the tests are gone. Operations Center rejects an update of one part
-  # if the other part points at a missing service.
+  # if the other part points at a missing service. The ACME server of the tests is gone
+  # as well, so ACME is disabled.
   step "Reset security config"
   local config out
-  config=$(list "$oc" system security show -f json | jq -ce --arg fp "$test_fingerprint" '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" } | .trusted_tls_client_cert_fingerprints -= [$fp]')
+  config=$(list "$oc" system security show -f json | jq -ce --arg fp "$test_fingerprint" '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" } | .openfga = { api_url: "", api_token: "", store_id: "" } | .acme = { domain: "", email: "", ca_url: "", agree_tos: false, challenge: "", http_challenge_address: "", provider: "", provider_environment: [], provider_resolvers: [] } | .trusted_tls_client_cert_fingerprints -= [$fp]')
   # Without a trusted client certificate, the update would lock out the user.
   if [ -n "$config" ] && printf '%s\n' "$config" | jq -e '.trusted_tls_client_cert_fingerprints | length > 0' > /dev/null; then
     if ! out=$(printf '%s\n' "$config" | "$oc" system security edit 2>&1); then

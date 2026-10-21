@@ -31,6 +31,17 @@ func TestE2E_WithToken_RegisterServer(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_ACMERenewal(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - ACME renewal with private CA",
+		func(ctx context.Context, t *testing.T, tmpDir string) {
+			t.Helper()
+		},
+		acmeRenewal([]string{"IncusOS01", "IncusOS02"}),
+	)
+}
+
 func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
 	runE2ETest(
 		t,

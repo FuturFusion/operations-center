@@ -2,17 +2,10 @@ package e2e
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net"
 	"net/http"
 	"strconv"
@@ -51,7 +44,11 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 	})
 	require.NoErrorf(t, err, "Failed to create Redfish proxy handler for %q", instanceName)
 
-	tlsCert := mustGenerateRedfishProxyCertificate(t, hostAddress)
+	// Operations Center pins this certificate during the connection test and then
+	// derives the expected server name from it, preferring the first DNS SAN over
+	// the first IP SAN. The certificate therefore contains the address, at which the
+	// OperationsCenter VM reaches the proxy, as its only SAN.
+	tlsCert, _ := mustGenerateSelfSignedCertificate(t, hostAddress, "incus-redfish-proxy")
 
 	// Bind on all the interfaces, since the address, at which the
 	// OperationsCenter VM reaches the host, is derived separately.
@@ -103,61 +100,6 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 	t.Logf("Redfish proxy for %q is listening on %s", instanceName, endpoint)
 
 	return endpoint
-}
-
-// mustGenerateRedfishProxyCertificate generates the self signed certificate
-// presented by the Redfish proxy.
-//
-// Operations Center pins this certificate during the connection test and then
-// derives the expected server name from it, preferring the first DNS SAN over
-// the first IP SAN. The certificate therefore contains the address, at which the
-// OperationsCenter VM reaches the proxy, as its only SAN.
-func mustGenerateRedfishProxyCertificate(t *testing.T, hostAddress string) tls.Certificate {
-	t.Helper()
-
-	ip := net.ParseIP(hostAddress)
-	require.NotNilf(t, ip, "Address of the Redfish proxy %q is not an IP address", hostAddress)
-
-	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	require.NoError(t, err, "Failed to generate the key for the Redfish proxy")
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	require.NoError(t, err)
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Operations Center end 2 end tests"},
-			CommonName:   "incus-redfish-proxy",
-		},
-		NotBefore:             time.Now().Add(-1 * time.Hour),
-		NotAfter:              time.Now().Add(24 * time.Hour),
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-		IPAddresses:           []net.IP{ip},
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	require.NoError(t, err, "Failed to create the certificate for the Redfish proxy")
-
-	keyDER, err := x509.MarshalECPrivateKey(key)
-	require.NoError(t, err)
-
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-
-	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
-	require.NoError(t, err, "Failed to load the certificate for the Redfish proxy")
-
-	cert, err := x509.ParseCertificate(tlsCert.Certificate[0])
-	require.NoError(t, err)
-
-	err = cert.VerifyHostname(hostAddress)
-	require.NoErrorf(t, err, "Certificate of the Redfish proxy is not valid for %q", hostAddress)
-
-	return tlsCert
 }
 
 // mustAssertRedfishProxyReachable verifies, that the Redfish proxy answers the

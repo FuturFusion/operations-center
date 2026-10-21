@@ -98,6 +98,47 @@ asynchronously in the background. It may take some time until the new
 certificates are available.
 ```
 
+#### ACME server with a private CA
+
+Operations Center runs `lego` to get the certificate from the ACME server.
+`lego` checks the certificate of the ACME server against the system CA pool.
+If your ACME server uses a private CA, add the root CA certificate to the
+system CA pool. If a different root CA signs the issued certificates, add this
+root CA certificate as well.
+
+On IncusOS, add the root CA certificates to `custom_ca_certs` in the security
+configuration of the IncusOS host that runs Operations Center:
+
+```shell
+operations-center provisioning server os system security edit <server name>:
+```
+
+Use the name of the server with the type `operations-center`, as shown by
+`operations-center provisioning server list`. Then reboot the host, so all
+services use the new CA certificates:
+
+```shell
+operations-center provisioning server os system reboot <server name>:
+```
+
+Operations Center adds the `custom_ca_certs` of its host to the images it
+creates for the provisioning of new servers. So new servers trust the private
+CA from the first boot. For servers that are already deployed, add the root
+CA certificates in the same way.
+
+Later renewals do not need a restart. `lego` reads the system CA pool on every
+run.
+
+If you configure ACME on an Incus cluster, Operations Center trusts the
+cluster through the system CA pool of its host after the first renewal. In this
+case, the private CA must be in the system CA pool of the Operations Center
+host. The connection URL of the cluster must use a host name that the
+certificate covers.
+
+```shell
+operations-center admin os system security edit
+```
+
 ## System settings
 
 | Configuration                   | Description                                                                                                   | Value(s)             | Default   |

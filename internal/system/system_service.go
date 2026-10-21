@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -161,6 +162,23 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return nil
 	}
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Restore both files, even if only the first write succeeded, so the
+	// certificate and the key on disk always match.
+	reverter.Add(func() {
+		revertErr := os.WriteFile(certificateFile, currentServerCertificate, 0o600)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", certificateFile, revertErr))
+		}
+
+		revertErr = os.WriteFile(keyFile, currentServerKey, 0o600)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", keyFile, revertErr))
+		}
+	})
+
 	err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
@@ -170,9 +188,6 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	if err != nil {
 		return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
 	}
-
-	reverter := revert.New()
-	defer reverter.Fail()
 
 	// Restart openfga application, if it is present as secondary application
 	// on IncusOS.
@@ -220,14 +235,45 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return fmt.Errorf("Failed to update certificate: %w", err)
 	}
 
-	err = s.updateProviderConfigAll(ctx, map[string]string{"server_certificate": certificatePEM})
-	if err != nil {
-		return err
-	}
+	s.pushServerCertificateAll(ctx, certificatePEM)
 
 	reverter.Success()
 
 	return nil
+}
+
+// pushServerCertificateAll updates the server certificate in the provider
+// config of all servers. Failures do not stop the rollout. The polling of the
+// servers retries the update for the servers, that failed.
+func (s *systemService) pushServerCertificateAll(ctx context.Context, certificatePEM string) {
+	servers, err := s.serverSvc.GetAll(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to get servers for server certificate update, retry on next poll", logger.Err(err))
+		return
+	}
+
+	for _, server := range servers {
+		if server.Type == api.ServerTypeOperationsCenter || server.Status == api.ServerStatusUnregistered {
+			continue
+		}
+
+		providerConfig, err := s.serverSvc.GetSystemProvider(ctx, server.Name)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to get system provider for server certificate update, retry on next poll", slog.String("server", server.Name), logger.Err(err))
+			continue
+		}
+
+		if providerConfig.Config.Config == nil {
+			providerConfig.Config.Config = map[string]string{}
+		}
+
+		providerConfig.Config.Config["server_certificate"] = certificatePEM
+
+		err = s.serverSvc.UpdateSystemProvider(ctx, server.Name, providerConfig)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to update server certificate in system provider, retry on next poll", slog.String("server", server.Name), logger.Err(err))
+		}
+	}
 }
 
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
