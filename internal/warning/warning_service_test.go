@@ -1,7 +1,6 @@
 package warning_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -227,7 +226,7 @@ func TestWarningService_Emit(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
@@ -532,7 +531,7 @@ func TestWarningService_RemoveStale(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
+			logBuf := &log.SyncBuffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
