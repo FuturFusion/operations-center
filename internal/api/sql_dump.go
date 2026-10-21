@@ -148,6 +148,16 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 			case int64:
 				values[j] = strconv.FormatInt(v, 10)
 
+			case float64:
+				values[j] = strconv.FormatFloat(v, 'g', -1, 64)
+
+			case bool:
+				// The driver returns BOOLEAN columns as bool. SQLite stores them as 0 or 1.
+				values[j] = "0"
+				if v {
+					values[j] = "1"
+				}
+
 			case string:
 				// This is based on logic from dump_callback in sqlite source for sqlite3_db_dump function.
 				v = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))

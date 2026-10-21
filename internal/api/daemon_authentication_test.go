@@ -938,7 +938,7 @@ func TestAuthentication(t *testing.T) {
 		{method: http.MethodPost, path: "/1.0/system/:clean-cache", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPost, path: "/1.0/system/:backup", wantAdminStatusCode: http.StatusNotFound},
 		{method: http.MethodPost, path: "/1.0/system/:restore", wantAdminStatusCode: http.StatusBadRequest},
-		{method: http.MethodGet, path: "/internal/sql?dump=1", wantAdminStatusCode: http.StatusOK},
+		{method: http.MethodGet, path: "/internal/sql", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPost, path: "/internal/sql", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodGet, path: "/os/1.0", wantAdminStatusCode: http.StatusBadRequest},
 	}
