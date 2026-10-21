@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"log/slog"
 	"testing"
 
@@ -11,11 +10,12 @@ import (
 	authzmiddleware "github.com/FuturFusion/operations-center/internal/security/authz/middleware"
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestAuthorizerErrorIsNotLoggedByTheDecorator(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
 
@@ -45,7 +45,7 @@ func TestAuthComponentDefaultsAreReachable(t *testing.T) {
 }
 
 func TestAuthorizerParentComponentCoversMembers(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
 

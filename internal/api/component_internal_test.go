@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"net/http"
@@ -15,11 +14,12 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestComponentMiddleware(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", true, false, true))
 
@@ -37,7 +37,7 @@ func TestComponentMiddleware(t *testing.T) {
 }
 
 func TestComponentDaemonTask(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", true, false, true))
 
