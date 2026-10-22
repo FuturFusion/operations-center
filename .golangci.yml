@@ -3,6 +3,7 @@ linters:
   default: none
   enable:
     - bodyclose
+    - depguard
     - errcheck
     - forbidigo
     - gocritic
@@ -36,7 +37,42 @@ linters:
         - (*github.com/mdlayher/vsock.Listener).Close
         - os.Remove
         - (*compress/gzip.Writer).Close
+    depguard:
+      rules:
+        # Services, the domain and the shared API are pure. They must not do I/O directly.
+        # Logging is allowed. Use ports for I/O.
+        pure-packages:
+          list-mode: lax
+          files:
+            - "!$test"
+            - "**/internal/provisioning/*.go"
+            - "**/internal/provisioning/{channel,cluster,cluster_template,server,token,update}/*.go"
+            - "**/internal/{image,inventory,system,warning}/*.go"
+            - "**/internal/domain/*.go"
+            - "**/shared/api/*.go"
+            - "**/shared/api/*/*.go"
+          deny:
+            - pkg: os
+              desc: Pure packages must not access the OS. Use a port.
+            - pkg: os/exec
+              desc: Pure packages must not run processes. Use a port.
+            - pkg: os/signal
+              desc: Pure packages must not handle OS signals.
+            - pkg: io/ioutil
+              desc: Pure packages must not access files. Use a port.
+            - pkg: io/fs
+              desc: Pure packages must not access files. Use a port.
+            - pkg: syscall
+              desc: Pure packages must not make system calls.
+            # Exact match. Allows database/sql/driver.
+            - pkg: database/sql$
+              desc: Pure packages must not access the database. Use a repo port.
+            - pkg: net/http
+              desc: Pure packages must not make HTTP calls. Use a port.
+            - pkg: github.com/lxc/incus/v7/client
+              desc: Pure packages must not talk to Incus. Use an adapter port.
     forbidigo:
+      analyze-types: true
       forbid:
         # Built-in bootstrapping functions.
         - pattern: ^print(ln)?$
@@ -50,7 +86,16 @@ linters:
         - pattern: ^config\.InitTest$
           pkg: ^github\.com/FuturFusion/operations-center/internal/config/daemon$
           msg: Only use in tests
-      analyze-types: true
+        - pattern: ^os\.
+          msg: Pure packages must not use package os. Use a port.
+        - pattern: ^filepath\.(Abs|EvalSymlinks|Glob|Walk|WalkDir)$
+          msg: Pure packages must not read the file system. Use a port.
+        - pattern: ^net\.(Dial|Listen|Lookup|Resolve)
+          msg: Pure packages must not open network connections. Use a port.
+        - pattern: ^tls\.Load
+          msg: Pure packages must not load certificates from disk. Use a port.
+        - pattern: ^time\.Sleep$
+          msg: Pure packages must not block. Inject a clock or use a port.
     gocritic:
       disable-all: true
       enabled-checks:
@@ -187,6 +232,57 @@ linters:
   exclusions:
     generated: lax
     rules:
+      # Apply the bans only to pure packages.
+      - linters:
+          - forbidigo
+        text: "Pure packages must"
+        path-except: '^(internal/(provisioning|image|inventory|system|warning|domain)/[^/]+\.go|internal/provisioning/(channel|cluster|cluster_template|server|token|update)/[^/]+\.go|shared/api/.*\.go)$'
+      - linters:
+          - forbidigo
+        text: "Pure packages must"
+        path: '_test\.go$'
+      # Syscall is only used to map errors and not for side effects.
+      - linters:
+          - depguard
+        path: '^internal/domain/errors\.go$'
+        text: "syscall"
+      # Baseline. Remove each entry when the violation is fixed.
+      - linters:
+          - depguard
+        path: '^shared/api/error\.go$'
+        text: "net/http"
+      - linters:
+          - depguard
+        path: '^internal/provisioning/cluster/cluster_service\.go$'
+        text: "net/http"
+      - linters:
+          - depguard
+        path: '^internal/provisioning/server/server_service\.go$'
+        text: "net/http"
+      - linters:
+          - depguard
+        path: '^internal/provisioning/cluster_ports\.go$'
+        text: "incus/v7/client"
+      - linters:
+          - depguard
+        path: '^internal/system/system_service\.go$'
+        text: "'os'"
+      - linters:
+          - forbidigo
+        path: '^internal/provisioning/cluster/cluster_service\.go$'
+        text: "Pure packages must"
+      - linters:
+          - forbidigo
+        path: '^internal/provisioning/server_model\.go$'
+        text: "Pure packages must"
+      - linters:
+          - forbidigo
+        path: '^internal/system/system_service(_backup)?\.go$'
+        text: "Pure packages must"
+      - linters:
+          - forbidigo
+        path: '^internal/provisioning/server/server_service\.go$'
+        text: "Pure packages must"
       - linters:
           - revive
         # generate-database expects to find declarations of the form //generate-database: in the entities package.
