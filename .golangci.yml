@@ -43,6 +43,14 @@ linters:
         # slog without context
         - pattern: ^slog\.(Debug|Info|Warn|Error)$
           msg: Do not use slog without context
+        # Test helpers in production packages, they need access to unexported state.
+        - pattern: ^logger\.ContextWithTestLogger$
+          pkg: ^github\.com/FuturFusion/operations-center/internal/util/logger$
+          msg: Only use in tests
+        - pattern: ^config\.InitTest$
+          pkg: ^github\.com/FuturFusion/operations-center/internal/config/daemon$
+          msg: Only use in tests
+      analyze-types: true
     gocritic:
       disable-all: true
       enabled-checks:
@@ -211,6 +219,10 @@ linters:
           - unparam
         path: ^e2e_tests/
         source: 'mustRun'
+      - linters:
+          - forbidigo
+        path: _test\.go$
+        text: Only use in tests
     paths:
       - ^ui/node_modules/
       - third_party$
