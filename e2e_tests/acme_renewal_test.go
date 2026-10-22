@@ -44,7 +44,8 @@ func acmeRenewal(names []string) func(ctx context.Context, t *testing.T, tmpDir 
 
 		t.Cleanup(systemSecurityACMECleanup(t, tmpDir))
 
-		setupIncusOSWithToken(names)(ctx, t, tmpDir)
+		// The cached ISO of the other tests lacks the CA certificates of this run.
+		setupIncusOSWithTokenFreshISO(names)(ctx, t, tmpDir)
 
 		// Runs first, so the other cleanups can use the CLI, even if the test
 		// failed after a change of the certificate.
