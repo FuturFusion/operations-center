@@ -9,3 +9,6 @@ package tools
 
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-components
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-deployment-diagram
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-filtered-architecture-def
+//go:generate go tool go-arch-lint graph --arch-file .go-arch-lint-overview_gen.yml --out doc/images/architecture-daemon.svg --focus daemon
+//go:generate go tool go-arch-lint graph --arch-file .go-arch-lint-overview_gen.yml --out doc/images/architecture-cli.svg --focus cli

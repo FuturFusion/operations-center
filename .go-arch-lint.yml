@@ -1,0 +1,173 @@
+version: 3
+
+workdir: .
+
+exclude:
+  # E2E tests
+  - e2e_tests/**
+
+  # Mocks for tests only
+  - internal/*/mock/**
+  - internal/*/*/mock/**
+
+  # Tooling
+  - cmd/domain-errors
+  - cmd/generate-*
+  - cmd/populate-db
+  - internal/sql/dbschema/seed
+  - scripts
+
+  # temporary scratch dirs
+  - .scratch
+  - "0"
+  - tmp
+
+excludeFiles:
+  - "_test\\.go$"
+  - "(^|/)generate\\.go$"
+
+allow:
+  # Third-party vendor imports are not restricted yet.
+  depOnAnyVendor: true
+  deepScan: false
+
+# Packages that every component may import.
+commonComponents:
+  - domain
+  - shared
+  - util_pure
+
+components:
+  # Common components
+  domain:
+    in: internal/domain
+  shared:
+    in: shared/api/**
+  # Pure utilities. No I/O. Every component may import them.
+  util_pure:
+    in:
+      - internal/security/tls
+      - internal/sql/dump
+      # not 100% pure, but accepted
+      - internal/sql/transaction
+      - internal/util/certificate
+      - internal/util/component
+      - internal/util/expropts
+      - internal/util/logger
+      - internal/util/ptr
+      - internal/util/structs
+      - internal/version
+      # TODO: used in pure fashion, but should be cleaned up
+      - internal/util/archive/**
+      # TODO: used in pure fashion, but should be cleaned up
+      - internal/util/file
+      # TODO: not pure, needs to be refactored
+      - internal/security/acme
+
+  util:
+    in:
+      # TODO: internal/environment: needs refactor, since it exposes the interface and the implementation.
+      - internal/environment
+      - internal/security/signature/**
+      - internal/util/**
+
+  # operations-center
+  cli:
+    in:
+      - cmd/operations-center
+      - internal/cli/**
+      - internal/config/cli/**
+
+  client:
+    in: internal/client/**
+
+  # operations-centerd
+  daemon:
+    in:
+      - cmd/operations-centerd
+      - internal/api/**
+      - ui/**
+      - internal/security/authn/**
+      - internal/security/authz/**
+
+  daemon_shared:
+    in:
+      - internal/config/daemon/**
+      - internal/lifecycle
+
+  service:
+    in:
+      - internal/provisioning
+      - internal/image
+      - internal/inventory
+      - internal/system
+      - internal/warning
+      - internal/provisioning/channel/**
+      - internal/provisioning/cluster/**
+      - internal/provisioning/cluster_template/**
+      - internal/provisioning/server/**
+      - internal/provisioning/token/**
+      - internal/provisioning/update/**
+
+  # Adapters, repos and middlewares.
+  infra:
+    in:
+      - internal/adapter/**
+      - internal/*/adapter/**
+      - internal/*/repo/**
+      - internal/sql/sqlite/**
+      - internal/sql/dbschema
+      - internal/*/middleware/**
+      - internal/*/*/middleware/**
+
+deps:
+  cli:
+    mayDependOn:
+      - cli
+      - client
+      - util
+      # TODO: Move these validators and types to shared/api. Then drop these entries.
+      - service
+
+  client:
+    mayDependOn:
+      - client
+      - util
+      # TODO: Move these types to shared/api. Then drop these entries.
+      - service
+      - domain
+      - shared
+
+  daemon:
+    mayDependOn:
+      - daemon
+      - daemon_shared
+      - util
+      - service
+      - infra
+
+  daemon_shared:
+    mayDependOn:
+      - daemon_shared
+      - util
+
+  util:
+    mayDependOn:
+      - util
+      - util_pure
+
+  service:
+    mayDependOn:
+      - service
+      - domain
+      - shared
+      - daemon_shared
+
+  infra:
+    mayDependOn:
+      - infra
+      - util
+      - service
+      - domain
+      - shared
+      - daemon_shared
