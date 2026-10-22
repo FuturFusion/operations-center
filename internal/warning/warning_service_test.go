@@ -64,6 +64,8 @@ func TestWarningService_DeleteByUUID(t *testing.T) {
 }
 
 func TestWarningService_Emit(t *testing.T) {
+	t.Parallel()
+
 	fixedNow := time.Date(2026, 4, 20, 14, 29, 22, 0, time.UTC)
 	fixedPast := time.Date(2026, 4, 19, 13, 28, 21, 0, time.UTC)
 
@@ -225,10 +227,11 @@ func TestWarningService_Emit(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &mock.WarningRepoMock{
 				GetByScopeAndTypeFunc: func(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warning.Warnings, error) {
@@ -245,7 +248,7 @@ func TestWarningService_Emit(t *testing.T) {
 			warningSvc := warning.NewWarningService(repo, warning.WithWarningServiceNow(func() time.Time { return fixedNow }))
 
 			// Assert
-			warningSvc.Emit(t.Context(), tc.warning)
+			warningSvc.Emit(ctx, tc.warning)
 			tc.assertLog(t, logBuf)
 		})
 	}
@@ -384,6 +387,8 @@ func TestWarningService_GetByUUID(t *testing.T) {
 }
 
 func TestWarningService_RemoveStale(t *testing.T) {
+	t.Parallel()
+
 	testWarning := func(uuidPattern string, srcName string, messages ...string) warning.Warning {
 		warn := newTestWarning(t, uuidPattern, api.WarningTypeUnreachable, srcName, "")
 		warn.Messages = messages
@@ -530,10 +535,11 @@ func TestWarningService_RemoveStale(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &mock.WarningRepoMock{
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -568,7 +574,6 @@ func TestWarningService_RemoveStale(t *testing.T) {
 			warningSvc := warning.NewWarningService(repo)
 
 			// Run tst
-			ctx := context.Background()
 			warningSvc.RemoveStale(ctx, tc.scope, tc.warnings)
 
 			// Assert
