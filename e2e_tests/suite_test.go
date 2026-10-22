@@ -1,0 +1,105 @@
+package e2e
+
+import (
+	"context"
+	"os"
+	"strconv"
+	"testing"
+)
+
+// e2eScenario is a single scenario of an end 2 end suite. It runs as a subtest
+// of the suite, so it can be selected with "go test -run Suite/scenario".
+type e2eScenario struct {
+	// name is the name of the subtest. Use snake_case, since "go test"
+	// replaces spaces with underscores.
+	name string
+	run  func(ctx context.Context, t *testing.T, tmpDir string)
+}
+
+// runE2ESuite runs the scenarios in the given order as subtests of t. The
+// scenarios share the setup of the Operations Center. The setup runs in the
+// first scenario selected by "-run" and again after a failed scenario.
+func runE2ESuite(t *testing.T, scenarios []e2eScenario) {
+	t.Helper()
+
+	if listOnly {
+		for _, scenario := range scenarios {
+			t.Run(scenario.name, func(t *testing.T) {
+				t.Skip("OPERATIONS_CENTER_E2E_TEST_LIST env var set, only listing end 2 end tests.")
+			})
+		}
+
+		return
+	}
+
+	skipUnlessE2ETestEnabled(t)
+
+	needsSetup := true
+
+	for _, scenario := range scenarios {
+		ok := t.Run(scenario.name, func(t *testing.T) {
+			runE2EScenario(t, scenario.name, func(ctx context.Context, t *testing.T, tmpDir string) {
+				t.Helper()
+
+				if needsSetup {
+					setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
+					needsSetup = false
+				}
+
+				scenario.run(ctx, t, tmpDir)
+			})
+		})
+
+		// A failed scenario might leave the Operations Center in a bad state.
+		if !ok {
+			needsSetup = true
+		}
+	}
+}
+
+// runE2EScenario runs a single end 2 end scenario with its own timeout, time
+// tracking and debug output on failure.
+func runE2EScenario(t *testing.T, name string, run func(ctx context.Context, t *testing.T, tmpDir string)) {
+	t.Helper()
+
+	logEnvSettings(t)
+
+	reason := setupBrokenReason()
+	if reason != "" {
+		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
+	}
+
+	timeout := strechedTimeout(testTimeout)
+
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+
+	defer func() {
+		if ctx.Err() != nil {
+			t.Errorf("Test exceeded its timeout of %v: %v", timeout, ctx.Err())
+		}
+	}()
+
+	tmpDir := e2eTestTmpDir(t)
+
+	resetDebugOutput()
+	resetVMDebugInfo()
+
+	debugOutputCollect := onTestFailDebugOutput(t, tmpDir)
+	defer debugOutputCollect()
+
+	stop := timeTrack(t, name)
+	defer stop()
+
+	run(ctx, t, tmpDir)
+}
+
+func skipUnlessE2ETestEnabled(t *testing.T) {
+	t.Helper()
+
+	e2eTest := os.Getenv("OPERATIONS_CENTER_E2E_TEST")
+	runE2ETest, _ := strconv.ParseBool(e2eTest)
+	if !runE2ETest {
+		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
+	}
+}

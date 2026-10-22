@@ -15,7 +15,9 @@ that would not be re-executed on a cached run.
 
 Use `-timeout` to set a suitable timeout for the tests.
 
-Use `-run` to run specific tests, e.g. `-run TestE2E/create_cluster`.
+Use `-run` to run specific tests, e.g. `-run '^TestE2E_WithToken_CreateCluster$'`.
+Use `-run '^TestE2E_OperationsCenter$/^oidc_authentication$'` to run a single
+scenario of a suite (see [Suites and scenarios](#suites-and-scenarios)).
 
 Other environment variables that can be set to control the tests:
 
@@ -25,11 +27,12 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")
 * `OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP`: Whether to setup the IncusOS instances concurrently (default: "true")
 * `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`: Factor to stretch timeouts by (default: "1.0"). This also stretches the deployment timeouts in the BIOS profile of `TestE2E_WithTokenSeed_DeployServer`. It does not change the `-timeout` flag of `go test`. Raise this flag by the same factor.
-* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
+* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case or a single scenario of a suite, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
 * `OPERATIONS_CENTER_E2E_TEST_CPU_ARCH`: CPU architecture used (default: "amd64")
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
+* `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
 
@@ -146,7 +149,13 @@ or a specific test:
 make e2e-test GO_TEST_RUN=TestE2E_WithToken_CreateCluster
 ```
 
-to show all available test cases:
+or a single scenario of a suite:
+
+```shell
+make e2e-test GO_TEST_RUN='^TestE2E_OperationsCenter$/^oidc_authentication$'
+```
+
+to show all available test cases and scenarios:
 
 ```shell
 make e2e-test-list
@@ -179,6 +188,26 @@ resources that are already gone. They report all other errors, continue with
 the remaining steps and fail at the end.
 
 ## Development
+
+### Suites and scenarios
+
+A suite is a top level test, which runs several scenarios with `runE2ESuite`.
+Each scenario is a subtest, so `-run 'Suite/scenario'` selects it. Use
+snake_case for the name of a scenario, since `go test` replaces spaces with
+underscores.
+
+The scenarios of a suite run in the given order and share the setup of the
+Operations Center. The setup runs in the first scenario, which is selected by
+`-run`, and again after a failed scenario. A scenario has its own timeout and
+its own debug output on failure, like a top level test.
+
+`go test -list` only shows the top level tests. With
+`OPERATIONS_CENTER_E2E_TEST_LIST` set, a suite creates a skipped subtest for each
+scenario and runs nothing else. `scripts/e2e/select.sh` reads the scenarios from
+this output and creates a regex like `^Suite$/^scenario$|^OtherTest$`. The
+alternatives are joined on the top level, since `go test` splits a regex at a
+top level `/` into the levels of the subtests. The Makefile passes
+`GO_TEST_RUN` with `$(value ...)`, so make does not expand the `$` anchors.
 
 ### Shell commands
 
@@ -257,8 +286,8 @@ Failures are always recorded in full.
 
 ### Broken setup of the Operations Center
 
-Every test depends on `setupOperationsCenter`, so a failure of it is terminal for
-the whole run.
+Every test and every scenario depends on `setupOperationsCenter`, so a failure
+of it is terminal for the whole run.
 
 `setupOperationsCenterOrMarkBroken` therefore records such a failure and the
 remaining tests skip with that reason instead of reproducing it. Only the shared
@@ -268,8 +297,8 @@ independent and keeps its signal.
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in
-a sequence. This means, that each test case should clean up any resources it
-creates, so that the next test case can run without interference.
+a sequence. This means, that each test case and each scenario should clean up
+any resources it creates, so that the next one can run without interference.
 
 This is achieved by using `t.Cleanup` to register cleanup functions that are
 executed after the test case finishes, regardless of whether it passes or fails.
@@ -385,8 +414,9 @@ through the public endpoints directly instead of through the server.
 
 ### Updates, channels and tokens
 
-`TestE2E_ProvisioningUpdatesChannelsAndTokens` covers the updates, the channels
-and the tokens of Operations Center. It needs no IncusOS server.
+The scenario `provisioning_updates_channels_tokens` of the suite
+`TestE2E_OperationsCenter` covers the updates, the channels and the tokens of
+Operations Center. It needs no IncusOS server.
 
 The test sends server registrations with curl. Each of these registrations
 fails before a server record is created: the body has no server name, or the
