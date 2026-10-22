@@ -226,6 +226,8 @@ func Test_parseTimestamp(t *testing.T) {
 }
 
 func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
@@ -259,10 +261,11 @@ func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err, "logger initialization must not fail")
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			server := provisioning.Server{
 				Name: "name",
@@ -272,7 +275,7 @@ func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
 			}
 
 			// Run test
-			err = tc.run(t.Context(), func(ctx context.Context) {
+			err := tc.run(ctx, func(ctx context.Context) {
 				_, _, err := New().getClient(ctx, server)
 				require.Error(t, err, "the invalid endpoint makes getClient return before it sends a request")
 			})

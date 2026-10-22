@@ -114,6 +114,8 @@ func TestServerService_PollServers(t *testing.T) {
 }
 
 func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	httpsServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -121,11 +123,12 @@ func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing
 	}))
 
 	httpsServer.StartTLS()
-	defer httpsServer.Close()
+	t.Cleanup(httpsServer.Close)
 
 	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
+	t.Cleanup(httpServer.Close)
 
 	tests := []struct {
 		name                   string
@@ -697,10 +700,11 @@ foobar
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -754,7 +758,7 @@ foobar
 			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
-			err = serverSvc.PollServer(context.Background(), tc.serverArg, false)
+			err := serverSvc.PollServer(ctx, tc.serverArg, false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -767,6 +771,8 @@ foobar
 }
 
 func TestServerService_PollServer(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -1778,10 +1784,11 @@ func TestServerService_PollServer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1865,7 +1872,7 @@ func TestServerService_PollServer(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.PollServer(context.Background(), tc.serverArg, tc.updateServerConfigArg)
+			err := serverSvc.PollServer(ctx, tc.serverArg, tc.updateServerConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1875,6 +1882,8 @@ func TestServerService_PollServer(t *testing.T) {
 }
 
 func TestServerService_PollServer_resyncBMCData(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -2060,10 +2069,11 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -2107,7 +2117,7 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.PollServer(context.Background(), tc.serverArg, false)
+			err := serverSvc.PollServer(ctx, tc.serverArg, false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2118,10 +2128,11 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 }
 
 func TestServerService_PollServer_in_transaction(t *testing.T) {
+	t.Parallel()
+
 	// Setup
 	logBuf := &log.SyncBuffer{}
-	err := logger.InitLogger(logBuf, "", false, true, true)
-	require.NoError(t, err)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 	repo := &repoMock.ServerRepoMock{
 		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -2156,7 +2167,7 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 	)
 
 	// Run test
-	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		return serverSvc.PollServer(ctx, provisioning.Server{
 			Name:   "one",
 			Status: api.ServerStatusPending,

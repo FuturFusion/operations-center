@@ -1443,6 +1443,8 @@ func TestServerService_GetByName(t *testing.T) {
 }
 
 func TestServerService_Update(t *testing.T) {
+	t.Parallel()
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	certificatePEM, _, err := incustls.GenerateMemCert(false, false)
@@ -1886,10 +1888,11 @@ func TestServerService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			var updatedServer provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -1949,7 +1952,7 @@ func TestServerService_Update(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.Update(t.Context(), tc.server, tc.argForce, true, tc.argBMCConnectionTest)
+			err := serverSvc.Update(ctx, tc.server, tc.argForce, true, tc.argBMCConnectionTest)
 
 			serverSvc.WaitBackgroundTasks()
 
@@ -1965,6 +1968,8 @@ func TestServerService_Update(t *testing.T) {
 }
 
 func TestServerService_SelfUpdate(t *testing.T) {
+	t.Parallel()
+
 	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -2409,10 +2414,11 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			var gotServerStatus api.ServerStatus
 			var gotServerStatusDetail api.ServerStatusDetail
@@ -2493,7 +2499,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.SelfUpdate(t.Context(), tc.serverSelfUpdate)
+			err := serverSvc.SelfUpdate(ctx, tc.serverSelfUpdate)
 
 			serverSvc.WaitBackgroundTasks()
 

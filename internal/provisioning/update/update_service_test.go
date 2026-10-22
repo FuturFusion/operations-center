@@ -996,6 +996,8 @@ func TestUpdateService_Update(t *testing.T) {
 }
 
 func TestUpdateService_GetChangelog(t *testing.T) {
+	t.Parallel()
+
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
 
@@ -1425,10 +1427,11 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &repoMock.UpdateRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
@@ -1447,7 +1450,7 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
-			changelog, err := updateSvc.GetChangelog(t.Context(), tc.currentIDArg, tc.priorIDArg, tc.architectureArg)
+			changelog, err := updateSvc.GetChangelog(ctx, tc.currentIDArg, tc.priorIDArg, tc.architectureArg)
 
 			// Assert
 			tc.assertErr(t, err)

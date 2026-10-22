@@ -415,6 +415,8 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 var lifecycleOperationWarningScope = api.WarningScope{Scope: "lifecycle_operation", EntityType: "server", Entity: "one"}
 
 func TestServerService_EvacuateSystemByName(t *testing.T) {
+	t.Parallel()
+
 	stepTriggeredAt := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -428,7 +430,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		clusterSvcGetByNameErr                          error
 		clusterSvcUpdateErr                             error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
-		doCallback                                      func(f func(ctx context.Context, err error))
+		doCallback                                      func(ctx context.Context, f func(ctx context.Context, err error))
 
 		assertErr                    require.ErrorAssertionFunc
 		assertLog                    log.MatcherFunc
@@ -457,8 +459,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -488,8 +490,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                    require.NoError,
@@ -518,8 +520,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                    require.NoError,
@@ -555,7 +557,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(_ func(ctx context.Context, err error)) {
+			doCallback: func(_ context.Context, _ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
 
@@ -590,7 +592,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(_ func(ctx context.Context, err error)) {
+			doCallback: func(_ context.Context, _ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
 
@@ -633,8 +635,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -680,8 +682,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -727,8 +729,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -775,8 +777,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -837,8 +839,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -891,8 +893,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			},
 			clusterSvcGetByName: &provisioning.Cluster{},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 
 			assertErr:                    require.NoError,
@@ -924,8 +926,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 
 			assertErr:                    require.NoError,
@@ -976,8 +978,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				boom.Error,
 			},
 			clusterSvcGetByName: &provisioning.Cluster{},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 
 			assertErr:                    require.NoError,
@@ -1087,8 +1089,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientEvacuateErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                   boom.ErrorIs,
@@ -1120,8 +1122,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				boom.Error,
 			},
 			clientEvacuateErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr: boom.ErrorIs,
@@ -1133,13 +1135,14 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// if tc.name != "error - cluster update - callback error" {
 			// 	t.SkipNow()
 			// }
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -1154,7 +1157,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
-					tc.doCallback(callback)
+					tc.doCallback(ctx, callback)
 					return tc.clientEvacuateErr
 				},
 			}
@@ -1195,7 +1198,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce)
+			err := serverSvc.EvacuateSystemByName(ctx, "one", tc.argClusterUpdate, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1213,6 +1216,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 }
 
 func TestServerService_PoweroffSystemByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                            string
 		argForce                                        bool
@@ -1335,10 +1340,11 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1373,7 +1379,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.PoweroffSystemByName(t.Context(), "one", tc.argForce)
+			err := serverSvc.PoweroffSystemByName(ctx, "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1385,6 +1391,8 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 }
 
 func TestServerService_RebootSystemByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                            string
 		argForce                                        bool
@@ -1529,10 +1537,11 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1567,7 +1576,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.RebootSystemByName(t.Context(), "one", tc.argForce)
+			err := serverSvc.RebootSystemByName(ctx, "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1578,6 +1587,8 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 }
 
 func TestServerService_RestoreSystemByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                            string
 		argClusterUpdate                                bool
@@ -1588,7 +1599,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		repoUpdateErrs                                  queue.Errs
 		clientRestoreErr                                error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
-		doCallback                                      func(f func(ctx context.Context, err error))
+		doCallback                                      func(ctx context.Context, f func(ctx context.Context, err error))
 
 		assertErr                    require.ErrorAssertionFunc
 		assertLog                    log.MatcherFunc
@@ -1612,8 +1623,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                    require.NoError,
@@ -1637,8 +1648,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                    require.NoError,
@@ -1662,8 +1673,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                    require.NoError,
@@ -1694,7 +1705,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(_ func(ctx context.Context, err error)) {
+			doCallback: func(_ context.Context, _ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
 
@@ -1724,7 +1735,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(_ func(ctx context.Context, err error)) {
+			doCallback: func(_ context.Context, _ func(ctx context.Context, err error)) {
 				// don't perform the callback
 			},
 
@@ -1746,8 +1757,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -1772,8 +1783,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
@@ -1799,8 +1810,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), boom.Error)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, boom.Error)
 			},
 
 			assertErr:                    require.NoError,
@@ -1886,8 +1897,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientRestoreErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr:                   boom.ErrorIs,
@@ -1914,8 +1925,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				boom.Error,
 			},
 			clientRestoreErr: boom.Error,
-			doCallback: func(f func(ctx context.Context, err error)) {
-				f(t.Context(), nil)
+			doCallback: func(ctx context.Context, f func(ctx context.Context, err error)) {
+				f(ctx, nil)
 			},
 
 			assertErr: boom.ErrorIs,
@@ -1927,10 +1938,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -1945,7 +1957,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
-					tc.doCallback(callback)
+					tc.doCallback(ctx, callback)
 					return tc.clientRestoreErr
 				},
 			}
@@ -1980,7 +1992,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.RestoreSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
+			err := serverSvc.RestoreSystemByName(ctx, "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2092,6 +2104,8 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 }
 
 func TestServerService_UpdateSystemByName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                            string
 		argUpdateRequest                                api.ServerUpdatePost
@@ -2653,10 +2667,11 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			var gotStatusDetail *api.ServerStatusDetail
 			var gotTriggeredUpdate *provisioning.ServerTriggeredUpdate
@@ -2745,7 +2760,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
+			err := serverSvc.UpdateSystemByName(ctx, "one", tc.argUpdateRequest, tc.argForce)
 
 			serverSvc.WaitBackgroundTasks()
 
