@@ -26,21 +26,23 @@ var upgrader = websocket.Upgrader{
 }
 
 func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
+	t.Parallel()
+
 	caPool, certPEM, keyPEM := setupCerts(t)
 
-	readyContext := func() (context.Context, func()) {
-		return context.WithCancel(context.Background())
+	readyContext := func(ctx context.Context) (context.Context, func()) {
+		return context.WithCancel(ctx)
 	}
 
-	cancelledContext := func() (context.Context, func()) {
-		ctx, cancel := context.WithCancel(context.Background())
+	cancelledContext := func(ctx context.Context) (context.Context, func()) {
+		ctx, cancel := context.WithCancel(ctx)
 		cancel() // cancel the context already now.
 		return ctx, cancel
 	}
 
 	tests := []struct {
 		name              string
-		getCtx            func() (context.Context, func())
+		getCtx            func(ctx context.Context) (context.Context, func())
 		blockEventChannel bool
 		handler           func(ready, done chan struct{}) func(http.ResponseWriter, *http.Request)
 		clientCertPEM     string
@@ -308,20 +310,15 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		Certificate:   new(string(serverCert)),
 	}
 
-	logBuf := &log.SyncBuffer{}
-	err := logger.InitLogger(logBuf, "", false, false, false)
-	require.NoError(t, err)
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			ready := make(chan struct{})
 			done := make(chan struct{})
 
-			ctx, cancel := tc.getCtx()
+			logBuf := &log.SyncBuffer{}
+			ctx, cancel := tc.getCtx(logger.ContextWithTestLogger(t, logBuf, false, false, false))
 			defer cancel()
-
-			logBuf.Reset()
 
 			httpHandler = tc.handler(ready, done)
 

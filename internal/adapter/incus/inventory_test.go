@@ -107,12 +107,13 @@ func TestClient_HasExtension(t *testing.T) {
 }
 
 func TestClient_in_transaction(t *testing.T) {
+	t.Parallel()
+
 	// Setup
 	caPool, certPEM, keyPEM := setupCerts(t)
 
 	logBuf := &log.SyncBuffer{}
-	err := logger.InitLogger(logBuf, "", false, false, false)
-	require.NoError(t, err)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -145,7 +146,7 @@ func TestClient_in_transaction(t *testing.T) {
 	target := newTestServer(server.URL, string(serverCert))
 
 	// Run test
-	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		_ = client.HasExtension(ctx, target, "foobar")
 		return nil
 	})

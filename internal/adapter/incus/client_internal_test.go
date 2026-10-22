@@ -183,11 +183,12 @@ func generateCertChain(t *testing.T, domainName string) (caCert []byte, cert []b
 }
 
 func Test_getClient(t *testing.T) {
-	logBuf := &log.SyncBuffer{}
-	err := logger.InitLogger(logBuf, "", false, false, false)
-	require.NoError(t, err)
+	t.Parallel()
 
-	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+	logBuf := &log.SyncBuffer{}
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		_, err := New("", "", WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
 			Name: "name",
 		})
