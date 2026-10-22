@@ -15425,6 +15425,8 @@ func TestSystemStoragePool_fieldCount(t *testing.T) {
 }
 
 func TestClusterService_RemoveServer(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                                   string
 		serverSvcGetAllWithFilter              provisioning.Servers
@@ -16152,10 +16154,11 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &mock.ClusterRepoMock{}
 
@@ -16249,11 +16252,11 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			)
 
 			// Context with timeout for incusClient.DeleteClusterMember test.
-			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 			defer cancel()
 
 			// Run test
-			err = clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"}, tc.forceArg)
+			err := clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"}, tc.forceArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -16875,6 +16878,8 @@ func TestClusterService_GetByName(t *testing.T) {
 }
 
 func TestClusterService_Update(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		argUpdateServers             bool
@@ -17054,10 +17059,11 @@ func TestClusterService_Update(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, true)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -17080,7 +17086,7 @@ func TestClusterService_Update(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
+			err := clusterSvc.Update(ctx, tc.cluster, tc.argUpdateServers)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -17959,6 +17965,8 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 }
 
 func TestClusterService_LaunchClusterUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		request                   api.ClusterUpdatePost
@@ -19089,10 +19097,11 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -19133,12 +19142,11 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 			)
 
 			// Run test
-			ctx := t.Context()
 			if tc.tamperContext != nil {
 				ctx = tc.tamperContext(ctx, t)
 			}
 
-			err = clusterSvc.LaunchClusterUpdate(ctx, "one", tc.request)
+			err := clusterSvc.LaunchClusterUpdate(ctx, "one", tc.request)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -19638,6 +19646,8 @@ func TestClusterService_AbortClusterOperation(t *testing.T) {
 }
 
 func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -20175,10 +20185,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20208,7 +20219,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.AddServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
+			err := clusterSvc.AddServerSystemNetworkVLANTags(ctx, tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -20220,6 +20231,8 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 }
 
 func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -20591,10 +20604,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20621,7 +20635,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.RemoveServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
+			err := clusterSvc.RemoveServerSystemNetworkVLANTags(ctx, tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -20633,6 +20647,8 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 }
 
 func TestClusterService_UpdateSystemLogging(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                         string
 		nameArg                      string
@@ -20874,10 +20890,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20904,7 +20921,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.UpdateSystemLogging(context.Background(), tc.nameArg, tc.loggingConfigArg)
+			err := clusterSvc.UpdateSystemLogging(ctx, tc.nameArg, tc.loggingConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -20917,6 +20934,8 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 }
 
 func TestClusterService_UpdateSystemKernel(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		nameArg                     string
@@ -21158,10 +21177,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -21188,7 +21208,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.UpdateSystemKernel(context.Background(), tc.nameArg, tc.kernelConfigArg)
+			err := clusterSvc.UpdateSystemKernel(ctx, tc.nameArg, tc.kernelConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -21396,6 +21416,8 @@ func TestClusterService_AddApplication(t *testing.T) {
 }
 
 func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -21685,10 +21707,11 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -21720,7 +21743,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.AddStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.AddStorageTargetISCSI(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -21733,6 +21756,8 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 }
 
 func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -22050,10 +22075,11 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22085,7 +22111,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.RemoveStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.RemoveStorageTargetISCSI(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -22098,6 +22124,8 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 }
 
 func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		nameArg                     string
@@ -22361,10 +22389,11 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22396,7 +22425,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.AddStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.AddStorageTargetMultipath(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -22409,6 +22438,8 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 }
 
 func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                        string
 		nameArg                     string
@@ -22672,10 +22703,11 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22707,7 +22739,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.RemoveStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.RemoveStorageTargetMultipath(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -22720,6 +22752,8 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 }
 
 func TestClusterService_AddStorageTargetNVME(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -23009,10 +23043,11 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -23044,7 +23079,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.AddStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.AddStorageTargetNVME(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -23057,6 +23092,8 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 }
 
 func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                      string
 		nameArg                   string
@@ -23374,10 +23411,11 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -23409,7 +23447,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
-			err = clusterSvc.RemoveStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+			err := clusterSvc.RemoveStorageTargetNVME(ctx, tc.nameArg, tc.targetArg)
 
 			// Assert
 			tc.assertErr(t, err)

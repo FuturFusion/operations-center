@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"log/slog"
 	"testing"
 
@@ -11,24 +10,22 @@ import (
 	authzmiddleware "github.com/FuturFusion/operations-center/internal/security/authz/middleware"
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestAuthorizerErrorIsNotLoggedByTheDecorator(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	t.Parallel()
 
-	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
-
-	t.Cleanup(func() {
-		require.NoError(t, logger.InitLogger(logBuf, "", false, false, true), "the log levels must not leak into other tests")
-	})
+	logBuf := &log.SyncBuffer{}
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, true)
 
 	authorizer := authzmiddleware.NewAuthorizerWithSlog(
 		unixsocket.New(),
 		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
 	)
 
-	err := authorizer.CheckPermission(t.Context(), &authz.RequestDetails{Protocol: api.AuthenticationMethodTLS}, authz.ObjectServer(), authz.EntitlementCanView)
+	err := authorizer.CheckPermission(ctx, &authz.RequestDetails{Protocol: api.AuthenticationMethodTLS}, authz.ObjectServer(), authz.EntitlementCanView)
 
 	require.Error(t, err, "the unix socket authorizer declines a request made over TLS")
 	require.Empty(t, logBuf.String(), "an error returned to the caller must not be logged at the default level, it is reported by the boundary it ends up at")
@@ -45,7 +42,7 @@ func TestAuthComponentDefaultsAreReachable(t *testing.T) {
 }
 
 func TestAuthorizerParentComponentCoversMembers(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
 

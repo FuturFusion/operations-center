@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -37,6 +36,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -1073,7 +1073,7 @@ type deploymentTestWorld struct {
 	repo       provisioning.ServerRepo
 	service    provisioning.ServerService
 	newService func() provisioning.ServerService
-	logBuf     *bytes.Buffer
+	logBuf     *log.SyncBuffer
 	tokenUUID  uuid.UUID
 }
 
@@ -1100,7 +1100,7 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 	})
 	require.NoError(t, err)
 
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	var logSink io.Writer = logBuf
 	if testing.Verbose() {

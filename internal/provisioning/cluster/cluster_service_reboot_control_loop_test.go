@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"slices"
@@ -17,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -116,7 +116,7 @@ func rebootOnlyWorld(servers ...provisioning.Server) *serverWorld {
 
 // setupRebootOnlyCluster wires up a cluster service backed by a real SQLite
 // schema, with the given servers already registered and up to date.
-func setupRebootOnlyCluster(t *testing.T, ctx context.Context, listenerName string, servers ...provisioning.Server) (provisioning.ClusterService, *serverWorld, *bytes.Buffer) {
+func setupRebootOnlyCluster(t *testing.T, ctx context.Context, listenerName string, servers ...provisioning.Server) (provisioning.ClusterService, *serverWorld, *log.SyncBuffer) {
 	t.Helper()
 
 	world := rebootOnlyWorld(servers...)

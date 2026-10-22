@@ -3,7 +3,6 @@
 package inventory_test
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -1080,6 +1079,8 @@ func TestStoragePoolService_ResyncByName(t *testing.T) {
 }
 
 func TestStoragePoolService_SyncAll(t *testing.T) {
+	t.Parallel()
+
 	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 
 	// Includes also SyncCluster
@@ -1343,10 +1344,11 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+			logBuf := &log.SyncBuffer{}
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
 
 			for i, item := range tc.repoGetAllWithFilter {
 				item.DeriveUUID()
@@ -1387,7 +1389,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err = storagePoolSvc.SyncCluster(context.Background(), "one")
+			err := storagePoolSvc.SyncCluster(ctx, "one")
 
 			// Assert
 			tc.assertErr(t, err)

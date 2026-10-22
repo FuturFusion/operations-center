@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -34,6 +33,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -131,7 +131,7 @@ type controlLoopEnv struct {
 	clusterDB provisioning.ClusterRepo
 	serverDB  provisioning.ServerRepo
 	clock     *testClock
-	logBuf    *bytes.Buffer
+	logBuf    *log.SyncBuffer
 
 	rollingUpdateStepRetryBackoff time.Duration
 }
@@ -140,7 +140,7 @@ type controlLoopEnv struct {
 // schema, with the given servers already registered. The fake servers are served
 // by the given client mock and availableVersion is the most recent update
 // version, which is available in the update channel of the cluster.
-func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *bytes.Buffer) {
+func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *log.SyncBuffer) {
 	t.Helper()
 
 	env := setupControlLoopEnv(t, ctx, servers...)
@@ -183,7 +183,7 @@ func setupControlLoopEnv(t *testing.T, ctx context.Context, servers ...provision
 		},
 	}
 
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 	var logSink io.Writer = logBuf
 	if testing.Verbose() {
 		logSink = io.MultiWriter(os.Stdout, logBuf)

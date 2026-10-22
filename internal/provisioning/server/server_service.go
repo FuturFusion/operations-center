@@ -259,15 +259,17 @@ func waitForBMCTask(ctx context.Context, client provisioning.BMCServerClientPort
 }
 
 // runInBackground runs fn in a detached goroutine. The context passed to fn is
-// detached as well, in order to make sure, no existing DB transaction is
-// inherited.
-func (s *serverService) runInBackground(fn func(ctx context.Context)) {
+// detached from ctx as well, in order to make sure, no existing DB transaction
+// is inherited. Only the logging related values of ctx are kept.
+func (s *serverService) runInBackground(ctx context.Context, fn func(ctx context.Context)) {
 	s.backgroundTasks.Add(1)
+
+	detached := logger.DetachedContext(ctx)
 
 	go func() {
 		defer s.backgroundTasks.Done()
 
-		fn(context.Background())
+		fn(detached)
 	}()
 }
 
@@ -303,7 +305,7 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 		return provisioning.Server{}, err
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := s.resyncBMCData(ctx, newServer)
 		if err != nil {
 			slog.WarnContext(ctx, "Initial resync of BMC data failed (non-critical)", logger.Err(err), slog.String("name", newServer.Name))
@@ -395,7 +397,7 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 	// Perform initial connection test to server right after registration.
 	// Since we have the background task to update the server state, we do not
 	// care about graceful shutdown for this "one off" check.
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		var err error
 		log := slog.With(slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 
@@ -951,7 +953,7 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := s.PollServer(ctx, *server, true)
 		if err != nil {
 			slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
@@ -1059,7 +1061,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 	}
 
 	if triggerBackgroundPolling {
-		s.runInBackground(func(ctx context.Context) {
+		s.runInBackground(ctx, func(ctx context.Context) {
 			var err error
 			log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
@@ -3005,7 +3007,7 @@ func (s *serverService) bmcServerPowerOnByName(ctx context.Context, name string,
 		return taskMonitor, nil
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := waitForBMCTask(ctx, client, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power on operation", logger.Err(err))
@@ -3042,7 +3044,7 @@ func (s *serverService) bmcServerPowerOffByName(ctx context.Context, name string
 		return taskMonitor, nil
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := waitForBMCTask(ctx, client, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power off operation", logger.Err(err))
@@ -3125,7 +3127,7 @@ func (s *serverService) applyBIOSAttributesByName(ctx context.Context, name stri
 
 	// The BIOS settings are applied on the next reset of the server, so the task
 	// is not awaited synchronously.
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := waitForBMCTask(ctx, client, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after BIOS attribute application", logger.Err(err), slog.String("name", server.Name))
@@ -3677,7 +3679,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		return attached, nil
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := waitForBMCTask(ctx, client, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after attach media operation", logger.Err(err))
@@ -3754,7 +3756,7 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 		return taskMonitor, nil
 	}
 
-	s.runInBackground(func(ctx context.Context) {
+	s.runInBackground(ctx, func(ctx context.Context) {
 		err := waitForBMCTask(ctx, client, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after detach media operation", logger.Err(err))

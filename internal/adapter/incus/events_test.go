@@ -1,15 +1,12 @@
 package incus_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,21 +26,23 @@ var upgrader = websocket.Upgrader{
 }
 
 func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
+	t.Parallel()
+
 	caPool, certPEM, keyPEM := setupCerts(t)
 
-	readyContext := func() (context.Context, func()) {
-		return context.WithCancel(context.Background())
+	readyContext := func(ctx context.Context) (context.Context, func()) {
+		return context.WithCancel(ctx)
 	}
 
-	cancelledContext := func() (context.Context, func()) {
-		ctx, cancel := context.WithCancel(context.Background())
+	cancelledContext := func(ctx context.Context) (context.Context, func()) {
+		ctx, cancel := context.WithCancel(ctx)
 		cancel() // cancel the context already now.
 		return ctx, cancel
 	}
 
 	tests := []struct {
 		name              string
-		getCtx            func() (context.Context, func())
+		getCtx            func(ctx context.Context) (context.Context, func())
 		blockEventChannel bool
 		handler           func(ready, done chan struct{}) func(http.ResponseWriter, *http.Request)
 		clientCertPEM     string
@@ -51,7 +51,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		assertErr        require.ErrorAssertionFunc
 		assertErrChanErr require.ErrorAssertionFunc
 		wantEvent        domain.LifecycleEvent
-		wantLog          string
+		assertLog        log.MatcherFunc
 	}{
 		{
 			name:   "success one event",
@@ -91,6 +91,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:   "error - getClient",
@@ -104,6 +105,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			clientKeyPEM:  certPEM, // invalid value
 
 			assertErr: require.Error,
+			assertLog: log.Noop,
 		},
 		{
 			name:   "error - GetEventsAllProjects",
@@ -117,6 +119,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			clientKeyPEM:  keyPEM,
 
 			assertErr: require.Error,
+			assertLog: log.Noop,
 		},
 		{
 			name:   "error - invalid lifecycle event",
@@ -168,7 +171,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			wantLog: "Failed to map incus event to lifecycle event",
+			assertLog: log.Contains("Failed to map incus event to lifecycle event"),
 		},
 		{
 			name:   "error - unsupported lifecycle event resource type",
@@ -214,6 +217,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:              "handle event - cancelled context",
@@ -255,6 +259,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
+			assertLog:        log.Noop,
 		},
 		{
 			name:   "error - webserver disconnect websocket immediately",
@@ -277,6 +282,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.Error,
+			assertLog:        log.Noop,
 		},
 	}
 
@@ -304,20 +310,15 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		Certificate:   new(string(serverCert)),
 	}
 
-	logBuf := &syncBuffer{}
-	err := logger.InitLogger(logBuf, "", false, false, false)
-	require.NoError(t, err)
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			ready := make(chan struct{})
 			done := make(chan struct{})
 
-			ctx, cancel := tc.getCtx()
+			logBuf := &log.SyncBuffer{}
+			ctx, cancel := tc.getCtx(logger.ContextWithTestLogger(t, logBuf, false, false, false))
 			defer cancel()
-
-			logBuf.Reset()
 
 			httpHandler = tc.handler(ready, done)
 
@@ -359,39 +360,9 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			// Assert
 			tc.assertErrChanErr(t, errChanErr)
 			require.Equal(t, tc.wantEvent, event)
-			require.Eventually(t, func() bool {
-				return strings.Contains(logBuf.String(), tc.wantLog)
-			}, 200*time.Millisecond, 10*time.Millisecond, "the log is written by another goroutine")
+			tc.assertLog(t, logBuf)
 		})
 	}
-}
-
-// syncBuffer is a buffer for the log output. The event handlers write the log
-// from other goroutines.
-type syncBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *syncBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	return b.buf.Write(p)
-}
-
-func (b *syncBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	return b.buf.String()
-}
-
-func (b *syncBuffer) Reset() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.buf.Reset()
 }
 
 func createLifecycleEvent(t *testing.T, action string) incusapi.Event {

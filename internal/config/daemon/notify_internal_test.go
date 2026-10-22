@@ -1,7 +1,6 @@
 package config
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -74,7 +74,7 @@ func Test_notify_smoke(t *testing.T) {
 func Test_notify_componentLogLevels(t *testing.T) {
 	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
 
-	logBuf := &bytes.Buffer{}
+	logBuf := &log.SyncBuffer{}
 
 	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
 

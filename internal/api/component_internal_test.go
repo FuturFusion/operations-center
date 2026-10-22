@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"net/http"
@@ -15,39 +14,34 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestComponentMiddleware(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	t.Parallel()
 
-	require.NoError(t, logger.InitLogger(logBuf, "", true, false, true))
-
-	t.Cleanup(func() {
-		require.NoError(t, logger.InitLogger(logBuf, "", true, false, true), "the log levels must not leak into other tests")
-	})
+	logBuf := &log.SyncBuffer{}
+	ctx := logger.ContextWithTestLogger(t, logBuf, true, false, true)
 
 	handler := componentMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		slog.InfoContext(r.Context(), "handling")
 	}))
 
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/1.0", nil))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/1.0", nil))
 
 	require.Contains(t, logBuf.String(), "component=api", "a request is attributed to the api component")
 }
 
 func TestComponentDaemonTask(t *testing.T) {
-	logBuf := &bytes.Buffer{}
+	t.Parallel()
 
-	require.NoError(t, logger.InitLogger(logBuf, "", true, false, true))
-
-	t.Cleanup(func() {
-		require.NoError(t, logger.InitLogger(logBuf, "", true, false, true), "the log levels must not leak into other tests")
-	})
+	logBuf := &log.SyncBuffer{}
+	ctx := logger.ContextWithTestLogger(t, logBuf, true, false, true)
 
 	componentTask(componentTaskRefreshInventory, func(ctx context.Context) {
 		slog.InfoContext(ctx, "task body")
-	})(t.Context())
+	})(ctx)
 
 	require.Contains(t, logBuf.String(), "component=daemon.task.refresh_inventory", "a background task is attributed to its own component")
 }
