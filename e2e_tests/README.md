@@ -16,7 +16,7 @@ that would not be re-executed on a cached run.
 Use `-timeout` to set a suitable timeout for the tests.
 
 Use `-run` to run specific tests, e.g.
-`-run '^TestE2E_WithTokenSeed_CreateCluster$'`.
+`-run '^TestE2E_FromManualUpload_CreateCluster$'`.
 Use `-run '^TestE2E_OperationsCenter$/^oidc_authentication$'` to run a single
 scenario of a suite (see [Suites and scenarios](#suites-and-scenarios)).
 
@@ -147,7 +147,7 @@ make e2e-test
 or a specific test:
 
 ```shell
-make e2e-test GO_TEST_RUN='^TestE2E_WithTokenSeed_CreateCluster$'
+make e2e-test GO_TEST_RUN='^TestE2E_FromManualUpload_CreateCluster$'
 ```
 
 or a single scenario of a suite:
@@ -205,9 +205,12 @@ its own debug output on failure, like a top level test.
 A suite can share a pool of IncusOS servers between its scenarios (see
 `serverPool`). A scenario lists the servers it requires, either as standalone
 servers or as the members of the cluster `incus-os-cluster`. The cluster uses
-the update channel of the pool. Before the scenario
-runs, the pool reads the state of the servers from Incus and from Operations
-Center.
+the update channel of the pool. Before the scenario runs, the pool reads the
+state of the servers from Incus and from Operations Center.
+
+The pool installs each server from its own ISO. This way, a suite covers
+several ways of installing without a separate top level test. For example,
+`TestE2E_StableServers` installs IncusOS01 from the ISO of a token seed.
 
 For standalone servers, the pool decides for each server (see
 `nextServerAction` and `planStandalone`):

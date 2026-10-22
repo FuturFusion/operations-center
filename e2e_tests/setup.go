@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -68,9 +70,9 @@ func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.
 		// Register cleanup
 		t.Cleanup(cleanupIncusOS(t, names))
 
-		incusOSPreseededISOFilename := prepareStableTokenISO(ctx, t, tmpDir)
+		isos := prepareStableTokenISOs("")(ctx, t, tmpDir, names)
 
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
+		createIncusOSInstances(ctx, t, isos)
 
 		printServerList(t)
 	}
@@ -106,7 +108,7 @@ func setupIncusOSWithTokenFreshISO(names []string) func(ctx context.Context, t *
 
 		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
+		createIncusOSInstances(ctx, t, sameISO(names, incusOSPreseededISOFilename))
 
 		printServerList(t)
 	}
@@ -151,27 +153,41 @@ func removeIncusOSISOWithContext(ctx context.Context, t *testing.T, tmpDir strin
 	return retryStorageCmdWithContext(ctx, t, fmt.Sprintf("delete the storage volume %q", incusOSPreseededISOFilename), `incus storage volume delete default %s`, incusOSPreseededISOFilename)
 }
 
-// prepareStableTokenISO returns the ISO storage volume, which installs a server
-// with a token of the stable channel. The registration scriptlet sets the
-// description and the properties of the server.
-func prepareStableTokenISO(ctx context.Context, t *testing.T, tmpDir string) string {
-	t.Helper()
+// prepareStableTokenISOs returns the ISO storage volumes, which install servers
+// with a token of the stable channel. The server fromTokenSeed is installed from
+// the ISO of a token seed, so this way of installing is covered as well. The
+// registration scriptlet sets the description and the properties of the
+// servers.
+func prepareStableTokenISOs(fromTokenSeed string) func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
+	return func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
+		t.Helper()
 
-	updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
+		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
 
-	token := createProvisioningToken(t)
+		token := createProvisioningToken(t)
 
-	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
+		isos := make(map[string]string, len(names))
+		for _, name := range names {
+			var iso string
+			if name == fromTokenSeed {
+				iso = createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
+			} else {
+				iso = createIncusOSPreseededISO(t, tmpDir, token)
+			}
 
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+			importIncusOSISOStorageVolume(t, tmpDir, iso)
 
-	return incusOSPreseededISOFilename
+			isos[name] = iso
+		}
+
+		return isos
+	}
 }
 
-// prepareProdChannelISO returns the ISO storage volume, which installs a server
+// prepareProdChannelISOs returns the ISO storage volume, which installs servers
 // with a token of the prod channel. The prod channel holds the oldest update,
-// so the server has updates pending.
-func prepareProdChannelISO(ctx context.Context, t *testing.T, tmpDir string) string {
+// so the servers have updates pending.
+func prepareProdChannelISOs(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
 	t.Helper()
 
 	token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
@@ -180,62 +196,50 @@ func prepareProdChannelISO(ctx context.Context, t *testing.T, tmpDir string) str
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	return incusOSPreseededISOFilename
+	return sameISO(names, incusOSPreseededISOFilename)
 }
 
-func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir string) {
-	t.Helper()
-
-	stop := timeTrack(t)
-	defer stop()
-
-	manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) ) ] | length > 0'`, cpuArch)
-	if !manualUpdateUUIDExistsResp.Success() {
-		err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
-		require.NoError(t, err)
-
-		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
-
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
+// sameISO installs all the given servers from the same ISO storage volume.
+func sameISO(names []string, iso string) map[string]string {
+	isos := make(map[string]string, len(names))
+	for _, name := range names {
+		isos[name] = iso
 	}
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
-
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t, names))
-	t.Cleanup(channelCleanup(t, "manual"))
-
-	token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
-
-	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
-
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-	printServerList(t)
+	return isos
 }
 
-func setupIncusOSWithTokenSeed(ctx context.Context, t *testing.T, tmpDir string) {
-	t.Helper()
+func setupIncusOSFromManualUpload(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
 
-	stop := timeTrack(t)
-	defer stop()
+		stop := timeTrack(t)
+		defer stop()
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+		manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) ) ] | length > 0'`, cpuArch)
+		if !manualUpdateUUIDExistsResp.Success() {
+			err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
+			require.NoError(t, err)
 
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t, names))
+			mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
 
-	token := createProvisioningToken(t)
+			mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
+		}
 
-	incusOSPreseededISOFilename := createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
+		// Register cleanup
+		t.Cleanup(cleanupIncusOS(t, names))
+		t.Cleanup(channelCleanup(t, "manual"))
 
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+		token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
 
-	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
+		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
-	printServerList(t)
+		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+
+		createIncusOSInstances(ctx, t, sameISO(names, incusOSPreseededISOFilename))
+
+		printServerList(t)
+	}
 }
 
 func cleanupIncusOS(t *testing.T, names []string) func() {
@@ -789,8 +793,12 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseeded
 	}
 }
 
-func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededISOFilename string, names []string) {
+// createIncusOSInstances installs a VM for each server of isos from the ISO
+// storage volume of the server.
+func createIncusOSInstances(ctx context.Context, t *testing.T, isos map[string]string) {
 	t.Helper()
+
+	names := slices.Sorted(maps.Keys(isos))
 
 	stop := timeTrack(t)
 	defer stop()
@@ -856,7 +864,7 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					}
 				}
 
-				err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+				err = installIncusOSInstance(errgrpctx, t, name, isos[name])
 
 				// A restart in place does not help, if incus-osd fails during
 				// the installation, since the VM keeps its partially written
@@ -875,7 +883,7 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					// logged. Collect it again, if the reinstalled VM fails.
 					forgetVMDebugInfo(name)
 
-					err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+					err = installIncusOSInstance(errgrpctx, t, name, isos[name])
 					if err != nil {
 						return fmt.Errorf("Failed to reinstall %q after a failed installation (%w): %w", name, startupErr, err)
 					}
