@@ -15,20 +15,17 @@ import (
 )
 
 func TestAuthorizerErrorIsNotLoggedByTheDecorator(t *testing.T) {
+	t.Parallel()
+
 	logBuf := &log.SyncBuffer{}
-
-	require.NoError(t, logger.InitLogger(logBuf, "", false, false, true))
-
-	t.Cleanup(func() {
-		require.NoError(t, logger.InitLogger(logBuf, "", false, false, true), "the log levels must not leak into other tests")
-	})
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, true)
 
 	authorizer := authzmiddleware.NewAuthorizerWithSlog(
 		unixsocket.New(),
 		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
 	)
 
-	err := authorizer.CheckPermission(t.Context(), &authz.RequestDetails{Protocol: api.AuthenticationMethodTLS}, authz.ObjectServer(), authz.EntitlementCanView)
+	err := authorizer.CheckPermission(ctx, &authz.RequestDetails{Protocol: api.AuthenticationMethodTLS}, authz.ObjectServer(), authz.EntitlementCanView)
 
 	require.Error(t, err, "the unix socket authorizer declines a request made over TLS")
 	require.Empty(t, logBuf.String(), "an error returned to the caller must not be logged at the default level, it is reported by the boundary it ends up at")
