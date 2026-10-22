@@ -44,16 +44,19 @@ func (httpErrorLogger) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// deadlineFrom extracts the deadline from the provided context if present and not yet expired.
-// Otherwise the defaultDeadline is returned.
+// shutdownGracePeriod is the time a background task gets to stop after the
+// deadline of the shutdown has passed. An idle task stops within this time. A
+// busy task does not extend the shutdown beyond its deadline.
+const shutdownGracePeriod = 100 * time.Millisecond
+
+// deadlineFrom returns the time until the deadline of ctx. Without a deadline,
+// it returns defaultDeadline. After the deadline, it returns
+// shutdownGracePeriod.
 func deadlineFrom(ctx context.Context, defaultDeadline time.Duration) time.Duration {
 	deadline, ok := ctx.Deadline()
-	if ok {
-		deadlineDuration := time.Until(deadline)
-		if deadlineDuration > 0 {
-			return deadlineDuration
-		}
+	if !ok {
+		return defaultDeadline
 	}
 
-	return defaultDeadline
+	return max(time.Until(deadline), shutdownGracePeriod)
 }
