@@ -42,9 +42,20 @@ func TestE2E_StableServers(t *testing.T) {
 	// The members of the cluster after add_and_remove_server.
 	remainingNames := []string{"IncusOS01", "IncusOS02", "IncusOS04"}
 
+	acmeNames := []string{"IncusOS01", "IncusOS02"}
+	acme := newACMERenewal(acmeNames)
+
 	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "stable", prepareStableTokenISOs("IncusOS01"))
 
 	runE2ESuite(t, pool, []e2eScenario{
+		{
+			// Runs first, so the pool installs all the servers after prepare.
+			// This way, the following scenarios reuse the servers.
+			name:       "acme_renewal",
+			standalone: acmeNames,
+			prepare:    acme.prepare,
+			run:        acme.run,
+		},
 		{
 			name:       "register_server",
 			standalone: []string{"IncusOS01"},
@@ -100,17 +111,6 @@ func TestE2E_StableServers(t *testing.T) {
 			run:     forceRemoveLostServer("IncusOS04", []string{"IncusOS01", "IncusOS02"}),
 		},
 	})
-}
-
-func TestE2E_WithToken_ACMERenewal(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - ACME renewal with private CA",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
-		},
-		acmeRenewal([]string{"IncusOS01", "IncusOS02"}),
-	)
 }
 
 // TestE2E_UpdateChannel installs the servers with the oldest update. Every

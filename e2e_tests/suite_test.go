@@ -28,6 +28,12 @@ type e2eScenario struct {
 	// version of a server.
 	leavesDirty []string
 
+	// prepare runs before the pool brings the servers into the required
+	// state. Use it for changes, which a server only picks up during its
+	// install, e.g. the content of its seed. The pool installs the servers of
+	// the scenario again after prepare.
+	prepare func(ctx context.Context, t *testing.T, tmpDir string)
+
 	run func(ctx context.Context, t *testing.T, tmpDir string)
 }
 
@@ -65,6 +71,11 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 				if needsSetup {
 					setupOperationsCenterOrMarkBroken(ctx, t, suite, tmpDir)
 					needsSetup = false
+				}
+
+				if scenario.prepare != nil {
+					scenario.prepare(ctx, t, tmpDir)
+					pool.markDirty(scenario.servers())
 				}
 
 				if len(scenario.standalone) > 0 {
