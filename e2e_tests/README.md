@@ -126,6 +126,53 @@ go get -v ./...
 make build
 ```
 
+### Workload VMs on Intel hosts
+
+Some tests launch a workload VM on the cluster, which is nested three levels
+deep: host, e2e VM, IncusOS VM, workload VM. On Intel hosts, the workload VM can
+boot so slowly, that its incus agent does not answer in time. The kernel of
+IncusOS ticks at 1000 Hz and every tick of a nested guest causes a series of
+expensive exits up to the e2e VM.
+
+If this happens, let the IncusOS VMs believe they run on Hyper-V. Their KVM then
+uses the Enlightened VMCS, which made the workload VM boot about three times
+faster. Set this in the default profile inside the e2e VM, while the Operations
+Center VM is stopped:
+
+```shell
+incus profile set default raw.qemu='-cpu "host,kvm=off,hv-vendor-id=Microsoft Hv,hv_relaxed,hv_vapic,hv_vpindex,hv_runtime,hv_time,hv_synic,hv_stimer,hv_tlbflush,hv_ipi,hv_frequencies,hv_reenlightenment,hv_stimer_direct,hv_xmm_input,hv_tlbflush_ext,hv_evmcs"'
+```
+
+QEMU uses the last `-cpu` argument, so this replaces the CPU settings of Incus
+completely. Apart from the flags below, the list repeats the Hyper-V flags,
+which Incus sets by default for live migratable VMs. The added flags are:
+
+* `kvm=off`: Hides the KVM signature. Linux prefers KVM over Hyper-V and
+  ignores the Hyper-V features otherwise.
+* `hv-vendor-id=Microsoft Hv`: Linux only enables its Hyper-V support for this
+  vendor. `hv_passthrough`, the default of Incus, ignores this flag, hence the
+  explicit list.
+* `hv_evmcs`: The actual fix. KVM inside IncusOS keeps the VMCS of the workload
+  VM in memory, so `VMREAD` and `VMWRITE` no longer exit to the e2e VM.
+* `hv_vapic`: Required by `hv_evmcs`. It provides the VP assist page, which
+  holds the address of the current Enlightened VMCS.
+* `hv_reenlightenment`: Notifies the guest about TSC frequency changes, so the
+  clock of nested guests stays correct. Optional.
+
+Remove it again with `incus profile unset default raw.qemu`.
+
+If the workload VMs still get stuck at 100% CPU, mostly while they are live
+migrated during the cluster reboot and update tests, apply the same to the e2e
+VM itself. This matters most on CPUs without VMCS shadowing (no `shadow_vmcs` in
+the `vmx flags` of `/proc/cpuinfo` on the host), where every `VMREAD` and
+`VMWRITE` of the KVM inside the e2e VM exits to the host.
+Set this on the host and restart the e2e VM:
+
+```shell
+incus stop e2e
+incus config set e2e raw.qemu='-cpu "host,kvm=off,hv-vendor-id=Microsoft Hv,hv_relaxed,hv_vapic,hv_vpindex,hv_runtime,hv_time,hv_synic,hv_stimer,hv_tlbflush,hv_ipi,hv_frequencies,hv_reenlightenment,hv_stimer_direct,hv_xmm_input,hv_tlbflush_ext,hv_evmcs,migratable=no,+invtsc"'
+incus start e2e
+
 ### Run the tests
 
 ```shell
