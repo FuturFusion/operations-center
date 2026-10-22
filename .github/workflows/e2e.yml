@@ -47,7 +47,7 @@ jobs:
       cancel-in-progress: false
     strategy:
       fail-fast: false
-    timeout-minutes: 245
+    timeout-minutes: 185
     runs-on:
       - self-hosted
       - arch-amd64
@@ -105,7 +105,7 @@ jobs:
           set -o pipefail
           mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
           rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out
-          go test -v ./e2e_tests -timeout 240m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+          go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
 
       - name: Compute artifact name
         id: artifact
