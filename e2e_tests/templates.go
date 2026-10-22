@@ -190,17 +190,6 @@ $CLIENT_CERTIFICATE$
     description: Initial admin client
 `)
 
-	incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed = []byte(`---
-config:
-  user.ui.title: E2E Test IncusOS Cluster
-certificates:
-  - name: admin
-    type: client
-    certificate: |
-$CLIENT_CERTIFICATE$
-    description: Initial admin client
-`)
-
 	incusOSServiceLVMConfig = []byte(`---
 config:
   enabled: true

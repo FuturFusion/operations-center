@@ -240,6 +240,11 @@ scenario still removes other resources it creates, e.g. its workload. Order the
 scenarios so that each one leaves a state the next one can use. A scenario,
 which leaves its servers unusable, runs last.
 
+The other servers of the pool stay registered while a scenario runs. An
+assertion therefore selects the servers by name. It does not expect a certain
+number of servers in Operations Center, e.g. see
+`assertRemovedServerToReappear`.
+
 `go test -list` only shows the top level tests. With
 `OPERATIONS_CENTER_E2E_TEST_LIST` set, a suite creates a skipped subtest for each
 scenario and runs nothing else. `scripts/e2e/select.sh` reads the scenarios from
