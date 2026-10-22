@@ -52,20 +52,6 @@ var (
 )
 
 func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool, noColor bool) error {
-	level := slog.LevelWarn
-
-	if verbose {
-		level = slog.LevelInfo
-	}
-
-	if debug {
-		level = slog.LevelDebug
-	}
-
-	if verbose && debug {
-		level = LevelTrace
-	}
-
 	loggerMu.Lock()
 	defer loggerMu.Unlock()
 
@@ -75,7 +61,59 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool, noC
 		noColor:  noColor,
 	}
 
-	return setLevels(level, nil)
+	return setLevels(levelFromFlags(verbose, debug), nil)
+}
+
+func levelFromFlags(verbose bool, debug bool) slog.Level {
+	switch {
+	case verbose && debug:
+		return LevelTrace
+
+	case debug:
+		return slog.LevelDebug
+
+	case verbose:
+		return slog.LevelInfo
+
+	default:
+		return slog.LevelWarn
+	}
+}
+
+type contextLoggerKey struct{}
+
+// contextLogger is a log destination carried by a context.
+type contextLogger struct {
+	handler slog.Handler
+	levels  *levelSet
+}
+
+// contextWithLogger returns a copy of ctx with its own log destination, see
+// ContextWithTestLogger.
+func contextWithLogger(ctx context.Context, writer io.Writer, verbose bool, debug bool, noColor bool) context.Context {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
+
+	// Only the default logger routes records to the context logger. Install
+	// it, if InitLogger has not been called yet.
+	if !logger.initialized {
+		current := levels.Load()
+
+		// Failing is not possible, because no log file is configured.
+		_ = setLevels(current.defaultLevel, current.overrides)
+	}
+
+	ls := newLevelSet(levelFromFlags(verbose, debug), nil)
+
+	return context.WithValue(ctx, contextLoggerKey{}, &contextLogger{
+		handler: withStacktrace(newTextHandler(writer, ls.min <= slog.LevelDebug, noColor)),
+		levels:  ls,
+	})
+}
+
+func contextLoggerFromContext(ctx context.Context) (*contextLogger, bool) {
+	cl, ok := ctx.Value(contextLoggerKey{}).(*contextLogger)
+	return cl, ok
 }
 
 // SetLogLevel sets the default log level, which applies to all components
@@ -167,27 +205,33 @@ func installHandler(debug bool) error {
 			},
 		)
 	} else {
-		slogHandler = tint.NewTextHandler(logger.writer, &tint.Options{
-			Level:       LevelTrace,
-			TimeFormat:  time.RFC3339,
-			AddSource:   debug,
-			ReplaceAttr: replaceAttr(levelTraceStringShort, debug),
-			NoColor:     logger.noColor,
-		})
+		slogHandler = newTextHandler(logger.writer, debug, logger.noColor)
 	}
 
-	slog.SetDefault(slog.New(
-		newContextHandler(stacktrace.New(slogHandler, &stacktrace.Options{
-			Mode:                                    stacktrace.ModeAddAttr,
-			KeyForStackTraceEnabled:                 addStacktraceKey,
-			MinimalLevelForStackTraceEnabledEnabled: new(slog.Level(100)), // Disable automatic addition of stack traces
-		})),
-	))
+	slog.SetDefault(slog.New(newContextHandler(withStacktrace(slogHandler))))
 
 	logger.initialized = true
 	logger.debug = debug
 
 	return nil
+}
+
+func newTextHandler(writer io.Writer, debug bool, noColor bool) slog.Handler {
+	return tint.NewTextHandler(writer, &tint.Options{
+		Level:       LevelTrace,
+		TimeFormat:  time.RFC3339,
+		AddSource:   debug,
+		ReplaceAttr: replaceAttr(levelTraceStringShort, debug),
+		NoColor:     noColor,
+	})
+}
+
+func withStacktrace(handler slog.Handler) slog.Handler {
+	return stacktrace.New(handler, &stacktrace.Options{
+		Mode:                                    stacktrace.ModeAddAttr,
+		KeyForStackTraceEnabled:                 addStacktraceKey,
+		MinimalLevelForStackTraceEnabledEnabled: new(slog.Level(100)), // Disable automatic addition of stack traces
+	})
 }
 
 // ValidateLevel checks a given string representation for a log level against
@@ -288,6 +332,10 @@ func logValueMaxSize(limit int) func(groups []string, attr slog.Attr) slog.Attr 
 // It is also the handler performing the filtering by log level.
 type contextHandler struct {
 	slog.Handler
+
+	// derive replays the calls of WithAttrs and WithGroup on the handler of a
+	// context logger, see ContextWithTestLogger.
+	derive []func(slog.Handler) slog.Handler
 }
 
 // newContextHandler creates a new slog context handler.
@@ -302,6 +350,11 @@ func newContextHandler(handler slog.Handler) *contextHandler {
 // to, which allows different parts of the system to be logged at different
 // levels.
 func (h contextHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	cl, ok := contextLoggerFromContext(ctx)
+	if ok {
+		return cl.levels.enabled(ctx, level)
+	}
+
 	return levels.Load().enabled(ctx, level)
 }
 
@@ -320,12 +373,26 @@ func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
 		}
 	}
 
+	cl, ok := contextLoggerFromContext(ctx)
+	if ok {
+		handler := cl.handler
+		for _, derive := range h.derive {
+			handler = derive(handler)
+		}
+
+		return handler.Handle(ctx, r)
+	}
+
 	return h.Handler.Handle(ctx, r)
 }
 
 // WithAttrs overwirtes the WithAttrs method from the embedded slog.Handler.
 func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	h.Handler = h.Handler.WithAttrs(attrs)
+	h.derive = append(slices.Clip(h.derive), func(handler slog.Handler) slog.Handler {
+		return handler.WithAttrs(attrs)
+	})
+
 	return h
 }
 
@@ -333,6 +400,10 @@ func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 // the derived handler keeps filtering by component.
 func (h contextHandler) WithGroup(name string) slog.Handler {
 	h.Handler = h.Handler.WithGroup(name)
+	h.derive = append(slices.Clip(h.derive), func(handler slog.Handler) slog.Handler {
+		return handler.WithGroup(name)
+	})
+
 	return h
 }
 
@@ -361,6 +432,11 @@ func DetachedContext(ctx context.Context) context.Context {
 	component, ok := ComponentFromContext(ctx)
 	if ok {
 		detached = ContextWithComponent(detached, component)
+	}
+
+	cl, ok := contextLoggerFromContext(ctx)
+	if ok {
+		detached = context.WithValue(detached, contextLoggerKey{}, cl)
 	}
 
 	return detached
