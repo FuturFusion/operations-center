@@ -3,10 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -101,45 +99,32 @@ func createClusterWithChannelName(channelName string, serverNames []string) func
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
+		// Register cleanup
+		t.Cleanup(clusterCleanup(t))
+
+		createAndAssertCluster(channelName, serverNames)(ctx, t, tmpDir)
+	}
+}
+
+// createAndAssertCluster keeps the cluster, so the next scenario of a suite can
+// use it.
+func createAndAssertCluster(channelName string, serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
 		stop := timeTrack(t, "create cluster with channel name")
 		defer stop()
 
 		// Pre check
 		mustNotBeAlreadyClustered(t)
 
-		// Register cleanup
-		t.Cleanup(clusterCleanup(t))
-
-		// Setup
-		err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
-		require.NoError(t, err)
-
-		clientCertificate := getClientCertificate(t)
-
-		err = os.WriteFile(
-			filepath.Join(tmpDir, "application.yaml"),
-			replacePlaceholders(
-				incusOSClusterApplicationConfig,
-				map[string]string{
-					"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
-				},
-			),
-			0o600,
-		)
-		require.NoError(t, err)
-
-		instanceIPs, _ := mustGetInstanceIPAndNames(t, serverNames)
-
-		servers := strings.Join(serverNames, " --server-names ")
-
 		// Run test
-		t.Log("Create cluster")
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+		mustCreateCluster(t, tmpDir, channelName, serverNames)
 
 		// Assertions
-		assertIncusRemote(t, "incus-os-cluster", serverNames)
-		assertInventory(t, "incus-os-cluster", serverNames)
-		assertTerraformArtifact(t, "incus-os-cluster")
-		assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
+		assertIncusRemote(t, incusOSClusterName, serverNames)
+		assertInventory(t, incusOSClusterName, serverNames)
+		assertTerraformArtifact(t, incusOSClusterName)
+		assertWebsocketEventsInventoryUpdate(ctx, t, incusOSClusterName)
 	}
 }

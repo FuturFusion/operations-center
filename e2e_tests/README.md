@@ -15,7 +15,8 @@ that would not be re-executed on a cached run.
 
 Use `-timeout` to set a suitable timeout for the tests.
 
-Use `-run` to run specific tests, e.g. `-run '^TestE2E_WithToken_CreateCluster$'`.
+Use `-run` to run specific tests, e.g.
+`-run '^TestE2E_WithTokenSeed_CreateCluster$'`.
 Use `-run '^TestE2E_OperationsCenter$/^oidc_authentication$'` to run a single
 scenario of a suite (see [Suites and scenarios](#suites-and-scenarios)).
 
@@ -146,7 +147,7 @@ make e2e-test
 or a specific test:
 
 ```shell
-make e2e-test GO_TEST_RUN=TestE2E_WithToken_CreateCluster
+make e2e-test GO_TEST_RUN='^TestE2E_WithTokenSeed_CreateCluster$'
 ```
 
 or a single scenario of a suite:
@@ -202,22 +203,42 @@ Operations Center. The setup runs in the first scenario, which is selected by
 its own debug output on failure, like a top level test.
 
 A suite can share a pool of IncusOS servers between its scenarios (see
-`serverPool`). A scenario lists the servers it requires. Before the scenario
-runs, the pool reads the state of these servers from Incus and from Operations
-Center and decides for each server (see `nextServerAction`):
+`serverPool`). A scenario lists the servers it requires, either as standalone
+servers or as the members of the cluster `incus-os-cluster`. Before the scenario
+runs, the pool reads the state of the servers from Incus and from Operations
+Center.
+
+For standalone servers, the pool decides for each server (see
+`nextServerAction` and `planStandalone`):
 
 * A server, which is ready, not clustered and registered with the name of its
   VM, is used as it is.
-* A server, which registered with the hostname of its VM, is renamed.
+* A server, which registered with the hostname of its VM, is renamed. A server
+  does this after a factory reset.
+* A ready member of a cluster is recycled with a factory reset of the cluster.
+  This takes about half the time of an install. The pool renames all the
+  members after the reset.
 * Any other server is removed and installed again. This covers a missing or
-  stopped VM, a missing record, a server, which is not ready, and a clustered
-  server.
+  stopped VM, a missing record and a server, which is not ready. Removing a
+  clustered server removes its cluster, so the other members of this cluster
+  are installed again as well.
+
+A cluster is used as it is, if it consists of exactly the required servers and
+all of them are ready (see `clusterReady`). Otherwise the pool brings the
+servers into the standalone state first and then creates the cluster. The pool
+adds the cluster as Incus remote for the duration of the scenario.
 
 The servers of a failed scenario are installed again before their next use. The
 pool only installs servers, which a selected scenario requires, so a single
-scenario only pays for its own servers. The pool removes its servers when the
-suite ends. Order the scenarios so that a scenario, which leaves its servers
-unusable, runs last.
+scenario only pays for its own servers. If it installs, it also installs all
+the missing VMs of the pool, since concurrent installs take about as long as a
+single one.
+
+The pool removes its servers and its cluster when the suite ends, so a
+scenario does not remove a cluster, which the next scenario can use. A
+scenario still removes other resources it creates, e.g. its workload. Order the
+scenarios so that each one leaves a state the next one can use. A scenario,
+which leaves its servers unusable, runs last.
 
 `go test -list` only shows the top level tests. With
 `OPERATIONS_CENTER_E2E_TEST_LIST` set, a suite creates a skipped subtest for each

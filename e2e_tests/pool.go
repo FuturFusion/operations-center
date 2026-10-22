@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -54,42 +55,63 @@ func (p *serverPool) ensureStandalone(ctx context.Context, t *testing.T, tmpDir 
 	stop := timeTrack(t)
 	defer stop()
 
+	require.Subset(t, p.names, names, "expect the servers to be part of the pool")
+
 	p.registerCleanup()
 
-	observed := mustObserveServers(t, names)
+	observed := mustObserveServers(t, p.names)
+	plan := planStandalone(names, p.names, observed, p.dirty)
 
-	var reinstall, rename []string
-	for _, name := range names {
-		switch nextServerAction(name, observed[name], p.dirty[name]) {
-		case serverActionReinstall:
-			reinstall = append(reinstall, name)
+	for cluster, members := range plan.factoryReset {
+		t.Logf("Factory reset cluster %q to reuse %v", cluster, members)
 
-		case serverActionRename:
-			rename = append(rename, name)
-
-		case serverActionNone:
-		}
+		mustFactoryResetCluster(ctx, t, cluster, members)
 	}
 
-	if len(reinstall) > 0 {
-		t.Logf("Installing %v again", reinstall)
+	if len(plan.reinstall) > 0 {
+		t.Logf("Installing %v again", plan.reinstall)
 
-		mustRemoveServers(ctx, t, reinstall, observed)
+		mustRemoveServers(ctx, t, plan.reinstall, observed)
 
 		iso := p.prepareISO(ctx, t, tmpDir)
 
-		createIncusOSInstances(ctx, t, iso, reinstall)
+		createIncusOSInstances(ctx, t, iso, plan.reinstall)
 
-		for _, name := range reinstall {
+		for _, name := range plan.reinstall {
 			delete(p.dirty, name)
 		}
 	}
 
-	if len(rename) > 0 {
-		renameServers(t, rename)
+	if len(plan.rename) > 0 {
+		renameServers(t, plan.rename)
 	}
 
+	observed = mustObserveServers(t, p.names)
+	require.Equal(t, poolPlan{}, planStandalone(names, p.names, observed, p.dirty), "expect the servers %v to be ready and not clustered", names)
+
 	printServerList(t)
+}
+
+// ensureCluster brings the given servers into the state "members of the
+// cluster incus-os-cluster". The cluster has no other members.
+func (p *serverPool) ensureCluster(ctx context.Context, t *testing.T, tmpDir string, names []string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	require.Subset(t, p.names, names, "expect the servers to be part of the pool")
+
+	p.registerCleanup()
+
+	observed := mustObserveServers(t, p.names)
+	if !clusterReady(incusOSClusterName, names, observed, p.dirty) {
+		p.ensureStandalone(ctx, t, tmpDir, names)
+
+		mustCreateCluster(t, tmpDir, "stable", names)
+	}
+
+	mustAddIncusRemote(t, incusOSClusterName)
 }
 
 // registerCleanup registers the cleanup of the pool on the suite. The pool
@@ -105,6 +127,28 @@ func (p *serverPool) registerCleanup() {
 	p.suite.Cleanup(clusterCleanup(p.suite))
 
 	p.cleanupRegistered = true
+}
+
+// mustFactoryResetCluster factory resets the cluster and gives the members the
+// names of their VMs again.
+func mustFactoryResetCluster(ctx context.Context, t *testing.T, cluster string, members []string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	_, hostnames := mustGetInstanceIPAndNames(t, members)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset %s`, cpuArch, cluster)
+
+	time.Sleep(strechedTimeout(10 * time.Second)) // Wait for the factory reset to happen.
+
+	mustWaitIncusOSReady(ctx, t, members)
+
+	// The servers register with their hostname again.
+	mustWaitInventoryReady(ctx, t, hostnames)
+
+	renameServers(t, members)
 }
 
 // mustRemoveServers removes the VMs of the given servers together with their
@@ -210,6 +254,7 @@ type serverAction int
 const (
 	serverActionNone serverAction = iota
 	serverActionRename
+	serverActionFactoryReset
 	serverActionReinstall
 )
 
@@ -222,9 +267,11 @@ func nextServerAction(name string, server observedServer, dirty bool) serverActi
 		// Removing a cluster from Operations Center also removes the records
 		// of its members, but their VMs stay clustered in Incus.
 		server.record.Name == "",
-		server.record.Status != "ready",
-		server.record.Cluster != "":
+		server.record.Status != "ready":
 		return serverActionReinstall
+
+	case server.record.Cluster != "":
+		return serverActionFactoryReset
 
 	case server.record.Name != name:
 		return serverActionRename
@@ -232,4 +279,117 @@ func nextServerAction(name string, server observedServer, dirty bool) serverActi
 	default:
 		return serverActionNone
 	}
+}
+
+// poolPlan lists the steps, which bring servers into the state "ready and not
+// clustered". The steps run in the order of the fields.
+type poolPlan struct {
+	// factoryReset maps the clusters to reset to their members in the pool.
+	factoryReset map[string][]string
+	reinstall    []string
+	rename       []string
+}
+
+// planStandalone plans the steps, which bring the given servers into the
+// state "ready and not clustered". pool lists all the servers of the pool.
+func planStandalone(names []string, pool []string, observed map[string]observedServer, dirty map[string]bool) poolPlan {
+	actions := make(map[string]serverAction, len(pool))
+	reinstall := false
+
+	for _, name := range names {
+		actions[name] = nextServerAction(name, observed[name], dirty[name])
+		if actions[name] == serverActionReinstall {
+			reinstall = true
+		}
+	}
+
+	// Concurrent installs take about as long as a single one, so the missing
+	// VMs of the pool are installed together with the first install.
+	if reinstall {
+		for _, name := range pool {
+			if observed[name].instance.Status == "" {
+				actions[name] = serverActionReinstall
+			}
+		}
+	}
+
+	// Installing a clustered server again removes its cluster, so the other
+	// members of the cluster can not be factory reset anymore.
+	removedClusters := map[string]bool{}
+	for name, action := range actions {
+		if action == serverActionReinstall && observed[name].record.Cluster != "" {
+			removedClusters[observed[name].record.Cluster] = true
+		}
+	}
+
+	var plan poolPlan
+
+	for _, name := range pool {
+		action, ok := actions[name]
+		if !ok {
+			continue
+		}
+
+		cluster := observed[name].record.Cluster
+		if action == serverActionFactoryReset && removedClusters[cluster] {
+			action = serverActionReinstall
+		}
+
+		switch action {
+		case serverActionReinstall:
+			plan.reinstall = append(plan.reinstall, name)
+
+		case serverActionFactoryReset:
+			_, ok := plan.factoryReset[cluster]
+			if ok {
+				continue
+			}
+
+			if plan.factoryReset == nil {
+				plan.factoryReset = map[string][]string{}
+			}
+
+			for _, member := range pool {
+				if observed[member].record.Cluster == cluster {
+					plan.factoryReset[cluster] = append(plan.factoryReset[cluster], member)
+				}
+			}
+
+		case serverActionRename:
+			plan.rename = append(plan.rename, name)
+
+		case serverActionNone:
+		}
+	}
+
+	return plan
+}
+
+// clusterReady reports, whether the cluster consists of exactly the given
+// servers and all of them are ready.
+func clusterReady(cluster string, names []string, observed map[string]observedServer, dirty map[string]bool) bool {
+	members := 0
+	for _, server := range observed {
+		if server.record.Cluster == cluster {
+			members++
+		}
+	}
+
+	if members != len(names) {
+		return false
+	}
+
+	for _, name := range names {
+		server := observed[name]
+
+		if dirty[name] ||
+			server.instance.Status != instanceStatusRunning ||
+			server.record.Name != name ||
+			server.record.Status != "ready" ||
+			server.record.Cluster != cluster {
+			return false
+		}
+	}
+
+	return true
 }

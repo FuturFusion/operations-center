@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"os"
+	"slices"
 	"strconv"
 	"testing"
 )
@@ -18,7 +19,15 @@ type e2eScenario struct {
 	// as ready servers, which are not clustered.
 	standalone []string
 
+	// cluster lists the servers of the pool, which the scenario requires as
+	// the members of the cluster incus-os-cluster.
+	cluster []string
+
 	run func(ctx context.Context, t *testing.T, tmpDir string)
+}
+
+func (s e2eScenario) servers() []string {
+	return append(slices.Clone(s.standalone), s.cluster...)
 }
 
 // runE2ESuite runs the scenarios in the given order as subtests of t. The
@@ -57,6 +66,10 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 					pool.ensureStandalone(ctx, t, tmpDir, scenario.standalone)
 				}
 
+				if len(scenario.cluster) > 0 {
+					pool.ensureCluster(ctx, t, tmpDir, scenario.cluster)
+				}
+
 				scenario.run(ctx, t, tmpDir)
 			})
 		})
@@ -66,8 +79,8 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 		if !ok {
 			needsSetup = true
 
-			if len(scenario.standalone) > 0 {
-				pool.markDirty(scenario.standalone)
+			if len(scenario.servers()) > 0 {
+				pool.markDirty(scenario.servers())
 			}
 		}
 	}

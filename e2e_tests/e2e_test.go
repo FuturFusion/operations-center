@@ -37,7 +37,9 @@ func TestE2E_OperationsCenter(t *testing.T) {
 }
 
 func TestE2E_StableServers(t *testing.T) {
-	pool := newServerPool(t, []string{"IncusOS01"}, prepareStableTokenISO)
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
+	pool := newServerPool(t, names, prepareStableTokenISO)
 
 	runE2ESuite(t, pool, []e2eScenario{
 		{
@@ -49,6 +51,26 @@ func TestE2E_StableServers(t *testing.T) {
 			name:       "bmc_power_off_and_on",
 			standalone: []string{"IncusOS01"},
 			run:        serverBMCPowerOffAndOn("IncusOS01"),
+		},
+		{
+			name:       "create_cluster",
+			standalone: names,
+			run:        createAndAssertCluster("stable", names),
+		},
+		{
+			name:    "cluster_rolling_reboot",
+			cluster: names,
+			run:     clusterRollingReboot,
+		},
+		{
+			name:    "factory_reset_cluster",
+			cluster: names,
+			run:     factoryResetCluster,
+		},
+		{
+			name:       "create_cluster_from_template",
+			standalone: names,
+			run:        createClusterFromTemplate,
 		},
 		{
 			// Leaves IncusOS01 clustered, so it runs last.
@@ -70,15 +92,6 @@ func TestE2E_WithToken_ACMERenewal(t *testing.T) {
 	)
 }
 
-func TestE2E_WithToken_CreateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-	)
-}
-
 func TestE2E_WithToken_CreateClusterAndAddServerAndRemoveServer(t *testing.T) {
 	runE2ETest(
 		t,
@@ -94,24 +107,6 @@ func TestE2E_WithToken_CreateClusterAndForceRemoveLostServer(t *testing.T) {
 		"token - create cluster",
 		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		createClusterAndForceRemoveLostServer(),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster from cluster template",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterFromTemplate,
-	)
-}
-
-func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - factory reset cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		factoryResetCluster,
 	)
 }
 
@@ -157,15 +152,6 @@ func TestE2E_WithTokenAndUpdateChannel_UpdateServerOSOnly(t *testing.T) {
 		"token with update channel - update only the OS of a server",
 		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
 		updateServerOSOnly("IncusOS01"),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster and perform an on demand rolling reboot",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndThenClusterReboot,
 	)
 }
 
