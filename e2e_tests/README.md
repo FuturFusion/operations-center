@@ -204,7 +204,8 @@ its own debug output on failure, like a top level test.
 
 A suite can share a pool of IncusOS servers between its scenarios (see
 `serverPool`). A scenario lists the servers it requires, either as standalone
-servers or as the members of the cluster `incus-os-cluster`. Before the scenario
+servers or as the members of the cluster `incus-os-cluster`. The cluster uses
+the update channel of the pool. Before the scenario
 runs, the pool reads the state of the servers from Incus and from Operations
 Center.
 
@@ -228,8 +229,15 @@ all of them are ready (see `clusterReady`). Otherwise the pool brings the
 servers into the standalone state first and then creates the cluster. The pool
 adds the cluster as Incus remote for the duration of the scenario.
 
-The servers of a failed scenario are installed again before their next use. The
-pool only installs servers, which a selected scenario requires, so a single
+The servers of a failed scenario are installed again before their next use. A
+scenario lists the servers in `leavesDirty`, if it changes them in a way the
+pool does not observe. An example is the version of a server after an update.
+The pool installs these servers again before their next use as well. The pool
+keeps this state in memory only. After a run with
+`OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`, remove the VMs of `TestE2E_UpdateChannel`
+before running it again. Otherwise the pool reuses the updated servers.
+
+The pool only installs servers, which a selected scenario requires, so a single
 scenario only pays for its own servers. If it installs, it also installs all
 the missing VMs of the pool, since concurrent installs take about as long as a
 single one.

@@ -168,26 +168,19 @@ func prepareStableTokenISO(ctx context.Context, t *testing.T, tmpDir string) str
 	return incusOSPreseededISOFilename
 }
 
-func setupIncusOSWithTokenAndUpdateChannel(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
+// prepareProdChannelISO returns the ISO storage volume, which installs a server
+// with a token of the prod channel. The prod channel holds the oldest update,
+// so the server has updates pending.
+func prepareProdChannelISO(ctx context.Context, t *testing.T, tmpDir string) string {
+	t.Helper()
 
-		stop := timeTrack(t, "setupIncusOSWithTokenAndUpdateChannel "+strings.Join(names, ", "))
-		defer stop()
+	token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
 
-		// Register cleanup
-		t.Cleanup(cleanupIncusOS(t, names))
+	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
-		token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
+	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
-
-		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-		printServerList(t)
-	}
+	return incusOSPreseededISOFilename
 }
 
 func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir string) {
