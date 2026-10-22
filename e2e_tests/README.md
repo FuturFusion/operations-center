@@ -311,6 +311,12 @@ installs the servers of the scenario again after `prepare`. An example is
 host. Place such a scenario first, so the pool installs all the servers only
 once.
 
+The pool caches the ISOs of the stable token in
+`OPERATIONS_CENTER_E2E_TEST_TMP_DIR` and as storage volumes. The cached ISOs
+of an earlier run lack the change of `prepare`. So `prepare` also removes the
+cached ISOs with `removeStableTokenISOs`. The pool generates them again with
+the current seed.
+
 The pool only installs servers, which a selected scenario requires, so a single
 scenario only pays for its own servers. If it installs, it also installs all
 the missing VMs of the pool, since concurrent installs take about as long as a
@@ -595,8 +601,10 @@ default CA bundle, like with the internal ACME server of a company.
 
 The scenario `acme_renewal` of the suite `TestE2E_StableServers` covers the
 ACME support. In its `prepare` step, it adds both CA certificates to the custom
-CA certificates of the IncusOS host of Operations Center. The pool installs the
-servers after this step. This way the seed of the servers contains them as
+CA certificates of the IncusOS host of Operations Center. The step also removes
+the cached ISOs of the stable token, since the CA certificates are new for
+every run. The pool generates the ISOs again and installs the servers after
+this step. This way the seed of the servers contains the CA certificates as
 well. The servers keep these CA certificates for the following scenarios.
 
 The scenario changes the certificate of Operations Center. The CLI pins this
