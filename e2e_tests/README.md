@@ -201,6 +201,24 @@ Operations Center. The setup runs in the first scenario, which is selected by
 `-run`, and again after a failed scenario. A scenario has its own timeout and
 its own debug output on failure, like a top level test.
 
+A suite can share a pool of IncusOS servers between its scenarios (see
+`serverPool`). A scenario lists the servers it requires. Before the scenario
+runs, the pool reads the state of these servers from Incus and from Operations
+Center and decides for each server (see `nextServerAction`):
+
+* A server, which is ready, not clustered and registered with the name of its
+  VM, is used as it is.
+* A server, which registered with the hostname of its VM, is renamed.
+* Any other server is removed and installed again. This covers a missing or
+  stopped VM, a missing record, a server, which is not ready, and a clustered
+  server.
+
+The servers of a failed scenario are installed again before their next use. The
+pool only installs servers, which a selected scenario requires, so a single
+scenario only pays for its own servers. The pool removes its servers when the
+suite ends. Order the scenarios so that a scenario, which leaves its servers
+unusable, runs last.
+
 `go test -list` only shows the top level tests. With
 `OPERATIONS_CENTER_E2E_TEST_LIST` set, a suite creates a skipped subtest for each
 scenario and runs nothing else. `scripts/e2e/select.sh` reads the scenarios from
@@ -310,6 +328,9 @@ In most cases, the cleanup functions should be registered before the actual
 resource is created, to ensure that they are executed even if the resource
 creation is only partially successful.
 
+The servers of a server pool are the exception within a suite. The pool
+registers their cleanup on the suite, so the scenarios can share them.
+
 The Operations Center VM is the exception, it is deliberately not cleaned up and
 reused across test cases and test runs. `setupOperationsCenter` therefore only
 reuses it, if it is running *and* its incus agent answers. A VM found in any
@@ -395,11 +416,16 @@ sequentially, then the end, then random portions (see
 
 ### Incus images
 
-`TestE2E_WithToken_OCImagesRemoteLaunchInstance` covers the Incus image and the
-Incus image source handling. It uploads images manually, syncs an image from
+The scenario `images_remote_launch_instance` of the suite
+`TestE2E_StableServers` covers the Incus image and the Incus image source
+handling. It uploads images manually, syncs an image from
 `https://images.linuxcontainers.org` through an image source, asserts the public
 simplestreams endpoints of Operations Center and launches a container from a
 manually uploaded and from a source synced image.
+
+The scenario restarts the Operations Center daemon first. The first background
+refresh of the image sources runs 10 minutes after the start of the daemon, so
+it can not interfere with the assertions.
 
 The filter expression of the image source is pinned to a single image and a
 single version of that image, which is discovered from the image server at the

@@ -11,7 +11,7 @@ import (
 )
 
 func TestE2E_OperationsCenter(t *testing.T) {
-	runE2ESuite(t, []e2eScenario{
+	runE2ESuite(t, nil, []e2eScenario{
 		{
 			name: "basic_interactions",
 			run:  basicOperationsCenterInteractions,
@@ -36,13 +36,27 @@ func TestE2E_OperationsCenter(t *testing.T) {
 	})
 }
 
-func TestE2E_WithToken_RegisterServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - basic operations center interactions",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		registerServer,
-	)
+func TestE2E_StableServers(t *testing.T) {
+	pool := newServerPool(t, []string{"IncusOS01"}, prepareStableTokenISO)
+
+	runE2ESuite(t, pool, []e2eScenario{
+		{
+			name:       "register_server",
+			standalone: []string{"IncusOS01"},
+			run:        registerServer,
+		},
+		{
+			name:       "bmc_power_off_and_on",
+			standalone: []string{"IncusOS01"},
+			run:        serverBMCPowerOffAndOn("IncusOS01"),
+		},
+		{
+			// Leaves IncusOS01 clustered, so it runs last.
+			name:       "images_remote_launch_instance",
+			standalone: []string{"IncusOS01"},
+			run:        ocIncusImagesRemoteLaunchInstance([]string{"IncusOS01"}),
+		},
+	})
 }
 
 func TestE2E_WithToken_ACMERenewal(t *testing.T) {
@@ -53,15 +67,6 @@ func TestE2E_WithToken_ACMERenewal(t *testing.T) {
 			t.Helper()
 		},
 		acmeRenewal([]string{"IncusOS01", "IncusOS02"}),
-	)
-}
-
-func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - register Operations Center as images remote and launch instance",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		ocIncusImagesRemoteLaunchInstance([]string{"IncusOS01"}),
 	)
 }
 
@@ -164,15 +169,6 @@ func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
 	)
 }
 
-func TestE2E_WithToken_ServerBMCPowerOffAndOn(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - power a server off and on again via BMC",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		serverBMCPowerOffAndOn("IncusOS01"),
-	)
-}
-
 func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
 	runE2ETest(
 		t,
@@ -208,7 +204,7 @@ func runE2ETest(
 	runE2EScenario(t, name, func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
+		setupOperationsCenterOrMarkBroken(ctx, t, t, tmpDir)
 
 		setup(ctx, t, tmpDir)
 
@@ -223,7 +219,7 @@ var (
 
 // setupOperationsCenterOrMarkBroken sets the Operations Center up and records a
 // failure to do so, so the remaining tests skip instead of reproducing it.
-func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, tmpDir string) {
+func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
 	// A failure unwinds through runtime.Goexit, which runs the deferred
@@ -241,7 +237,7 @@ func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, tmpDir
 		}
 	}()
 
-	setupOperationsCenter(ctx, t, tmpDir)
+	setupOperationsCenter(ctx, t, owner, tmpDir)
 }
 
 // setupBrokenReason returns the report of the test, which found the setup of the
