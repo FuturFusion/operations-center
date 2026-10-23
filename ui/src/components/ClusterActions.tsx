@@ -17,6 +17,7 @@ import ClusterCancelOperationBtn from "components/ClusterCancelOperationBtn";
 import ClusterRebootBtn from "components/ClusterRebootBtn";
 import ClusterRemoveServerBtn from "components/ClusterRemoveServerBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import { errorMessage } from "util/response";
 
 interface Props {
@@ -127,6 +128,7 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
       />
       <ClusterAddServerBtn cluster={cluster} />
       <ClusterRemoveServerBtn cluster={cluster} />
+      <SupportBundleBtn target={{ type: "cluster", cluster: cluster.name }} />
     </div>
   );
 };

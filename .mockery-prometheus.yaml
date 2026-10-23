@@ -36,5 +36,6 @@ packages:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/image:
   github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/supportbundle:
   github.com/FuturFusion/operations-center/internal/system:
   github.com/FuturFusion/operations-center/internal/warning:

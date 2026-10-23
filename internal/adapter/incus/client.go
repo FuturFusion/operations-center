@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/supportbundle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -30,11 +31,12 @@ type Client struct {
 }
 
 var (
-	_ provisioning.ServerClientPort  = Client{}
-	_ provisioning.ClusterClientPort = Client{}
-	_ provisioning.TokenClientPort   = Client{}
-	_ scriptlet.ScriptletClientPort  = Client{}
-	_ inventory.ServerClient         = Client{}
+	_ provisioning.ServerClientPort         = Client{}
+	_ provisioning.ClusterClientPort        = Client{}
+	_ provisioning.TokenClientPort          = Client{}
+	_ scriptlet.ScriptletClientPort         = Client{}
+	_ inventory.ServerClient                = Client{}
+	_ supportbundle.SupportBundleClientPort = Client{}
 )
 
 // Option configures a Client.

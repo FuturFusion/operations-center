@@ -14,6 +14,7 @@ Inventory </reference/inventory>
 Metrics </reference/metrics>
 Server </reference/server>
 Settings </reference/settings>
+Support bundle </reference/support-bundle>
 Token </reference/token>
 Update </reference/update>
 Update channel </reference/channel>
