@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,9 +28,12 @@ const (
 	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
 	operationsCenterVMHealthTimeout = 2 * time.Minute
 	instanceCreationStagger         = 5 * time.Second
+	incusOSClusterName              = "incus-os-cluster"
 )
 
-func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
+// setupOperationsCenter collects the coverage data of the daemon when owner
+// ends. In a suite, owner is the suite, which outlives the scenario t.
+func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -46,95 +51,13 @@ func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
 
 	mustWaitExpectedLog(ctx, t, "OperationsCenter", "incus-osd", "System is ready")
 
-	replaceOperationsCenterExecutable(t, tmpDir)
+	replaceOperationsCenterExecutable(t, owner, tmpDir)
 
 	setupLocalOperationsCenterConfig(ctx, t, installed)
 
 	assertOperationsCenterSelfRegistration(t)
 
 	mustWaitUpdatesReady(ctx, t)
-}
-
-func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
-
-		stop := timeTrack(t, "setupIncusOSWithToken "+strings.Join(names, ", "))
-		defer stop()
-
-		// Register cleanup
-		t.Cleanup(cleanupIncusOS(t, names))
-
-		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
-
-		token := createProvisioningToken(t)
-
-		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
-
-		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-		printServerList(t)
-	}
-}
-
-// setupIncusOSWithTokenFreshISO is setupIncusOSWithToken with an ISO, which is
-// generated for this test only. Use it, if the test changes a setting of
-// Operations Center, which goes into the seed, before the setup. The cached
-// ISO of setupIncusOSWithToken does not contain such a change.
-func setupIncusOSWithTokenFreshISO(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
-
-		stop := timeTrack(t, "setupIncusOSWithTokenFreshISO "+strings.Join(names, ", "))
-		defer stop()
-
-		token := createProvisioningToken(t)
-
-		incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-fresh-%[1]s.iso", token)
-
-		// Register cleanup. The instances use the storage volume of the ISO, so
-		// the ISO is removed after the instances.
-		t.Cleanup(cleanupIncusOSISO(t, tmpDir, incusOSPreseededISOFilename))
-		t.Cleanup(cleanupIncusOS(t, names))
-
-		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
-
-		// A left over ISO contains the seed of an earlier run.
-		err := removeIncusOSISOWithContext(ctx, t, tmpDir, incusOSPreseededISOFilename)
-		require.NoError(t, err)
-
-		generateIncusOSPreseededISO(t, tmpDir, token, incusOSPreseededISOFilename)
-
-		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-		printServerList(t)
-	}
-}
-
-func cleanupIncusOSISO(t *testing.T, tmpDir string, incusOSPreseededISOFilename string) func() {
-	t.Helper()
-
-	return func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(2*time.Minute))
-		defer cancel()
-
-		stop := timeTrack(t, "cleanup IncusOS ISO")
-		defer stop()
-
-		err := removeIncusOSISOWithContext(ctx, t, tmpDir, incusOSPreseededISOFilename)
-		if err != nil {
-			t.Logf("Failed to remove the ISO %q during cleanup: %v", incusOSPreseededISOFilename, err)
-		}
-	}
 }
 
 // removeIncusOSISOWithContext removes the ISO file and its storage volume.
@@ -154,81 +77,119 @@ func removeIncusOSISOWithContext(ctx context.Context, t *testing.T, tmpDir strin
 	return retryStorageCmdWithContext(ctx, t, fmt.Sprintf("delete the storage volume %q", incusOSPreseededISOFilename), `incus storage volume delete default %s`, incusOSPreseededISOFilename)
 }
 
-func setupIncusOSWithTokenAndUpdateChannel(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
-
-		stop := timeTrack(t, "setupIncusOSWithTokenAndUpdateChannel "+strings.Join(names, ", "))
-		defer stop()
-
-		// Register cleanup
-		t.Cleanup(cleanupIncusOS(t, names))
-
-		token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
-
-		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
-
-		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-		printServerList(t)
-	}
-}
-
-func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir string) {
+// removeStableTokenISOs removes the cached ISOs of the stable token, so
+// prepareStableTokenISOs generates them again. Use it, if a change of
+// Operations Center goes into the seed, e.g. a custom CA certificate. The
+// cached ISOs of an earlier run lack such a change.
+func removeStableTokenISOs(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) ) ] | length > 0'`, cpuArch)
-	if !manualUpdateUUIDExistsResp.Success() {
-		err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
-		require.NoError(t, err)
+	token := createProvisioningToken(t)
 
-		mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
-
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
+	for _, iso := range []string{tokenISOFilename(token), tokenSeedISOFilename(token)} {
+		err := removeIncusOSISOWithContext(ctx, t, tmpDir, iso)
+		require.NoErrorf(t, err, "Failed to remove the cached ISO %q", iso)
 	}
+}
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+func tokenISOFilename(token string) string {
+	return fmt.Sprintf("IncusOS-preseeded-%[1]s.iso", token)
+}
 
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t, names))
-	t.Cleanup(channelCleanup(t, "manual"))
+func tokenSeedISOFilename(token string) string {
+	return fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token[:8])
+}
 
-	token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
+// prepareStableTokenISOs returns the ISO storage volumes, which install servers
+// with a token of the stable channel. The server fromTokenSeed is installed from
+// the ISO of a token seed, so this way of installing is covered as well. The
+// registration scriptlet sets the description and the properties of the
+// servers.
+func prepareStableTokenISOs(fromTokenSeed string) func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
+	return func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
+		t.Helper()
+
+		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
+
+		token := createProvisioningToken(t)
+
+		isos := make(map[string]string, len(names))
+		for _, name := range names {
+			var iso string
+			if name == fromTokenSeed {
+				iso = createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
+			} else {
+				iso = createIncusOSPreseededISO(t, tmpDir, token)
+			}
+
+			importIncusOSISOStorageVolume(t, tmpDir, iso)
+
+			isos[name] = iso
+		}
+
+		return isos
+	}
+}
+
+// prepareProdChannelISOs returns the ISO storage volume, which installs servers
+// with a token of the prod channel. The prod channel holds the oldest update,
+// so the servers have updates pending.
+func prepareProdChannelISOs(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string {
+	t.Helper()
+
+	token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
-
-	printServerList(t)
+	return sameISO(names, incusOSPreseededISOFilename)
 }
 
-func setupIncusOSWithTokenSeed(ctx context.Context, t *testing.T, tmpDir string) {
-	t.Helper()
+// sameISO installs all the given servers from the same ISO storage volume.
+func sameISO(names []string, iso string) map[string]string {
+	isos := make(map[string]string, len(names))
+	for _, name := range names {
+		isos[name] = iso
+	}
 
-	stop := timeTrack(t)
-	defer stop()
+	return isos
+}
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+func setupIncusOSFromManualUpload(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
 
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t, names))
+		stop := timeTrack(t)
+		defer stop()
 
-	token := createProvisioningToken(t)
+		manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) ) ] | length > 0'`, cpuArch)
+		if !manualUpdateUUIDExistsResp.Success() {
+			err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
+			require.NoError(t, err)
 
-	incusOSPreseededISOFilename := createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
+			mustRunWithTimeout(t, `cd %s && ./create_manual_update.sh`, 5*time.Minute, tmpDir)
 
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+			mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, 5*time.Minute, cpuArch, tmpDir)
+		}
 
-	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
+		// Register cleanup
+		t.Cleanup(cleanupIncusOS(t, names))
+		t.Cleanup(channelCleanup(t, "manual"))
 
-	printServerList(t)
+		token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
+
+		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
+
+		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+
+		createIncusOSInstances(ctx, t, sameISO(names, incusOSPreseededISOFilename))
+
+		printServerList(t)
+	}
 }
 
 func cleanupIncusOS(t *testing.T, names []string) func() {
@@ -261,6 +222,67 @@ func cleanupIncusOS(t *testing.T, names []string) func() {
 		for server := range strings.Lines(resp.OutputTrimmed()) {
 			server = strings.TrimSpace(server)
 			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
+			if !resp.Success() {
+				t.Error(resp.Error())
+			}
+		}
+	}
+}
+
+// mustCreateCluster creates the cluster incus-os-cluster from the given
+// servers.
+func mustCreateCluster(t *testing.T, tmpDir string, channelName string, serverNames []string) {
+	t.Helper()
+
+	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
+	require.NoError(t, err)
+
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfig,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
+	require.NoError(t, err)
+
+	instanceIPs, _ := mustGetInstanceIPAndNames(t, serverNames)
+
+	servers := strings.Join(serverNames, " --server-names ")
+
+	t.Log("Create cluster")
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, incusOSClusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+}
+
+func clusterCleanup(t *testing.T) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t, "cluster cleanup")
+		defer stop()
+
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
+		if !resp.Success() {
+			t.Error(resp.Error())
+			return
+		}
+
+		for cluster := range strings.Lines(resp.Output()) {
+			cluster = strings.TrimSpace(cluster)
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
 			if !resp.Success() {
 				t.Error(resp.Error())
 			}
@@ -489,7 +511,7 @@ func removeBootMedia(ctx context.Context, t *testing.T) {
 	t.Log("Waiting for Operations Center to be ready")
 }
 
-func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
+func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -507,15 +529,30 @@ func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
 		mustRun(t, `incus file push %s OperationsCenter/etc/environment`, filepath.Join(tmpDir, "environment"))
 		mustRun(t, `incus exec OperationsCenter -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`)
 
-		t.Cleanup(func() {
+		owner.Cleanup(func() {
 			// Stop operations-centerd to flush coverage data.
-			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl stop operations-center`)
-			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, ocE2EGoCoverDir)
-			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl start operations-center`)
+			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- systemctl stop operations-center`)
+			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, ocE2EGoCoverDir)
+			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- systemctl start operations-center`)
 		})
 	}
 
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
+}
+
+// restartOperationsCenter restarts the Operations Center daemon and waits for
+// its API.
+func restartOperationsCenter(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	mustRunWithTimeout(t, `incus exec OperationsCenter -- systemctl restart operations-center`, 3*time.Minute)
+
+	success, err := waitForSuccessWithTimeout(ctx, t, "Operations Center API", `../bin/operations-center.linux.%s provisioning server list -f json`, time.Minute, cpuArch)
+	require.NoError(t, err)
+	require.True(t, success, "expect the Operations Center API to be available after the restart")
 }
 
 func setupLocalOperationsCenterConfig(ctx context.Context, t *testing.T, freshInstall bool) {
@@ -650,7 +687,7 @@ func channelCleanup(t *testing.T, channelName string) func() {
 func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string {
 	t.Helper()
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-%[1]s.iso", token)
+	incusOSPreseededISOFilename := tokenISOFilename(token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		generateIncusOSPreseededISO(t, tmpDir, token, incusOSPreseededISOFilename)
 	}
@@ -677,7 +714,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 
 	t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token[:8])
+	incusOSPreseededISOFilename := tokenSeedISOFilename(token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
@@ -706,8 +743,12 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseeded
 	}
 }
 
-func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededISOFilename string, names []string) {
+// createIncusOSInstances installs a VM for each server of isos from the ISO
+// storage volume of the server.
+func createIncusOSInstances(ctx context.Context, t *testing.T, isos map[string]string) {
 	t.Helper()
+
+	names := slices.Sorted(maps.Keys(isos))
 
 	stop := timeTrack(t)
 	defer stop()
@@ -773,7 +814,7 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					}
 				}
 
-				err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+				err = installIncusOSInstance(errgrpctx, t, name, isos[name])
 
 				// A restart in place does not help, if incus-osd fails during
 				// the installation, since the VM keeps its partially written
@@ -792,7 +833,7 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 					// logged. Collect it again, if the reinstalled VM fails.
 					forgetVMDebugInfo(name)
 
-					err = installIncusOSInstance(errgrpctx, t, name, incusOSPreseededISOFilename)
+					err = installIncusOSInstance(errgrpctx, t, name, isos[name])
 					if err != nil {
 						return fmt.Errorf("Failed to reinstall %q after a failed installation (%w): %w", name, startupErr, err)
 					}
@@ -875,13 +916,20 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededI
 		}
 	}
 
+	renameServers(t, names)
+}
+
+// renameServers renames the records of the given servers from the hostname of
+// their VM to the name of their VM. A server registers with its hostname.
+func renameServers(t *testing.T, names []string) {
+	t.Helper()
+
 	incusServers := mustRun(t, `incus list -f json | jq -r '.[] | select(.name as $n | %s | index($n) ) | .name + "," + .state.os_info.hostname'`, asJSON(t, names))
 	incusServerNameHostnamePairs := strings.Split(incusServers.OutputTrimmed(), "\n")
 	if len(names) != len(incusServerNameHostnamePairs) {
 		t.Fatalf("expected a server %v for each name %v", incusServerNameHostnamePairs, names)
 	}
 
-	// Rename servers
 	for _, serverNameHostnamePair := range incusServerNameHostnamePairs {
 		nameHostnamePair := strings.SplitN(serverNameHostnamePair, ",", 2)
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, nameHostnamePair[1], nameHostnamePair[0])

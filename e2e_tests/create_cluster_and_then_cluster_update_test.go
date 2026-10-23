@@ -11,16 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir string) {
+func clusterRollingUpdate(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
-	clusterName := "incus-os-cluster"
-
-	createClusterWithChannelName("prod", names)(ctx, t, tmpDir)
+	clusterName := incusOSClusterName
 
 	t.Log("Start some small VMs for the cluster to have some minimal workload.")
 	instanceNames := make([]string, 0, len(names))
@@ -37,7 +35,7 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 
 	t.Log("Update cluster - pre update state")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list`, cpuArch)
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show incus-os-cluster`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show %s`, cpuArch, clusterName)
 
 	t.Log("Update cluster - assign most recent update to prod channel")
 	newestUpdateUUIDResp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready") ] | sort_by(.version) | reverse | first | .uuid'`, cpuArch)
@@ -45,7 +43,7 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 
 	t.Log("Update cluster - list pending updates")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list`, cpuArch)
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show incus-os-cluster`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show %s`, cpuArch, clusterName)
 
 	updateClusterApplication(ctx, t, clusterName)
 
@@ -53,10 +51,10 @@ func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir
 	defer stopUpdate()
 
 	t.Log("Update post_restore_delay")
-	mustRun(t, `EDITOR='sed -i "s/    post_restore_delay:.*/    post_restore_delay: 20s/"' script -q -c '../bin/operations-center.linux.%s provisioning cluster edit incus-os-cluster' /dev/null`, cpuArch)
+	mustRun(t, `EDITOR='sed -i "s/    post_restore_delay:.*/    post_restore_delay: 20s/"' script -q -c '../bin/operations-center.linux.%s provisioning cluster edit %s' /dev/null`, cpuArch, clusterName)
 
 	t.Log("Update cluster - trigger update")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update incus-os-cluster --reboot`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update %s --reboot`, cpuArch, clusterName)
 
 	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(30*time.Minute))
 	defer cancel()

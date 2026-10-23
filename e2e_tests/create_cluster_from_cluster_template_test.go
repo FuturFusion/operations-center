@@ -19,10 +19,9 @@ func createClusterFromTemplate(ctx context.Context, t *testing.T, tmpDir string)
 	defer stop()
 
 	// Pre check
-	mustNotBeAlreadyClustered(t)
+	mustNotBeAlreadyClustered(t, "IncusOS01")
 
 	// Register cleanup
-	t.Cleanup(clusterCleanup(t))
 	t.Cleanup(clusterTemplateCleanup(t))
 
 	// Setup

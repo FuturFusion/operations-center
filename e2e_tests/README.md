@@ -7,7 +7,7 @@ needs to be set to a truthy value when running `go test`.
 
 ```shell
 export OPERATIONS_CENTER_E2E_TEST=1
-go test ./e2e_tests/ -v -timeout 60m -count 1 | tee e2e_tests_$(date +%F-%H-%M-%S).out
+go test ./e2e_tests/ -v -timeout 180m -count 1 | tee e2e_tests_$(date +%F-%H-%M-%S).out
 ```
 
 Use `-count 1` to disable test caching, which is important since the tests have side effects
@@ -15,7 +15,10 @@ that would not be re-executed on a cached run.
 
 Use `-timeout` to set a suitable timeout for the tests.
 
-Use `-run` to run specific tests, e.g. `-run TestE2E/create_cluster`.
+Use `-run` to run specific tests, e.g.
+`-run '^TestE2E_FromManualUpload_CreateCluster$'`.
+Use `-run '^TestE2E_OperationsCenter$/^oidc_authentication$'` to run a single
+scenario of a suite (see [Suites and scenarios](#suites-and-scenarios)).
 
 Other environment variables that can be set to control the tests:
 
@@ -25,13 +28,77 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")
 * `OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP`: Whether to setup the IncusOS instances concurrently (default: "true")
 * `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`: Factor to stretch timeouts by (default: "1.0"). This also stretches the deployment timeouts in the BIOS profile of `TestE2E_WithTokenSeed_DeployServer`. It does not change the `-timeout` flag of `go test`. Raise this flag by the same factor.
-* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
+* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case or a single scenario of a suite, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
 * `OPERATIONS_CENTER_E2E_TEST_CPU_ARCH`: CPU architecture used (default: "amd64")
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
+* `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
+
+## Test structure
+
+The end to end tests consist of suites and of single tests. A suite runs
+several scenarios in a fixed order. The scenarios of a suite share a pool of
+IncusOS servers, so the servers are only installed once per suite in the best
+case. See [Suites and scenarios](#suites-and-scenarios) for the details.
+
+All the tests share one Operations Center VM. The tests run in the following
+order:
+
+| Top level test                           | Server pool                                  | Content                                                                    |
+|------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|
+| `TestE2E_OperationsCenter`               | none                                         | Suite of the scenarios, which need no IncusOS server                       |
+| `TestE2E_StableServers`                  | IncusOS01 to IncusOS04 on the stable channel | Suite of the scenarios with servers and clusters                           |
+| `TestE2E_UpdateChannel`                  | IncusOS01 to IncusOS04 on the prod channel   | Suite of the update scenarios                                              |
+| `TestE2E_WithTokenSeed_DeployServer`     | none                                         | Single test, deploys IncusOS01 through its BMC                             |
+| `TestE2E_FromManualUpload_CreateCluster` | none                                         | Single test, creates a single node cluster from a manually uploaded update |
+
+### `TestE2E_OperationsCenter`
+
+| Scenario                               | Content                                                                                                      |
+|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `basic_interactions`                   | CLI commands for admin, query, system, debug, metrics, backup and restore, token seeds and cluster templates |
+| `provisioning_updates_channels_tokens` | Updates, channels and tokens, see [Updates, channels and tokens](#updates-channels-and-tokens)               |
+| `oidc_authentication`                  | Authentication through OIDC, see [Fake OIDC provider](#fake-oidc-provider)                                   |
+| `openfga_authorization`                | Authorization through OpenFGA, see [OpenFGA server](#openfga-server)                                         |
+| `updates_cleanup_and_refresh`          | Removes all the updates and refreshes them. Runs last.                                                       |
+
+### `TestE2E_StableServers`
+
+The servers register with a token of the stable channel. The registration
+scriptlet sets their description and their properties. IncusOS01 is installed
+from the ISO of a token seed, the other servers from the ISO of the token.
+The scenario `acme_renewal` runs first. It adds the CA certificates of the
+fake ACME server to the Operations Center host before the pool installs the
+servers, so the seed of all the servers contains them.
+
+| Scenario                                | Standalone servers     | Cluster members                 | Content                                                                   |
+|-----------------------------------------|------------------------|---------------------------------|---------------------------------------------------------------------------|
+| `acme_renewal`                          | IncusOS01, IncusOS02   |                                 | ACME renewal with a private CA, see [Fake ACME server](#fake-acme-server) |
+| `register_server`                       | IncusOS01              |                                 | Effects of the registration scriptlet                                     |
+| `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc)               |
+| `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                                        |
+| `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                              |
+| `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates               |
+| `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                               |
+| `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                                      |
+| `factory_reset_cluster_with_token_seed` |                        | IncusOS01, IncusOS02, IncusOS04 | Factory reset with a given token and token seed                           |
+| `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)                           |
+| `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last.               |
+
+### `TestE2E_UpdateChannel`
+
+The servers register with a token of the prod channel. The prod channel holds
+the oldest update, so the servers have updates pending. Every scenario updates
+its servers, so the pool installs them again before their next use.
+
+| Scenario                    | Standalone servers | Cluster members        | Content                      |
+|-----------------------------|--------------------|------------------------|------------------------------|
+| `update_server_application` | IncusOS04          |                        | Updates a single application |
+| `update_server_os_only`     | IncusOS04          |                        | Updates only the OS          |
+| `cluster_rolling_update`    |                    | IncusOS01 to IncusOS03 | Rolling update with workload |
 
 ## Setup
 
@@ -131,7 +198,7 @@ make build
 ```shell
 export OPERATIONS_CENTER_E2E_TEST=1
 export OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$HOME/tmp-e2e
-go test ./e2e_tests/ -v -timeout 60m -count 1 | tee e2e_tests.out
+go test ./e2e_tests/ -v -timeout 240m -count 1 | tee e2e_tests.out
 ```
 
 or
@@ -143,10 +210,16 @@ make e2e-test
 or a specific test:
 
 ```shell
-make e2e-test GO_TEST_RUN=TestE2E_WithToken_CreateCluster
+make e2e-test GO_TEST_RUN='^TestE2E_FromManualUpload_CreateCluster$'
 ```
 
-to show all available test cases:
+or a single scenario of a suite:
+
+```shell
+make e2e-test GO_TEST_RUN='^TestE2E_OperationsCenter$/^oidc_authentication$'
+```
+
+to show all available test cases and scenarios:
 
 ```shell
 make e2e-test-list
@@ -179,6 +252,94 @@ resources that are already gone. They report all other errors, continue with
 the remaining steps and fail at the end.
 
 ## Development
+
+### Suites and scenarios
+
+A suite is a top level test, which runs several scenarios with `runE2ESuite`.
+Each scenario is a subtest, so `-run 'Suite/scenario'` selects it. Use
+snake_case for the name of a scenario, since `go test` replaces spaces with
+underscores.
+
+The scenarios of a suite run in the given order and share the setup of the
+Operations Center. The setup runs in the first scenario, which is selected by
+`-run`, and again after a failed scenario. A scenario has its own timeout and
+its own debug output on failure, like a top level test.
+
+A suite can share a pool of IncusOS servers between its scenarios (see
+`serverPool`). A scenario lists the servers it requires, either as standalone
+servers or as the members of the cluster `incus-os-cluster`. The cluster uses
+the update channel of the pool. Before the scenario runs, the pool reads the
+state of the servers from Incus and from Operations Center.
+
+The pool installs each server from its own ISO. This way, a suite covers
+several ways of installing without a separate top level test. For example,
+`TestE2E_StableServers` installs IncusOS01 from the ISO of a token seed.
+
+For standalone servers, the pool decides for each server (see
+`nextServerAction` and `planStandalone`):
+
+* A server, which is ready, not clustered and registered with the name of its
+  VM, is used as it is.
+* A server, which registered with the hostname of its VM, is renamed. A server
+  does this after a factory reset.
+* A ready member of a cluster is recycled with a factory reset of the cluster.
+  This takes about half the time of an install. The pool renames all the
+  members after the reset.
+* Any other server is removed and installed again. This covers a missing or
+  stopped VM, a missing record and a server, which is not ready. Removing a
+  clustered server removes its cluster, so the other members of this cluster
+  are installed again as well.
+
+A cluster is used as it is, if it consists of exactly the required servers and
+all of them are ready (see `clusterReady`). Otherwise the pool brings the
+servers into the standalone state first and then creates the cluster. The pool
+adds the cluster as Incus remote for the duration of the scenario.
+
+The servers of a failed scenario are installed again before their next use. A
+scenario lists the servers in `leavesDirty`, if it changes them in a way the
+pool does not observe. An example is the version of a server after an update.
+The pool installs these servers again before their next use as well. The pool
+keeps this state in memory only. After a run with
+`OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`, remove the VMs of `TestE2E_UpdateChannel`
+before running it again. Otherwise the pool reuses the updated servers.
+
+Some changes only reach a server during its install, e.g. the content of its
+seed. A scenario, which needs such a change, sets `prepare`. The suite runs
+`prepare` before the pool brings the servers into the required state. The pool
+installs the servers of the scenario again after `prepare`. An example is
+`acme_renewal`, which adds custom CA certificates to the Operations Center
+host. Place such a scenario first, so the pool installs all the servers only
+once.
+
+The pool caches the ISOs of the stable token in
+`OPERATIONS_CENTER_E2E_TEST_TMP_DIR` and as storage volumes. The cached ISOs
+of an earlier run lack the change of `prepare`. So `prepare` also removes the
+cached ISOs with `removeStableTokenISOs`. The pool generates them again with
+the current seed.
+
+The pool only installs servers, which a selected scenario requires, so a single
+scenario only pays for its own servers. If it installs, it also installs all
+the missing VMs of the pool, since concurrent installs take about as long as a
+single one.
+
+The pool removes its servers and its cluster when the suite ends, so a
+scenario does not remove a cluster, which the next scenario can use. A
+scenario still removes other resources it creates, e.g. its workload. Order the
+scenarios so that each one leaves a state the next one can use. A scenario,
+which leaves its servers unusable, runs last.
+
+The other servers of the pool stay registered while a scenario runs. An
+assertion therefore selects the servers by name. It does not expect a certain
+number of servers in Operations Center, e.g. see
+`assertRemovedServerToReappear`.
+
+`go test -list` only shows the top level tests. With
+`OPERATIONS_CENTER_E2E_TEST_LIST` set, a suite creates a skipped subtest for each
+scenario and runs nothing else. `scripts/e2e/select.sh` reads the scenarios from
+this output and creates a regex like `^Suite$/^scenario$|^OtherTest$`. The
+alternatives are joined on the top level, since `go test` splits a regex at a
+top level `/` into the levels of the subtests. The Makefile passes
+`GO_TEST_RUN` with `$(value ...)`, so make does not expand the `$` anchors.
 
 ### Shell commands
 
@@ -257,8 +418,8 @@ Failures are always recorded in full.
 
 ### Broken setup of the Operations Center
 
-Every test depends on `setupOperationsCenter`, so a failure of it is terminal for
-the whole run.
+Every test and every scenario depends on `setupOperationsCenter`, so a failure
+of it is terminal for the whole run.
 
 `setupOperationsCenterOrMarkBroken` therefore records such a failure and the
 remaining tests skip with that reason instead of reproducing it. Only the shared
@@ -268,8 +429,8 @@ independent and keeps its signal.
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in
-a sequence. This means, that each test case should clean up any resources it
-creates, so that the next test case can run without interference.
+a sequence. This means, that each test case and each scenario should clean up
+any resources it creates, so that the next one can run without interference.
 
 This is achieved by using `t.Cleanup` to register cleanup functions that are
 executed after the test case finishes, regardless of whether it passes or fails.
@@ -280,6 +441,9 @@ trying to clean up does not exist.
 In most cases, the cleanup functions should be registered before the actual
 resource is created, to ensure that they are executed even if the resource
 creation is only partially successful.
+
+The servers of a server pool are the exception within a suite. The pool
+registers their cleanup on the suite, so the scenarios can share them.
 
 The Operations Center VM is the exception, it is deliberately not cleaned up and
 reused across test cases and test runs. `setupOperationsCenter` therefore only
@@ -366,11 +530,16 @@ sequentially, then the end, then random portions (see
 
 ### Incus images
 
-`TestE2E_WithToken_OCImagesRemoteLaunchInstance` covers the Incus image and the
-Incus image source handling. It uploads images manually, syncs an image from
+The scenario `images_remote_launch_instance` of the suite
+`TestE2E_StableServers` covers the Incus image and the Incus image source
+handling. It uploads images manually, syncs an image from
 `https://images.linuxcontainers.org` through an image source, asserts the public
 simplestreams endpoints of Operations Center and launches a container from a
 manually uploaded and from a source synced image.
+
+The scenario restarts the Operations Center daemon first. The first background
+refresh of the image sources runs 10 minutes after the start of the daemon, so
+it can not interfere with the assertions.
 
 The filter expression of the image source is pinned to a single image and a
 single version of that image, which is discovered from the image server at the
@@ -385,8 +554,9 @@ through the public endpoints directly instead of through the server.
 
 ### Updates, channels and tokens
 
-`TestE2E_ProvisioningUpdatesChannelsAndTokens` covers the updates, the channels
-and the tokens of Operations Center. It needs no IncusOS server.
+The scenario `provisioning_updates_channels_tokens` of the suite
+`TestE2E_OperationsCenter` covers the updates, the channels and the tokens of
+Operations Center. It needs no IncusOS server.
 
 The test sends server registrations with curl. Each of these registrations
 fails before a server record is created: the body has no server name, or the
@@ -429,14 +599,20 @@ Operations Center. The certificate of its directory is self signed and the root
 CA of the issued certificates is new for every run. So neither is in any
 default CA bundle, like with the internal ACME server of a company.
 
-The test adds both CA certificates to the custom CA certificates of the IncusOS
-host of Operations Center, before it deploys the servers. This way the seed of
-the servers contains them as well.
+The scenario `acme_renewal` of the suite `TestE2E_StableServers` covers the
+ACME support. In its `prepare` step, it adds both CA certificates to the custom
+CA certificates of the IncusOS host of Operations Center. The step also removes
+the cached ISOs of the stable token, since the CA certificates are new for
+every run. The pool generates the ISOs again and installs the servers after
+this step. This way the seed of the servers contains the CA certificates as
+well. The servers keep these CA certificates for the following scenarios.
 
-The test changes the certificate of Operations Center. The CLI pins this
-certificate, so the test adds the remote of the CLI again after every change.
-On cleanup, the test disables ACME, restores the original certificate and the
-custom CA certificates of the host.
+The scenario changes the certificate of Operations Center. The CLI pins this
+certificate, so the scenario adds the remote of the CLI again after every
+change. On cleanup, the scenario disables ACME, restores the original
+certificate and the custom CA certificates of the host. Operations Center
+pushes the restored certificate to the servers, so the following scenarios can
+reuse them.
 
 ### OpenFGA server
 
