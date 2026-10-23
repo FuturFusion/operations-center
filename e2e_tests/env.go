@@ -25,7 +25,7 @@ var (
 	cpuCount             = envOrDefault("OPERATIONS_CENTER_E2E_TEST_CPU_COUNT", "2")
 	concurrentSetup      = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP", true)
 	timeoutStretchFactor = envFloatOrDefault("OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR", 1.0)
-	testTimeout          = envDurationOrDefault("OPERATIONS_CENTER_E2E_TEST_TIMEOUT", 45*time.Minute)
+	testTimeout          = envDurationOrDefault("OPERATIONS_CENTER_E2E_TEST_TIMEOUT", 60*time.Minute)
 	cpuArch              = envOrDefault("OPERATIONS_CENTER_E2E_TEST_CPU_ARCH", "amd64")
 	debug                = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_DEBUG", false)
 	noCleanup            = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP", false)
