@@ -5,6 +5,7 @@ workdir: .
 exclude:
   # E2E tests
   - e2e_tests/**
+  - cluster_tests/**
 
   # Mocks for tests only
   - internal/*/mock/**
