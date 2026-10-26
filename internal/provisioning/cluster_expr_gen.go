@@ -5,6 +5,8 @@ package provisioning
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -36,6 +38,7 @@ type ExprApiClusterUpdateStatus struct {
 
 type ExprCluster struct {
 	ID                    int64                      `json:"-" expr:"-"`
+	UUID                  uuid.UUID                  `json:"-"                       db:"omit=update" expr:"-"`
 	Name                  string                     `json:"name"                    db:"primary=yes" expr:"name"`
 	ConnectionURL         string                     `json:"connection_url" expr:"connection_url"`
 	Certificate           *string                    `json:"certificate" expr:"certificate"`
@@ -90,6 +93,7 @@ func ToExprApiClusterUpdateStatus(c api.ClusterUpdateStatus) ExprApiClusterUpdat
 func ToExprCluster(c Cluster) ExprCluster {
 	return ExprCluster{
 		ID:                    c.ID,
+		UUID:                  c.UUID,
 		Name:                  c.Name,
 		ConnectionURL:         c.ConnectionURL,
 		Certificate:           c.Certificate,

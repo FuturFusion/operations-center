@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -21,6 +22,7 @@ import (
 
 type Cluster struct {
 	ID                    int64                   `json:"-"`
+	UUID                  uuid.UUID               `json:"-"                       db:"omit=update"`
 	Name                  string                  `json:"name"                    db:"primary=yes"`
 	ConnectionURL         string                  `json:"connection_url"`
 	Certificate           *string                 `json:"certificate"`
@@ -201,11 +203,13 @@ type ClusterProvisioningConfig struct {
 
 type ClusterArtifact struct {
 	ID          int64
-	Cluster     string `db:"primary=yes&join=clusters.name"`
-	Name        string `db:"primary=yes"`
+	Cluster     string    `db:"primary=yes&join=clusters.name"`
+	ClusterUUID uuid.UUID `db:"omit=create,update&join=clusters.uuid"`
+	Name        string    `db:"primary=yes"`
 	Description string
 	Properties  api.ConfigMap
 	Files       ClusterArtifactFiles
+	MemberID    int64
 	LastUpdated time.Time `db:"update_timestamp"`
 }
 

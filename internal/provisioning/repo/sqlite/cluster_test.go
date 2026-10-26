@@ -94,12 +94,14 @@ func TestClusterDatabaseActions(t *testing.T) {
 	dbClusterA, err := cluster.GetByName(ctx, clusterA.Name)
 	require.NoError(t, err)
 	clusterA.ID = dbClusterA.ID
+	clusterA.UUID = dbClusterA.UUID
 	clusterA.LastUpdated = dbClusterA.LastUpdated
 	require.Equal(t, clusterA, *dbClusterA)
 
 	dbClusterB, err := cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
 	clusterB.ID = dbClusterB.ID
+	clusterB.UUID = dbClusterB.UUID
 	clusterB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterB, *dbClusterB)
 
@@ -125,6 +127,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	dbClusterB, err = cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
 	clusterB.ID = dbClusterB.ID
+	clusterB.UUID = dbClusterB.UUID
 	clusterB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterB, *dbClusterB)
 

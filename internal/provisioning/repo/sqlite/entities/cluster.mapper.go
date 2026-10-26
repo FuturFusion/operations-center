@@ -14,14 +14,14 @@ import (
 )
 
 var clusterObjects = RegisterStmt(`
-SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated
+SELECT clusters.id, clusters.uuid, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated
   FROM clusters
   JOIN channels ON clusters.channel_id = channels.id
   ORDER BY clusters.name
 `)
 
 var clusterObjectsByName = RegisterStmt(`
-SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated
+SELECT clusters.id, clusters.uuid, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated
   FROM clusters
   JOIN channels ON clusters.channel_id = channels.id
   WHERE ( clusters.name = ? )
@@ -40,8 +40,8 @@ SELECT clusters.id FROM clusters
 `)
 
 var clusterCreate = RegisterStmt(`
-INSERT INTO clusters (name, connection_url, certificate, status, update_status, channel_id, description, properties, config, last_updated)
-  VALUES (?, ?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?), ?, ?, ?, ?)
+INSERT INTO clusters (uuid, name, connection_url, certificate, status, update_status, channel_id, description, properties, config, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?), ?, ?, ?, ?)
 `)
 
 var clusterUpdate = RegisterStmt(`
@@ -138,7 +138,7 @@ func GetCluster(ctx context.Context, db dbtx, name string) (_ *provisioning.Clus
 // clusterColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Cluster entity.
 func clusterColumns() string {
-	return "clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated"
+	return "clusters.id, clusters.uuid, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.update_status, channels.name AS channel, clusters.description, clusters.properties, clusters.config, clusters.last_updated"
 }
 
 // getClusters can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -147,7 +147,7 @@ func getClusters(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisioni
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.Cluster{}
-		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.UpdateStatus, &c.Channel, &c.Description, &c.Properties, &c.Config, &c.LastUpdated)
+		err := scan(&c.ID, &c.UUID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.UpdateStatus, &c.Channel, &c.Description, &c.Properties, &c.Config, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func getClustersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pr
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.Cluster{}
-		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.UpdateStatus, &c.Channel, &c.Description, &c.Properties, &c.Config, &c.LastUpdated)
+		err := scan(&c.ID, &c.UUID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.UpdateStatus, &c.Channel, &c.Description, &c.Properties, &c.Config, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -331,19 +331,20 @@ func CreateCluster(ctx context.Context, db dbtx, object provisioning.Cluster) (_
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	args := make([]any, 10)
+	args := make([]any, 11)
 
 	// Populate the statement arguments.
-	args[0] = object.Name
-	args[1] = object.ConnectionURL
-	args[2] = object.Certificate
-	args[3] = object.Status
-	args[4] = object.UpdateStatus
-	args[5] = object.Channel
-	args[6] = object.Description
-	args[7] = object.Properties
-	args[8] = object.Config
-	args[9] = time.Now().UTC().Format(time.RFC3339)
+	args[0] = object.UUID
+	args[1] = object.Name
+	args[2] = object.ConnectionURL
+	args[3] = object.Certificate
+	args[4] = object.Status
+	args[5] = object.UpdateStatus
+	args[6] = object.Channel
+	args[7] = object.Description
+	args[8] = object.Properties
+	args[9] = object.Config
+	args[10] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := StmtContext(ctx, db, clusterCreate)

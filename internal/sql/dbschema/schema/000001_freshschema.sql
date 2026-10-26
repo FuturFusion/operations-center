@@ -36,9 +36,12 @@ CREATE TABLE clusters (
   properties TEXT NOT NULL DEFAULT '',
   update_status TEXT NOT NULL DEFAULT '',
   config TEXT NOT NULL DEFAULT '',
+  uuid TEXT NOT NULL,
   UNIQUE (name),
   UNIQUE (certificate),
+  UNIQUE (uuid),
   CHECK (name <> ''),
+  CHECK (uuid <> ''),
   FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
 
@@ -349,9 +352,11 @@ CREATE TABLE cluster_artifacts (
   properties TEXT NOT NULL,
   files TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  member_id INTEGER NOT NULL,
   UNIQUE (cluster_id, name),
   CHECK (name <> ''),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE
 );
 
 CREATE TABLE warnings (

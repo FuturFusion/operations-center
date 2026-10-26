@@ -21,12 +21,14 @@ import (
 type clusterHandler struct {
 	service            provisioning.ClusterService
 	clusterTemplateSvc provisioning.ClusterTemplateService
+	forward            forwarder
 }
 
-func registerProvisioningClusterHandler(router Router, authorizer *authz.Authorizer, service provisioning.ClusterService, clusterTemplateSvc provisioning.ClusterTemplateService) {
+func registerProvisioningClusterHandler(router Router, authorizer *authz.Authorizer, service provisioning.ClusterService, clusterTemplateSvc provisioning.ClusterTemplateService, forward forwarder) {
 	handler := &clusterHandler{
 		service:            service,
 		clusterTemplateSvc: clusterTemplateSvc,
+		forward:            forward,
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.clustersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -107,6 +109,12 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
+		// The leader keeps the progress of the rolling updates.
+		resp := c.forward.toLeader(r)
+		if resp != nil {
+			return resp
+		}
+
 		clusters, err := c.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
@@ -234,6 +242,12 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
+	// The leader keeps the progress of the rolling updates.
+	resp := c.forward.toLeader(r)
+	if resp != nil {
+		return resp
+	}
+
 	name := r.PathValue("name")
 
 	cluster, err := c.service.GetByName(r.Context(), name)
@@ -1145,6 +1159,17 @@ func (c *clusterHandler) clusterArtifactGet(r *http.Request) response.Response {
 			return response.BadRequest(fmt.Errorf("Archive type %q not supported", archive))
 		}
 
+		artifact, err := c.service.GetClusterArtifactByName(r.Context(), clusterName, artifactName)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err))
+		}
+
+		// The file target of the artifact builds the archive.
+		resp := c.forward.toMember(r, artifact.MemberID)
+		if resp != nil {
+			return resp
+		}
+
 		rc, size, err := c.service.GetClusterArtifactArchiveByName(r.Context(), clusterName, artifactName, archiveType)
 		if err != nil {
 			return response.SmartError(fmt.Errorf("Failed to get archive for artifact %q of cluster %q: %w", artifactName, clusterName, err))
@@ -1248,6 +1273,12 @@ func (c *clusterHandler) clusterArtifactFileGet(r *http.Request) response.Respon
 
 	if !found {
 		return response.NotFound(fmt.Errorf("File %q not found in artifact %q", filename, fmt.Sprintf("/%s/provisioning/clusters/%s/artifacts/%s", api.APIVersion, clusterName, artifactName)))
+	}
+
+	// The file target of the artifact serves its files.
+	resp := c.forward.toMember(r, artifact.MemberID)
+	if resp != nil {
+		return resp
 	}
 
 	headers := map[string]string{

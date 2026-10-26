@@ -2471,7 +2471,17 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 
 	// forceful delete
 	if force {
-		err := s.repo.DeleteByName(ctx, name)
+		var clusterUUID uuid.UUID
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			cluster, err := s.repo.GetByName(ctx, name)
+			if err != nil {
+				return err
+			}
+
+			clusterUUID = cluster.UUID
+
+			return s.repo.DeleteByName(ctx, name)
+		})
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}
@@ -2481,17 +2491,21 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 			Operation: lifecycle.ClusterUpdateOperationDelete,
 			Name:      name,
+			UUID:      clusterUUID,
 		})
 
 		return nil
 	}
 
 	// normal delete
+	var clusterUUID uuid.UUID
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}
+
+		clusterUUID = cluster.UUID
 
 		switch cluster.Status {
 		case api.ClusterStatusUnknown,
@@ -2532,6 +2546,7 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 		Operation: lifecycle.ClusterUpdateOperationDelete,
 		Name:      name,
+		UUID:      clusterUUID,
 	})
 
 	return nil
@@ -2631,7 +2646,17 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 		}
 	}
 
-	err = s.repo.DeleteByName(ctx, name)
+	var clusterUUID uuid.UUID
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		cluster, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		clusterUUID = cluster.UUID
+
+		return s.repo.DeleteByName(ctx, name)
+	})
 	if err != nil {
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
@@ -2641,6 +2666,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 		Operation: lifecycle.ClusterUpdateOperationDelete,
 		Name:      name,
+		UUID:      clusterUUID,
 	})
 
 	return nil

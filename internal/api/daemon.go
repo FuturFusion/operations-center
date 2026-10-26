@@ -384,7 +384,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter)
+	clusterArtifactRepo, err := provisioningClusterArtifactRepo.New(
+		dbWithTransaction,
+		filepath.Join(d.env.VarDir(), "artifacts"),
+		memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	)
+	if err != nil {
+		return err
+	}
+
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter, clusterArtifactRepo)
 	if err != nil {
 		return err
 	}
@@ -480,6 +489,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	err = d.securityConfigReload(ctx, config.GetSecurity())
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
+	}
+
+	err = clusterArtifactRepo.MigrateNameLayout(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to move cluster artifacts to the directories named by cluster UUID: %w", err)
 	}
 
 	membershipSvc.StartLeaderTasks()
@@ -1107,12 +1121,8 @@ func (d *Daemon) setupClusterService(
 	tokenSvc provisioning.TokenService,
 	inventoryAggregateSvc inventory.InventoryAggregateService,
 	warningSvc provisioning.WarningServicePort,
+	clusterArtifactRepo provisioning.ClusterArtifactRepo,
 ) (provisioning.ClusterService, error) {
-	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
-	if err != nil {
-		return nil, err
-	}
-
 	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
 	if err != nil {
 		tmpTerraformDir = os.TempDir()
@@ -1133,7 +1143,7 @@ func (d *Daemon) setupClusterService(
 				provisioningSqlite.NewCluster(db),
 			),
 			provisioningRepoMiddleware.NewClusterArtifactRepoWithSlog(
-				localClusterArtifactRepo,
+				clusterArtifactRepo,
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
 				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
@@ -1397,7 +1407,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc, forward)
 
 	provisioningClusterTemplateRouter := provisioningRouter.SubGroup("/cluster-templates")
 	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)
