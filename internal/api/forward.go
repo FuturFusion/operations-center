@@ -61,6 +61,26 @@ func (f forwarder) toLeader(r *http.Request) response.Response {
 	return f.forward(r, memberfiles.Member{Name: "leader", Address: leaderAddress})
 }
 
+// toMember returns the response of the cluster member memberID to r, nil if r is handled by this member.
+func (f forwarder) toMember(r *http.Request, memberID int64) response.Response {
+	if !f.clustered() || f.forwarded(r) {
+		return nil
+	}
+
+	member, err := f.targets.Member(r.Context(), memberID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if member.Local {
+		return nil
+	}
+
+	r.Header.Set(headerForwardedToMember, "1")
+
+	return f.forward(r, member)
+}
+
 func (f forwarder) forward(r *http.Request, member memberfiles.Member) response.Response {
 	clusterCert, err := f.membership.Gateway().NetworkCert().PublicKeyX509()
 	if err != nil {

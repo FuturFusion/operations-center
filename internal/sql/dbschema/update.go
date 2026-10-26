@@ -133,8 +133,17 @@ var updates = map[int]update{
 }
 
 func updateFromV43(ctx context.Context, tx *sql.Tx) error {
-	// v43..v44 add cluster membership tables.
-	return createMembershipTables(ctx, tx)
+	// v43..v44 add the cluster membership tables and the member storing the files of updates and images.
+	err := createMembershipTables(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
+ALTER TABLE updates ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
+ALTER TABLE incus_images ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
+`)
+	return MapDBError(err)
 }
 
 func updateFromV42(ctx context.Context, tx *sql.Tx) error {

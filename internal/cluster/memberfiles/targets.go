@@ -130,7 +130,26 @@ func (t Targets) Client(member Member) (client.OperationsCenterClient, error) {
 	return cluster.MemberClient(member.Address)
 }
 
-// Context limits a request to member that does not stream file content.
+// Do calls fn with a client for the other member memberID, limited by the
+// request timeout. An unreachable member is reported as unavailable.
+func (t Targets) Do(ctx context.Context, memberID int64, fn func(ctx context.Context, c client.OperationsCenterClient) error) error {
+	member, err := t.Member(ctx, memberID)
+	if err != nil {
+		return err
+	}
+
+	c, err := t.Client(member)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := Context(ctx, member)
+	defer cancel()
+
+	return Unavailable(member, fn(ctx, c))
+}
+
+// Context applies the timeout of a request to member that does not stream file content.
 func Context(ctx context.Context, member Member) (context.Context, context.CancelFunc) {
 	if member.Offline {
 		return context.WithTimeout(ctx, offlineRequestTimeout)

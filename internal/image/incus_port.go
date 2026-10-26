@@ -22,6 +22,18 @@ type ImageIncusService interface {
 	RefreshFromSource(ctx context.Context, source IncusImageSource) error
 }
 
+// ImageFileTargetPort lets other cluster members manage the image files they store.
+type ImageFileTargetPort interface {
+	// LocalMemberID returns the ID of this member.
+	LocalMemberID(ctx context.Context) (int64, error)
+
+	// SyncImage lets the member storing image download any missing files from source and delete the files it no longer needs.
+	SyncImage(ctx context.Context, source IncusImageSource, image IncusImage) error
+
+	// DeleteFiles lets the member storing image delete its files.
+	DeleteFiles(ctx context.Context, image IncusImage) error
+}
+
 type ImageIncusRepo interface {
 	Create(ctx context.Context, newIncusImage IncusImage) (int64, error)
 	GetAll(ctx context.Context) (IncusImages, error)

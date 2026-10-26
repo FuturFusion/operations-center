@@ -133,6 +133,56 @@ func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	require.NoError(t, err, "the resources view has the uuid column from v43 onwards")
 }
 
+func TestSchemaEnsure_updatesMemberID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files) VALUES
+  ('b32d0079-c48b-4957-b1cb-bef54125c861', 'origin', '1', '2025-03-12 10:57:43+00:00', 'none', '', '');
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var memberID int64
+	err = db.QueryRow(`SELECT member_id FROM updates`).Scan(&memberID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), memberID, "existing updates are stored by the standalone member")
+}
+
+func TestSchemaEnsure_incusImagesMemberID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO incus_images (name, description, operating_system, release, architecture, variant, versions, last_updated) VALUES
+  ('debian:13:amd64:default', '', 'debian', '13', 'amd64', 'default', '{}', '2025-03-12 10:57:43+00:00');
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var memberID int64
+	err = db.QueryRow(`SELECT member_id FROM incus_images`).Scan(&memberID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), memberID, "existing images are stored by the standalone member")
+}
+
 func TestSchemaEnsure_patchFile(t *testing.T) {
 	t.Parallel()
 

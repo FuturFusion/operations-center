@@ -64,6 +64,27 @@ type UpdateFilesRepo interface {
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
 
+// UpdateFileTargetPort lets other cluster members manage the update files they store.
+type UpdateFileTargetPort interface {
+	// LocalMemberID returns the ID of this member.
+	LocalMemberID(ctx context.Context) (int64, error)
+
+	// GetFile returns a file of update from the member storing it.
+	GetFile(ctx context.Context, update Update, filename string) (_ io.ReadCloser, size int, _ error)
+
+	// RefreshFiles lets the member storing update download any missing files and delete the files it no longer needs.
+	RefreshFiles(ctx context.Context, update Update) error
+
+	// DeleteFiles lets the member storing update delete its files.
+	DeleteFiles(ctx context.Context, update Update) error
+
+	// CheckFiles returns the updates whose files on the member memberID are incomplete.
+	CheckFiles(ctx context.Context, memberID int64, updates Updates) ([]uuid.UUID, error)
+
+	// DeleteAllFiles lets all other members delete the files of all updates.
+	DeleteAllFiles(ctx context.Context) error
+}
+
 // A UpdateSourcePort is a source for updates (e.g. IncusOS or HypervisorOS).
 type UpdateSourcePort interface {
 	GetLatest(ctx context.Context, limit int) (Updates, error)
