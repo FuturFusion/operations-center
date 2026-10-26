@@ -1401,7 +1401,7 @@ func (d *Daemon) setupAPIRoutes(
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
-	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
+	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress, forward)
 
 	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
 	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)

@@ -26,13 +26,15 @@ type tokenHandler struct {
 	service      provisioning.TokenService
 	authorizer   *authz.Authorizer
 	seedProgress provisioning.SeedImageProgressPort
+	forward      forwarder
 }
 
-func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService, seedProgress provisioning.SeedImageProgressPort) {
+func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService, seedProgress provisioning.SeedImageProgressPort, forward forwarder) {
 	handler := &tokenHandler{
 		service:      service,
 		authorizer:   authorizer,
 		seedProgress: seedProgress,
+		forward:      forward,
 	}
 
 	// Authentication and authorization are only required, if the respective token seed is not defined as public.
@@ -460,6 +462,12 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenImageGet(r *http.Request) response.Response {
+	// The leader holds the prepared images and builds the images.
+	resp := t.forward.toLeader(r)
+	if resp != nil {
+		return resp
+	}
+
 	tokenUUIDString := r.PathValue("uuid")
 
 	tokenUUID, err := uuid.Parse(tokenUUIDString)
@@ -888,6 +896,12 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
+	// The leader holds the prepared images and builds the images.
+	resp := t.forward.toLeader(r)
+	if resp != nil {
+		return resp
+	}
+
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)

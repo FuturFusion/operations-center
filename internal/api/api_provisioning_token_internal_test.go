@@ -1190,7 +1190,7 @@ func newTokenTestServer(t *testing.T, tokenService provisioning.TokenService, se
 	)
 
 	var authorizer authz.Authorizer = noopAuthorizer{}
-	registerProvisioningTokenHandler(router, &authorizer, tokenService, seedProgress)
+	registerProvisioningTokenHandler(router, &authorizer, tokenService, seedProgress, forwarder{clustered: func() bool { return false }})
 
 	server := httptest.NewServer(serveMux)
 	t.Cleanup(server.Close)
