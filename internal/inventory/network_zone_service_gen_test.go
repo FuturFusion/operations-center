@@ -1425,7 +1425,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			for i, item := range tc.repoGetAllWithFilter {
 				item.DeriveUUID()

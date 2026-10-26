@@ -1142,7 +1142,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			// }
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -1157,7 +1157,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
-					tc.doCallback(ctx, callback)
+					tc.doCallback(logger.DetachedContext(ctx), callback)
 					return tc.clientEvacuateErr
 				},
 			}
@@ -1344,7 +1344,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1541,7 +1541,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1942,7 +1942,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			var lastUpdated provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -1957,7 +1957,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
-					tc.doCallback(ctx, callback)
+					tc.doCallback(logger.DetachedContext(ctx), callback)
 					return tc.clientRestoreErr
 				},
 			}
@@ -2671,7 +2671,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			var gotStatusDetail *api.ServerStatusDetail
 			var gotTriggeredUpdate *provisioning.ServerTriggeredUpdate

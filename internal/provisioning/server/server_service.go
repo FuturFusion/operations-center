@@ -258,9 +258,9 @@ func waitForBMCTask(ctx context.Context, client provisioning.BMCServerClientPort
 	return client.WaitForTask(ctx, server, taskMonitor)
 }
 
-// runInBackground runs fn in a detached goroutine. The context passed to fn is
-// detached from ctx as well, in order to make sure, no existing DB transaction
-// is inherited. Only the logging related values of ctx are kept.
+// runInBackground runs fn in a new goroutine, tracked by s.backgroundTasks.
+// fn gets a context without the cancellation and the DB transaction of ctx.
+// Only the logging related values of ctx are kept.
 func (s *serverService) runInBackground(ctx context.Context, fn func(ctx context.Context)) {
 	s.backgroundTasks.Add(1)
 

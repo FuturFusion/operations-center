@@ -231,7 +231,7 @@ func TestWarningService_Emit(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &mock.WarningRepoMock{
 				GetByScopeAndTypeFunc: func(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warning.Warnings, error) {
@@ -539,7 +539,7 @@ func TestWarningService_RemoveStale(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &mock.WarningRepoMock{
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {

@@ -265,7 +265,7 @@ func Test_getClient_warnsInsideOfTransaction(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			server := provisioning.Server{
 				Name: "name",

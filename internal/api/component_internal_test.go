@@ -22,7 +22,7 @@ func TestComponentMiddleware(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, true, false, true)
+	ctx := logger.ContextWithTestLogger(t, logBuf, true, false)
 
 	handler := componentMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		slog.InfoContext(r.Context(), "handling")
@@ -37,7 +37,7 @@ func TestComponentDaemonTask(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, true, false, true)
+	ctx := logger.ContextWithTestLogger(t, logBuf, true, false)
 
 	componentTask(componentTaskRefreshInventory, func(ctx context.Context) {
 		slog.InfoContext(ctx, "task body")

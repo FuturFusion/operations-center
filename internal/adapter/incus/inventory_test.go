@@ -113,7 +113,7 @@ func TestClient_in_transaction(t *testing.T) {
 	caPool, certPEM, keyPEM := setupCerts(t)
 
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -1,6 +1,7 @@
 package log_test
 
 import (
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -15,61 +16,59 @@ func TestSyncBuffer(t *testing.T) {
 
 	tests := []struct {
 		name string
-		run  func(t *testing.T, buf *log.SyncBuffer)
+		run  func(buf *log.SyncBuffer) (int, error)
 
-		want string
+		wantWritten int
+		want        string
 	}{
 		{
 			name: "empty",
-			run: func(t *testing.T, buf *log.SyncBuffer) {
-				t.Helper()
+			run: func(buf *log.SyncBuffer) (int, error) {
+				return 0, nil
 			},
 
-			want: "",
+			wantWritten: 0,
+			want:        "",
 		},
 		{
 			name: "multiple writes",
-			run: func(t *testing.T, buf *log.SyncBuffer) {
-				t.Helper()
+			run: func(buf *log.SyncBuffer) (int, error) {
+				n1, err1 := buf.Write([]byte("foo "))
+				n2, err2 := buf.Write([]byte("bar"))
 
-				n, err := buf.Write([]byte("foo "))
-				require.NoError(t, err)
-				require.Equal(t, 4, n, "number of written bytes")
-
-				_, err = buf.Write([]byte("bar"))
-				require.NoError(t, err)
+				return n1 + n2, errors.Join(err1, err2)
 			},
 
-			want: "foo bar",
+			wantWritten: 7,
+			want:        "foo bar",
 		},
 		{
 			name: "reset",
-			run: func(t *testing.T, buf *log.SyncBuffer) {
-				t.Helper()
-
-				_, err := buf.Write([]byte("foo"))
-				require.NoError(t, err)
+			run: func(buf *log.SyncBuffer) (int, error) {
+				n, err := buf.Write([]byte("foo"))
 
 				buf.Reset()
+
+				return n, err
 			},
 
-			want: "",
+			wantWritten: 3,
+			want:        "",
 		},
 		{
 			name: "write after reset",
-			run: func(t *testing.T, buf *log.SyncBuffer) {
-				t.Helper()
-
-				_, err := buf.Write([]byte("foo"))
-				require.NoError(t, err)
+			run: func(buf *log.SyncBuffer) (int, error) {
+				n1, err1 := buf.Write([]byte("foo"))
 
 				buf.Reset()
 
-				_, err = buf.Write([]byte("bar"))
-				require.NoError(t, err)
+				n2, err2 := buf.Write([]byte("bar"))
+
+				return n1 + n2, errors.Join(err1, err2)
 			},
 
-			want: "bar",
+			wantWritten: 6,
+			want:        "bar",
 		},
 	}
 
@@ -81,10 +80,12 @@ func TestSyncBuffer(t *testing.T) {
 			buf := &log.SyncBuffer{}
 
 			// Run test
-			tc.run(t, buf)
+			n, err := tc.run(buf)
 
 			// Assert
-			require.Equal(t, tc.want, buf.String())
+			require.NoError(t, err, "writing to the buffer never fails")
+			require.Equal(t, tc.wantWritten, n, "number of written bytes")
+			require.Equal(t, tc.want, buf.String(), "content of the buffer")
 		})
 	}
 }
@@ -113,7 +114,4 @@ func TestSyncBuffer_concurrent(t *testing.T) {
 
 	// Assert
 	require.Equal(t, strings.Repeat("x", goroutines*writes), buf.String(), "all writes are in the buffer")
-
-	buf.Reset()
-	require.Empty(t, buf.String(), "buffer is empty after reset")
 }
