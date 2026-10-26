@@ -270,6 +270,7 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 				slog.WarnContext(ctx, "Failed to decode operation event", slog.String("operation", opID), logger.Err(err))
 				continue
 			}
+
 			if opAPI.ID != opID || !opAPI.StatusCode.IsFinal() {
 				continue
 			}

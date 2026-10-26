@@ -22,15 +22,26 @@ import (
 func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name       string
-		clientCall func(ctx context.Context, client incus.Client, target provisioning.Server) (string, error)
+	joinCluster := func(ctx context.Context, client incus.Client, target provisioning.Server, clusterCertPEM string) (string, error) {
+		clusterEndpoint := provisioning.Server{
+			ConnectionURL: "https://192.0.2.1:8443",
+			Certificate:   new(clusterCertPEM),
+		}
 
-		wantClusterCertificate func(clusterCertPEM string) string
+		return "", client.JoinCluster(ctx, target, "token", "192.0.2.2:8443", clusterEndpoint, nil)
+	}
+
+	tests := []struct {
+		name            string
+		clientCall      func(ctx context.Context, client incus.Client, target provisioning.Server, clusterCertPEM string) (string, error)
+		dropEventStream bool
+
+		wantClusterCertificate          func(clusterCertPEM string) string
+		wantConnectionsAfterReplacement int32
 	}{
 		{
 			name: "EnableCluster",
-			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (string, error) {
+			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server, _ string) (string, error) {
 				return client.EnableCluster(ctx, target)
 			},
 
@@ -39,19 +50,23 @@ func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 			},
 		},
 		{
-			name: "JoinCluster",
-			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (string, error) {
-				clusterEndpoint := provisioning.Server{
-					ConnectionURL: "https://192.0.2.1:8443",
-					Certificate:   new("cluster certificate"),
-				}
-
-				return "", client.JoinCluster(ctx, target, "token", "192.0.2.2:8443", clusterEndpoint, nil)
-			},
+			name:       "JoinCluster",
+			clientCall: joinCluster,
 
 			wantClusterCertificate: func(clusterCertPEM string) string {
 				return ""
 			},
+		},
+		{
+			name:            "JoinCluster - recovered after lost event listener",
+			clientCall:      joinCluster,
+			dropEventStream: true,
+
+			wantClusterCertificate: func(clusterCertPEM string) string {
+				return ""
+			},
+			// Only the recovery connects anew, its first attempt with the cluster certificate succeeds.
+			wantConnectionsAfterReplacement: 1,
 		},
 	}
 
@@ -85,7 +100,13 @@ func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 						Metadata: mustJSONMarshal(t, incusapi.Operation{ID: "op-id", StatusCode: incusapi.Running}),
 					}))
 
-					sendEvents(t, <-eventStreams, []string{
+					eventStream := <-eventStreams
+					if tc.dropEventStream {
+						_ = eventStream.Close()
+						return
+					}
+
+					sendEvents(t, eventStream, []string{
 						string(mustJSONMarshal(t, incusapi.Event{
 							Type: incusapi.EventTypeOperation,
 							Metadata: mustJSONMarshal(t, incusapi.Operation{
@@ -95,6 +116,12 @@ func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 							}),
 						})),
 					})
+
+				case "GET /1.0/operations/op-id/wait":
+					_, _ = w.Write(mustJSONMarshal(t, incusapi.Response{
+						Type:     incusapi.SyncResponse,
+						Metadata: mustJSONMarshal(t, incusapi.Operation{ID: "op-id", StatusCode: incusapi.Success}),
+					}))
 
 				default:
 					t.Errorf("Unexpected request %s %s", r.Method, r.URL.String())
@@ -140,12 +167,12 @@ func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 			target.ClusterCertificate = nil
 
 			// Run test
-			gotClusterCertificate, err := tc.clientCall(t.Context(), client, target)
+			gotClusterCertificate, err := tc.clientCall(t.Context(), client, target, string(clusterCertPEM))
 
 			// Assert
 			require.NoError(t, err)
 			require.Equal(t, tc.wantClusterCertificate(string(clusterCertPEM)), gotClusterCertificate)
-			require.Zero(t, connectionsAfterReplacement.Load(), "new connections fail the verification against the pinned server certificate")
+			require.Equal(t, tc.wantConnectionsAfterReplacement, connectionsAfterReplacement.Load(), "new connections after the certificate replacement")
 		})
 	}
 }
