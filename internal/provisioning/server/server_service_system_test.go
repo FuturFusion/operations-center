@@ -17,8 +17,11 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -872,6 +875,79 @@ func TestServerService_UpdateSystemUpdate(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func TestServerService_UpdateSystemUpdate_background_context(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	logBuf := &log.SyncBuffer{}
+	ctx, cancel := context.WithCancel(logger.ContextWithTestLogger(t, logBuf, false, false))
+
+	release := make(chan struct{})
+	var backgroundCtxErr error
+
+	repo := &repoMock.ServerRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			return &provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				ConnectionURL: "http://one/",
+				Certificate:   new(testCertificate),
+				Status:        api.ServerStatusReady,
+			}, nil
+		},
+	}
+
+	client := &adapterMock.ServerClientPortMock{
+		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error {
+			return nil
+		},
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			<-release
+			backgroundCtxErr = ctx.Err()
+
+			return nil
+		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+			return api.HardwareData{}, boom.Error // Stop the server poll early, its result does not matter.
+		},
+	}
+
+	channelSvc := &svcMock.ChannelServiceMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+			return &provisioning.Channel{}, nil
+		},
+	}
+
+	updateSvc := &svcMock.UpdateServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+			return provisioning.Updates{}, nil
+		},
+	}
+
+	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+
+	// Run test
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		return serverSvc.UpdateSystemUpdate(ctx, "one", incusosapi.SystemUpdate{
+			Config: incusosapi.SystemUpdateConfig{
+				Channel: "stable",
+			},
+		})
+	})
+
+	cancel()
+	close(release)
+	serverSvc.WaitBackgroundTasks()
+
+	// Assert
+	require.NoError(t, err)
+	require.NoError(t, backgroundCtxErr, "the background task does not inherit the cancellation of the caller")
+	log.NotContains("is called inside of a DB transaction")(t, logBuf)
 }
 
 func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
