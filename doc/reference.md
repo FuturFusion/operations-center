@@ -11,6 +11,7 @@ Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
 Inventory </reference/inventory>
 Metrics </reference/metrics>
+High availability </reference/high-availability>
 Server </reference/server>
 Settings </reference/settings>
 Token </reference/token>
