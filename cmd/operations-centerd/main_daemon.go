@@ -132,7 +132,8 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	slog.InfoContext(logCtx, "Shutting down")
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Cluster member role and task handover happens during this timeout.
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
 	stopErr := d.Stop(shutdownCtx)

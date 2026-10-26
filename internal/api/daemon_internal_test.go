@@ -98,72 +98,52 @@ func Test_validateServerCertificate(t *testing.T) {
 	}
 }
 
-func TestDelayFirstCall(t *testing.T) {
+func TestFirstRunDelay(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name  string
-		delay time.Duration
-		ctx   func(t *testing.T) context.Context
+	t.Run("first call waits for the delay", func(t *testing.T) {
+		t.Parallel()
 
-		wantErr      error
-		wantFirstMin time.Duration
-		wantFirstMax time.Duration
-	}{
-		{
-			name:  "first call waits for the delay",
-			delay: 200 * time.Millisecond,
-			ctx: func(t *testing.T) context.Context {
-				t.Helper()
+		prepared := 0
+		delay := firstRunDelay(func(context.Context) { prepared++ }, 200*time.Millisecond)
 
-				return context.Background()
-			},
+		start := time.Now()
+		require.True(t, delay(context.Background()))
+		require.GreaterOrEqual(t, time.Since(start), 200*time.Millisecond)
 
-			wantFirstMin: 200 * time.Millisecond,
-			wantFirstMax: 10 * time.Second,
-		},
-		{
-			name:  "done context ends the wait",
-			delay: time.Hour,
-			ctx: func(t *testing.T) context.Context {
-				t.Helper()
+		start = time.Now()
+		require.True(t, delay(context.Background()))
+		require.Less(t, time.Since(start), 100*time.Millisecond, "expect the second call not to wait")
+		require.Equal(t, 1, prepared)
+	})
 
-				ctx, cancel := context.WithCancel(context.Background())
-				cancel()
+	t.Run("done context ends the wait, which the next call repeats", func(t *testing.T) {
+		t.Parallel()
 
-				return ctx
-			},
+		prepared := 0
+		delay := firstRunDelay(func(context.Context) { prepared++ }, 200*time.Millisecond)
 
-			wantErr:      context.Canceled,
-			wantFirstMin: 0,
-			wantFirstMax: 100 * time.Millisecond,
-		},
-	}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+		start := time.Now()
+		require.False(t, delay(ctx))
+		require.Less(t, time.Since(start), 100*time.Millisecond)
 
-			// Setup
-			ctx := tc.ctx(t)
-			delay := delayFirstCall(tc.delay)
+		// A task started again, e.g. on a new cluster leader, waits again.
+		start = time.Now()
+		require.True(t, delay(context.Background()))
+		require.GreaterOrEqual(t, time.Since(start), 200*time.Millisecond)
+		require.Equal(t, 1, prepared)
+	})
 
-			// Run test
-			start := time.Now()
-			errFirst := delay(ctx)
-			firstElapsed := time.Since(start)
+	t.Run("no delay does not wait", func(t *testing.T) {
+		t.Parallel()
 
-			start = time.Now()
-			errSecond := delay(ctx)
-			secondElapsed := time.Since(start)
+		delay := firstRunDelay(nil, 0)
 
-			// Assert
-			require.ErrorIs(t, errFirst, tc.wantErr)
-			require.GreaterOrEqual(t, firstElapsed, tc.wantFirstMin, "expect the first call to wait for at least %v", tc.wantFirstMin)
-			require.Less(t, firstElapsed, tc.wantFirstMax, "expect the first call to return within %v", tc.wantFirstMax)
-
-			require.ErrorIs(t, errSecond, tc.wantErr)
-			require.Less(t, secondElapsed, 100*time.Millisecond, "expect the second call not to wait")
-		})
-	}
+		start := time.Now()
+		require.True(t, delay(context.Background()))
+		require.Less(t, time.Since(start), 100*time.Millisecond)
+	})
 }

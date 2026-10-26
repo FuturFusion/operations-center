@@ -86,6 +86,8 @@ components:
     in:
       - cmd/operations-centerd
       - internal/api/**
+      - internal/cluster
+      - internal/cluster/api
       - ui/**
       - internal/security/authn/**
       - internal/security/authz/**
@@ -116,6 +118,7 @@ components:
       - internal/*/adapter/**
       - internal/*/repo/**
       - internal/sql/sqlite/**
+      - internal/sql/cowsql/**
       - internal/sql/dbschema
       - internal/sql/patches
       - internal/*/middleware/**
@@ -142,6 +145,8 @@ deps:
       - util
       - service
       - infra
+      # The daemon forwards requests to the other cluster members through the client.
+      - client
 
   daemon_shared:
     mayDependOn:

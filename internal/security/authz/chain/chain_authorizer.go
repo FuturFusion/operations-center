@@ -19,10 +19,14 @@ type Chain struct {
 	authorizers []authz.Authorizer
 }
 
-func New(authorizers ...authz.Authorizer) Chain {
-	return Chain{
+func New(authorizers ...authz.Authorizer) *Chain {
+	return &Chain{
 		authorizers: authorizers,
 	}
+}
+
+func (c *Chain) Add(authorizers ...authz.Authorizer) {
+	c.authorizers = append(c.authorizers, authorizers...)
 }
 
 func (c Chain) CheckPermission(ctx context.Context, details *authz.RequestDetails, object authz.Object, entitlement authz.Entitlement) error {

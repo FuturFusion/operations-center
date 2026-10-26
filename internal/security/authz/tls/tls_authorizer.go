@@ -11,12 +11,12 @@ import (
 
 // TLS represents a TLS authorizer.
 type TLS struct {
-	certificateFingerprints []string
+	certificateFingerprints []func() []string
 }
 
 var _ authz.Authorizer = TLS{}
 
-func New(ctx context.Context, certificateFingerprints []string) TLS {
+func New(ctx context.Context, certificateFingerprints ...func() []string) TLS {
 	return TLS{
 		certificateFingerprints: certificateFingerprints,
 	}
@@ -27,11 +27,13 @@ func (t TLS) CheckPermission(ctx context.Context, details *authz.RequestDetails,
 		return api.StatusErrorf(http.StatusForbidden, "Authentication protocol %q, is not compatible with authorizer", details.Protocol)
 	}
 
-	for _, fingerprint := range t.certificateFingerprints {
-		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
-		if canonicalFingerprint == details.Username {
-			// Authentication via TLS gives full, unrestricted access.
-			return nil
+	for _, fpSet := range t.certificateFingerprints {
+		for _, fingerprint := range fpSet() {
+			canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+			if canonicalFingerprint == details.Username {
+				// Authentication via TLS gives full, unrestricted access.
+				return nil
+			}
 		}
 	}
 

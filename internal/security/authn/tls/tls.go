@@ -16,12 +16,12 @@ import (
 )
 
 type TLS struct {
-	trustedTLSClientCertFingerprints []string
+	trustedTLSClientCertFingerprints []func() []string
 }
 
 var _ authn.Auther = TLS{}
 
-func New(trustedTLSClientCertFingerprints []string) TLS {
+func New(trustedTLSClientCertFingerprints ...func() []string) TLS {
 	return TLS{
 		trustedTLSClientCertFingerprints: trustedTLSClientCertFingerprints,
 	}
@@ -34,9 +34,11 @@ func (t TLS) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, usernam
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := checkTrustState(r.Context(), *cert, t.trustedTLSClientCertFingerprints)
-		if trusted {
-			return true, username, api.AuthenticationMethodTLS, nil
+		for _, fpSet := range t.trustedTLSClientCertFingerprints {
+			trusted, username := checkTrustState(r.Context(), *cert, fpSet())
+			if trusted {
+				return true, username, api.AuthenticationMethodTLS, nil
+			}
 		}
 	}
 

@@ -38,6 +38,8 @@ type OperationsCenterClient struct {
 	unixSocket         string
 	tlsClientCert      tls.Certificate
 	trustedServerCert  *x509.Certificate
+	transportProxy     func(*http.Request) (*url.URL, error)
+	insecureSkipVerify bool
 	oidcTokensFilename *string
 }
 
@@ -60,11 +62,52 @@ func WithClientCertificate(certInfo *incusTLS.CertInfo) Option {
 	}
 }
 
+// WithInsecureSkipVerify disables the verification of the server certificate.
+// The caller has to verify the presented certificate itself.
+func WithInsecureSkipVerify() Option {
+	return func(c *OperationsCenterClient) error {
+		c.insecureSkipVerify = true
+
+		return nil
+	}
+}
+
 // WithTrustedServerCertificate pins the certificate the remote server is
 // expected to present.
 func WithTrustedServerCertificate(trustedServerCert *x509.Certificate) Option {
 	return func(c *OperationsCenterClient) error {
 		c.trustedServerCert = trustedServerCert
+
+		return nil
+	}
+}
+
+// ForwardedIdentity is the identity of the client of a request, which a cluster member passes on when it forwards the request.
+type ForwardedIdentity struct {
+	// Address is the remote address of the client.
+	Address string
+
+	// Username and Protocol identify an authenticated client, both are empty otherwise.
+	Username string
+	Protocol string
+}
+
+// WithForwardedIdentity passes identity on to the server with every request.
+func WithForwardedIdentity(identity ForwardedIdentity) Option {
+	return func(c *OperationsCenterClient) error {
+		c.transportProxy = func(req *http.Request) (*url.URL, error) {
+			if identity.Username != "" {
+				req.Header.Set(api.HeaderForwardedUsername, identity.Username)
+			}
+
+			if identity.Protocol != "" {
+				req.Header.Set(api.HeaderForwardedProtocol, identity.Protocol)
+			}
+
+			req.Header.Set(api.HeaderForwardedAddress, identity.Address)
+
+			return nil, nil
+		}
 
 		return nil
 	}
@@ -89,6 +132,8 @@ func (c OperationsCenterClient) tlsConfig() *tls.Config {
 	if c.trustedServerCert != nil {
 		trustedServerCert := *c.trustedServerCert
 		incusTLS.TLSConfigWithTrustedCert(tlsConfig, &trustedServerCert)
+	} else if c.insecureSkipVerify {
+		tlsConfig.InsecureSkipVerify = true
 	}
 
 	return tlsConfig
@@ -119,6 +164,7 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 
 		// Define the http transport
 		transport := &http.Transport{
+			Proxy:                 c.transportProxy,
 			DialContext:           unixDial,
 			DisableKeepAlives:     true,
 			ExpectContinueTimeout: 30 * time.Second,
@@ -176,7 +222,9 @@ func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string,
 
 	contentType := "application/json"
 
-	var body io.ReadCloser
+	// In memory bodies are passed as *bytes.Reader, so they can be sent again on redirects.
+	// Caller owned readers are wrapped by io.NopCloser, so the transport does not close them.
+	var body io.Reader
 	switch data := content.(type) {
 	case ContentTypeReadCloser:
 		contentType = data.ContentType()
@@ -187,7 +235,7 @@ func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string,
 		body = io.NopCloser(data)
 
 	case []byte:
-		body = io.NopCloser(bytes.NewBuffer(data))
+		body = bytes.NewReader(data)
 
 	case nil:
 		body = http.NoBody
@@ -198,7 +246,7 @@ func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string,
 			return nil, err
 		}
 
-		body = io.NopCloser(bytes.NewBuffer(contentJSON))
+		body = bytes.NewReader(contentJSON)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)

@@ -2,6 +2,7 @@ package acme
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -90,14 +91,14 @@ func ACMEConfigChanged(oldCfg, newCfg system.SecurityACME) bool {
 	return false
 }
 
-// UpdateCertificate updates the certificate.
+// UpdateCertificate requests a new certificate if current is missing, about to expire or does not match the configured domain.
 func UpdateCertificate(
 	ctx context.Context,
 	fsEnv interface {
-		VarDir() string
 		CacheDir() string
 	},
 	cfg system.SecurityACME,
+	current *x509.Certificate,
 	force bool,
 ) (*system.CertificatePost, error) {
 	log := slog.With(slog.String("domain", cfg.Domain), slog.String("ca_url", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
@@ -105,25 +106,14 @@ func UpdateCertificate(
 		return nil, nil
 	}
 
-	// Load the certificate.
-	certInfo, err := tls.KeyPairAndCA(fsEnv.VarDir(), "server", tls.CertServer, true)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load certificate and key file: %w", err)
-	}
-
-	cert, err := certInfo.PublicKeyX509()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse certificate: %w", err)
-	}
-
-	if !force && !tls.CertificateNeedsUpdate(cfg.Domain, cert) {
-		renewalAfter := cert.NotBefore.Add(time.Duration(float64(cert.NotAfter.Sub(cert.NotBefore)) * renewalLifetimeRatio))
-		log.InfoContext(ctx, "Skipping renewal for certificate that is not due for renewal", slog.Time("renewal_after", renewalAfter), slog.Time("not_after", cert.NotAfter))
+	if !force && current != nil && !tls.CertificateNeedsUpdate(cfg.Domain, current) {
+		renewalAfter := current.NotBefore.Add(time.Duration(float64(current.NotAfter.Sub(current.NotBefore)) * renewalLifetimeRatio))
+		log.InfoContext(ctx, "Skipping renewal for certificate that is not due for renewal", slog.Time("renewal_after", renewalAfter), slog.Time("not_after", current.NotAfter))
 		return nil, nil
 	}
 
 	dir := filepath.Join(fsEnv.CacheDir(), "acme")
-	err = os.MkdirAll(dir, 0o755)
+	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create acme account path %q: %w", dir, err)
 	}

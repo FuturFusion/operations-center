@@ -39,13 +39,16 @@ type systemService struct {
 	serverSvc ProvisioningServerService
 	cacheRepo CacheRepo
 
+	// updateClusterCertificate persists the cluster certificate on all members.
+	updateClusterCertificate func(ctx context.Context, certificatePEM string, keyPEM string) error
+
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
 		fsEnv interface {
-			VarDir() string
 			CacheDir() string
 		},
 		cfg system.SecurityACME,
+		current *x509.Certificate,
 		force bool,
 	) (*system.CertificatePost, error)
 }
@@ -53,6 +56,24 @@ type systemService struct {
 var _ SystemService = &systemService{}
 
 type SystemServiceOption func(s *systemService)
+
+// WithClusterCertificateUpdater sets the function persisting the cluster certificate on all cluster members.
+func WithClusterCertificateUpdater(f func(ctx context.Context, certificatePEM string, keyPEM string) error) SystemServiceOption {
+	return func(s *systemService) {
+		s.updateClusterCertificate = f
+	}
+}
+
+// apiCertificateName returns the name of the certificate presented to API
+// clients. When clustered, all members present the cluster certificate and the
+// server certificate is only used for intra-cluster communication.
+func (s *systemService) apiCertificateName() string {
+	if s.env.Clustered() {
+		return "cluster"
+	}
+
+	return "server"
+}
 
 func NewSystemService(
 	env environment,
@@ -76,7 +97,7 @@ func NewSystemService(
 }
 
 func (s *systemService) GetCertificate(_ context.Context) (system.Certificate, error) {
-	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
+	certificateFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".crt")
 
 	certificatePEM, err := os.ReadFile(certificateFile)
 	if err != nil {
@@ -122,8 +143,8 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return err
 	}
 
-	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
-	keyFile := filepath.Join(s.env.VarDir(), config.ServerKeyFilename)
+	certificateFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".crt")
+	keyFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".key")
 
 	currentServerCertificate, err := os.ReadFile(certificateFile)
 	if err != nil {
@@ -162,14 +183,25 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		}
 	})
 
-	err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
-	if err != nil {
-		return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
-	}
+	if s.env.Clustered() {
+		if s.updateClusterCertificate == nil {
+			return errors.New("No cluster certificate updater configured")
+		}
 
-	err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
-	if err != nil {
-		return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
+		err = s.updateClusterCertificate(ctx, certificatePEM, keyPEM)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster certificate: %w", err)
+		}
+	} else {
+		err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
+		if err != nil {
+			return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
+		}
+
+		err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
+		if err != nil {
+			return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
+		}
 	}
 
 	// Restart openfga application, if it is present as secondary application
@@ -259,10 +291,50 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 	}
 }
 
+// PropagateCertificate informs the subsystems and the managed servers about a certificate changed outside of UpdateCertificate.
+func (s *systemService) PropagateCertificate(ctx context.Context) error {
+	certificateFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".crt")
+	keyFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".key")
+
+	certificatePEM, err := os.ReadFile(certificateFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", certificateFile, err)
+	}
+
+	keyPEM, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", keyFile, err)
+	}
+
+	keyPair, err := tls.X509KeyPair(certificatePEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("Failed to validate key pair: %w", err)
+	}
+
+	err = lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, keyPair)
+	if err != nil {
+		return fmt.Errorf("Failed to update certificate: %w", err)
+	}
+
+	s.pushServerCertificateAll(ctx, string(certificatePEM))
+
+	return nil
+}
+
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
+	certInfo, err := incustls.KeyPairAndCA(s.env.VarDir(), s.apiCertificateName(), incustls.CertServer, true)
+	if err != nil {
+		return false, fmt.Errorf("Failed to load certificate and key file: %w", err)
+	}
+
+	current, err := certInfo.PublicKeyX509()
+	if err != nil {
+		return false, fmt.Errorf("Failed to parse certificate: %w", err)
+	}
+
 	cfg := config.GetSecurity().ACME
 
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, force)
+	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, current, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}
