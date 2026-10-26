@@ -3,8 +3,11 @@ package transaction_test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
+	clusterTx "github.com/cowsql/go-cowsql/cluster/db/transaction"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
@@ -25,7 +28,7 @@ func TestForceTx_inStartedTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -84,7 +87,7 @@ func TestForceTx_firstInTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -143,7 +146,7 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -281,6 +284,55 @@ func TestAfterCommit(t *testing.T) {
 			require.Equal(t, tc.wantCalls, calls)
 		})
 	}
+}
+
+// retryingTransactor retries transactions like the transactor of the cluster database.
+type retryingTransactor struct {
+	db clusterTx.DBTX
+}
+
+func (r retryingTransactor) DBTX() clusterTx.DBTX     { return r.db }
+func (r retryingTransactor) MaxRetries() int          { return 3 }
+func (r retryingTransactor) OnTxStart(bool) func()    { return nil }
+func (r retryingTransactor) TxTimeout() time.Duration { return 0 }
+func (r retryingTransactor) EnterExclusive() error    { return nil }
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestAfterCommit_retry(t *testing.T) {
+	db, err := sqlite.Open(t.TempDir())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		transaction.Register(nil)
+
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	transaction.Register(retryingTransactor{db: clusterTx.Enable(db)})
+
+	var calls []string
+	attempt := 0
+
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		attempt++
+
+		err := transaction.AfterCommit(ctx, func() error {
+			calls = append(calls, "attempt "+strconv.Itoa(attempt))
+			return nil
+		})
+		require.NoError(t, err)
+
+		if attempt == 1 {
+			return errors.New("database is locked")
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 2, attempt)
+	require.Equal(t, []string{"attempt 2"}, calls)
 }
 
 func TestIsActive(t *testing.T) {

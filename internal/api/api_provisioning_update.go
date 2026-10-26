@@ -433,35 +433,29 @@ func (u *updateHandler) updatePut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentUpdate, err := u.service.GetByUUID(ctx, UUID)
+		if err != nil {
+			return fmt.Errorf("Failed to get update %q: %w", UUID.String(), err)
 		}
-	}()
 
-	currentUpdate, err := u.service.GetByUUID(ctx, UUID)
+		// Validate ETag
+		err = response.EtagCheck(r, currentUpdate)
+		if err != nil {
+			return err
+		}
+
+		currentUpdate.Channels = update.Channels
+
+		err = u.service.Update(ctx, *currentUpdate)
+		if err != nil {
+			return fmt.Errorf("Failed updating update %q: %w", UUID.String(), err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get update %q: %w", UUID.String(), err))
-	}
-
-	// Validate ETag
-	err = response.EtagCheck(r, currentUpdate)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
-	currentUpdate.Channels = update.Channels
-
-	err = u.service.Update(ctx, *currentUpdate)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating update %q: %w", UUID.String(), err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse

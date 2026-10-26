@@ -395,12 +395,12 @@ func newPollTestServerRepo(t *testing.T) provisioning.ServerRepo {
 		require.NoError(t, db.Close())
 	})
 
-	_, err = dbschema.Ensure(t.Context(), db, tmpDir)
+	_, err = dbschema.Ensure(t.Context(), db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
 
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	return sqlite.NewServer(tx)

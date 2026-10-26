@@ -178,14 +178,14 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	clusterStmts, err := clusterEntities.PrepareStmts(tx, false)
+	clusterStmts, err := clusterEntities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
-	artifactStmts, err := entities.PrepareStmts(tx, false)
+	artifactStmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	ctx = clusterEntities.WithPreparedStmts(ctx, clusterStmts)

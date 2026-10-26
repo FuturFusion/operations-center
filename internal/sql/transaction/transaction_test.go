@@ -26,7 +26,7 @@ func TestRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -78,7 +78,7 @@ func TestCommit(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -139,7 +139,7 @@ func TestTransactionInTransaction(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -192,7 +192,7 @@ func TestDo_commit(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -223,7 +223,7 @@ func TestDo_rollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)

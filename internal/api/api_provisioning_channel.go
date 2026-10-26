@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -247,35 +248,29 @@ func (u *channelsHandler) channelPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentChannel, err := u.service.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get channel %q: %w", name, err)
 		}
-	}()
 
-	currentChannel, err := u.service.GetByName(ctx, name)
+		// Validate ETag
+		err = response.EtagCheck(r, currentChannel)
+		if err != nil {
+			return err
+		}
+
+		currentChannel.Description = channel.Description
+
+		err = u.service.Update(ctx, *currentChannel)
+		if err != nil {
+			return fmt.Errorf("Failed updating channel %q: %w", name, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get channel %q: %w", name, err))
-	}
-
-	// Validate ETag
-	err = response.EtagCheck(r, currentChannel)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
-	currentChannel.Description = channel.Description
-
-	err = u.service.Update(ctx, *currentChannel)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating channel %q: %w", name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)

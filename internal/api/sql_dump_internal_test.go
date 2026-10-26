@@ -75,7 +75,7 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 				require.NoError(t, err)
 			})
 
-			_, err = dbschema.Ensure(ctx, db, tmpDir)
+			_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 			require.NoError(t, err)
 
 			tc.setup(t, db)

@@ -135,7 +135,7 @@ func daemonSetup(t *testing.T) testDaemon {
 		socketClient:           socketClient,
 		authorizedHTTPClient:   authorizedHTTPClient,
 		unauthorizedHTTPClient: unauthorizedHTTPClient,
-		db:                     db,
+		db:                     db.DB,
 		varDir:                 tmpDir,
 	}
 }

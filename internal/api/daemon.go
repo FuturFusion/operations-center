@@ -462,12 +462,15 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	}
 
 	// TODO: should Ensure take the provided context? If not, document the reason.
-	current, err := dbschema.Ensure(context.TODO(), db, d.env.VarDir())
+	current, err := dbschema.Ensure(context.TODO(), db.DB, d.env.VarDir())
 	if err != nil {
 		return nil, err
 	}
 
-	dbWithTransaction := transaction.Enable(db)
+	dbWithTransaction, ok := transaction.Enable(db).(transaction.Preparer)
+	if !ok {
+		return nil, fmt.Errorf("Unexpected transaction container %T", db)
+	}
 
 	imageEntities.PreparedStmts, err = imageEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
@@ -482,7 +485,7 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	// If we start from scratch, mark all patches as applied.
 	if current == 0 {
 		for _, patchName := range patchesGetNames() {
-			err := markPatchAsApplied(ctx, db, patchName)
+			err := markPatchAsApplied(ctx, db.DB, patchName)
 			if err != nil {
 				return nil, err
 			}

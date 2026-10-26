@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -742,33 +743,27 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentServer, err := s.service.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q: %w", name, err)
 		}
-	}()
 
-	currentServer, err := s.service.GetByName(ctx, name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentServer)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentServer)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		err = s.service.Rename(ctx, name, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed renaming server %q: %w", name, err)
+		}
 
-	err = s.service.Rename(ctx, name, server.Name)
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed renaming server %q: %w", name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
