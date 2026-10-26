@@ -4,6 +4,8 @@ import (
 	"crypto/x509"
 	"encoding/json"
 
+	incustls "github.com/lxc/incus/v7/shared/tls"
+
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 )
 
@@ -61,4 +63,12 @@ func (c Certificate) MarshalJSON() ([]byte, error) {
 
 func (c Certificate) String() string {
 	return certificate.X509EncodeToPEM(c.Certificate)
+}
+
+func (c Certificate) Fingerprint() string {
+	if c.Certificate == nil {
+		return ""
+	}
+
+	return incustls.CertFingerprint(c.Certificate)
 }

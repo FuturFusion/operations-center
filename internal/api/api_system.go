@@ -171,7 +171,7 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	    description: System network configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/NetworkPut"
+//	      $ref: "#/definitions/NetworkFullPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -182,7 +182,7 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) networkPut(r *http.Request) response.Response {
-	var networkConfig apisystem.NetworkPut
+	var networkConfig apisystem.NetworkFullPut
 
 	err := json.NewDecoder(r.Body).Decode(&networkConfig)
 	if err != nil {
@@ -303,7 +303,7 @@ func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 //	    description: System settings configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SettingsPut"
+//	      $ref: "#/definitions/SettingsFullPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -314,7 +314,7 @@ func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) settingsPut(r *http.Request) response.Response {
-	var settingsConfig apisystem.SettingsPut
+	var settingsConfig apisystem.SettingsFullPut
 
 	err := json.NewDecoder(r.Body).Decode(&settingsConfig)
 	if err != nil {

@@ -18,50 +18,70 @@ import (
 
 // validate performs the validation the config package owns itself. It is a pure
 // function: it reads no global state, takes no lock and performs no I/O.
-func validate(oldCfg, newCfg config, isIncusOS bool) error {
+func validate(oldLocalCfg, newLocalCfg localConfig, isIncusOS bool, clustered bool) error {
 	// Network configuration
-	err := validateNetworkConfig(oldCfg.Network, newCfg.Network, isIncusOS)
+	err := validateNetworkConfig(oldLocalCfg.Network, newLocalCfg.Network, isIncusOS, clustered)
 	if err != nil {
 		return err
 	}
 
+	// Settings configuration
+	err = logger.ValidateLevel(newLocalCfg.Settings.LogLevel)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.log_level" property is invalid: %v`, err)
+	}
+
+	err = logger.ValidateComponentLevels(newLocalCfg.Settings.LogLevels)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
+	}
+
+	err = metrics.ValidateComponents(newLocalCfg.Settings.MetricsComponents)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "settings.metrics_components" property is invalid: %v`, err)
+	}
+
+	return nil
+}
+
+func validateShared(oldGlobalCfg, newGlobalCfg system.SharedConfig, isIncusOS bool) error {
 	// Updates configuration
-	err = validateURI(newCfg.Updates.Source, false, false, true)
+	err := validateURI(newGlobalCfg.Updates.Source, false, false, true)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "updates.source" property is expected to be a valid source URL: %v`, err)
 	}
 
-	if newCfg.Updates.SignatureVerificationRootCA == "" {
+	if newGlobalCfg.Updates.SignatureVerificationRootCA == "" {
 		return domain.NewValidationErrf(`Invalid config, "updates.signature_verification_root_ca" can not be empty`)
 	}
 
-	_, err = certificate.Decode([]byte(newCfg.Updates.SignatureVerificationRootCA))
+	_, err = certificate.Decode([]byte(newGlobalCfg.Updates.SignatureVerificationRootCA))
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed: %v`, err)
 	}
 
 	// Security configuration
-	err = validateURI(newCfg.Security.OIDC.Issuer, false, false, true)
+	err = validateURI(newGlobalCfg.Security.OIDC.Issuer, false, false, true)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "security.oidc.issuer" property is expected to be a valid issuer URL: %v`, err)
 	}
 
-	err = validateURI(newCfg.Security.OpenFGA.APIURL, false, false, true)
+	err = validateURI(newGlobalCfg.Security.OpenFGA.APIURL, false, false, true)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 	}
 
-	err = acme.ValidateACMEConfig(newCfg.Security.ACME)
+	err = acme.ValidateACMEConfig(newGlobalCfg.Security.ACME)
 	if err != nil {
 		return err
 	}
 
-	_, err = securitytls.CertificateFingerprints(newCfg.Security.TrustedTLSClientCertificates)
+	_, err = securitytls.CertificateFingerprints(newGlobalCfg.Security.TrustedTLSClientCertificates)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_certificates" contains an invalid certificate: %v`, err)
 	}
 
-	for _, p := range newCfg.Security.TrustedHTTPSProxies {
+	for _, p := range newGlobalCfg.Security.TrustedHTTPSProxies {
 		if net.ParseIP(p) == nil {
 			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
 		}
@@ -70,25 +90,9 @@ func validate(oldCfg, newCfg config, isIncusOS bool) error {
 	// Updating the configuration requires at least one certificate fingerprint or
 	// trusted client certificate to be present in order to have a fallback
 	// authentication method.
-	hasNoTrustedTLSClients := len(newCfg.Security.TrustedTLSClientCertFingerprints) == 0 && len(newCfg.Security.TrustedTLSClientCertificates) == 0
-	if isIncusOS && isTrustedTLSClientsChanged(oldCfg, newCfg) && hasNoTrustedTLSClients {
+	hasNoTrustedTLSClients := len(newGlobalCfg.Security.TrustedTLSClientCertFingerprints) == 0 && len(newGlobalCfg.Security.TrustedTLSClientCertificates) == 0
+	if isIncusOS && isTrustedTLSClientsChanged(oldGlobalCfg, newGlobalCfg) && hasNoTrustedTLSClients {
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" and "security.trusted_tls_client_certificates" properties can not both be empty when running on IncusOS`)
-	}
-
-	// Settings configuration
-	err = logger.ValidateLevel(newCfg.Settings.LogLevel)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "settings.log_level" property is invalid: %v`, err)
-	}
-
-	err = logger.ValidateComponentLevels(newCfg.Settings.LogLevels)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
-	}
-
-	err = metrics.ValidateComponents(newCfg.Settings.MetricsComponents)
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid config, "settings.metrics_components" property is invalid: %v`, err)
 	}
 
 	return nil
@@ -97,19 +101,77 @@ func validate(oldCfg, newCfg config, isIncusOS bool) error {
 // ValidateNetworkConfig validates a candidate network configuration against the
 // currently committed one, without changing anything.
 func ValidateNetworkConfig(cfg system.Network) error {
-	s := defaultStore.Load()
+	local := defaultStore.Load()
 
-	return validateNetworkConfig(s.get().Network, cfg, s.env.IsIncusOS())
+	return validateNetworkConfig(local.Get().Network, cfg, local.env.IsIncusOS(), local.env.Clustered())
 }
 
-func validateNetworkConfig(oldCfg, newCfg system.Network, isIncusOS bool) error {
-	isRestServerAddressChanged := oldCfg.RestServerAddress != newCfg.RestServerAddress
-	if isIncusOS && isRestServerAddressChanged && newCfg.RestServerAddress == "" {
+func ValidateSharedNetworkConfig(localCfg system.Network, sharedCfg system.NetworkGlobal) error {
+	local := defaultStore.Load()
+	shared := sharedStore.Load()
+	return validateSharedNetworkConfig(localCfg, shared.Get().Network, sharedCfg, local.env.Clustered())
+}
+
+func ValidateClusterAddress(address string) error {
+	if address == "" {
+		return domain.NewValidationErrf("Cluster address can not be empty")
+	}
+
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+
+	if port == "" {
+		return domain.NewValidationErrf("Cluster address must specify a port")
+	}
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 0xffff {
+		return domain.NewValidationErrf("Cluster address port %q must be a number between 1 and 65535", port)
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return domain.NewValidationErrf("Cluster address must specify an IP address")
+	}
+
+	if !ip.IsGlobalUnicast() {
+		return domain.NewValidationErrf("Cluster address IP must be a global unicast IP")
+	}
+
+	return nil
+}
+
+func validateNetworkConfigClusterAddress(oldCfg, newCfg system.Network, clustered bool) error {
+	isClusterAddressChanged := oldCfg.ClusterAddress != "" && oldCfg.ClusterAddress != newCfg.ClusterAddress
+	if isClusterAddressChanged && clustered {
+		return domain.NewValidationErrf(`Invalid config, "network.cluster_address" is required for cluster connectivity and can not be changed`)
+	}
+
+	if newCfg.ClusterAddress != "" {
+		err := ValidateClusterAddress(newCfg.ClusterAddress)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, "network.cluster_address" is invalid: %v`, err)
+		}
+	}
+
+	return nil
+}
+
+func validateNetworkConfig(oldLocalCfg, newLocalCfg system.Network, isIncusOS bool, clustered bool) error {
+	isRestServerAddressChanged := oldLocalCfg.RestServerAddress != newLocalCfg.RestServerAddress
+	if isIncusOS && isRestServerAddressChanged && newLocalCfg.RestServerAddress == "" {
 		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
 	}
 
-	if newCfg.RestServerAddress != "" {
-		host, portStr, err := net.SplitHostPort(newCfg.RestServerAddress)
+	err := validateNetworkConfigClusterAddress(oldLocalCfg, newLocalCfg, clustered)
+	if err != nil {
+		return err
+	}
+
+	if newLocalCfg.RestServerAddress != "" {
+		host, portStr, err := net.SplitHostPort(newLocalCfg.RestServerAddress)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" is not a valid address: %v`, err)
 		}
@@ -133,12 +195,16 @@ func validateNetworkConfig(oldCfg, newCfg system.Network, isIncusOS bool) error 
 		}
 	}
 
-	if (newCfg.RestServerAddress != "" && newCfg.OperationsCenterAddress == "") ||
-		(newCfg.RestServerAddress == "" && newCfg.OperationsCenterAddress != "") {
-		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+	return nil
+}
+
+func validateSharedNetworkConfig(currentLocalCfg system.Network, _, newGlobalCfg system.NetworkGlobal, clustered bool) error {
+	// Listening on the network requires the address Operations Center is reached by.
+	if newGlobalCfg.OperationsCenterAddress == "" && (clustered || currentLocalCfg.RestServerAddress != "") {
+		return domain.NewValidationErrf(`Invalid config, "network.address" must be set if Operations Center is clustered or "network.rest_server_address" is set`)
 	}
 
-	err := validateURI(newCfg.OperationsCenterAddress, false, false, true)
+	err := validateURI(newGlobalCfg.OperationsCenterAddress, false, false, true)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
 	}

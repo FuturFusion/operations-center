@@ -31,6 +31,7 @@ type environment interface {
 	VarDir() string
 	CacheDir() string
 	IsIncusOS() bool
+	Clustered() bool
 }
 
 type systemService struct {
@@ -284,20 +285,28 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 	return true, nil
 }
 
-func (s *systemService) GetNetworkConfig(_ context.Context) system.Network {
-	return config.GetNetwork()
+func (s *systemService) GetNetworkConfig(_ context.Context) system.NetworkFull {
+	return system.NetworkFull{
+		Network:       config.GetLocalNetwork(),
+		NetworkGlobal: config.GetNetwork(),
+	}
 }
 
-func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig system.NetworkPut) error {
+func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig system.NetworkFullPut) error {
 	// Make sure the new config is valid.
-	newConfig, err := config.NetworkSetDefaults(newConfig)
+	newLocalCfg, err := config.NetworkSetDefaults(newConfig.NetworkPut)
 	if err != nil {
 		return err
 	}
 
-	err = config.ValidateNetworkConfig(system.Network{
-		NetworkPut: newConfig,
-	})
+	localCfg := system.Network{NetworkPut: newLocalCfg}
+	err = config.ValidateNetworkConfig(localCfg)
+	if err != nil {
+		return err
+	}
+
+	sharedCfg := system.NetworkGlobal{NetworkGlobalPut: newConfig.NetworkGlobalPut}
+	err = config.ValidateSharedNetworkConfig(localCfg, sharedCfg)
 	if err != nil {
 		return err
 	}
@@ -309,9 +318,14 @@ func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig syste
 		}
 	}
 
-	err = config.UpdateNetwork(ctx, newConfig)
+	err = config.UpdateLocalNetwork(ctx, newLocalCfg)
 	if err != nil {
-		return fmt.Errorf("Failed to update network configuration: %w", err)
+		return fmt.Errorf("Failed to update local network configuration: %w", err)
+	}
+
+	err = config.UpdateNetwork(ctx, newConfig.NetworkGlobalPut)
+	if err != nil {
+		return fmt.Errorf("Failed to update shared network configuration: %w", err)
 	}
 
 	return nil
@@ -381,14 +395,22 @@ func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig syst
 	return nil
 }
 
-func (s *systemService) GetSettingsConfig(_ context.Context) system.Settings {
-	return config.GetSettings()
+func (s *systemService) GetSettingsConfig(_ context.Context) system.SettingsFull {
+	return system.SettingsFull{
+		Settings:       config.GetLocalSettings(),
+		SettingsGlobal: config.GetSettings(),
+	}
 }
 
-func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig system.SettingsPut) error {
-	err := config.UpdateSettings(ctx, newConfig)
+func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig system.SettingsFullPut) error {
+	err := config.UpdateLocalSettings(ctx, newConfig.SettingsPut)
 	if err != nil {
-		return fmt.Errorf("Failed to update security configuration: %w", err)
+		return fmt.Errorf("Failed to update local settings configuration: %w", err)
+	}
+
+	err = config.UpdateSettings(ctx, newConfig.SettingsGlobalPut)
+	if err != nil {
+		return fmt.Errorf("Failed to update shared settings configuration: %w", err)
 	}
 
 	return nil

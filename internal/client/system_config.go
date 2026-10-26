@@ -8,22 +8,22 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (system.Network, error) {
+func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (system.NetworkFull, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, "/system/network", nil, nil)
 	if err != nil {
-		return system.Network{}, err
+		return system.NetworkFull{}, err
 	}
 
-	cfg := system.Network{}
+	cfg := system.NetworkFull{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Network{}, err
+		return system.NetworkFull{}, err
 	}
 
 	return cfg, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg system.NetworkPut) error {
+func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg system.NetworkFullPut) error {
 	_, err := c.DoRequest(ctx, http.MethodPut, "/system/network", nil, cfg)
 	if err != nil {
 		return err
@@ -56,22 +56,22 @@ func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (system.Settings, error) {
+func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (system.SettingsFull, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, "/system/settings", nil, nil)
 	if err != nil {
-		return system.Settings{}, err
+		return system.SettingsFull{}, err
 	}
 
-	cfg := system.Settings{}
+	cfg := system.SettingsFull{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Settings{}, err
+		return system.SettingsFull{}, err
 	}
 
 	return cfg, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg system.SettingsPut) error {
+func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg system.SettingsFullPut) error {
 	_, err := c.DoRequest(ctx, http.MethodPut, "/system/settings", nil, cfg)
 	if err != nil {
 		return err

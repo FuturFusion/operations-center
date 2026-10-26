@@ -156,7 +156,7 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		newdata := system.NetworkPut{}
+		newdata := system.NetworkFullPut{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
@@ -190,7 +190,7 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	}
 
 	for {
-		newdata := system.NetworkPut{}
+		newdata := system.NetworkFullPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
 			err = c.ocClient.UpdateSystemNetworkConfig(cmd.Context(), newdata)

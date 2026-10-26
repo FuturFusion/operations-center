@@ -34,6 +34,7 @@ type env interface {
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
+	Clustered() bool
 }
 
 type cmdDaemon struct {
@@ -79,18 +80,18 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if !cmd.Flag("verbose").Changed && !cmd.Flag("debug").Changed {
-		err = logger.SetLogLevel(logger.ParseLevel(config.GetSettings().LogLevel))
+		err = logger.SetLogLevel(logger.ParseLevel(config.GetLocalSettings().LogLevel))
 		if err != nil {
-			return fmt.Errorf("Failed to set log level to %q from config: %w", config.GetSettings().LogLevel, err)
+			return fmt.Errorf("Failed to set log level to %q from config: %w", config.GetLocalSettings().LogLevel, err)
 		}
 	}
 
-	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetSettings().LogLevels))
+	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetLocalSettings().LogLevels))
 	if err != nil {
 		return fmt.Errorf("Failed to set per component log levels from config: %w", err)
 	}
 
-	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
+	metrics.Apply(config.GetLocalSettings().MetricsEnabled, config.GetLocalSettings().MetricsComponents)
 
 	rootCtx, stop := signal.NotifyContext(
 		context.Background(),

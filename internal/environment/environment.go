@@ -42,6 +42,7 @@ type Environment interface {
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
+	Clustered() bool
 }
 
 type httpClient interface {
@@ -101,6 +102,10 @@ func New(applicationName, applicationEnvPrefix string) Environment {
 // It respects <APP_PREFIX>_DIR environment variable.
 func (e environment) LogDir() string {
 	return e.pathWithEnvOverride(logPathDefaultPrefix, logPathSuffix)
+}
+
+func (e environment) Clustered() bool {
+	return file.PathExists(filepath.Join(e.VarDir(), "cluster.crt"))
 }
 
 // RunDir returns the path to the runtime directory of the application (e.g. /run/<application-name>).

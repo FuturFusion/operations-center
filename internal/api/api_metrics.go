@@ -36,7 +36,7 @@ func registerMetricsHandler(router Router, authorizer *authz.Authorizer, gathere
 
 func assertMetricsEnabled(next response.HandlerFunc) response.HandlerFunc {
 	return func(r *http.Request) response.Response {
-		if !config.GetSettings().MetricsEnabled {
+		if !config.GetLocalSettings().MetricsEnabled {
 			return response.SmartError(domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The metrics endpoint is disabled").
 				WithHintf(`Enable it with the "metrics_enabled" system setting.`))
 		}

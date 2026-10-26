@@ -12,14 +12,14 @@ type SystemService interface {
 	UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error)
 
-	GetNetworkConfig(ctx context.Context) system.Network
-	UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) error
+	GetNetworkConfig(ctx context.Context) system.NetworkFull
+	UpdateNetworkConfig(ctx context.Context, cfg system.NetworkFullPut) error
 
 	GetSecurityConfig(ctx context.Context) system.Security
 	UpdateSecurityConfig(ctx context.Context, cfg system.SecurityPut) error
 
-	GetSettingsConfig(ctx context.Context) system.Settings
-	UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) error
+	GetSettingsConfig(ctx context.Context) system.SettingsFull
+	UpdateSettingsConfig(ctx context.Context, cfg system.SettingsFullPut) error
 
 	GetUpdatesConfig(ctx context.Context) system.Updates
 	UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error

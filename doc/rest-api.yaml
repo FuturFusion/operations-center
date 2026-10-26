@@ -3459,6 +3459,60 @@ definitions:
                 x-go-name: TargetPort
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
+    NetworkFull:
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        title: NetworkFull represents the network config, the part of this member and the part shared by all cluster members.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkFullPut:
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        title: NetworkFullPut represents the user-configurable network config, the part of this member and the part shared by all cluster members.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkGlobal:
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+        title: NetworkGlobal represents the system's network configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkGlobalPut:
+        description: |-
+            NetworkGlobalPut represents the fields available for an update of the
+            system's network configuration.
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     NetworkIntegration:
         properties:
             config:
@@ -3646,10 +3700,10 @@ definitions:
             NetworkPut represents the fields available for an update of the
             system's network configuration.
         properties:
-            address:
-                description: Address of Operations Center which is used by managed servers to connect.
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
                 type: string
-                x-go-name: OperationsCenterAddress
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -6326,11 +6380,117 @@ definitions:
                 example: false
                 type: boolean
                 x-go-name: PprofEnabled
+        title: Settings represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsFull:
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
             server_registration_scriptlet:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
                 x-go-name: ServerRegistrationScriptlet
-        title: Settings represents global system settings.
+        title: SettingsFull represents the system settings, the part of this member and the part shared by all cluster members.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsFullPut:
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
+        title: SettingsFullPut represents the user-configurable system settings, the part of this member and the part shared by all cluster members.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsGlobal:
+        properties:
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
+        title: SettingsGlobal represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsGlobalPut:
+        description: |-
+            SettingsGlobalPut represents the fields available for an update of the global
+            system settings.
+        properties:
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SettingsPut:
@@ -6374,10 +6534,6 @@ definitions:
                 example: false
                 type: boolean
                 x-go-name: PprofEnabled
-            server_registration_scriptlet:
-                description: ServerRegistrationScriptlet hold the server registration scriptlet.
-                type: string
-                x-go-name: ServerRegistrationScriptlet
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SharedAPISystemNetwork:
@@ -6944,12 +7100,32 @@ definitions:
                 x-go-name: Key
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemCluster:
+        properties:
+            offline_threshold_seconds:
+                format: int64
+                type: integer
+                x-go-name: OfflineThresholdSeconds
+        title: Cluster represents shared cluster membership configuration.
+        type: object
+        x-go-name: Cluster
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SystemClusterPut:
+        properties:
+            offline_threshold_seconds:
+                format: int64
+                type: integer
+                x-go-name: OfflineThresholdSeconds
+        title: ClusterPut represents user configurable cluster membership configuration.
+        type: object
+        x-go-name: ClusterPut
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetwork:
         properties:
-            address:
-                description: Address of Operations Center which is used by managed servers to connect.
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
                 type: string
-                x-go-name: OperationsCenterAddress
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -14456,7 +14632,7 @@ paths:
                   name: system_network_put
                   required: true
                   schema:
-                    $ref: '#/definitions/NetworkPut'
+                    $ref: '#/definitions/NetworkFullPut'
             produces:
                 - application/json
             responses:
@@ -14544,7 +14720,7 @@ paths:
                   name: system_settings_put
                   required: true
                   schema:
-                    $ref: '#/definitions/SettingsPut'
+                    $ref: '#/definitions/SettingsFullPut'
             produces:
                 - application/json
             responses:
@@ -16120,7 +16296,7 @@ responses:
         schema:
             properties:
                 metadata:
-                    $ref: '#/definitions/SystemNetwork'
+                    $ref: '#/definitions/NetworkFull'
                 status:
                     example: Success
                     type: string
@@ -16160,7 +16336,7 @@ responses:
         schema:
             properties:
                 metadata:
-                    $ref: '#/definitions/Settings'
+                    $ref: '#/definitions/SettingsFull'
                 status:
                     example: Success
                     type: string

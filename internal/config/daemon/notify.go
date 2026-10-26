@@ -7,6 +7,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 var componentConfig = logger.RegisterComponent("config")
@@ -24,7 +25,7 @@ var componentConfig = logger.RegisterComponent("config")
 // an operator recovers a subsystem which failed to pick up an earlier update.
 // Every other section is only notified if it actually changed, so an update of
 // one section does not disturb the others.
-func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
+func notifyLocal(ctx context.Context, updated section, oldCfg, newCfg localConfig) {
 	// The component is only applied to the records emitted here. The context
 	// passed to the listeners keeps the component of the caller, so they are
 	// not attributed to the config package.
@@ -32,18 +33,6 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 
 	if updated == sectionNetwork || isNetworkChanged(oldCfg, newCfg) {
 		lifecycle.NetworkUpdateSignal.Emit(ctx, newCfg.Network)
-	}
-
-	if isSecurityAuthChanged(oldCfg, newCfg) {
-		lifecycle.SecurityUpdateSignal.Emit(ctx, newCfg.Security)
-	}
-
-	if isTrustedHTTPSProxiesChanged(oldCfg, newCfg) {
-		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, newCfg.Security.TrustedHTTPSProxies)
-	}
-
-	if isACMEChanged(oldCfg, newCfg) {
-		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, newCfg.Security.ACME)
 	}
 
 	if isLogLevelChanged(oldCfg, newCfg) {
@@ -69,9 +58,32 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 
 		metrics.Apply(newCfg.Settings.MetricsEnabled, newCfg.Settings.MetricsComponents)
 	}
+}
 
-	if updated == sectionSettings || isSettingsChanged(oldCfg, newCfg) {
-		err := lifecycle.SettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
+func notifyShared(ctx context.Context, updated section, oldCfg, newCfg system.SharedConfig) {
+	// The component is only applied to the records emitted here. The context
+	// passed to the listeners keeps the component of the caller, so they are
+	// not attributed to the config package.
+	logCtx := logger.ContextWithComponent(ctx, componentConfig)
+
+	if updated == sectionNetwork || isSharedNetworkChanged(oldCfg, newCfg) {
+		lifecycle.SharedNetworkUpdateSignal.Emit(ctx, newCfg.Network)
+	}
+
+	if isSecurityAuthChanged(oldCfg, newCfg) {
+		lifecycle.SecurityUpdateSignal.Emit(ctx, newCfg.Security)
+	}
+
+	if isTrustedHTTPSProxiesChanged(oldCfg, newCfg) {
+		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, newCfg.Security.TrustedHTTPSProxies)
+	}
+
+	if isACMEChanged(oldCfg, newCfg) {
+		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, newCfg.Security.ACME)
+	}
+
+	if updated == sectionSettings || isSharedSettingsChanged(oldCfg, newCfg) {
+		err := lifecycle.SharedSettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
 		if err != nil {
 			slog.ErrorContext(logCtx, "Failed to apply updated settings config", logger.Err(err))
 		}
@@ -79,5 +91,9 @@ func notify(ctx context.Context, updated section, oldCfg, newCfg config) {
 
 	if updated == sectionUpdates || isUpdatesChanged(oldCfg, newCfg) {
 		lifecycle.UpdatesUpdateSignal.Emit(ctx, newCfg.Updates)
+	}
+
+	if updated == sectionCluster || isSharedClusterChanged(oldCfg, newCfg) {
+		lifecycle.SharedClusterUpdateSignal.Emit(ctx, newCfg.Cluster)
 	}
 }

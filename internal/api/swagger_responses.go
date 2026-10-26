@@ -480,7 +480,7 @@ type swaggerSystemNetworkResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
-		Metadata apisystem.Network `json:"metadata"`
+		Metadata apisystem.NetworkFull `json:"metadata"`
 	}
 }
 
@@ -502,7 +502,7 @@ type swaggerSystemSettingsResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
-		Metadata apisystem.Settings `json:"metadata"`
+		Metadata apisystem.SettingsFull `json:"metadata"`
 	}
 }
 
