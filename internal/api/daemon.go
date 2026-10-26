@@ -1257,6 +1257,9 @@ func (d *Daemon) setupAPIRoutes(
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
 
+	internalMembershipRouter := router.SubGroup("/internal/membership")
+	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, membershipSvc, d.requestRestart)
+
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)
 	}
@@ -1300,6 +1303,9 @@ func (d *Daemon) setupAPIRoutes(
 		"/1.0/system/network",
 		"/1.0/system/settings",
 		"/1.0/system/:clean-cache",
+		// Cluster bootstrap APIs are local only.
+		"/1.0/membership/:enable",
+		"/1.0/membership/:join",
 		// Only accepted through the unix socket of this member.
 		"/1.0/provisioning/servers/:self_register",
 	}
@@ -1395,6 +1401,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	metricsRouter := api10router.SubGroup("/metrics")
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
+
+	membershipRouter := api10router.SubGroup("/membership")
+	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
