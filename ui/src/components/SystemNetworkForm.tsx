@@ -12,6 +12,7 @@ const SystemNetworkForm: FC<Props> = ({ network, onSubmit }) => {
   const formikInitialValues: SystemNetwork = {
     address: network?.address ?? "",
     rest_server_address: network?.rest_server_address ?? "",
+    cluster_address: network?.cluster_address ?? "",
   };
 
   const formik = useFormik({
