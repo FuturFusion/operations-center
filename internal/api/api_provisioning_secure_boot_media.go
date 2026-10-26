@@ -1,22 +1,25 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type secureBootMediaHandler struct {
-	media provisioning.SecureBootMediaPort
+	media   provisioning.SecureBootMediaPort
+	forward forwarder
 }
 
-func registerSecureBootMediaHandler(router Router, media provisioning.SecureBootMediaPort) {
-	handler := &secureBootMediaHandler{media: media}
+func registerSecureBootMediaHandler(router Router, media provisioning.SecureBootMediaPort, forward forwarder) {
+	handler := &secureBootMediaHandler{media: media, forward: forward}
 
 	router.HandleFunc("GET /{filename}", response.With(handler.secureBootMediaGet))
 }
@@ -30,7 +33,8 @@ func registerSecureBootMediaHandler(router Router, media provisioning.SecureBoot
 //
 //	The media is addressed by its content alone, so the endpoint requires no
 //	authentication. A media, that has not been generated, is reported as
-//	"404 Not Found".
+//	"404 Not Found". Any cluster member serves the media, which is stored by
+//	the member that generated it.
 //
 //	The filename is the ID of the media with the extension of its image type,
 //	e.g. ".iso" or ".raw".
@@ -80,6 +84,11 @@ func (s *secureBootMediaHandler) secureBootMediaGet(r *http.Request) response.Re
 	}
 
 	image, err := s.media.Open(r.Context(), imageType, strings.TrimSuffix(filename, extension))
+	if errors.Is(err, domain.ErrNotFound) && !s.forward.forwarded(r) {
+		// The media is stored by the member that generated it.
+		return s.forward.toFirstMember(r, err)
+	}
+
 	if err != nil {
 		return response.SmartError(err)
 	}

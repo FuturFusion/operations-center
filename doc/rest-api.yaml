@@ -12162,7 +12162,8 @@ paths:
 
                 The media is addressed by its content alone, so the endpoint requires no
                 authentication. A media, that has not been generated, is reported as
-                "404 Not Found".
+                "404 Not Found". Any cluster member serves the media, which is stored by
+                the member that generated it.
 
                 The filename is the ID of the media with the extension of its image type,
                 e.g. ".iso" or ".raw".

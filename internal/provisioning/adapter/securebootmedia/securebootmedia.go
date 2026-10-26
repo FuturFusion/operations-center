@@ -52,6 +52,9 @@ type Media struct {
 	lookPath      func(name string) (string, error)
 	newSigningKey func() (*rsa.PrivateKey, error)
 
+	// remoteLookup reports whether another cluster member stores the image already.
+	remoteLookup func(ctx context.Context, imageType api.ImageType, id string) bool
+
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
 }
@@ -71,6 +74,13 @@ type cacheEntry struct {
 var _ provisioning.SecureBootMediaPort = &Media{}
 
 type Option func(m *Media)
+
+// WithRemoteLookup skips generating an image another cluster member stores already.
+func WithRemoteLookup(remoteLookup func(ctx context.Context, imageType api.ImageType, id string) bool) Option {
+	return func(m *Media) {
+		m.remoteLookup = remoteLookup
+	}
+}
 
 // New returns the generator, storing the generated media in dir.
 func New(dir string, opts ...Option) *Media {
@@ -195,6 +205,11 @@ func (m *Media) Generate(ctx context.Context, imageType api.ImageType, architect
 
 		if !errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("Failed to look for the cached secure boot enrollment media %q: %w", id, err)
+		}
+
+		// The images of the same ID differ, since each is signed by its own key.
+		if m.remoteLookup != nil && m.remoteLookup(ctx, imageType, id) {
+			return id, nil
 		}
 
 		wait, release := m.acquire(id)

@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cowsql/go-cowsql/cluster/db/transaction"
@@ -143,6 +144,9 @@ type environment interface {
 
 type Daemon struct {
 	env environment
+
+	// forward forwards requests within the cluster once the API routes are set up.
+	forward atomic.Pointer[forwarder]
 
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
@@ -376,7 +380,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
-		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media")),
+		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media"), securebootmedia.WithRemoteLookup(d.secureBootMediaOnOtherMember)),
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
@@ -404,7 +408,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Background tasks
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
-	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
+	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, warningLogEmitter)...)
 
 	// Setup API routes
 	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks)
@@ -505,6 +509,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	membershipSvc.StartLeaderTasks()
+
+	for _, memberTask := range d.memberTasks(serverSvc, imageFlasher, secureBootMedia) {
+		d.shutdownFuncs = append(d.shutdownFuncs, memberTask(ctx))
+	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
@@ -1402,6 +1410,8 @@ func (d *Daemon) setupAPIRoutes(
 		targets:    memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
 	}
 
+	d.forward.Store(&forward)
+
 	requireLeader := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			// IncusOS of this member sends its self updates through the unix socket.
@@ -1459,7 +1469,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress, forward)
 
 	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
-	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
+	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia, forward)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc, forward)
@@ -1493,6 +1503,21 @@ func (d *Daemon) setupAPIRoutes(
 	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter, inventoryInventoryAggregateSvc)
 
 	return serveMux, inventorySyncers
+}
+
+// secureBootMediaOnOtherMember reports whether another cluster member stores the secure boot enrollment media.
+func (d *Daemon) secureBootMediaOnOtherMember(ctx context.Context, imageType api.ImageType, id string) bool {
+	forward := d.forward.Load()
+	if forward == nil {
+		return false
+	}
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodHead, "/"+path.Join(api.SecureBootMediaPathSegments(imageType, id)...), http.NoBody)
+	if err != nil {
+		return false
+	}
+
+	return forward.probeMember(r)
 }
 
 // isClusterMemberRequest reports whether r is sent by another cluster member.
@@ -1550,6 +1575,56 @@ func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.Membe
 	return clusterTaskStop
 }
 
+// memberTasks returns the background tasks every cluster member runs for its own caches.
+func (d *Daemon) memberTasks(serverSvc provisioning.ServerService, imageFlasher *flasher.Flasher, secureBootMedia provisioning.SecureBootMediaPort) []task.TaskFunc {
+	if config.IsBackgroundTasksDisabled() {
+		return []task.TaskFunc{}
+	}
+
+	// Start background task to prune the cache of generated seed images.
+	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
+		slog.InfoContext(ctx, "Seed image cache prune triggered")
+
+		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
+		if err != nil {
+			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Seed image cache prune completed")
+	})
+
+	// Start background task to prune the generated secure boot enrollment media.
+	pruneSecureBootMediaTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
+
+		// A media, that a deployment has attached to a BMC, is kept: the BMC
+		// reads it only when the server boots, so it would otherwise be pruned
+		// while the server still needs it.
+		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
+	}
+
+	return []task.TaskFunc{
+		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
+		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
+	}
+}
+
 // firstRunDelay runs prepare and waits for delay on the first call, false if the context ends while waiting.
 func firstRunDelay(prepare func(context.Context), delay time.Duration) func(context.Context) bool {
 	var mu sync.Mutex
@@ -1588,8 +1663,6 @@ func (d *Daemon) backgroundTasks(
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
-	imageFlasher *flasher.Flasher,
-	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
 ) []task.TaskFunc {
 	if config.IsBackgroundTasksDisabled() {
@@ -1859,44 +1932,6 @@ func (d *Daemon) backgroundTasks(
 		slog.InfoContext(ctx, "BMC data resync completed")
 	})
 
-	// Start background task to prune the cache of generated seed images.
-	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
-		slog.InfoContext(ctx, "Seed image cache prune triggered")
-
-		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
-		if err != nil {
-			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Seed image cache prune completed")
-	})
-
-	// Start background task to prune the generated secure boot enrollment media.
-	pruneSecureBootMediaTask := func(ctx context.Context) {
-		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
-
-		// A media, that a deployment has attached to a BMC, is kept: the BMC
-		// reads it only when the server boots, so it would otherwise be pruned
-		// while the server still needs it.
-		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
-	}
-
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
@@ -2023,8 +2058,6 @@ func (d *Daemon) backgroundTasks(
 		task.New(pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
 		task.New(refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
 		task.New(refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
-		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
-		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
 		task.New(renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
 		task.New(certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
 

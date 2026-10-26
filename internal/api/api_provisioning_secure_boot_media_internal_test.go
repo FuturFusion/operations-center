@@ -49,7 +49,7 @@ func Test_secureBootMediaGet(t *testing.T) {
 			require.NoError(t, err)
 
 			serveMux := http.NewServeMux()
-			registerSecureBootMediaHandler(newRouter(serveMux).SubGroup("/1.0/provisioning/secure-boot-media"), media)
+			registerSecureBootMediaHandler(newRouter(serveMux).SubGroup("/1.0/provisioning/secure-boot-media"), media, forwarder{clustered: func() bool { return false }})
 
 			server := httptest.NewServer(serveMux)
 			t.Cleanup(server.Close)
