@@ -751,9 +751,9 @@ func assertServersTimezone(ctx context.Context, t *testing.T, serverNames []stri
 func assertServersRunManualUpdate(t *testing.T, serverNames []string) {
 	t.Helper()
 
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select((.channels | index("manual")) and (.origin | contains("(local)"))) | .version ] | unique | .[]'`, cpuArch)
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select((.channels | index("manual")) and (.origin | contains("(local)")) and (.upstream_channels | index("stable"))) | .version ] | unique | .[]'`, cpuArch)
 	manualVersions := strings.Fields(resp.Output())
-	require.NotEmpty(t, manualVersions, "expect a manually uploaded update to be assigned to the manual channel")
+	require.NotEmpty(t, manualVersions, "expect a manually uploaded update of the upstream stable channel to be assigned to the manual channel")
 
 	for _, serverName := range serverNames {
 		server := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -c '.[] | select(.name == %q)'`, cpuArch, serverName).Output()

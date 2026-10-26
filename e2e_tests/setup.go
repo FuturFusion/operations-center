@@ -182,7 +182,7 @@ func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir stri
 	stop := timeTrack(t)
 	defer stop()
 
-	manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) ) ] | length > 0'`, cpuArch)
+	manualUpdateUUIDExistsResp := run(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.origin | contains("(local)") ) and (.upstream_channels | index("stable")) ) ] | length > 0'`, cpuArch)
 	if !manualUpdateUUIDExistsResp.Success() {
 		err := os.WriteFile(filepath.Join(tmpDir, "create_manual_update.sh"), createManualUpdateScript, 0o700)
 		require.NoError(t, err)
@@ -595,7 +595,7 @@ func createProvisioningTokenWithUpdateChannel(t *testing.T, channelName string, 
 		mustRun(t, `../bin/operations-center.linux.%s provisioning channel add %s`, cpuArch, channelName)
 	}
 
-	oldestUpdateUUIDResp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready" and (.origin | contains("%s") ) ) ] | sort_by(.version) | first | .uuid'`, cpuArch, originFilter)
+	oldestUpdateUUIDResp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready" and (.origin | contains("%s") ) and (.upstream_channels | index("stable")) ) ] | sort_by(.version) | first | .uuid'`, cpuArch, originFilter)
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable,%s`, cpuArch, oldestUpdateUUIDResp.OutputTrimmed(), channelName)
 
