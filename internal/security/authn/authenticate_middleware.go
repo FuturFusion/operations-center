@@ -7,6 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/response"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var componentAuthn = logger.RegisterComponent("security.authn")
@@ -70,6 +71,11 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				}
 			}
 
+			if cfg.isAuthenticationRequired(r) && !trusted && a.starting {
+				renderStarting(logCtx, w, r)
+				return
+			}
+
 			if cfg.isAuthenticationRequired(r) && !trusted {
 				slog.WarnContext(logCtx, "Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 				err = response.Unauthorized(nil).Render(w)
@@ -94,5 +100,15 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			// Call next handler
 			next(w, r)
 		}
+	}
+}
+
+// renderStarting answers a request that can not be authenticated before the security configuration is loaded.
+func renderStarting(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	slog.DebugContext(ctx, "Rejecting request while starting", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+
+	err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Operations Center is still starting")).Render(w)
+	if err != nil {
+		slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
 	}
 }
