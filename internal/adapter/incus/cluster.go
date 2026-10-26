@@ -190,7 +190,8 @@ func (c Client) recoverClusterJoin(ctx context.Context, server provisioning.Serv
 		}
 
 		if op.Err != "" {
-			return errors.New(op.Err)
+			err = fmt.Errorf("Operation %q failed after recovery: %s", opID, op.Err)
+			break
 		}
 
 		if !op.StatusCode.IsFinal() {
@@ -251,7 +252,7 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 	for {
 		select {
 		case <-ctx.Done():
-			return incusapi.Operation{}, ctx.Err()
+			return incusapi.Operation{}, fmt.Errorf("Stopped waiting %s into operation %q, its outcome is unknown: %w", time.Since(start).Round(time.Second), opID, ctx.Err())
 
 		case event, ok := <-events:
 			if !ok {
@@ -265,7 +266,11 @@ func updateCluster(ctx context.Context, client incus.InstanceServer, req incusap
 
 			opAPI := incusapi.Operation{}
 			err = json.Unmarshal(event.Metadata, &opAPI)
-			if err != nil || opAPI.ID != opID || !opAPI.StatusCode.IsFinal() {
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to decode operation event", slog.String("operation", opID), logger.Err(err))
+				continue
+			}
+			if opAPI.ID != opID || !opAPI.StatusCode.IsFinal() {
 				continue
 			}
 
