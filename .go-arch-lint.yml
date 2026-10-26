@@ -117,6 +117,7 @@ components:
       - internal/adapter/**
       - internal/*/adapter/**
       - internal/*/repo/**
+      - internal/cluster/memberfiles
       - internal/sql/sqlite/**
       - internal/sql/cowsql/**
       - internal/sql/dbschema
@@ -173,3 +174,5 @@ deps:
       - domain
       - shared
       - daemon_shared
+      # Adapters reach the other cluster members through the client.
+      - client

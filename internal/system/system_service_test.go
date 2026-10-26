@@ -573,12 +573,15 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{Name: "one", Type: api.ServerTypeOperationsCenter},
+				{Name: "two", Type: api.ServerTypeOperationsCenter},
+			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected 1 entry, got 0")
+				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected at most 1 entry, got 2")
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},

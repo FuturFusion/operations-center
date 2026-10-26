@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/x509"
 	"net/http"
+	"time"
 
 	"github.com/cowsql/go-cowsql/cluster"
 	cowdb "github.com/cowsql/go-cowsql/cluster/db"
 
+	"github.com/FuturFusion/operations-center/internal/client"
 	membershipapi "github.com/FuturFusion/operations-center/internal/cluster/api"
 	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
@@ -35,6 +37,10 @@ type MembershipService interface {
 	RemoveMember(ctx context.Context, name string, force bool) error
 	Reset(ctx context.Context)
 	GetMembers(ctx context.Context) ([]api.ClusterMember, error)
+	GetMembersByID(ctx context.Context) (map[int64]cowdb.NodeInfo, error)
+	HeartbeatOfflineThreshold() time.Duration
+	LocalMemberID() (int64, error)
+	MemberClient(address string) (client.OperationsCenterClient, error)
 	LeaderAddress(ctx context.Context) (string, error)
 	Handover(ctx context.Context, address string) error
 	Rebalance(ctx context.Context) error

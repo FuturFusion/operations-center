@@ -166,43 +166,21 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return nil
 	}
 
+	err = s.storeCertificate(ctx, certificatePEM, keyPEM)
+	if err != nil {
+		return err
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	// Restore both files, even if only the first write succeeded, so the
-	// certificate and the key on disk always match.
+	// Put the previous certificate back everywhere it has been replaced.
 	reverter.Add(func() {
-		revertErr := os.WriteFile(certificateFile, currentServerCertificate, 0o600)
+		revertErr := s.storeCertificate(ctx, string(currentServerCertificate), string(currentServerKey))
 		if revertErr != nil {
-			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", certificateFile, revertErr))
-		}
-
-		revertErr = os.WriteFile(keyFile, currentServerKey, 0o600)
-		if revertErr != nil {
-			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", keyFile, revertErr))
+			err = errors.Join(err, fmt.Errorf("Failed to put back the previous certificate: %w", revertErr))
 		}
 	})
-
-	if s.env.Clustered() {
-		if s.updateClusterCertificate == nil {
-			return errors.New("No cluster certificate updater configured")
-		}
-
-		err = s.updateClusterCertificate(ctx, certificatePEM, keyPEM)
-		if err != nil {
-			return fmt.Errorf("Failed to update cluster certificate: %w", err)
-		}
-	} else {
-		err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
-		if err != nil {
-			return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
-		}
-
-		err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
-		if err != nil {
-			return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
-		}
-	}
 
 	// Restart openfga application, if it is present as secondary application
 	// on IncusOS.
@@ -214,16 +192,19 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 			return fmt.Errorf("Failed to get operations-center server entry: %w", err)
 		}
 
-		if len(servers) != 1 {
+		if len(servers) > 1 {
 			//domain-errors:internal Violated invariant, nothing the user can do about it.
-			return fmt.Errorf("Failed to get operations-center server entry, expected 1 entry, got %d", len(servers))
+			return fmt.Errorf("Failed to get operations-center server entry, expected at most 1 entry, got %d", len(servers))
 		}
 
+		// Without an entry, e.g. right after a restore, there is no OpenFGA application known.
 		hasOpenFGA := false
-		for _, app := range servers[0].VersionData.Applications {
-			if app.Name == "openfga" {
-				hasOpenFGA = true
-				break
+		for _, server := range servers {
+			for _, app := range server.VersionData.Applications {
+				if app.Name == "openfga" {
+					hasOpenFGA = true
+					break
+				}
 			}
 		}
 
@@ -289,6 +270,66 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 			slog.WarnContext(ctx, "Failed to update server certificate in system provider, retry on next poll", slog.String("server", server.Name), logger.Err(err))
 		}
 	}
+}
+
+// storeCertificate persists the certificate presented to API clients on all cluster members, keeping the previous one on failure.
+func (s *systemService) storeCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	if s.env.Clustered() {
+		if s.updateClusterCertificate == nil {
+			return errors.New("No cluster certificate updater configured")
+		}
+
+		err := s.updateClusterCertificate(ctx, certificatePEM, keyPEM)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster certificate: %w", err)
+		}
+
+		return nil
+	}
+
+	certificateFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".crt")
+	keyFile := filepath.Join(s.env.VarDir(), s.apiCertificateName()+".key")
+
+	currentCertificate, err := os.ReadFile(certificateFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", certificateFile, err)
+	}
+
+	currentKey, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", keyFile, err)
+	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Restore both files, even if only the first write succeeded, so the
+	// certificate and the key on disk always match.
+	reverter.Add(func() {
+		revertErr := os.WriteFile(certificateFile, currentCertificate, 0o600)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", certificateFile, revertErr))
+		}
+
+		revertErr = os.WriteFile(keyFile, currentKey, 0o600)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", keyFile, revertErr))
+		}
+	})
+
+	err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
+	if err != nil {
+		return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
+	}
+
+	err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
+	if err != nil {
+		return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
+	}
+
+	reverter.Success()
+
+	return nil
 }
 
 // PropagateCertificate informs the subsystems and the managed servers about a certificate changed outside of UpdateCertificate.

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,6 +42,7 @@ type OperationsCenterClient struct {
 	transportProxy     func(*http.Request) (*url.URL, error)
 	insecureSkipVerify bool
 	oidcTokensFilename *string
+	dialTimeout        time.Duration
 }
 
 type Option func(c *OperationsCenterClient) error
@@ -82,6 +84,15 @@ func WithTrustedServerCertificate(trustedServerCert *x509.Certificate) Option {
 	}
 }
 
+// WithDialTimeout limits the time to connect to the server.
+func WithDialTimeout(timeout time.Duration) Option {
+	return func(c *OperationsCenterClient) error {
+		c.dialTimeout = timeout
+
+		return nil
+	}
+}
+
 // ForwardedIdentity is the identity of the client of a request, which a cluster member passes on when it forwards the request.
 type ForwardedIdentity struct {
 	// Address is the remote address of the client.
@@ -90,12 +101,20 @@ type ForwardedIdentity struct {
 	// Username and Protocol identify an authenticated client, both are empty otherwise.
 	Username string
 	Protocol string
+
+	// Certificate is the client certificate, nil if the client presented none.
+	Certificate *x509.Certificate
 }
 
 // WithForwardedIdentity passes identity on to the server with every request.
 func WithForwardedIdentity(identity ForwardedIdentity) Option {
 	return func(c *OperationsCenterClient) error {
 		c.transportProxy = func(req *http.Request) (*url.URL, error) {
+			// Headers set by the caller are never passed on as forwarded identity.
+			for _, header := range api.ForwardedHeaders {
+				req.Header.Del(header)
+			}
+
 			if identity.Username != "" {
 				req.Header.Set(api.HeaderForwardedUsername, identity.Username)
 			}
@@ -105,6 +124,10 @@ func WithForwardedIdentity(identity ForwardedIdentity) Option {
 			}
 
 			req.Header.Set(api.HeaderForwardedAddress, identity.Address)
+
+			if identity.Certificate != nil {
+				req.Header.Set(api.HeaderForwardedCertificate, base64.StdEncoding.EncodeToString(identity.Certificate.Raw))
+			}
 
 			return nil, nil
 		}
@@ -180,13 +203,20 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 		return c, nil
 	}
 
+	transport := &http.Transport{
+		Proxy:                 c.transportProxy,
+		TLSClientConfig:       c.tlsConfig(),
+		ExpectContinueTimeout: 30 * time.Second,
+		ResponseHeaderTimeout: 3600 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+	}
+
+	if c.dialTimeout > 0 {
+		transport.DialContext = (&net.Dialer{Timeout: c.dialTimeout}).DialContext
+	}
+
 	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig:       c.tlsConfig(),
-			ExpectContinueTimeout: 30 * time.Second,
-			ResponseHeaderTimeout: 3600 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
-		},
+		Transport: transport,
 	}
 
 	c.httpClient = httpClient

@@ -13,7 +13,6 @@ import (
 	"maps"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -35,8 +34,8 @@ import (
 
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
-	ocClient "github.com/FuturFusion/operations-center/internal/client"
 	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
 	clusterEntities "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -814,7 +813,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		),
 	)
 
-	*d.authenticator = authn.New(authers)
+	*d.authenticator = authn.New(authers, authn.WithTrustedForward(d.isClusterMemberRequest))
 
 	authorizers := []authz.Authorizer{
 		authzmiddleware.NewAuthorizerWithSlog(
@@ -1258,7 +1257,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerDebugHandler(debugRouter, d.authorizer)
 
 	internalMembershipRouter := router.SubGroup("/internal/membership")
-	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, membershipSvc, d.requestRestart)
+	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart)
 
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)
@@ -1310,63 +1309,25 @@ func (d *Daemon) setupAPIRoutes(
 		"/1.0/provisioning/servers/:self_register",
 	}
 
+	forward := forwarder{
+		clustered:  d.env.Clustered,
+		membership: membershipSvc,
+		targets:    memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	}
+
 	requireLeader := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			if !d.env.Clustered() {
-				next(w, r)
-				return
-			}
+			// IncusOS of this member sends its self updates through the unix socket.
+			localSelfUpdate := r.URL.Path == "/1.0/provisioning/servers/:self" && r.TLS == nil
 
-			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) {
-				leaderAddress, err := membershipSvc.LeaderAddress(r.Context())
-				if err != nil {
-					err := response.SmartError(fmt.Errorf("Failed to check for cluster leadership: %w", err)).Render(w)
+			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) && !localSelfUpdate {
+				resp := forward.toLeader(r)
+				if resp != nil {
+					err := resp.Render(w)
 					if err != nil {
-						slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
+						slog.WarnContext(r.Context(), "Render forwarded response failed", logger.Err(err))
 					}
 
-					return
-				}
-
-				if leaderAddress != config.GetLocalNetwork().ClusterAddress {
-					fwdURL := url.URL{Scheme: "https", Host: leaderAddress}
-					clusterCertx509, err := membershipSvc.Gateway().NetworkCert().PublicKeyX509()
-					if err != nil {
-						err := response.SmartError(fmt.Errorf("Failed to parse cluster certificate: %w", err)).Render(w)
-						if err != nil {
-							slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
-						}
-
-						return
-					}
-
-					certInfo, ok := membershipSvc.Gateway().ServerCert().(*incustls.CertInfo)
-					if !ok {
-						_ = response.InternalError(fmt.Errorf("Invalid certificate info: %T", membershipSvc.Gateway().ServerCert())).Render(w)
-						return
-					}
-
-					c, err := ocClient.New(fwdURL.String(), ocClient.WithClientCertificate(certInfo), ocClient.WithTrustedServerCertificate(clusterCertx509), ocClient.WithForwardedIdentity(forwardedIdentity(r)))
-					if err != nil {
-						err := response.SmartError(fmt.Errorf("Failed to parse cluster certificate: %w", err)).Render(w)
-						if err != nil {
-							slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
-						}
-
-						return
-					}
-
-					err = response.ForwardedResponse(c, r).Render(w)
-					if err != nil {
-						err := response.SmartError(fmt.Errorf("Failed to parse forward request to leader: %w", err)).Render(w)
-						if err != nil {
-							slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
-						}
-
-						return
-					}
-
-					// Response forwarded, nothing more to do.
 					return
 				}
 			}
@@ -1448,21 +1409,21 @@ func (d *Daemon) setupAPIRoutes(
 	return serveMux, inventorySyncers
 }
 
-// forwardedIdentity returns the identity of the client of r to pass on with a forwarded request.
-func forwardedIdentity(r *http.Request) ocClient.ForwardedIdentity {
-	identity := ocClient.ForwardedIdentity{Address: r.RemoteAddr}
-
-	username, ok := r.Context().Value(authn.CtxUsername).(string)
-	if ok {
-		identity.Username = username
+// isClusterMemberRequest reports whether r is sent by another cluster member.
+func (d *Daemon) isClusterMemberRequest(r *http.Request) bool {
+	if d.membershipSvc == nil || r.TLS == nil {
+		return false
 	}
 
-	protocol, ok := r.Context().Value(authn.CtxProtocol).(string)
-	if ok {
-		identity.Protocol = protocol
+	members := d.membershipSvc.TrustedClients()
+	for _, cert := range r.TLS.PeerCertificates {
+		_, ok := members[incustls.CertFingerprint(cert)]
+		if ok {
+			return true
+		}
 	}
 
-	return identity
+	return false
 }
 
 // lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.

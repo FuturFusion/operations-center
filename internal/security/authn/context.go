@@ -21,16 +21,14 @@ const (
 	// CtxForwardedAddress is the address of the client of a request forwarded by a cluster member.
 	CtxForwardedAddress ctxKey = "forwarded_address"
 
-	// CtxForwardedUsername is the forwarded username field in request context.
-	CtxForwardedUsername ctxKey = "forwarded_username"
-
-	// CtxForwardedProtocol is the forwarded protocol field in request context.
-	CtxForwardedProtocol ctxKey = "forwarded_protocol"
+	// CtxForwardedCertificate is the *x509.Certificate of the client of a request forwarded by a cluster member.
+	CtxForwardedCertificate ctxKey = "forwarded_certificate"
 )
 
 // Headers.
 const (
-	HeaderForwardedAddress  = api.HeaderForwardedAddress
-	HeaderForwardedUsername = api.HeaderForwardedUsername
-	HeaderForwardedProtocol = api.HeaderForwardedProtocol
+	HeaderForwardedAddress     = api.HeaderForwardedAddress
+	HeaderForwardedUsername    = api.HeaderForwardedUsername
+	HeaderForwardedProtocol    = api.HeaderForwardedProtocol
+	HeaderForwardedCertificate = api.HeaderForwardedCertificate
 )

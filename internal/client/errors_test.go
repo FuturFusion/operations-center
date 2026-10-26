@@ -64,6 +64,18 @@ func TestServerError(t *testing.T) {
 			},
 		},
 		{
+			name:        "unavailable",
+			statusCode:  http.StatusServiceUnavailable,
+			contentType: "application/json",
+			body:        `{"type":"error","error_code":503,"error":"Cluster member \"two\" is offline","metadata":{"reason":"unavailable"}}`,
+
+			wantMessage: `Cluster member "two" is offline`,
+			wantReason:  api.ErrorReasonUnavailable,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrUnavailable, a...)
+			},
+		},
+		{
 			name:        "operation not permitted with details",
 			statusCode:  http.StatusBadRequest,
 			contentType: "application/json",

@@ -140,6 +140,7 @@ var userMessageKinds = []error{
 	ErrNotAuthenticated,
 	ErrNotAuthorized,
 	ErrTerminal,
+	ErrUnavailable,
 }
 
 // UserMessage returns the message of err, which is meant to be reported to the

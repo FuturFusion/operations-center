@@ -2,6 +2,9 @@ package authn
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -71,6 +74,35 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				}
 			}
 
+			// While starting, the identity forwarded by a cluster member can not be authorized yet.
+			if trusted && a.starting && r.Header.Get(HeaderForwardedAddress) != "" {
+				renderStarting(logCtx, w, r)
+				return
+			}
+
+			// A cluster member forwarding a request passes on the identity of its client, which is not authenticated without one.
+			if trusted && a.checkTrustedForward != nil && r.Header.Get(HeaderForwardedAddress) != "" && a.checkTrustedForward(r) {
+				username = r.Header.Get(HeaderForwardedUsername)
+				protocol = r.Header.Get(HeaderForwardedProtocol)
+				// Clients on the unix socket have no username.
+				trusted = protocol != ""
+				ctx = context.WithValue(ctx, CtxForwardedAddress, r.Header.Get(HeaderForwardedAddress))
+
+				cert, err := forwardedCertificate(r)
+				if err != nil {
+					err = response.BadRequest(err).Render(w)
+					if err != nil {
+						slog.WarnContext(logCtx, "Render error response failed", logger.Err(err))
+					}
+
+					return
+				}
+
+				if cert != nil {
+					ctx = context.WithValue(ctx, CtxForwardedCertificate, cert)
+				}
+			}
+
 			if cfg.isAuthenticationRequired(r) && !trusted && a.starting {
 				renderStarting(logCtx, w, r)
 				return
@@ -111,4 +143,24 @@ func renderStarting(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
 	}
+}
+
+// forwardedCertificate returns the client certificate passed on by a cluster member, nil if there is none.
+func forwardedCertificate(r *http.Request) (*x509.Certificate, error) {
+	value := r.Header.Get(HeaderForwardedCertificate)
+	if value == "" {
+		return nil, nil
+	}
+
+	der, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid forwarded client certificate: %w", err)
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid forwarded client certificate: %w", err)
+	}
+
+	return cert, nil
 }

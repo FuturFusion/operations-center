@@ -11,10 +11,19 @@ type Auther interface {
 type Authenticator struct {
 	authers []Auther
 
+	checkTrustedForward func(r *http.Request) bool
+
 	starting bool
 }
 
 type Option func(a *Authenticator)
+
+// WithTrustedForward sets the trusted forwarded request checker for requests forwarded from cluster members.
+func WithTrustedForward(checkTrustedForward func(r *http.Request) bool) Option {
+	return func(a *Authenticator) {
+		a.checkTrustedForward = checkTrustedForward
+	}
+}
 
 // WithStarting flags the authenticator to indicate the daemon is still starting.
 func WithStarting() Option {

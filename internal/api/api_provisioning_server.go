@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
@@ -330,12 +332,13 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 	}
 
 	// Ensure presence of client certificate.
-	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+	clientCert := clientCertificate(r)
+	if clientCert == nil {
 		return response.BadRequest(fmt.Errorf("No client certificate provided"))
 	}
 
 	// Encode client certificate in pem format
-	certificatePEM := certificate.EncodeToPEM(r.TLS.PeerCertificates[0].Raw)
+	certificatePEM := certificate.EncodeToPEM(clientCert.Raw)
 
 	var systemUUID *string
 	if server.SystemUUID != "" {
@@ -584,7 +587,8 @@ func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 	}
 
 	// Ensure presence of client certificate.
-	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+	clientCert := clientCertificate(r)
+	if clientCert == nil {
 		return response.Forbidden(fmt.Errorf("No client certificate provided"))
 	}
 
@@ -596,7 +600,7 @@ func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 
 	err = s.service.SelfUpdate(r.Context(), provisioning.ServerSelfUpdate{
 		ConnectionURL:             serverUpdate.ConnectionURL,
-		AuthenticationCertificate: r.TLS.PeerCertificates[0],
+		AuthenticationCertificate: clientCert,
 		Cause:                     serverUpdate.Cause,
 	})
 	if err != nil {
@@ -2459,4 +2463,20 @@ func (s *serverHandler) serverSystemUpdatePut(r *http.Request) response.Response
 	}
 
 	return response.EmptySyncResponse
+}
+
+// clientCertificate returns the certificate of the client, either forwarded from a cluster member or directly from the request TLS certificates.
+func clientCertificate(r *http.Request) *x509.Certificate {
+	cert, ok := r.Context().Value(authn.CtxForwardedCertificate).(*x509.Certificate)
+	if ok {
+		return cert
+	}
+
+	// A forwarded request without certificate is not authenticated by the one of the forwarding member.
+	_, forwarded := r.Context().Value(authn.CtxForwardedAddress).(string)
+	if forwarded || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return nil
+	}
+
+	return r.TLS.PeerCertificates[0]
 }

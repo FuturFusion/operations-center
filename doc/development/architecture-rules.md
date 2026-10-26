@@ -92,6 +92,8 @@ work. Remove an exception when its code is fixed.
   adapter.
 * `internal/domain` classifies network errors with `syscall` error numbers.
   This is accepted.
+* The daemon and the adapters reach the other cluster members through the
+  client. This is accepted.
 * Services may import packages from the common components. Some of them do file,
   database or OS work. The lint tools do not block this. Keep new code in these
   packages free of I/O where possible.

@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -188,6 +189,39 @@ func (m *membership) GetMembers(ctx context.Context) ([]api.ClusterMember, error
 	}
 
 	return apiMembers, nil
+}
+
+// LocalMemberID returns the ID of this member in the global database.
+func (m *membership) LocalMemberID() (int64, error) {
+	if m.globalRepo == nil {
+		return 0, errors.New("Global database is not available")
+	}
+
+	return m.globalRepo.GetNodeID(), nil
+}
+
+// GetMembersByID returns the cluster members by their ID from the global database.
+func (m *membership) GetMembersByID(ctx context.Context) (map[int64]cowsqldb.NodeInfo, error) {
+	if m.globalRepo == nil {
+		return nil, errors.New("Global database is not available")
+	}
+
+	members, err := m.globalRepo.GetNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	membersByID := make(map[int64]cowsqldb.NodeInfo, len(members))
+	for _, member := range members {
+		membersByID[member.ID] = member
+	}
+
+	return membersByID, nil
+}
+
+// HeartbeatOfflineThreshold returns the time after which a member without heartbeat is offline.
+func (m *membership) HeartbeatOfflineThreshold() time.Duration {
+	return m.gateway.HeartbeatOfflineThreshold()
 }
 
 // Auth implements Auther to trust a joiner by the fingerprint the leader cached on /:trust.
@@ -505,7 +539,7 @@ func (m *membership) RemoveMember(ctx context.Context, name string, force bool) 
 		return nil
 	}
 
-	c, err := m.memberClient(address)
+	c, err := m.MemberClient(address)
 	if err != nil {
 		return err
 	}
@@ -558,7 +592,7 @@ func (m *membership) removeLeader(ctx context.Context, name string, force bool) 
 		return err
 	}
 
-	c, err := m.memberClient(leader)
+	c, err := m.MemberClient(leader)
 	if err != nil {
 		return err
 	}
@@ -659,7 +693,7 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 	var clusterCert *x509.Certificate
 	var reachableAddress string
 	for _, address := range tokenObj.ClusterAddresses {
-		insecureClient, err := client.New("https://"+address, client.WithInsecureSkipVerify())
+		insecureClient, err := client.New("https://"+address, client.WithInsecureSkipVerify(), client.WithDialTimeout(MemberDialTimeout))
 		if err != nil {
 			return err
 		}
@@ -713,7 +747,7 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 		return fmt.Errorf("Invalid certificate info: %T", m.Gateway().ServerCert())
 	}
 
-	c, err := client.New("https://"+reachableAddress, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(clusterCert))
+	c, err := client.New("https://"+reachableAddress, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(clusterCert), client.WithDialTimeout(MemberDialTimeout))
 	if err != nil {
 		return err
 	}
@@ -772,7 +806,7 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
 
-		leader, err := client.New("https://"+leaderAddress, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(clusterCert))
+		leader, err := client.New("https://"+leaderAddress, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(clusterCert), client.WithDialTimeout(MemberDialTimeout))
 		if err == nil {
 			_, err = leader.DoRequest(ctx, http.MethodDelete, "/membership/members/"+url.PathEscape(req.ServerName), url.Values{"force": []string{"1"}}, nil)
 		}
@@ -844,6 +878,9 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 	return nil
 }
 
+// MemberDialTimeout limits the time to connect to another cluster member.
+const MemberDialTimeout = 10 * time.Second
+
 // ErrJoinReset reports a failed join after which this member has been reset to an empty standalone server.
 var ErrJoinReset = errors.New("this server has been reset to an empty standalone server")
 
@@ -896,7 +933,7 @@ func (m *membership) NotifyUpgradeCompleted(ctx context.Context) error {
 			return fmt.Errorf("Invalid certificate info: %T", serverCert)
 		}
 
-		c, err := client.New(url, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCertx509))
+		c, err := client.New(url, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCertx509), client.WithDialTimeout(MemberDialTimeout))
 		if err != nil {
 			return err
 		}
@@ -1118,38 +1155,105 @@ func (m *membership) HandlerFuncs() map[string]http.HandlerFunc {
 }
 
 // PersistSharedConfig stores cfg in the global database and lets the other cluster members reload it.
+// The change is reverted if an online member fails to reload it.
 func (m *membership) PersistSharedConfig(ctx context.Context, cfg apisystem.SharedConfig) error {
-	err := m.configRepo.UpdateSharedConfig(ctx, cfg)
+	previous, err := m.configRepo.GetSharedConfig(ctx)
 	if err != nil {
 		return err
 	}
 
-	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), cowsqlcluster.NotifyAlive)
+	err = m.configRepo.UpdateSharedConfig(ctx, cfg)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to notify cluster members about shared config change", logger.Err(err))
+		return err
+	}
+
+	// Offline members pick up the config on restart.
+	notified := m.reloadSharedConfigOnMembers(ctx, cowsqlcluster.NotifyAlive)
+	if notified == nil {
 		return nil
 	}
 
+	err = m.configRepo.UpdateSharedConfig(ctx, *previous)
+	if err != nil {
+		return errors.Join(notified, fmt.Errorf("Failed to revert the shared config: %w", err))
+	}
+
+	// Let the members reload the previous config.
+	reverted := m.reloadSharedConfigOnMembers(ctx, cowsqlcluster.NotifyTryAll)
+	if reverted != nil {
+		slog.WarnContext(ctx, "Failed to let all cluster members reload the reverted shared config", logger.Err(reverted))
+	}
+
+	return notified
+}
+
+// reloadSharedConfigOnMembers lets the cluster members selected by policy reload the shared config.
+func (m *membership) reloadSharedConfigOnMembers(ctx context.Context, policy cowsqlcluster.NotifierPolicy) error {
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), policy)
+	if err != nil {
+		return fmt.Errorf("Failed to notify cluster members about the shared config change: %w", err)
+	}
+
+	var failedMu sync.Mutex
+	var failed []string
+
 	errs := notifier(func(ctx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
-		c, err := m.memberClient(address)
-		if err != nil {
-			return err
+		c, err := m.MemberClient(address)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
+			_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reload-config", nil, nil)
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
-		_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reload-config", nil, nil)
+		if err != nil {
+			failedMu.Lock()
+			failed = append(failed, address)
+			failedMu.Unlock()
+		}
 
 		return err
 	})
 
-	// The config is persisted, a member, which missed the notification, picks it up on restart.
-	for _, err := range errs {
-		slog.WarnContext(ctx, "Failed to notify cluster member about shared config change", logger.Err(err))
+	if len(failed) == 0 {
+		return nil
 	}
 
-	return nil
+	names, err := m.memberNames(ctx, failed)
+	if err != nil {
+		return errors.Join(append(errs, err)...)
+	}
+
+	return domain.NewErrorf(domain.ErrUnavailable, "", "Cluster members %s did not apply the shared config change, it has been reverted", strings.Join(names, ", ")).
+		WithHintf("Retry once all cluster members are reachable.").
+		WithCause(errors.Join(errs...))
+}
+
+// memberNames returns the quoted names of the cluster members at addresses, sorted.
+func (m *membership) memberNames(ctx context.Context, addresses []string) ([]string, error) {
+	members, err := m.GetMembersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	byAddress := make(map[string]string, len(members))
+	for _, member := range members {
+		byAddress[member.Address] = member.Name
+	}
+
+	names := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		name, ok := byAddress[address]
+		if !ok {
+			name = address
+		}
+
+		names = append(names, strconv.Quote(name))
+	}
+
+	slices.Sort(names)
+
+	return names, nil
 }
 
 // ReloadSharedConfig applies the shared config stored in the global database by another cluster member.
@@ -1178,16 +1282,50 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "All cluster members need to be online to update the cluster certificate").WithCause(err)
 	}
 
+	currentCert, err := m.gateway.NetworkCert().PublicKeyX509()
+	if err != nil {
+		return err
+	}
+
+	newCert, err := x509.ParseCertificate(keyPair.Certificate[0])
+	if err != nil {
+		return err
+	}
+
+	previousCertificate, err := os.ReadFile(filepath.Join(m.env.VarDir(), "cluster.crt"))
+	if err != nil {
+		return err
+	}
+
+	previousKey, err := os.ReadFile(filepath.Join(m.env.VarDir(), "cluster.key"))
+	if err != nil {
+		return err
+	}
+
+	previous := apisystem.CertificatePost{Certificate: string(previousCertificate), Key: string(previousKey)}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	var reverterMu sync.Mutex
+
 	post := apisystem.CertificatePost{Certificate: certificatePEM, Key: keyPEM}
-	errs := notifier(func(ctx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
-		c, err := m.memberClient(address)
+	errs := notifier(func(notifyCtx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
+		err := m.postClusterCertificate(notifyCtx, address, currentCert, post)
 		if err != nil {
 			return err
 		}
 
-		_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:update-certificate", nil, post)
+		reverterMu.Lock()
+		reverter.Add(func() {
+			err := m.postClusterCertificate(ctx, address, newCert, previous)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to put back the previous cluster certificate on cluster member", slog.String("address", address), logger.Err(err))
+			}
+		})
+		reverterMu.Unlock()
 
-		return err
+		return nil
 	})
 
 	err = errors.Join(errs...)
@@ -1195,7 +1333,33 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 		return fmt.Errorf("Failed to update the cluster certificate on all cluster members: %w", err)
 	}
 
-	return m.setClusterCertificate(keyPair)
+	// This member is updated last, so it is unchanged if another one fails.
+	err = m.setClusterCertificate(keyPair)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+// postClusterCertificate applies the cluster certificate on the member at address, which must present trusted.
+func (m *membership) postClusterCertificate(ctx context.Context, address string, trusted *x509.Certificate, certificate apisystem.CertificatePost) error {
+	certInfo, ok := m.gateway.ServerCert().(*incustls.CertInfo)
+	if !ok {
+		//domain-errors:internal The server certificate is always loaded by the daemon itself.
+		return fmt.Errorf("Invalid certificate info: %T", m.gateway.ServerCert())
+	}
+
+	c, err := client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(trusted), client.WithDialTimeout(MemberDialTimeout))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:update-certificate", nil, certificate)
+
+	return err
 }
 
 // ApplyClusterCertificate applies the cluster certificate updated by another cluster member.
@@ -1225,8 +1389,8 @@ func (m *membership) setClusterCertificate(keyPair tls.Certificate) error {
 	return nil
 }
 
-// memberClient returns a client for the cluster member with the given address.
-func (m *membership) memberClient(address string) (client.OperationsCenterClient, error) {
+// MemberClient returns a client for the cluster member with the given address.
+func (m *membership) MemberClient(address string) (client.OperationsCenterClient, error) {
 	networkCert, err := m.gateway.NetworkCert().PublicKeyX509()
 	if err != nil {
 		return client.OperationsCenterClient{}, err
@@ -1238,7 +1402,7 @@ func (m *membership) memberClient(address string) (client.OperationsCenterClient
 		return client.OperationsCenterClient{}, fmt.Errorf("Invalid certificate info: %T", m.gateway.ServerCert())
 	}
 
-	return client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCert))
+	return client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCert), client.WithDialTimeout(MemberDialTimeout))
 }
 
 func (m *membership) LeaderAddress(ctx context.Context) (string, error) {
@@ -1353,7 +1517,7 @@ func (m *membership) handoverRole(ctx context.Context) error {
 			Address: localClusterAddress,
 		}
 
-		c, err := m.memberClient(leader)
+		c, err := m.MemberClient(leader)
 		if err != nil {
 			return err
 		}
@@ -1519,7 +1683,7 @@ func (m *membership) changeMemberRole(ctx context.Context, address string, nodes
 		})
 	}
 
-	c, err := m.memberClient(address)
+	c, err := m.MemberClient(address)
 	if err != nil {
 		return err
 	}

@@ -22,6 +22,7 @@ import (
 func registerInternalClusterMembershipHandler(
 	router Router,
 	authenticator *authn.Authenticator,
+	isClusterMember func(r *http.Request) bool,
 	service clusterSvc.MembershipService,
 	restart func(),
 ) {
@@ -66,7 +67,7 @@ func registerInternalClusterMembershipHandler(
 				return
 			}
 
-			c, err := client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithForwardedIdentity(forwardedIdentity(r)), client.WithTrustedServerCertificate(clusterCert))
+			c, err := client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithForwardedIdentity(forwardedIdentity(r)), client.WithTrustedServerCertificate(clusterCert), client.WithDialTimeout(clusterSvc.MemberDialTimeout))
 			if err != nil {
 				_ = response.SmartError(err).Render(w)
 				return
@@ -120,10 +121,22 @@ func registerInternalClusterMembershipHandler(
 		}
 	}
 
+	// Only the other cluster members manage the membership of this member.
+	requireClusterMember := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !isClusterMember(r) {
+				_ = response.Forbidden(nil).Render(w)
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
 	leaderUntrusted := router.SubGroup("").AddMiddlewares(redirectToLeader)
 
-	authenticated := router.SubGroup("").AddMiddlewares(authenticator.Middleware())
-	leaderAuthenticated := router.SubGroup("").AddMiddlewares(authenticator.Middleware(), requireClusterDB, forwardToLeader)
+	authenticated := router.SubGroup("").AddMiddlewares(authenticator.Middleware(), requireClusterMember)
+	leaderAuthenticated := router.SubGroup("").AddMiddlewares(authenticator.Middleware(), requireClusterMember, requireClusterDB, forwardToLeader)
 
 	// Joining requires the cluster database for the tokens and the members.
 	leaderUntrusted = leaderUntrusted.AddMiddlewares(requireClusterDB)
