@@ -61,17 +61,5 @@ func (c *CmdSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(cleanCacheCmd.Command())
 
-	backupCmd := system.CmdBackup{
-		OCClient: c.OCClient,
-	}
-
-	cmd.AddCommand(backupCmd.Command())
-
-	restoreCmd := system.CmdRestore{
-		OCClient: c.OCClient,
-	}
-
-	cmd.AddCommand(restoreCmd.Command())
-
 	return cmd
 }

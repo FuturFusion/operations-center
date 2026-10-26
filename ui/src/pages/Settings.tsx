@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router";
 import TabView from "components/TabView";
-import SystemBackupConfiguration from "components/SystemBackupConfiguration";
 import SystemCertConfiguration from "components/SystemCertConfiguration";
 import SystemNetworkConfiguration from "components/SystemNetworkConfiguration";
 import SystemSecurityConfiguration from "components/SystemSecurityConfiguration";
@@ -36,11 +35,6 @@ const Settings = () => {
       key: "updates",
       title: "Updates",
       content: <SystemUpdatesConfiguration />,
-    },
-    {
-      key: "backup",
-      title: "Backup",
-      content: <SystemBackupConfiguration />,
     },
   ];
 

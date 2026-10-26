@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,8 +17,6 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/internal/system"
-	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
 )
@@ -69,15 +66,6 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
-
-	err = systemLocalfs.NewBackup(c.env.VarDir()).ApplyRestore()
-	if err != nil {
-		if !errors.Is(err, system.ErrRestoreRolledBack) {
-			return fmt.Errorf("Failed to prepare data directory %q: %w", c.env.VarDir(), err)
-		}
-
-		slog.ErrorContext(logCtx, "Failed to restore from backup", logger.Err(err))
-	}
 
 	// Ensure we have the run directory.
 	err = os.MkdirAll(c.env.RunDir(), 0o750)
