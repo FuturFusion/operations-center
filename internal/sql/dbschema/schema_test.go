@@ -272,6 +272,17 @@ INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_cha
 		_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, address, dir)
 		require.NoError(t, err)
 
+		// The standalone member exists from the start, so the files stored by it reference it.
+		var member string
+		err = db.QueryRowContext(t.Context(), `SELECT name || '@' || address FROM cluster_members WHERE id = 1`).Scan(&member)
+		require.NoError(t, err)
+		require.Equal(t, "none@0.0.0.0", member)
+
+		var violations int
+		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM pragma_foreign_key_check`).Scan(&violations)
+		require.NoError(t, err)
+		require.Zero(t, violations, "the migrated rows reference the standalone member")
+
 		var count int
 		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM updates`).Scan(&count)
 		require.NoError(t, err)

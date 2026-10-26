@@ -13,7 +13,6 @@ import (
 	"time"
 
 	clusterTx "github.com/cowsql/go-cowsql/cluster/db/transaction"
-	"github.com/lxc/incus/v7/shared/osarch"
 	"github.com/lxc/incus/v7/shared/revert"
 	"github.com/lxc/incus/v7/shared/util"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/sql/patches"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
-	"github.com/FuturFusion/operations-center/internal/sql/sqlite/query"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
@@ -61,7 +59,7 @@ func EnsureGlobal(ctx context.Context, db *sql.DB, address, dir string) (bool, i
 		// before performing any schema change. This makes sense only in the
 		// non-clustered case, because otherwise the directory would be
 		// re-populated by replication.
-		if !clustered && !backupDone {
+		if !clustered && !backupDone && util.PathExists(filepath.Join(dir, "global")) {
 			slog.InfoContext(ctx, `Updating the database schema. Backup made as "global.bak"`)
 			err := DirCopy(
 				filepath.Join(dir, "global"),
@@ -120,18 +118,12 @@ func EnsureGlobal(ctx context.Context, db *sql.DB, address, dir string) (bool, i
 		return err
 	})
 
-	// Ensure the nodes table exists before checking the schema, retrying while members starting at once lock the database.
-	var nodesCount int
+	// Ensure the membership tables exist before checking the schema, retrying while members starting at once lock the database.
 	err := clusterTx.Retry(ctx, schemaRetries, func(ctx context.Context) error {
 		return transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
-			err := createMembershipTables(ctx, tx)
+			err := createMembershipTables(ctx, tx, SchemaVersion)
 			if err != nil {
 				return fmt.Errorf("Failed to ensure 'cluster_members' table exists: %w", err)
-			}
-
-			nodesCount, err = query.Count(ctx, tx, "cluster_members", "")
-			if err != nil {
-				return fmt.Errorf("Failed to get 'cluster_members' count: %w", err)
 			}
 
 			return nil
@@ -153,31 +145,6 @@ func EnsureGlobal(ctx context.Context, db *sql.DB, address, dir string) (bool, i
 
 	if err != nil {
 		return false, initial, err
-	}
-
-	// When creating a database from scratch, insert an entry for node
-	// 1. This is needed for referential integrity with other tables. Also,
-	// create a default profile.
-	if initial == 0 || nodesCount == 0 {
-		arch, err := osarch.ArchitectureGetLocalID()
-		if err != nil {
-			return false, initial, err
-		}
-
-		err = transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
-			stmt := `INSERT INTO cluster_members(id, name, address, schema, api_extensions, description, architecture, failure_domain, config) VALUES(1, 'none', '0.0.0.0', ?, ?, ?, ?, '{}', '{}')`
-			_, err := tx.ExecContext(ctx, stmt, SchemaVersion, 0, "", arch)
-			if err != nil {
-				return err
-			}
-
-			// TODO: Cluster groups?
-
-			return nil
-		})
-		if err != nil {
-			return false, initial, err
-		}
 	}
 
 	return true, current, nil

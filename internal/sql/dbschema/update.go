@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"fmt"
 	"maps"
+
+	"github.com/lxc/incus/v7/shared/osarch"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -42,7 +44,7 @@ func FreshSchema() string {
 	return freshSchema
 }
 
-func createMembershipTables(ctx context.Context, tx *sql.Tx) error {
+func createMembershipTables(ctx context.Context, tx *sql.Tx, version int) error {
 	stmt := `
 CREATE TABLE IF NOT EXISTS cluster_members (
      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -82,6 +84,16 @@ CREATE TABLE IF NOT EXISTS config (
 );
 `
 	_, err := tx.ExecContext(ctx, stmt)
+	if err != nil {
+		return MapDBError(err)
+	}
+
+	arch, err := osarch.ArchitectureGetLocalID()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO cluster_members (id, name, address, schema, api_extensions, description, architecture, failure_domain, config) VALUES (1, 'none', '0.0.0.0', ?, 0, '', ?, '{}', '{}')`, version, arch)
 	return MapDBError(err)
 }
 
@@ -134,7 +146,7 @@ var updates = map[int]update{
 
 func updateFromV43(ctx context.Context, tx *sql.Tx) error {
 	// v43..v44 add the cluster membership tables, the member storing the files of updates, images and cluster artifacts, and the uuid of clusters.
-	err := createMembershipTables(ctx, tx)
+	err := createMembershipTables(ctx, tx, 44)
 	if err != nil {
 		return err
 	}
