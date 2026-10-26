@@ -82,33 +82,34 @@ func levelFromFlags(verbose bool, debug bool) slog.Level {
 
 type contextLoggerKey struct{}
 
-// contextLogger is a log destination carried by a context.
 type contextLogger struct {
 	handler slog.Handler
 	levels  *levelSet
 }
 
-// contextWithLogger returns a copy of ctx with its own log destination, see
-// ContextWithTestLogger.
-func contextWithLogger(ctx context.Context, writer io.Writer, verbose bool, debug bool, noColor bool) context.Context {
+func contextWithLogger(ctx context.Context, writer io.Writer, verbose bool, debug bool) (context.Context, error) {
 	loggerMu.Lock()
 	defer loggerMu.Unlock()
 
-	// Only the default logger routes records to the context logger. Install
-	// it, if InitLogger has not been called yet.
+	// Records reach the context logger only through the default logger.
+	// Install the default logger if no handler is installed yet. This fails if
+	// an earlier InitLogger call could not open its log file.
 	if !logger.initialized {
 		current := levels.Load()
 
-		// Failing is not possible, because no log file is configured.
-		_ = setLevels(current.defaultLevel, current.overrides)
+		err := setLevels(current.defaultLevel, current.overrides)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ls := newLevelSet(levelFromFlags(verbose, debug), nil)
 
+	// Test logs are read by assertions, so they never contain color codes.
 	return context.WithValue(ctx, contextLoggerKey{}, &contextLogger{
-		handler: withStacktrace(newTextHandler(writer, ls.min <= slog.LevelDebug, noColor)),
+		handler: withStacktrace(newTextHandler(writer, ls.min <= slog.LevelDebug, true)),
 		levels:  ls,
-	})
+	}), nil
 }
 
 func contextLoggerFromContext(ctx context.Context) (*contextLogger, bool) {
@@ -386,7 +387,7 @@ func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
 	return h.Handler.Handle(ctx, r)
 }
 
-// WithAttrs overwirtes the WithAttrs method from the embedded slog.Handler.
+// WithAttrs overwrites the WithAttrs method from the embedded slog.Handler.
 func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	h.Handler = h.Handler.WithAttrs(attrs)
 	h.derive = append(slices.Clip(h.derive), func(handler slog.Handler) slog.Handler {
@@ -424,8 +425,8 @@ func ContextWithAttr(parent context.Context, attr slog.Attr) context.Context {
 	return context.WithValue(parent, contextHandlerKey{}, attrs)
 }
 
-// DetachedContext returns a detached context where logging related context
-// values are taken over.
+// DetachedContext returns a context without the cancellation and the other
+// values of ctx. It only keeps the logging related values of ctx.
 func DetachedContext(ctx context.Context) context.Context {
 	detached := context.WithValue(context.Background(), contextHandlerKey{}, ctx.Value(contextHandlerKey{}))
 
