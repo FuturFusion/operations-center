@@ -18,7 +18,7 @@ func TestAuthorizerErrorIsNotLoggedByTheDecorator(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, true)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 	authorizer := authzmiddleware.NewAuthorizerWithSlog(
 		unixsocket.New(),
