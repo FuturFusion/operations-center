@@ -109,11 +109,15 @@ func (u update) GetAllWithFilter(ctx context.Context, filter provisioning.Update
 }
 
 func (u update) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
-	return entities.GetUpdateNames(ctx, transaction.GetDBTX(ctx, u.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		return entities.GetUpdateNames(ctx, transaction.GetDBTX(ctx, u.db))
+	})
 }
 
 func (u update) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
-	return entities.GetUpdateNames(ctx, transaction.GetDBTX(ctx, u.db), filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		return entities.GetUpdateNames(ctx, transaction.GetDBTX(ctx, u.db), filter)
+	})
 }
 
 func (u update) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
@@ -158,7 +162,9 @@ func (u update) enrichChannels(ctx context.Context, tx transaction.TX, updates p
 }
 
 func (u update) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteUpdate(ctx, transaction.GetDBTX(ctx, u.db), id)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteUpdate(ctx, transaction.GetDBTX(ctx, u.db), id)
+	})
 }
 
 func (u update) GetUpdatesByAssignedChannelName(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
@@ -182,30 +188,34 @@ func (u update) GetUpdatesByAssignedChannelName(ctx context.Context, name string
 
 // GetUnitsByTarget returns the files of the ready updates stored on the member memberID.
 func (u update) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
-	var units []memberfiles.Unit
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]memberfiles.Unit, error) {
+		var units []memberfiles.Unit
 
-	err := query.Scan(ctx, transaction.GetDBTX(ctx, u.db), `SELECT id, uuid FROM updates WHERE member_id = ? AND status = ?`, func(scan func(dest ...any) error) error {
-		var unit memberfiles.Unit
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, u.db), `SELECT id, uuid FROM updates WHERE member_id = ? AND status = ?`, func(scan func(dest ...any) error) error {
+			var unit memberfiles.Unit
 
-		err := scan(&unit.ID, &unit.Name)
+			err := scan(&unit.ID, &unit.Name)
+			if err != nil {
+				return err
+			}
+
+			unit.Store = memberfiles.StoreUpdates
+			units = append(units, unit)
+
+			return nil
+		}, memberID, api.UpdateStatusReady)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		unit.Store = memberfiles.StoreUpdates
-		units = append(units, unit)
-
-		return nil
-	}, memberID, api.UpdateStatusReady)
-	if err != nil {
-		return nil, err
-	}
-
-	return units, nil
+		return units, nil
+	})
 }
 
 // SetUnitTarget records that the member memberID stores the files of the update unit.
 func (u update) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
-	_, err := transaction.GetDBTX(ctx, u.db).ExecContext(ctx, `UPDATE updates SET member_id = ? WHERE id = ?`, memberID, unit.ID)
-	return err
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := transaction.GetDBTX(ctx, u.db).ExecContext(ctx, `UPDATE updates SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+		return err
+	})
 }

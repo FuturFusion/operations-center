@@ -28,7 +28,9 @@ func NewIncusImage(db sqlite.DBTX) *incusImage {
 }
 
 func (i incusImage) Create(ctx context.Context, in image.IncusImage) (int64, error) {
-	return entities.CreateIncusImage(ctx, transaction.GetDBTX(ctx, i.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateIncusImage(ctx, transaction.GetDBTX(ctx, i.db), in)
+	})
 }
 
 func (i incusImage) GetAll(ctx context.Context) (image.IncusImages, error) {
@@ -40,37 +42,45 @@ func (i incusImage) GetAllWithFilter(ctx context.Context, filter image.IncusImag
 }
 
 func (i incusImage) getAllWithFilter(ctx context.Context, filter *image.IncusImageFilter) (image.IncusImages, error) {
-	var servers image.IncusImages
-	var err error
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (image.IncusImages, error) {
+		var servers image.IncusImages
+		var err error
 
-	if filter == nil {
-		servers, err = entities.GetIncusImages(ctx, transaction.GetDBTX(ctx, i.db))
-	} else {
-		servers, err = entities.GetIncusImages(ctx, transaction.GetDBTX(ctx, i.db), *filter)
-	}
+		if filter == nil {
+			servers, err = entities.GetIncusImages(ctx, transaction.GetDBTX(ctx, i.db))
+		} else {
+			servers, err = entities.GetIncusImages(ctx, transaction.GetDBTX(ctx, i.db), *filter)
+		}
 
-	if err != nil {
-		return nil, err
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	return servers, nil
+		return servers, nil
+	})
 }
 
 func (i incusImage) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetIncusImageNames(ctx, transaction.GetDBTX(ctx, i.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetIncusImageNames(ctx, transaction.GetDBTX(ctx, i.db))
+	})
 }
 
 func (i incusImage) ExistsByName(ctx context.Context, name string) (bool, error) {
-	return entities.IncusImageExists(ctx, transaction.GetDBTX(ctx, i.db), name)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (bool, error) {
+		return entities.IncusImageExists(ctx, transaction.GetDBTX(ctx, i.db), name)
+	})
 }
 
 func (i incusImage) GetByName(ctx context.Context, name string) (*image.IncusImage, error) {
-	incusImage, err := entities.GetIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*image.IncusImage, error) {
+		incusImage, err := entities.GetIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+		if err != nil {
+			return nil, err
+		}
 
-	return incusImage, nil
+		return incusImage, nil
+	})
 }
 
 func (i incusImage) Update(ctx context.Context, in image.IncusImage) error {
@@ -80,42 +90,50 @@ func (i incusImage) Update(ctx context.Context, in image.IncusImage) error {
 }
 
 func (i incusImage) Upsert(ctx context.Context, in image.IncusImage) error {
-	_, err := entities.CreateOrReplaceIncusImage(ctx, transaction.GetDBTX(ctx, i.db), in)
-	return err
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := entities.CreateOrReplaceIncusImage(ctx, transaction.GetDBTX(ctx, i.db), in)
+		return err
+	})
 }
 
 func (i incusImage) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+	})
 }
 
 // GetUnitsByTarget returns the files of the images stored on the member memberID.
 func (i incusImage) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
-	var units []memberfiles.Unit
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]memberfiles.Unit, error) {
+		var units []memberfiles.Unit
 
-	err := query.Scan(ctx, transaction.GetDBTX(ctx, i.db), `SELECT id, operating_system, release, architecture, variant FROM incus_images WHERE member_id = ?`, func(scan func(dest ...any) error) error {
-		var unit memberfiles.Unit
-		var img image.IncusImage
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, i.db), `SELECT id, operating_system, release, architecture, variant FROM incus_images WHERE member_id = ?`, func(scan func(dest ...any) error) error {
+			var unit memberfiles.Unit
+			var img image.IncusImage
 
-		err := scan(&unit.ID, &img.OperatingSystem, &img.Release, &img.Architecture, &img.Variant)
+			err := scan(&unit.ID, &img.OperatingSystem, &img.Release, &img.Architecture, &img.Variant)
+			if err != nil {
+				return err
+			}
+
+			unit.Store = memberfiles.StoreImages
+			unit.Name = filepath.ToSlash(img.FilePath())
+			units = append(units, unit)
+
+			return nil
+		}, memberID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		unit.Store = memberfiles.StoreImages
-		unit.Name = filepath.ToSlash(img.FilePath())
-		units = append(units, unit)
-
-		return nil
-	}, memberID)
-	if err != nil {
-		return nil, err
-	}
-
-	return units, nil
+		return units, nil
+	})
 }
 
 // SetUnitTarget records that the member memberID stores the files of the image unit.
 func (i incusImage) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
-	_, err := transaction.GetDBTX(ctx, i.db).ExecContext(ctx, `UPDATE incus_images SET member_id = ? WHERE id = ?`, memberID, unit.ID)
-	return err
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := transaction.GetDBTX(ctx, i.db).ExecContext(ctx, `UPDATE incus_images SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+		return err
+	})
 }

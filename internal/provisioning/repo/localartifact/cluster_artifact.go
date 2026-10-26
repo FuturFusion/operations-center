@@ -152,8 +152,13 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		in.Files[i].MimeType = mtype.String()
 	}
 
-	var clusterUUID string
-	err = transaction.GetDBTX(ctx, c.db).QueryRowContext(ctx, `SELECT uuid FROM clusters WHERE name = ?`, in.Cluster).Scan(&clusterUUID)
+	// The files are copied outside of a transaction, so only the statements are run in one.
+	clusterUUID, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (string, error) {
+		var clusterUUID string
+		err := transaction.GetDBTX(ctx, c.db).QueryRowContext(ctx, `SELECT uuid FROM clusters WHERE name = ?`, in.Cluster).Scan(&clusterUUID)
+
+		return clusterUUID, err
+	})
 	if err != nil {
 		return 0, fmt.Errorf("Failed to get UUID of cluster %q: %w", in.Cluster, err)
 	}
@@ -200,7 +205,9 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		_ = os.RemoveAll(targetDir)
 	})
 
-	id, err := entities.CreateClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), in)
+	id, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), in)
+	})
 	if err != nil {
 		return 0, fmt.Errorf("Failed to create cluster artifact entry: %w", err)
 	}
@@ -244,49 +251,55 @@ func copyFile(src string, dst string) (_ int64, err error) {
 }
 
 func (c clusterArtifact) GetClusterArtifactAll(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
-	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
-		Cluster: &clusterName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range artifacts {
-		for j := range artifacts[i].Files {
-			artifacts[i].Files[j].Open = c.open(artifacts[i], artifacts[i].Files[j].Name)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.ClusterArtifacts, error) {
+		artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
+			Cluster: &clusterName,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	return artifacts, nil
+		for i := range artifacts {
+			for j := range artifacts[i].Files {
+				artifacts[i].Files[j].Open = c.open(artifacts[i], artifacts[i].Files[j].Name)
+			}
+		}
+
+		return artifacts, nil
+	})
 }
 
 func (c clusterArtifact) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
-	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
-		Cluster: &clusterName,
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
+			Cluster: &clusterName,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		names := make([]string, 0, len(artifacts))
+		for _, artifact := range artifacts {
+			names = append(names, artifact.Name)
+		}
+
+		return names, nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	names := make([]string, 0, len(artifacts))
-	for _, artifact := range artifacts {
-		names = append(names, artifact.Name)
-	}
-
-	return names, nil
 }
 
 func (c clusterArtifact) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
-	artifact, err := entities.GetClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), clusterName, artifactName)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.ClusterArtifact, error) {
+		artifact, err := entities.GetClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), clusterName, artifactName)
+		if err != nil {
+			return nil, err
+		}
 
-	for i := range artifact.Files {
-		artifact.Files[i].Open = c.open(*artifact, artifact.Files[i].Name)
-	}
+		for i := range artifact.Files {
+			artifact.Files[i].Open = c.open(*artifact, artifact.Files[i].Name)
+		}
 
-	return artifact, nil
+		return artifact, nil
+	})
 }
 
 func (c clusterArtifact) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
@@ -346,7 +359,10 @@ func (c clusterArtifact) Prune(ctx context.Context) error {
 		return err
 	}
 
-	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db))
+	// The unknown files are removed outside of a transaction.
+	artifacts, err := transaction.DoAndReturn(ctx, func(ctx context.Context) ([]provisioning.ClusterArtifact, error) {
+		return entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db))
+	})
 	if err != nil {
 		return err
 	}
@@ -368,18 +384,23 @@ func (c clusterArtifact) Prune(ctx context.Context) error {
 // MigrateNameLayout moves the files, which are stored by cluster name, to the
 // directory named by the UUID of the cluster.
 func (c clusterArtifact) MigrateNameLayout(ctx context.Context) error {
-	clusterUUIDs := map[string]string{}
-	err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `SELECT name, uuid FROM clusters`, func(scan func(dest ...any) error) error {
-		var name, clusterUUID string
+	// The directories are renamed outside of a transaction.
+	clusterUUIDs, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (map[string]string, error) {
+		clusterUUIDs := map[string]string{}
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `SELECT name, uuid FROM clusters`, func(scan func(dest ...any) error) error {
+			var name, clusterUUID string
 
-		err := scan(&name, &clusterUUID)
-		if err != nil {
-			return err
-		}
+			err := scan(&name, &clusterUUID)
+			if err != nil {
+				return err
+			}
 
-		clusterUUIDs[name] = clusterUUID
+			clusterUUIDs[name] = clusterUUID
 
-		return nil
+			return nil
+		})
+
+		return clusterUUIDs, err
 	})
 	if err != nil {
 		return err
@@ -403,36 +424,40 @@ func (c clusterArtifact) MigrateNameLayout(ctx context.Context) error {
 
 // GetUnitsByTarget returns the files of the cluster artifacts stored on the member memberID.
 func (c clusterArtifact) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
-	var units []memberfiles.Unit
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]memberfiles.Unit, error) {
+		var units []memberfiles.Unit
 
-	err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `
 SELECT cluster_artifacts.id, clusters.uuid, cluster_artifacts.name
   FROM cluster_artifacts
   JOIN clusters ON clusters.id = cluster_artifacts.cluster_id
   WHERE cluster_artifacts.member_id = ?`, func(scan func(dest ...any) error) error {
-		var unit memberfiles.Unit
-		var clusterUUID, name string
+			var unit memberfiles.Unit
+			var clusterUUID, name string
 
-		err := scan(&unit.ID, &clusterUUID, &name)
+			err := scan(&unit.ID, &clusterUUID, &name)
+			if err != nil {
+				return err
+			}
+
+			unit.Store = memberfiles.StoreArtifacts
+			unit.Name = filepath.ToSlash(filepath.Join(clusterUUID, name))
+			units = append(units, unit)
+
+			return nil
+		}, memberID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		unit.Store = memberfiles.StoreArtifacts
-		unit.Name = filepath.ToSlash(filepath.Join(clusterUUID, name))
-		units = append(units, unit)
-
-		return nil
-	}, memberID)
-	if err != nil {
-		return nil, err
-	}
-
-	return units, nil
+		return units, nil
+	})
 }
 
 // SetUnitTarget records that the member memberID stores the files of the cluster artifact unit.
 func (c clusterArtifact) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
-	_, err := transaction.GetDBTX(ctx, c.db).ExecContext(ctx, `UPDATE cluster_artifacts SET member_id = ? WHERE id = ?`, memberID, unit.ID)
-	return err
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := transaction.GetDBTX(ctx, c.db).ExecContext(ctx, `UPDATE cluster_artifacts SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+		return err
+	})
 }
