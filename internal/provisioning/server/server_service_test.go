@@ -1892,7 +1892,7 @@ func TestServerService_Update(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			var updatedServer provisioning.Server
 			repo := &repoMock.ServerRepoMock{
@@ -2418,7 +2418,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			var gotServerStatus api.ServerStatus
 			var gotServerStatusDetail api.ServerStatusDetail

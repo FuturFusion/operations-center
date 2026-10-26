@@ -16158,7 +16158,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &mock.ClusterRepoMock{}
 
@@ -17063,7 +17063,7 @@ func TestClusterService_Update(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -19101,7 +19101,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20189,7 +20189,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20608,7 +20608,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -20894,7 +20894,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -21181,7 +21181,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -21711,7 +21711,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22079,7 +22079,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22393,7 +22393,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -22707,7 +22707,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -23047,7 +23047,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
@@ -23415,7 +23415,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {

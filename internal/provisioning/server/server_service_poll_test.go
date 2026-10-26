@@ -706,7 +706,7 @@ foobar
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -1790,7 +1790,7 @@ func TestServerService_PollServer(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -2075,7 +2075,7 @@ func TestServerService_PollServer_resyncBMCData(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -2134,7 +2134,7 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 
 	// Setup
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, false, true, true)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 	repo := &repoMock.ServerRepoMock{
 		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {

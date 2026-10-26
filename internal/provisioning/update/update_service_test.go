@@ -1431,7 +1431,7 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 
 			// Setup
 			logBuf := &log.SyncBuffer{}
-			ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+			ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 			repo := &repoMock.UpdateRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
