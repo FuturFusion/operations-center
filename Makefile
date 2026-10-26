@@ -1,4 +1,5 @@
 GO ?= go
+GOPATH ?= $(shell $(GO) env GOPATH)
 DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnbd-dev || echo "0.0.0-libnbd-not-found")
 SPHINXENV=doc/.sphinx/venv/bin/activate
 SPHINXPIPPATH=doc/.sphinx/venv/bin/pip
@@ -6,6 +7,18 @@ OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(shell pwd)/tmp-e2e.out
 GOCOVERDIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/coverage_$(EXECUTION_DATETIME)
 EXECUTION_DATETIME=$(shell date +%F-%H-%M-%S)
 SHELL=/bin/bash -o pipefail
+HASH := \#
+TAG_SQLITE3=$(shell printf "$(HASH)include <cowsql.h>\nvoid main(){cowsql_node_id n = 1;}" | $(CC) ${CGO_CFLAGS} -o /dev/null -xc - >/dev/null 2>&1 && echo "libsqlite3")
+CGO_LDFLAGS_ALLOW ?= (-Wl,-wrap,pthread_create)|(-Wl,-z,now)
+COWSQL_ENV=CGO_ENABLED=1 CC="$(CC)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)"
+
+ifneq "$(wildcard vendor)" ""
+  RAFT_PATH=$(CURDIR)/vendor/raft
+  COWSQL_PATH=$(CURDIR)/vendor/cowsql
+else
+  RAFT_PATH=$(GOPATH)/deps/raft
+  COWSQL_PATH=$(GOPATH)/deps/cowsql
+endif
 
 # UI=0 disables building the web UI and embedding it into ./bin/operations-centerd.
 # The daemon then serves the web UI from /usr/share/operations-center/ui, as
@@ -14,7 +27,7 @@ UI ?= 1
 
 ifeq ($(UI),1)
   BLD_UI_DEP := build-ui-fast
-  BLD_TAGS := -tags uiembed
+  BLD_TAGS := uiembed
 else
   BLD_UI_DEP :=
   BLD_TAGS :=
@@ -23,8 +36,8 @@ endif
 default: build
 
 .PHONY: build
-build: operations-center
-	$(GO) build -o ./bin/operations-centerd ./cmd/operations-centerd
+build: check-cowsql operations-center
+	$(COWSQL_ENV) $(GO) build -tags "$(TAG_SQLITE3)" -o ./bin/operations-centerd ./cmd/operations-centerd
 
 .PHONY: operations-center
 operations-center:
@@ -41,18 +54,57 @@ operations-center:
 # The freshly built web UI is embedded into operations-centerd, so a daemon
 # injected into IncusOS never pairs with the stale web UI of the target system.
 .PHONY: bld
-bld: $(BLD_UI_DEP)
+bld: check-cowsql $(BLD_UI_DEP)
 	mkdir -p ./bin/
-	$(GO) build $(BLD_TAGS) -o ./bin/operations-centerd ./cmd/operations-centerd
+	$(COWSQL_ENV) $(GO) build -tags "$(TAG_SQLITE3) $(BLD_TAGS)" -o ./bin/operations-centerd ./cmd/operations-centerd
 	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
 
 # bld (build linux development) with coverage instrumentation enabled
 # Build only the Linux AMD64 version, used for development and testing incl. coverage.
 .PHONY: bld-cover
-bld-cover: $(BLD_UI_DEP)
+bld-cover: check-cowsql $(BLD_UI_DEP)
 	mkdir -p ./bin/
-	$(GO) build -cover $(BLD_TAGS) -o ./bin/operations-centerd ./cmd/operations-centerd
+	$(COWSQL_ENV) $(GO) build -cover -tags "$(TAG_SQLITE3) $(BLD_TAGS)" -o ./bin/operations-centerd ./cmd/operations-centerd
 	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -cover -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
+
+.PHONY: check-cowsql
+check-cowsql:
+ifeq "$(TAG_SQLITE3)" ""
+	@echo "Missing cowsql, run \"make deps\" to setup."
+	@exit 1
+endif
+
+# Build the raft and cowsql libraries required by operations-centerd.
+.PHONY: deps
+deps:
+	@if [ ! -e "$(RAFT_PATH)" ]; then \
+		git clone --depth=1 "https://github.com/cowsql/raft" "$(RAFT_PATH)"; \
+	elif [ -e "$(RAFT_PATH)/.git" ]; then \
+		cd "$(RAFT_PATH)"; git pull; \
+	fi
+
+	cd "$(RAFT_PATH)" && \
+		autoreconf -i && \
+		./configure && \
+		make
+
+	@if [ ! -e "$(COWSQL_PATH)" ]; then \
+		git clone --depth=1 "https://github.com/cowsql/cowsql" "$(COWSQL_PATH)"; \
+	elif [ -e "$(COWSQL_PATH)/.git" ]; then \
+		cd "$(COWSQL_PATH)"; git pull; \
+	fi
+
+	cd "$(COWSQL_PATH)" && \
+		autoreconf -i && \
+		PKG_CONFIG_PATH="$(RAFT_PATH)" ./configure && \
+		make CFLAGS="-I$(RAFT_PATH)/include/" LDFLAGS="-L$(RAFT_PATH)/.libs/"
+
+	@echo ""
+	@echo "Please set the following in your environment (possibly ~/.bashrc)"
+	@echo "export CGO_CFLAGS=\"-I$(RAFT_PATH)/include/ -I$(COWSQL_PATH)/include/\""
+	@echo "export CGO_LDFLAGS=\"-L$(RAFT_PATH)/.libs -L$(COWSQL_PATH)/.libs/\""
+	@echo "export LD_LIBRARY_PATH=\"$(RAFT_PATH)/.libs/:$(COWSQL_PATH)/.libs/\""
+	@echo "export CGO_LDFLAGS_ALLOW=\"(-Wl,-wrap,pthread_create)|(-Wl,-z,now)\""
 
 .PHONY: build-ui
 build-ui:
@@ -72,18 +124,18 @@ clean-ui:
 build-all-packages:
 	$(GO) mod tidy
 	$(GO) build ./...
-	$(GO) test -c -o /dev/null ./...
+	$(COWSQL_ENV) $(GO) test -tags "$(TAG_SQLITE3)" -c -o /dev/null ./...
 
 .PHONY: test
 test:
-	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -v
+	OPERATIONS_CENTER_E2E_TEST=0 $(COWSQL_ENV) $(GO) test -tags "$(TAG_SQLITE3)" ./... -v
 
 .PHONY: test-coverage
 test-coverage:
 	@rm -rf coverage.out covdata-coverage.out
 	@mkdir -p coverage.out
 	@echo "================= Running Tests with Coverage ================="
-	@OPERATIONS_CENTER_E2E_TEST=0 $(GO) test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@OPERATIONS_CENTER_E2E_TEST=0 $(COWSQL_ENV) $(GO) test -tags "$(TAG_SQLITE3)" -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
 	@echo "================= Coverage Report ================="
 	@$(GO) tool covdata percent -pkg $$($(GO) tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
 	@cat covdata-coverage.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
@@ -93,7 +145,7 @@ test-coverage-func:
 	@rm -rf coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
 	@mkdir -p coverage.out
 	@echo "================= Running Tests with Coverage ================="
-	@OPERATIONS_CENTER_E2E_TEST=0 $(GO) test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@OPERATIONS_CENTER_E2E_TEST=0 $(COWSQL_ENV) $(GO) test -tags "$(TAG_SQLITE3)" -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
 	@echo "================= Coverage Report ================="
 	@$(GO) tool covdata textfmt -pkg $$($(GO) tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage-func.out
 	@grep -vE '_gen(_test)?\.go' covdata-coverage-func.out > covdata-coverage-func-filtered.out
@@ -246,7 +298,7 @@ e2e-test: bld
 e2e-test-cover: bld-cover
 	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test-cover GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(GOCOVERDIR)
-	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -cover -covermode atomic -coverpkg=./... -v -count 1 -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/unit_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_TEST=0 $(COWSQL_ENV) $(GO) test -tags "$(TAG_SQLITE3)" ./... -cover -covermode atomic -coverpkg=./... -v -count 1 -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/unit_tests_$(EXECUTION_DATETIME).log
 	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -covermode atomic -coverpkg=./... -v -timeout $(GO_TEST_COVER_TIMEOUT) -count 1 -run "$(GO_TEST_RUN)" -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
 	@echo ""
 	@echo "================= Coverage Report ================="
