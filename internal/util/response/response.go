@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lxc/incus/v7/shared/util"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -547,4 +549,65 @@ func (l *lazySeeker) Seek(offset int64, whence int) (int64, error) {
 	l.pos = abs
 
 	return abs, nil
+}
+
+type client interface {
+	GetBaseAddr() string
+	DoHTTP(*http.Request) (*http.Response, error)
+}
+
+type forwardedResponse struct {
+	client  client
+	request *http.Request
+}
+
+// ForwardedResponse takes a request directed to a node and forwards it to
+// another node, writing back the response it gegs.
+func ForwardedResponse(client client, request *http.Request) Response {
+	return &forwardedResponse{
+		client:  client,
+		request: request,
+	}
+}
+
+// Render writes the response to the provided http.ResponseWriter.
+func (r *forwardedResponse) Render(w http.ResponseWriter) error {
+	url := fmt.Sprintf("%s%s", r.client.GetBaseAddr(), r.request.URL.RequestURI())
+	forwarded, err := http.NewRequest(r.request.Method, url, r.request.Body)
+	if err != nil {
+		return err
+	}
+
+	for key := range r.request.Header {
+		forwarded.Header.Set(key, r.request.Header.Get(key))
+	}
+
+	forwarded.Header.Set("X-OperationsCenter-forwarded-host", r.request.Host)
+
+	response, err := r.client.DoHTTP(forwarded)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = response.Body.Close() }()
+
+	for key := range response.Header {
+		w.Header().Set(key, response.Header.Get(key))
+	}
+
+	if w.Header().Get("Connection") != "keep-alive" {
+		w.WriteHeader(response.StatusCode)
+	}
+
+	_, err = util.SafeCopy(w, response.Body)
+	return err
+}
+
+func (r *forwardedResponse) String() string {
+	return fmt.Sprintf("request to %s", r.request.URL)
+}
+
+// Code returns the HTTP code.
+func (r *forwardedResponse) Code() int {
+	return http.StatusOK
 }

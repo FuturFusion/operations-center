@@ -22,3 +22,32 @@ func Start(ctx context.Context, f Func, schedule Schedule) (func(time.Duration) 
 
 	return stop, reset
 }
+
+type TaskFunc func(context.Context) func(context.Context) error
+
+func New(f Func, schedule Schedule, stopDeadline time.Duration) TaskFunc {
+	group := Group{}
+	group.Add(f, schedule)
+	return func(ctx context.Context) func(ctx context.Context) error {
+		group.Start(ctx)
+		stop := group.Stop
+
+		return func(ctx context.Context) error {
+			return stop(deadlineFrom(ctx, stopDeadline))
+		}
+	}
+}
+
+// deadlineFrom extracts the deadline from the provided context if present and not yet expired.
+// Otherwise the defaultDeadline is returned.
+func deadlineFrom(ctx context.Context, defaultDeadline time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if ok {
+		deadlineDuration := time.Until(deadline)
+		if deadlineDuration > 0 {
+			return deadlineDuration
+		}
+	}
+
+	return defaultDeadline
+}
