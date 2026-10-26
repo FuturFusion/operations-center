@@ -8,7 +8,9 @@ import (
 	"slices"
 
 	"github.com/cowsql/go-cowsql/cluster/db/transaction"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -84,4 +86,19 @@ func (m *membership) getTrustedCerts() map[string]x509.Certificate {
 	maps.Copy(cache, m.clientCertCache)
 
 	return cache
+}
+
+// IsMemberCertificate reports if certificatePEM is the certificate of a cluster member.
+func (m *membership) IsMemberCertificate(certificatePEM string) bool {
+	cert, err := certificate.Decode([]byte(certificatePEM))
+	if err != nil {
+		return false
+	}
+
+	m.clientCertMu.RLock()
+	defer m.clientCertMu.RUnlock()
+
+	_, ok := m.clientCertCache[incustls.CertFingerprint(cert)]
+
+	return ok
 }

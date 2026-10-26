@@ -51,11 +51,14 @@ type MembershipService interface {
 	DeleteTokenByName(ctx context.Context, serverName string) error
 
 	TrustedClients() map[string]x509.Certificate
+	IsMemberCertificate(certificatePEM string) bool
 
 	PersistSharedConfig(ctx context.Context, cfg system.SharedConfig) error
 	UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	ReloadSharedConfig(ctx context.Context) error
+
+	ContactMembers(ctx context.Context, except ...string) error
 }
 
 type GlobalRaftRepo interface {

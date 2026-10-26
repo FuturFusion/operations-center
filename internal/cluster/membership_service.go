@@ -1278,6 +1278,66 @@ func (m *membership) memberNames(ctx context.Context, addresses []string) ([]str
 	return names, nil
 }
 
+// ContactMembers checks that all other cluster members except the named ones can be reached.
+func (m *membership) ContactMembers(ctx context.Context, except ...string) error {
+	enabled, err := cowsqlmembership.Enabled(m.Gateway().Node())
+	if err != nil {
+		return err
+	}
+
+	if !enabled {
+		return nil
+	}
+
+	exceptAddresses := make([]string, 0, len(except))
+	if len(except) > 0 {
+		members, err := m.GetMembersByID(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, member := range members {
+			if slices.Contains(except, member.Name) {
+				exceptAddresses = append(exceptAddresses, member.Address)
+			}
+		}
+	}
+
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), cowsqlcluster.NotifyTryAll)
+	if err != nil {
+		return err
+	}
+
+	var unreachableMu sync.Mutex
+	var unreachable []string
+
+	_ = notifier(func(_ context.Context, address string, networkCert cowsqltls.CertInfo, serverCert cowsqltls.CertInfo) error {
+		if slices.Contains(exceptAddresses, address) {
+			return nil
+		}
+
+		if !cowsqlcluster.HasConnectivity(networkCert, serverCert, address, m.gateway.Options().RestrictTLS()) {
+			unreachableMu.Lock()
+			unreachable = append(unreachable, address)
+			unreachableMu.Unlock()
+		}
+
+		return nil
+	})
+
+	if len(unreachable) == 0 {
+		return nil
+	}
+
+	names, err := m.memberNames(ctx, unreachable)
+	if err != nil {
+		return err
+	}
+
+	return domain.NewErrorf(domain.ErrUnavailable, "", "Cluster member %s can not be reached, all members need to be reachable", strings.Join(names, ", ")).
+		WithHintf("Bring the cluster members back online or remove the ones that are down.")
+}
+
 // ReloadSharedConfig applies the shared config stored in the global database by another cluster member.
 func (m *membership) ReloadSharedConfig(ctx context.Context) error {
 	if m.configRepo == nil {

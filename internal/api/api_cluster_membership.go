@@ -1,14 +1,17 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	clusterSvc "github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -23,6 +26,9 @@ type membershipHandler struct {
 
 	// mover moves the files of a member to another one.
 	mover memberfiles.Mover
+
+	// serverSvc holds the server records of the members.
+	serverSvc provisioning.ServerService
 }
 
 func registerClusterMembershipHandler(
@@ -31,12 +37,14 @@ func registerClusterMembershipHandler(
 	service clusterSvc.MembershipService,
 	restart func(),
 	mover memberfiles.Mover,
+	serverSvc provisioning.ServerService,
 ) {
 	handler := &membershipHandler{
 		authorizer: authorizer,
 		service:    service,
 		restart:    restart,
 		mover:      mover,
+		serverSvc:  serverSvc,
 	}
 
 	// Clustering:
@@ -70,6 +78,13 @@ func (m *membershipHandler) enablePost(r *http.Request) response.Response {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return response.BadRequest(err)
+	}
+
+	if req.ServerName != api.ServerNameOperationsCenter {
+		err = m.checkServerNameUnused(r.Context(), req.ServerName)
+		if err != nil {
+			return response.SmartError(err)
+		}
 	}
 
 	err = m.service.Bootstrap(r.Context(), req)
@@ -133,6 +148,11 @@ func (m *membershipHandler) tokenPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	err = m.checkServerNameUnused(r.Context(), req.ServerName)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	err = m.service.CreateToken(r.Context(), req)
 	if err != nil {
 		return response.SmartError(err)
@@ -185,12 +205,59 @@ func (m *membershipHandler) memberDelete(r *http.Request) response.Response {
 		}
 	}
 
-	err := m.service.RemoveMember(r.Context(), name, force)
+	// A leader removing itself is removed by the new leader, which deletes the server record.
+	removesItself, err := m.isLocalMember(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
+	err = m.service.RemoveMember(r.Context(), name, force)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Member and server names are distinct, so the record of this name belongs to the member.
+	if !removesItself {
+		err = m.serverSvc.DeleteByName(r.Context(), name)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return response.SmartError(fmt.Errorf("Failed to delete the server record of removed cluster member %q: %w", name, err))
+		}
+	}
+
 	return response.EmptySyncResponse
+}
+
+// isLocalMember reports whether name is this cluster member.
+func (m *membershipHandler) isLocalMember(ctx context.Context, name string) (bool, error) {
+	members, err := m.service.GetMembers(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	localAddress := m.service.Gateway().State().ClusterAddress()
+	for _, member := range members {
+		if member.Name == name {
+			return member.Address == localAddress, nil
+		}
+	}
+
+	return false, nil
+}
+
+// checkServerNameUnused ensures the server name for the cluster member is not in use by a registered server.
+func (m *membershipHandler) checkServerNameUnused(ctx context.Context, name string) error {
+	_, err := m.serverSvc.GetByName(ctx, name)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("Failed to check the server name %q: %w", name, err)
+	}
+
+	return domain.NewErrorf(domain.ErrConstraintViolation, "", "The name %q is used by a server already", name).
+		WithHintf("Use another name for the cluster member or rename the server.").
+		WithDetail("server", name)
 }
 
 func (m *membershipHandler) memberMoveFilesPost(r *http.Request) response.Response {

@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	clusterSvc "github.com/FuturFusion/operations-center/internal/cluster"
 	membershipapi "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -25,10 +26,12 @@ func registerInternalClusterMembershipHandler(
 	isClusterMember func(r *http.Request) bool,
 	service clusterSvc.MembershipService,
 	restart func(),
+	serverSvc provisioning.ServerService,
 ) {
 	handler := &membershipHandler{
-		service: service,
-		restart: restart,
+		service:   service,
+		restart:   restart,
+		serverSvc: serverSvc,
 	}
 
 	forwardToLeader := func(next http.HandlerFunc) http.HandlerFunc {
@@ -276,6 +279,11 @@ func (m *membershipHandler) acceptPost(r *http.Request) response.Response {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return response.BadRequest(err)
+	}
+
+	err = m.checkServerNameUnused(r.Context(), req.ServerName)
+	if err != nil {
+		return response.SmartError(err)
 	}
 
 	resp, err := m.service.Accept(r.Context(), req)

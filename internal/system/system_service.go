@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -41,6 +42,8 @@ type systemService struct {
 
 	// updateClusterCertificate persists the cluster certificate on all members.
 	updateClusterCertificate func(ctx context.Context, certificatePEM string, keyPEM string) error
+	// isMemberCertificate reports if the certificate belongs to a cluster member.
+	isMemberCertificate func(certificatePEM string) bool
 
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
@@ -61,6 +64,13 @@ type SystemServiceOption func(s *systemService)
 func WithClusterCertificateUpdater(f func(ctx context.Context, certificatePEM string, keyPEM string) error) SystemServiceOption {
 	return func(s *systemService) {
 		s.updateClusterCertificate = f
+	}
+}
+
+// WithClusterMemberCertificates sets the cluster member certificate checker.
+func WithClusterMemberCertificates(isMemberCertificate func(certificatePEM string) bool) SystemServiceOption {
+	return func(s *systemService) {
+		s.isMemberCertificate = isMemberCertificate
 	}
 }
 
@@ -192,26 +202,27 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 			return fmt.Errorf("Failed to get operations-center server entry: %w", err)
 		}
 
-		if len(servers) > 1 {
-			//domain-errors:internal Violated invariant, nothing the user can do about it.
-			return fmt.Errorf("Failed to get operations-center server entry, expected at most 1 entry, got %d", len(servers))
-		}
-
-		// Without an entry, e.g. right after a restore, there is no OpenFGA application known.
-		hasOpenFGA := false
+		// Every cluster member runs on its own IncusOS.
 		for _, server := range servers {
+			if !s.isPeerServer(server, currentCertificate) {
+				continue
+			}
+
+			hasOpenFGA := false
 			for _, app := range server.VersionData.Applications {
 				if app.Name == "openfga" {
 					hasOpenFGA = true
 					break
 				}
 			}
-		}
 
-		if hasOpenFGA {
-			err = s.serverSvc.RestartApplication(ctx, servers[0].Name, "openfga")
+			if !hasOpenFGA {
+				continue
+			}
+
+			err = s.serverSvc.RestartApplication(ctx, server.Name, "openfga")
 			if err != nil {
-				return fmt.Errorf("Failed to restart OpenFGA application: %w", err)
+				return fmt.Errorf("Failed to restart OpenFGA application on %q: %w", server.Name, err)
 			}
 		}
 	}
@@ -270,6 +281,20 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 			slog.WarnContext(ctx, "Failed to update server certificate in system provider, retry on next poll", slog.String("server", server.Name), logger.Err(err))
 		}
 	}
+}
+
+// isPeerServer returns whether the server record belongs to this system or a cluster member.
+func (s *systemService) isPeerServer(server provisioning.Server, current tls.Certificate) bool {
+	if s.env.Clustered() {
+		return s.isMemberCertificate != nil && s.isMemberCertificate(ptr.From(server.Certificate))
+	}
+
+	cert, err := certificate.Decode([]byte(ptr.From(server.Certificate)))
+	if err != nil {
+		return false
+	}
+
+	return len(current.Certificate) > 0 && bytes.Equal(cert.Raw, current.Certificate[0])
 }
 
 // storeCertificate persists the certificate presented to API clients on all cluster members, keeping the previous one on failure.

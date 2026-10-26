@@ -161,6 +161,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		serverGetSystemProvider     []queue.Item[provisioning.ServerSystemProvider]
 		serverUpdateSystemProvider  []queue.Item[struct{}]
 		serverRestartApplicationErr error
+		clustered                   bool
 
 		assertErr                       require.ErrorAssertionFunc
 		assertLog                       log.MatcherFunc
@@ -168,6 +169,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		wantProviderCertificate         string
 		wantCertificateFile             string
 		wantKeyFile                     string
+		wantRestarted                   []string
 	}{
 		{
 			name: "success - no registered servers except for self-registered operations-center",
@@ -198,8 +200,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
-					Name: "operations-center",
-					Type: api.ServerTypeOperationsCenter,
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
 					VersionData: api.ServerVersionData{
 						Applications: []api.ApplicationVersionData{
 							{
@@ -220,6 +223,80 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			wantCertificateFile: string(certPEM),
 			wantKeyFile:         string(keyPEM),
+			wantRestarted:       []string{"operations-center"},
+		},
+		{
+			name: "success - deployed Operations Center is not restarted",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
+				},
+				{
+					Name:        "deployed",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(otherLeafPEM)),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+			},
+			serverGetAll: provisioning.Servers{operationsCenterServer},
+
+			assertErr: require.NoError,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+			wantCertificateFile: string(certPEM),
+			wantKeyFile:         string(keyPEM),
+			wantRestarted:       []string{},
+		},
+		{
+			name: "success - clustered - only cluster members are restarted",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM:   string(certPEM),
+			keyPEM:    string(keyPEM),
+			clustered: true,
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name:        "one",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new("member-one"),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+				{
+					Name:        "deployed",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(otherLeafPEM)),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+			wantCertificateFile: string(currentCertPEM),
+			wantKeyFile:         string(currentKeyPEM),
+			wantRestarted:       []string{"one"},
 		},
 		{
 			name: "success - no registered servers - same certificate",
@@ -569,19 +646,29 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			wantKeyFile:                     string(currentKeyPEM),
 		},
 		{
-			name: "error - serverSvc.GetAllWithFilter - no operations-center entry",
+			name: "error - serverSvc.RestartApplication - on another cluster member",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
+			certPEM:   string(certPEM),
+			keyPEM:    string(keyPEM),
+			clustered: true,
 			serverGetAllWithFilter: provisioning.Servers{
-				{Name: "one", Type: api.ServerTypeOperationsCenter},
-				{Name: "two", Type: api.ServerTypeOperationsCenter},
+				{Name: "one", Type: api.ServerTypeOperationsCenter, Certificate: new("member-one")},
+				{
+					Name:        "two",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new("member-two"),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
 			},
+			serverRestartApplicationErr: boom.Error,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected at most 1 entry, got 2")
+				require.ErrorIs(tt, err, boom.Error)
+				require.ErrorContains(tt, err, `Failed to restart OpenFGA application on "two"`)
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
@@ -597,8 +684,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
-					Name: "operations-center",
-					Type: api.ServerTypeOperationsCenter,
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
 					VersionData: api.ServerVersionData{
 						Applications: []api.ApplicationVersionData{
 							{
@@ -684,8 +772,15 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			err = os.WriteFile(filepath.Join(tmpDir, "server.key"), currentKeyPEM, 0o600)
 			require.NoError(t, err)
 
+			// When clustered, the cluster certificate is presented to API clients.
+			err = os.WriteFile(filepath.Join(tmpDir, "cluster.crt"), currentCertPEM, 0o600)
+			require.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(tmpDir, "cluster.key"), currentKeyPEM, 0o600)
+			require.NoError(t, err)
+
 			env := &envMock.EnvironmentMock{
-				ClusteredFunc: func() bool { return false },
+				ClusteredFunc: func() bool { return tc.clustered },
 				VarDirFunc: func() string {
 					return tmpDir
 				},
@@ -714,6 +809,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				lifecycle.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())
 			})
 
+			restarted := []string{}
 			serverSvc := &mock.ProvisioningServerServiceMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return tc.serverGetAll, tc.serverGetAllErr
@@ -730,11 +826,19 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					return err
 				},
 				RestartApplicationFunc: func(ctx context.Context, name, applicationName string) error {
+					restarted = append(restarted, name)
 					return tc.serverRestartApplicationErr
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil)
+			systemSvc := system.NewSystemService(env, serverSvc, nil,
+				system.WithClusterCertificateUpdater(func(ctx context.Context, certificatePEM string, keyPEM string) error {
+					return nil
+				}),
+				system.WithClusterMemberCertificates(func(certificatePEM string) bool {
+					return certificatePEM == "member-one" || certificatePEM == "member-two"
+				}),
+			)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -746,6 +850,10 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.Empty(t, tc.serverGetSystemProvider)
 			require.Empty(t, tc.serverUpdateSystemProvider)
 			require.Empty(t, tc.wantServerCertificateUpdateEmit)
+
+			if tc.wantRestarted != nil {
+				require.Equal(t, tc.wantRestarted, restarted)
+			}
 
 			certificateFile, err := os.ReadFile(filepath.Join(tmpDir, "server.crt"))
 			require.NoError(t, err)

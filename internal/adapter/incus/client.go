@@ -15,6 +15,7 @@ import (
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Environment provides access to the local Incus daemon unix socket.
@@ -27,6 +28,11 @@ type Client struct {
 	clientCA      string
 	env           Environment
 	skipGetServer bool
+
+	// isClusterMember determines if the endpoint is for a cluster member of this Operations Center.
+	isClusterMember func(certificatePEM string) bool
+	// clusterCertificate returns the certificate presented by all cluster members of this Operations Center.
+	clusterCertificate func() string
 }
 
 var (
@@ -58,6 +64,14 @@ func WithSkipGetServer(skipGetServer bool) Option {
 	}
 }
 
+// WithOperationsCenterCluster sets the parameters for detecting servers that are cluster members with this server.
+func WithOperationsCenterCluster(isClusterMember func(certificatePEM string) bool, clusterCertificate func() string) Option {
+	return func(c *Client) {
+		c.isClusterMember = isClusterMember
+		c.clusterCertificate = clusterCertificate
+	}
+}
+
 type transportWrapper struct {
 	transport *http.Transport
 }
@@ -82,6 +96,31 @@ func New(keypair *securitytls.ClientKeypairHolder, opts ...Option) Client {
 	return c
 }
 
+// serverCertificate returns the certificate to pin for endpoint.
+func (c Client) serverCertificate(endpoint provisioning.Endpoint) string {
+	if c.isClusterMember == nil || c.clusterCertificate == nil {
+		return endpoint.GetCertificate()
+	}
+
+	var serverType api.ServerType
+	switch server := endpoint.(type) {
+	case provisioning.Server:
+		serverType = server.Type
+
+	case *provisioning.Server:
+		serverType = server.Type
+	}
+
+	if serverType == api.ServerTypeOperationsCenter && c.isClusterMember(endpoint.GetCertificate()) {
+		cert := c.clusterCertificate()
+		if cert != "" {
+			return cert
+		}
+	}
+
+	return endpoint.GetCertificate()
+}
+
 func (c Client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
 	if transaction.IsActive(ctx) {
 		slog.WarnContext(ctx, "Incus API call inside of a transaction", logger.AddStacktrace())
@@ -102,15 +141,16 @@ func (c Client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (
 	}
 
 	keypair := c.keypair.Get()
+	serverCert := c.serverCertificate(endpoint)
 
 	args := &incus.ConnectionArgs{
 		TLSClientCert: keypair.Certificate,
 		TLSClientKey:  keypair.Key,
-		TLSServerCert: endpoint.GetCertificate(),
+		TLSServerCert: serverCert,
 		TLSCA:         c.clientCA,
 		SkipGetServer: c.skipGetServer,
 		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
-			if endpoint.GetCertificate() == "" {
+			if serverCert == "" {
 				t.TLSClientConfig.ServerName = serverName
 			}
 

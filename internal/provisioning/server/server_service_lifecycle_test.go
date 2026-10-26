@@ -1226,6 +1226,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 		repoUpdateErrs                                  queue.Errs
 		clientPoweroffErr                               error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		contactMembersErr                               error
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -1240,6 +1241,41 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - another Operations Center cluster member can not be reached",
+			repoGetByName: provisioning.Server{
+				Name:          "m1",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+			},
+			contactMembersErr: domain.NewErrorf(domain.ErrUnavailable, "", `Cluster member "m2" can not be reached`),
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				require.ErrorContains(tt, err, `Taking down "one" could lose the quorum of the Operations Center cluster: Cluster member "m2" can not be reached`, a...)
+			},
+			assertLog: log.Noop,
+		},
+		{
+			name: "success - deployed Operations Center, which is not a cluster member",
+			repoGetByName: provisioning.Server{
+				Name:          "m1",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("remote-certificate"),
+				Status:        api.ServerStatusReady,
+			},
+			contactMembersErr: domain.NewErrorf(domain.ErrUnavailable, "", `Cluster member "m2" can not be reached`),
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
@@ -1376,6 +1412,13 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			serverSvc := provisioningServer.New(
 				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+				provisioningServer.WithOperationsCenterMembersContact(func(ctx context.Context, except string) error {
+					require.Equal(t, "one", except)
+					return tc.contactMembersErr
+				}),
+				provisioningServer.WithOperationsCenterMemberCertificates(func(certificatePEM string) bool {
+					return certificatePEM == "certificate"
+				}),
 			)
 
 			// Run test
@@ -1544,6 +1587,9 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			ctx := logger.ContextWithTestLogger(t, logBuf, false, true)
 
 			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return nil, nil
+				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
@@ -2677,6 +2723,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			var gotTriggeredUpdate *provisioning.ServerTriggeredUpdate
 
 			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return nil, nil
+				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					// Return a copy, since the server is also queried by the background
 					// poll, which would otherwise share the same instance.

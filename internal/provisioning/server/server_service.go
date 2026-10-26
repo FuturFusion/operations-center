@@ -57,9 +57,16 @@ type serverService struct {
 
 	seedImageProgress provisioning.SeedImageProgressPort
 
-	secureBootMedia       provisioning.SecureBootMediaPort
-	secureBootCertificate provisioning.SecureBootCertificateSourcePort
-	secureBootCatalog     provisioning.SecureBootCertificateCatalogPort
+	secureBootMedia provisioning.SecureBootMediaPort
+
+	// operationsCenterMember returns this cluster member, nil if not clustered.
+	operationsCenterMember func(ctx context.Context) (*provisioning.OperationsCenterMember, error)
+	// contactOperationsCenterMembers checks that the other cluster members except the named one can be reached.
+	contactOperationsCenterMembers func(ctx context.Context, except string) error
+	secureBootCertificate          provisioning.SecureBootCertificateSourcePort
+	secureBootCatalog              provisioning.SecureBootCertificateCatalogPort
+	// isMemberCertificate reports whether a certificate belongs to a cluster member of this Operations Center.
+	isMemberCertificate func(certificatePEM string) bool
 
 	deploymentControlLoopMu   sync.Mutex
 	deploymentControlLoopRuns map[string]*deploymentRun
@@ -129,6 +136,27 @@ func WithBIOSProfilePort(biosProfile provisioning.BIOSProfilePort) Option {
 func WithSeedImageProgressPort(seedImageProgress provisioning.SeedImageProgressPort) Option {
 	return func(s *serverService) {
 		s.seedImageProgress = seedImageProgress
+	}
+}
+
+// WithOperationsCenterMember registers every cluster member of Operations Center as its own server.
+func WithOperationsCenterMember(member func(ctx context.Context) (*provisioning.OperationsCenterMember, error)) Option {
+	return func(s *serverService) {
+		s.operationsCenterMember = member
+	}
+}
+
+// WithOperationsCenterMembersContact refuses to take down a cluster member while contact fails to reach another member.
+func WithOperationsCenterMembersContact(contact func(ctx context.Context, except string) error) Option {
+	return func(s *serverService) {
+		s.contactOperationsCenterMembers = contact
+	}
+}
+
+// WithOperationsCenterMemberCertificates identifies the server records of this cluster's members by isMemberCertificate.
+func WithOperationsCenterMemberCertificates(isMemberCertificate func(certificatePEM string) bool) Option {
+	return func(s *serverService) {
+		s.isMemberCertificate = isMemberCertificate
 	}
 }
 
@@ -716,6 +744,21 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 				WithDetail("cluster", *previousServer.Cluster)
 		}
 
+		// The member maintains the fields that follow the cluster.
+		if bmcConnectionTest && s.isOperationsCenterMember(*previousServer) {
+			if server.PublicConnectionURL != previousServer.PublicConnectionURL {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The public connection URL of the Operations Center cluster member %q follows the shared address", server.Name).
+					WithHintf(`Change the "address" of the shared network configuration instead.`).
+					WithDetail("server", server.Name)
+			}
+
+			if server.Channel != previousServer.Channel {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The update channel of the Operations Center cluster member %q follows the default update channel", server.Name).
+					WithHintf(`Change "updates.server_default_channel" instead.`).
+					WithDetail("server", server.Name)
+			}
+		}
+
 		if bmcConnectionTest {
 			// The caller is the API. A poll may have updated the server since the
 			// caller read it. Only apply the fields, that the API allows to change.
@@ -780,6 +823,13 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q: %w", name, err)
+		}
+
+		// The address of a cluster member can not change.
+		if s.isOperationsCenterMember(*server) {
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The network of the Operations Center cluster member %q can not be changed", name).
+				WithHintf("Remove the member from the cluster first.").
+				WithDetail("server", name)
 		}
 
 		updatedServer, _ = ptr.Clone(server)
@@ -1089,74 +1139,61 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 }
 
 func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error {
+	member, err := s.localOperationsCenterMember(ctx)
+	if err != nil {
+		return err
+	}
+
 	var server provisioning.Server
 	pollAfterCreate := false
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		servers, err := s.repo.GetAllWithFilter(ctx, provisioning.ServerFilter{
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		name, connectionURL, serverCert := s.operationsCenterIdentity(member)
+
+		records, err := s.repo.GetAllWithFilter(ctx, provisioning.ServerFilter{
 			Type: new(api.ServerTypeOperationsCenter),
 		})
 		if err != nil {
 			return fmt.Errorf(`Failed to get server of type "operations-center": %w`, err)
 		}
 
-		if len(servers) > 1 {
-			//domain-errors:internal Violated invariant, nothing the user can do about it.
-			return fmt.Errorf(`Invalid internal state, expect at most 1 server of type "operations-center", found %d`, len(servers))
+		current, err := s.currentOperationsCenterRecord(ctx, records, name, serverCert, member != nil)
+		if err != nil {
+			return err
 		}
 
-		s.mu.Lock()
-		serverCert := certificate.EncodeToPEM(s.serverCertificate.Leaf.Raw)
-		s.mu.Unlock()
+		channel := config.GetUpdates().ServerDefaultChannel
+		publicConnectionURL := config.GetNetwork().OperationsCenterAddress
 
-		// Ignore the error, since operationsCenterRESTAddress has been validated before.
-		operationsCenterRESTAddressHost, operationsCenterRESTAddressPort, _ := net.SplitHostPort(config.GetLocalNetwork().RestServerAddress)
-		if operationsCenterRESTAddressHost == "::" {
-			operationsCenterRESTAddressHost = "::1"
+		// Skip writing an unchanged record, since all members start at once after a restart.
+		if current != nil && current.ConnectionURL == connectionURL && current.PublicConnectionURL == publicConnectionURL &&
+			ptr.From(current.Certificate) == serverCert && current.Status == api.ServerStatusReady && current.StatusDetail == api.ServerStatusDetailNone &&
+			(member == nil || current.Channel == channel) {
+			return nil
 		}
 
-		connectionURL := (&url.URL{
-			Scheme: "https",
-			Host:   net.JoinHostPort(operationsCenterRESTAddressHost, operationsCenterRESTAddressPort),
-		}).String()
-
-		var upsert func(context.Context, provisioning.Server) error
-
-		if len(servers) == 0 {
-			// Create server entry
+		if current == nil {
 			server = provisioning.Server{
-				Name:                api.ServerNameOperationsCenter,
-				Type:                api.ServerTypeOperationsCenter,
-				ConnectionURL:       connectionURL,
-				PublicConnectionURL: config.GetNetwork().OperationsCenterAddress,
-				Certificate:         &serverCert,
-				Status:              api.ServerStatusReady,
-				StatusDetail:        api.ServerStatusDetailNone,
-				LastStatusUpdated:   s.now(),
-				LastSeen:            s.now(),
-				Channel:             config.GetUpdates().ServerDefaultChannel,
-			}
-
-			upsert = func(ctx context.Context, server provisioning.Server) error {
-				_, err := s.repo.Create(ctx, server)
-				return err
+				Name: name,
+				Type: api.ServerTypeOperationsCenter,
 			}
 
 			pollAfterCreate = true
 		} else {
-			// Update existing server entry
-			server = servers[0]
-			server.ConnectionURL = connectionURL
-			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
-			server.Certificate = &serverCert
-			server.Status = api.ServerStatusReady
-			server.StatusDetail = api.ServerStatusDetailNone
-			server.LastStatusUpdated = s.now()
-			server.LastSeen = s.now()
+			server = *current
+		}
 
-			upsert = func(ctx context.Context, server provisioning.Server) error {
-				return s.repo.Update(ctx, server)
-			}
+		server.ConnectionURL = connectionURL
+		server.PublicConnectionURL = publicConnectionURL
+		server.Certificate = &serverCert
+		server.Status = api.ServerStatusReady
+		server.StatusDetail = api.ServerStatusDetailNone
+		server.LastStatusUpdated = s.now()
+		server.LastSeen = s.now()
+
+		// All cluster members follow the default channel, since they run the same version.
+		if current == nil || member != nil {
+			server.Channel = channel
 		}
 
 		err = server.Validate()
@@ -1164,7 +1201,12 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			return fmt.Errorf("Validate server: %w", err)
 		}
 
-		err = upsert(ctx, server)
+		if current == nil {
+			_, err = s.repo.Create(ctx, server)
+		} else {
+			err = s.repo.Update(ctx, server)
+		}
+
 		if err != nil {
 			return fmt.Errorf("Self register operations-center as server: %w", err)
 		}
@@ -1180,6 +1222,135 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		if err != nil {
 			return fmt.Errorf("Failed to update server configuration after self registration: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// currentOperationsCenterRecord returns the record of this Operations Center among records, nil if there is none yet.
+func (s *serverService) currentOperationsCenterRecord(ctx context.Context, records provisioning.Servers, name string, certificatePEM string, clustered bool) (*provisioning.Server, error) {
+	if !clustered {
+		if len(records) > 1 {
+			//domain-errors:internal Violated invariant, nothing the user can do about it.
+			return nil, fmt.Errorf(`Invalid internal state, expect at most 1 server of type "operations-center", found %d`, len(records))
+		}
+
+		if len(records) == 0 {
+			return nil, nil
+		}
+
+		return &records[0], nil
+	}
+
+	// A server of the same name with another certificate is not this member.
+	for _, record := range records {
+		if record.Name == name && ptr.From(record.Certificate) == certificatePEM {
+			return &record, nil
+		}
+	}
+
+	for _, record := range records {
+		if record.Name != api.ServerNameOperationsCenter {
+			continue
+		}
+
+		err := s.repo.Rename(ctx, record.Name, name)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to rename server %q to %q: %w", record.Name, name, err)
+		}
+
+		record.Name = name
+
+		return &record, nil
+	}
+
+	other, err := s.repo.GetByName(ctx, name)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	if other != nil {
+		return nil, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The server %q is not the Operations Center cluster member of the same name", name).
+			WithHintf("Rename the server %q.", name)
+	}
+
+	return nil, nil
+}
+
+// isOperationsCenterMember reports whether server is a cluster member of this Operations Center.
+func (s *serverService) isOperationsCenterMember(server provisioning.Server) bool {
+	if server.Type != api.ServerTypeOperationsCenter || s.isMemberCertificate == nil {
+		return false
+	}
+
+	return s.isMemberCertificate(ptr.From(server.Certificate))
+}
+
+// refuseOperationsCenterMember refuses the action on the record of a cluster member of this Operations Center.
+func (s *serverService) refuseOperationsCenterMember(server provisioning.Server, action string) error {
+	if !s.isOperationsCenterMember(server) {
+		return nil
+	}
+
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The server %q is a member of the Operations Center cluster and can not be %s", server.Name, action).
+		WithHintf("Remove the member from the cluster to delete its record.").
+		WithDetail("server", server.Name)
+}
+
+// localOperationsCenterMember returns this cluster member of Operations Center, nil if not clustered.
+func (s *serverService) localOperationsCenterMember(ctx context.Context) (*provisioning.OperationsCenterMember, error) {
+	if s.operationsCenterMember == nil {
+		return nil, nil
+	}
+
+	return s.operationsCenterMember(ctx)
+}
+
+// operationsCenterIdentity returns the name, connection URL and certificate of the server record of this Operations Center.
+func (s *serverService) operationsCenterIdentity(member *provisioning.OperationsCenterMember) (name string, connectionURL string, certificatePEM string) {
+	if member != nil {
+		return member.Name, member.ConnectionURL, member.Certificate
+	}
+
+	s.mu.Lock()
+	serverCert := certificate.EncodeToPEM(s.serverCertificate.Leaf.Raw)
+	s.mu.Unlock()
+
+	// Ignore the error, since operationsCenterRESTAddress has been validated before.
+	host, port, _ := net.SplitHostPort(config.GetLocalNetwork().RestServerAddress)
+	if host == "::" {
+		host = "::1"
+	}
+
+	connectionURL = (&url.URL{
+		Scheme: "https",
+		Host:   net.JoinHostPort(host, port),
+	}).String()
+
+	return api.ServerNameOperationsCenter, connectionURL, serverCert
+}
+
+// checkOperationsCenterQuorum refuses to take down a cluster member while another member can not be reached.
+func (s *serverService) checkOperationsCenterQuorum(ctx context.Context, name string) error {
+	if s.contactOperationsCenterMembers == nil {
+		return nil
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	if !s.isOperationsCenterMember(*server) {
+		return nil
+	}
+
+	err = s.contactOperationsCenterMembers(ctx, name)
+	if err != nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Taking down %q could lose the quorum of the Operations Center cluster: %s", name, domain.UserMessage(err)).
+			WithHintf("Bring the other cluster members back online first.").
+			WithDetail("server", name).
+			WithCause(err)
 	}
 
 	return nil
@@ -1211,6 +1382,11 @@ func (s *serverService) Rename(ctx context.Context, oldName string, newName stri
 				WithDetail("cluster", *server.Cluster)
 		}
 
+		err = s.refuseOperationsCenterMember(*server, "renamed")
+		if err != nil {
+			return err
+		}
+
 		err = s.repo.Rename(ctx, oldName, newName)
 		if err != nil {
 			return fmt.Errorf("Failed to rename server: %w", err)
@@ -1238,6 +1414,11 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 				WithHintf("Remove the server from the cluster first.").
 				WithDetail("server", name).
 				WithDetail("cluster", *server.Cluster)
+		}
+
+		err = s.refuseOperationsCenterMember(*server, "deleted")
+		if err != nil {
+			return err
 		}
 
 		return s.repo.DeleteByName(ctx, name)
@@ -1416,6 +1597,14 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
+	// Contact the other members outside of the transaction.
+	if !force {
+		err := s.checkOperationsCenterQuorum(ctx, name)
+		if err != nil {
+			return err
+		}
+	}
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -1475,6 +1664,14 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
+
+	// Contact the other members outside of the transaction.
+	if !force {
+		err := s.checkOperationsCenterQuorum(ctx, name)
+		if err != nil {
+			return err
+		}
+	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1687,6 +1884,14 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
+
+	// Contact the other members outside of the transaction.
+	if !force {
+		err := s.checkOperationsCenterQuorum(ctx, name)
+		if err != nil {
+			return err
+		}
+	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -2298,19 +2503,22 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
 		}
 
-		serverConnectionURL, err = provisioning.DetermineManagementRoleURL(osData)
-		if err != nil {
-			serverConnectionURL = ""
+		// A cluster member keeps the connection URL it registered itself.
+		if !s.isOperationsCenterMember(server) {
+			serverConnectionURL, err = provisioning.DetermineManagementRoleURL(osData)
+			if err != nil {
+				serverConnectionURL = ""
 
-			s.warning.Emit(
-				ctx,
-				warning.NewWarningFromError(
-					api.WarningTypeManagementAddressMissing,
-					scope,
-					err,
-					"Failed to determine the connection URL of the server, keeping %q", server.ConnectionURL,
-				),
-			)
+				s.warning.Emit(
+					ctx,
+					warning.NewWarningFromError(
+						api.WarningTypeManagementAddressMissing,
+						scope,
+						err,
+						"Failed to determine the connection URL of the server, keeping %q", server.ConnectionURL,
+					),
+				)
+			}
 		}
 
 		versionData, err = s.client.GetVersionData(ctx, server)
@@ -2771,7 +2979,8 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 			defer cancelFunc()
 
 			isClusteredIncus := server.Cluster != nil && server.ClusterCertificate != nil && *server.ClusterCertificate != ""
-			isStandaloneNonIncusServerWithPublicConnectionURL := server.Cluster == nil && !server.Type.IsIncus() && server.PublicConnectionURL != ""
+			// The members of this cluster present the cluster certificate while their records hold their own.
+			isStandaloneNonIncusServerWithPublicConnectionURL := server.Cluster == nil && !server.Type.IsIncus() && !s.isOperationsCenterMember(server) && server.PublicConnectionURL != ""
 
 			switch {
 			case isClusteredIncus: // case 1, clustered Incus with cluster certificate set
