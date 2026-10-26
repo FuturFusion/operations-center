@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"maps"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -26,6 +27,63 @@ var freshSchema string
 
    Only append to the updates list, never remove entries and never re-order them.
 */
+
+// SchemaVersion is the current version of the cluster database schema.
+var SchemaVersion = len(updates)
+
+func Updates() map[int]update {
+	mapCopy := make(map[int]update, len(updates))
+	maps.Copy(mapCopy, updates)
+
+	return mapCopy
+}
+
+func FreshSchema() string {
+	return freshSchema
+}
+
+func createMembershipTables(ctx context.Context, tx *sql.Tx) error {
+	stmt := `
+CREATE TABLE IF NOT EXISTS cluster_members (
+     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+     name TEXT NOT NULL,
+     description TEXT NOT NULL,
+     address TEXT NOT NULL,
+     schema INTEGER NOT NULL,
+     api_extensions INTEGER NOT NULL,
+     heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
+     state INTEGER NOT NULL DEFAULT 0,
+     failure_domain TEXT NOT NULL DEFAULT "{}",
+     config TEXT NOT NULL DEFAULT "{}",
+     roles TEXT NOT NULL DEFAULT "[]",
+     architecture INTEGER NOT NULL DEFAULT 0 CHECK (architecture > 0),
+     certificate TEXT,
+     UNIQUE (name),
+     UNIQUE (address)
+);
+
+CREATE TABLE IF NOT EXISTS cluster_join_tokens (
+     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+     server_name TEXT NOT NULL,
+     secret TEXT NOT NULL,
+     cluster_fingerprint TEXT NOT NULL,
+     cluster_addresses TEXT NOT NULL,
+     expiration_date DATETIME NOT NULL,
+     UNIQUE (server_name),
+     UNIQUE (secret)
+);
+
+CREATE TABLE IF NOT EXISTS config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    node_id INTEGER,
+    data TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (node_id) REFERENCES cluster_members(id) ON DELETE CASCADE,
+    UNIQUE (node_id)
+);
+`
+	_, err := tx.ExecContext(ctx, stmt)
+	return MapDBError(err)
+}
 
 var updates = map[int]update{
 	1:  updateFromV0,
@@ -71,6 +129,12 @@ var updates = map[int]update{
 	41: updateFromV40,
 	42: updateFromV41,
 	43: updateFromV42,
+	44: updateFromV43,
+}
+
+func updateFromV43(ctx context.Context, tx *sql.Tx) error {
+	// v43..v44 add cluster membership tables.
+	return createMembershipTables(ctx, tx)
 }
 
 func updateFromV42(ctx context.Context, tx *sql.Tx) error {
@@ -151,6 +215,7 @@ INSERT INTO servers_new
 DROP TABLE servers;
 ALTER TABLE servers_new RENAME TO servers;
 `)
+
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }

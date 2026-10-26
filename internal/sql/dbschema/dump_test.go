@@ -1,4 +1,4 @@
-package api
+package dbschema_test
 
 import (
 	"context"
@@ -75,13 +75,13 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 				require.NoError(t, err)
 			})
 
-			_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
+			_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 			require.NoError(t, err)
 
 			tc.setup(t, db)
 
 			// Run test
-			got, err := dumpSchema(ctx, db, false)
+			got, err := dbschema.DumpSchema(ctx, db, false)
 
 			// Assert
 			require.NoError(t, err)

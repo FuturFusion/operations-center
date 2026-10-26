@@ -397,6 +397,43 @@ CREATE TABLE incus_images (
   CHECK (name <> '')
 );
 
+CREATE TABLE IF NOT EXISTS cluster_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  address TEXT NOT NULL,
+  schema INTEGER NOT NULL,
+  api_extensions INTEGER NOT NULL,
+  heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
+  state INTEGER NOT NULL DEFAULT 0,
+  failure_domain TEXT NOT NULL DEFAULT "{}",
+  config TEXT NOT NULL DEFAULT "{}",
+  roles TEXT NOT NULL DEFAULT "[]",
+  architecture INTEGER NOT NULL DEFAULT 0 CHECK (architecture > 0),
+  certificate TEXT,
+  UNIQUE (name),
+  UNIQUE (address)
+);
+
+CREATE TABLE IF NOT EXISTS cluster_join_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  server_name TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  cluster_fingerprint TEXT NOT NULL,
+  cluster_addresses TEXT NOT NULL,
+  expiration_date DATETIME NOT NULL,
+  UNIQUE (server_name),
+  UNIQUE (secret)
+);
+
+CREATE TABLE IF NOT EXISTS config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    node_id INTEGER,
+    data TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (node_id) REFERENCES cluster_members(id) ON DELETE CASCADE,
+    UNIQUE (node_id)
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, images.uuid, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
@@ -461,4 +498,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (43, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (44, strftime("%s"));

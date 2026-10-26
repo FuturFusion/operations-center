@@ -3,6 +3,8 @@ package dbschema_test
 import (
 	"context"
 	"database/sql"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -55,7 +57,7 @@ func TestSchemaEnsure(t *testing.T) {
 			err = tc.prepare(db.DB)
 			require.NoError(t, err)
 
-			schemaVersion, err := dbschema.Ensure(context.Background(), db.DB, tmpDir)
+			schemaVersion, err := dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 			require.NoError(t, err)
 			require.Equal(t, tc.wantSchemaVersion, schemaVersion)
 		})
@@ -80,7 +82,7 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 `)
 	require.NoError(t, err)
 
-	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	rows, err := db.Query(`SELECT id, system_uuid, machine_id FROM servers ORDER BY id`)
@@ -124,9 +126,84 @@ func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.Error(t, err, "the resources view has no uuid column before v43")
 
-	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.NoError(t, err, "the resources view has the uuid column from v43 onwards")
+}
+
+func TestSchemaEnsure_patchFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	patchFile := filepath.Join(tmpDir, "patch.local.sql")
+
+	// A failing patch is kept, so it is applied again on the next start.
+	err = os.WriteFile(patchFile, []byte("INSERT INTO channels (name, description) VALUES ('patched', '');\nINSERT INTO missing VALUES (1);\n"), 0o600)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.Error(t, err)
+	require.FileExists(t, patchFile)
+
+	// A committed patch is removed.
+	err = os.WriteFile(patchFile, []byte("INSERT INTO channels (name, description) VALUES ('patched', '');\n"), 0o600)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+	require.NoFileExists(t, patchFile)
+
+	var count int
+	err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM channels WHERE name = 'patched'`).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func TestEnsureGlobal_migrateFromStandalone(t *testing.T) {
+	varDir := t.TempDir()
+	t.Setenv("OPERATIONS_CENTER_DIR", varDir)
+
+	standalone, err := sqlite.Open(varDir)
+	require.NoError(t, err)
+
+	// The schema version of Operations Center v0.10.1, before the clustering.
+	err = dbschema.SetupVersion(standalone.DB, 43)
+	require.NoError(t, err)
+
+	_, err = standalone.Exec(`
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files) VALUES
+  ('b32d0079-c48b-4957-b1cb-bef54125c861', 'origin', '1', '2025-03-12 10:57:43+00:00', 'none', '', '');
+`)
+	require.NoError(t, err)
+	require.NoError(t, standalone.Close())
+
+	countUpdates := func(dir string, address string) int {
+		db, err := sqlite.Open(dir)
+		require.NoError(t, err)
+
+		_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, address, dir)
+		require.NoError(t, err)
+
+		var count int
+		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM updates`).Scan(&count)
+		require.NoError(t, err)
+
+		return count
+	}
+
+	// The standalone database is imported once and kept renamed.
+	require.Equal(t, 1, countUpdates(t.TempDir(), ""))
+	require.NoFileExists(t, filepath.Join(varDir, "local.db"))
+	require.FileExists(t, filepath.Join(varDir, "local.db.migrated"))
+
+	// The global database of a member removed from the cluster starts empty.
+	require.Equal(t, 0, countUpdates(t.TempDir(), "10.0.0.1:8443"))
 }

@@ -117,6 +117,7 @@ components:
       - internal/*/repo/**
       - internal/sql/sqlite/**
       - internal/sql/dbschema
+      - internal/sql/patches
       - internal/*/middleware/**
       - internal/*/*/middleware/**
 

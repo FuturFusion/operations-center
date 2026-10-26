@@ -70,7 +70,7 @@ PRAGMA temp_store = MEMORY;
 `)
 	die(err)
 
-	_, err = dbschema.Ensure(ctx, db.DB, *flagDBDir)
+	_, err = dbschema.EnsureLocal(ctx, db.DB, *flagDBDir, dbschema.Updates(), dbschema.FreshSchema())
 	die(err)
 
 	dbWithTransaction := transaction.Enable(db)
