@@ -11,12 +11,14 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -29,37 +31,67 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+// standaloneMemberID is the member ID of a server that is not clustered.
+const standaloneMemberID = 1
 
 type imageIncusService struct {
 	repo          ImageIncusRepo
 	filesRepo     ImageIncusFileRepo
 	simplestreams SimplestreamsPort
+	fileTargets   ImageFileTargetPort
+
+	// syncing holds the images whose files this member synchronizes.
+	syncing *sync.Map
 }
 
 var _ ImageIncusService = &imageIncusService{}
 
-func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort) *imageIncusService {
+// IncusImageOption configures the incus image service.
+type IncusImageOption func(service *imageIncusService)
+
+// WithFileTargets lets other cluster members manage the image files they store.
+func WithFileTargets(fileTargets ImageFileTargetPort) IncusImageOption {
+	return func(service *imageIncusService) {
+		service.fileTargets = fileTargets
+	}
+}
+
+func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort, opts ...IncusImageOption) *imageIncusService {
 	service := &imageIncusService{
 		repo:          repo,
 		filesRepo:     filesRepo,
 		simplestreams: simplestreams,
+		syncing:       &sync.Map{},
+	}
+
+	for _, opt := range opts {
+		opt(service)
 	}
 
 	return service
 }
 
-func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader) (_ string, err error) {
-	var (
-		part          *multipart.Part
-		imageMetadata incusapi.ImageMetadata
-		incusTarXZ    []byte
-	)
-
-	part, err = mr.NextPart()
+// UploadImageName returns the name of the image the upload in mr adds a version to, reading only the first part.
+func (s *imageIncusService) UploadImageName(ctx context.Context, mr *multipart.Reader) (string, error) {
+	imageMetadata, _, err := readUploadMetadata(ctx, mr)
 	if err != nil {
-		return "", fmt.Errorf("Add version failed to get first multipart item: %w", err)
+		return "", err
+	}
+
+	os, release, architecture, variant := uploadImageIdentity(imageMetadata)
+
+	return strings.Join([]string{os, release, architecture, variant}, ":"), nil
+}
+
+// readUploadMetadata reads the metadata of an upload from its first part.
+func readUploadMetadata(ctx context.Context, mr *multipart.Reader) (imageMetadata incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+	part, err := mr.NextPart()
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Add version failed to get first multipart item: %w", err)
 	}
 
 	switch part.FormName() {
@@ -73,13 +105,37 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	if err != nil {
-		return "", fmt.Errorf(`Failed to read metadata: %w`, err)
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to read metadata: %w`, err)
 	}
 
-	os := imageMetadata.Properties["os"]
-	release := imageMetadata.Properties["release"]
-	architecture := fixArchitectureMapping(imageMetadata.Properties["architecture"])
-	variant := imageMetadata.Properties["variant"]
+	return imageMetadata, incusTarXZ, nil
+}
+
+// uploadImageIdentity returns the properties of the uploaded image that make up its name.
+func uploadImageIdentity(imageMetadata incusapi.ImageMetadata) (os string, release string, architecture string, variant string) {
+	os = imageMetadata.Properties["os"]
+	release = imageMetadata.Properties["release"]
+	architecture = fixArchitectureMapping(imageMetadata.Properties["architecture"])
+	variant = imageMetadata.Properties["variant"]
+
+	if release == "" {
+		release = "current"
+	}
+
+	if variant == "" {
+		variant = "default"
+	}
+
+	return os, release, architecture, variant
+}
+
+func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader) (_ string, err error) {
+	imageMetadata, incusTarXZ, err := readUploadMetadata(ctx, mr)
+	if err != nil {
+		return "", err
+	}
+
+	os, release, architecture, variant := uploadImageIdentity(imageMetadata)
 	versionIdentifier := imageMetadata.Properties["serial"]
 	description := imageMetadata.Properties["description"]
 
@@ -92,20 +148,18 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		return "", fmt.Errorf("Invalid incus image version: %w", err)
 	}
 
-	if release == "" {
-		release = "current"
-	}
-
-	if variant == "" {
-		variant = "default"
-	}
-
 	name := strings.Join([]string{os, release, architecture, variant}, ":")
 
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
 			return "", fmt.Errorf("Failed to get incus image %q: %w", name, err)
+		}
+
+		// The files of a new image are stored by this member.
+		localMemberID, err := s.localMemberID(ctx)
+		if err != nil {
+			return "", err
 		}
 
 		img = &IncusImage{
@@ -117,12 +171,23 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 			Variant:         variant,
 			Description:     description,
 			Versions:        make(map[string]api.IncusImageVersion, 1),
+			MemberID:        localMemberID,
 		}
 
 		_, err = s.repo.Create(ctx, *img)
 		if err != nil {
 			return "", fmt.Errorf("Failed to create incus image %q: %w", name, err)
 		}
+	}
+
+	isLocal, err := s.isLocal(ctx, *img)
+	if err != nil {
+		return "", err
+	}
+
+	if !isLocal {
+		//domain-errors:internal Uploads are forwarded to the file target of the image.
+		return "", fmt.Errorf("Incus image %q is stored by another cluster member", name)
 	}
 
 	_, ok := img.Versions[versionIdentifier]
@@ -164,6 +229,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	for {
+		var part *multipart.Part
 		part, err = mr.NextPart()
 		if errors.Is(err, io.EOF) {
 			break
@@ -531,7 +597,7 @@ func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName strin
 		}
 
 		for _, img := range images {
-			err := s.filesRepo.Delete(ctx, &img)
+			err := s.deleteFiles(ctx, img)
 			if err != nil {
 				return fmt.Errorf("Failed to remove files for image %q from source %q: %w", img.Name, sourceName, err)
 			}
@@ -661,7 +727,7 @@ func (s *imageIncusService) ValidateFilterExpression(ctx context.Context, filter
 //   - Merge the two sets such that only images are downloaded, which pass the filter
 //     and are not yet present. Existing images might be updated (e.g. newer versions,
 //     missing files) in this process.
-//     Obsolete or supernumerous images, versions and files are removed.
+//     Images, versions and files the source no longer lists are removed.
 //   - Remove the images, version or files, which are marked for removal.
 //   - Download the images, version or files, that are part of the resulting state
 //     and not yet present on the system.
@@ -691,25 +757,28 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 		}
 	}
 
+	localMemberID, err := s.localMemberID(ctx)
+	if err != nil {
+		return err
+	}
+
+	// The images of other members are synchronized by them.
+	dbImagesByName := make(map[string]IncusImage, len(dbImages))
+	localDBImages := make(IncusImages, 0, len(dbImages))
+	for _, image := range dbImages {
+		dbImagesByName[image.Name] = image
+		if s.fileTargets == nil || image.MemberID == localMemberID {
+			localDBImages = append(localDBImages, image)
+		}
+	}
+
 	originImageVersionFileLookup := getImageVersionFileLookup(originImages)
-	dbImageVersionFileLookup := getImageVersionFileLookup(dbImages)
+	dbImageVersionFileLookup := getImageVersionFileLookup(localDBImages)
 
 	// Delete supernoumerous files.
 	var errs []error
-	for _, image := range dbImages {
-		for versionIdentifier, version := range image.Versions {
-			for filename := range version.Items {
-				if originImageVersionFileLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
-					continue
-				}
-
-				err := s.filesRepo.DeleteVersionFile(ctx, &image, versionIdentifier, filename)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-			}
-		}
+	for _, image := range localDBImages {
+		errs = append(errs, s.deleteUnlistedFiles(ctx, image, originImageVersionFileLookup)...)
 	}
 
 	if len(errs) > 0 {
@@ -717,38 +786,30 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 	}
 
 	// Iterate images, check if files exist, download if not.
-syncImages:
 	for _, image := range originImages {
-		// Make sure, we do have enough space left in the files repository before downloading the files.
-		err = s.isSpaceAvailable(ctx, image)
-		if err != nil {
-			errs = append(errs, err)
-			break syncImages
+		image.MemberID = localMemberID
+
+		dbImage, ok := dbImagesByName[image.Name]
+		if ok && s.fileTargets != nil && dbImage.MemberID != localMemberID {
+			image.MemberID = dbImage.MemberID
+
+			err = s.fileTargets.SyncImage(ctx, source, image)
+			if errors.Is(err, domain.ErrUnavailable) {
+				slog.WarnContext(ctx, "Skipping the image of an unreachable cluster member", slog.String("image", image.Name), logger.Err(err))
+				continue
+			}
+
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			continue
 		}
 
-		for versionIdentifier, version := range image.Versions {
-			for filename, fileItem := range version.Items {
-				if dbImageVersionFileLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
-					continue
-				}
-
-				downloadItem := downloadItem{
-					source:            source,
-					image:             &image,
-					versionIdentifier: versionIdentifier,
-					filename:          filename,
-					file:              fileItem,
-				}
-				err = s.downloadFile(ctx, downloadItem)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-			}
-
-			if len(errs) >= 10 {
-				break syncImages
-			}
+		var stop bool
+		errs, stop = s.downloadMissingFiles(ctx, source, image, dbImageVersionFileLookup, errs)
+		if stop {
+			break
 		}
 
 		err := s.repo.Upsert(ctx, image)
@@ -763,6 +824,146 @@ syncImages:
 	}
 
 	return nil
+}
+
+// SyncLocalImage downloads the missing files of an image stored on this member from source and deletes the files source no longer lists.
+func (s *imageIncusService) SyncLocalImage(ctx context.Context, source IncusImageSource, image IncusImage) error {
+	_, running := s.syncing.LoadOrStore(image.Name, true)
+	if running {
+		return nil
+	}
+
+	defer s.syncing.Delete(image.Name)
+
+	dbImage, err := s.repo.GetByName(ctx, image.Name)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus image %q: %w", image.Name, err)
+	}
+
+	image.MemberID = dbImage.MemberID
+
+	errs := s.deleteUnlistedFiles(ctx, *dbImage, getImageVersionFileLookup(IncusImages{image}))
+	if len(errs) > 0 {
+		return fmt.Errorf("Failed to delete the files image %q no longer needs: %w", image.Name, errors.Join(errs...))
+	}
+
+	errs, _ = s.downloadMissingFiles(ctx, source, image, getImageVersionFileLookup(IncusImages{*dbImage}), nil)
+
+	err = s.repo.Upsert(ctx, image)
+	if err != nil {
+		errs = append([]error{err}, errs...)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Failed to sync image %q from source %q: %w", image.Name, source.Name, errors.Join(errs...))
+	}
+
+	return nil
+}
+
+// deleteUnlistedFiles deletes the files of image not listed in originLookup.
+func (s *imageIncusService) deleteUnlistedFiles(ctx context.Context, image IncusImage, originLookup map[string]bool) []error {
+	var errs []error
+	for versionIdentifier, version := range image.Versions {
+		for filename := range version.Items {
+			if originLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
+				continue
+			}
+
+			err := s.filesRepo.DeleteVersionFile(ctx, &image, versionIdentifier, filename)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+		}
+	}
+
+	return errs
+}
+
+// downloadMissingFiles downloads the files of image not in dbLookup and adds the failures to errs.
+// It reports whether the refresh stopped for lack of space or too many failures.
+func (s *imageIncusService) downloadMissingFiles(ctx context.Context, source IncusImageSource, image IncusImage, dbLookup map[string]bool, errs []error) (_ []error, stop bool) {
+	// Make sure, we do have enough space left in the files repository before downloading the files.
+	err := s.isSpaceAvailable(ctx, image)
+	if err != nil {
+		return append(errs, err), true
+	}
+
+	for versionIdentifier, version := range image.Versions {
+		for filename, fileItem := range version.Items {
+			if dbLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
+				continue
+			}
+
+			downloadItem := downloadItem{
+				source:            source,
+				image:             &image,
+				versionIdentifier: versionIdentifier,
+				filename:          filename,
+				file:              fileItem,
+			}
+			err = s.downloadFile(ctx, downloadItem)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+		}
+
+		if len(errs) >= 10 {
+			return errs, true
+		}
+	}
+
+	return errs, false
+}
+
+// localMemberID returns the ID of this member.
+func (s *imageIncusService) localMemberID(ctx context.Context) (int64, error) {
+	if s.fileTargets == nil {
+		return standaloneMemberID, nil
+	}
+
+	return s.fileTargets.LocalMemberID(ctx)
+}
+
+// isLocal reports whether img is stored on this member.
+func (s *imageIncusService) isLocal(ctx context.Context, img IncusImage) (bool, error) {
+	if s.fileTargets == nil {
+		return true, nil
+	}
+
+	localMemberID, err := s.localMemberID(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return img.MemberID == localMemberID, nil
+}
+
+// deleteFiles deletes the files of img on the member storing them. An unreachable member deletes them on its next startup.
+func (s *imageIncusService) deleteFiles(ctx context.Context, img IncusImage) error {
+	isLocal, err := s.isLocal(ctx, img)
+	if err != nil {
+		return err
+	}
+
+	if isLocal {
+		return s.filesRepo.Delete(ctx, &img)
+	}
+
+	// Another member is only asked once the deletion of the image is committed.
+	return transaction.AfterCommit(ctx, func() error {
+		ctx := logger.DetachedContext(ctx)
+
+		err := s.fileTargets.DeleteFiles(ctx, img)
+		if errors.Is(err, domain.ErrUnavailable) {
+			slog.WarnContext(ctx, "Failed to delete the files of an image on its file target", slog.String("image", img.Name), logger.Err(err))
+			return nil
+		}
+
+		return err
+	})
 }
 
 func filterImageVersionFilesByFilterExpression(images IncusImages, filterExpression string) (IncusImages, error) {

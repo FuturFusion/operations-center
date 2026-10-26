@@ -708,6 +708,7 @@ func seedUpdate(t *testing.T, d testDaemon, id uuid.UUID) {
 		PublishedAt: time.Now().UTC().Truncate(time.Second),
 		Severity:    images.UpdateSeverityNone,
 		Status:      api.UpdateStatusReady,
+		MemberID:    1,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:     updateFilename,

@@ -114,6 +114,8 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 
 		repoUpdateFilesCreateFromArchiveErr    error
 		repoUpdateFilesCreateFromArchiveUpdate *provisioning.Update
+		repoGetByUUIDErr                       error
+		repoGetByUUIDFound                     bool
 		repoUpsertErr                          error
 		repoAssignChannelsErr                  error
 
@@ -151,6 +153,30 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			},
 		},
 		{
+			name: "error - update exists already",
+
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				Severity: images.UpdateSeverityLow,
+			},
+			repoGetByUUIDFound: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrConstraintViolation, a...)
+			},
+		},
+		{
+			name: "error - repo.GetByUUID",
+
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				Severity: images.UpdateSeverityLow,
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - repo.Upsert",
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
@@ -180,6 +206,17 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					if tc.repoGetByUUIDFound {
+						return &provisioning.Update{}, nil
+					}
+
+					if tc.repoGetByUUIDErr != nil {
+						return nil, tc.repoGetByUUIDErr
+					}
+
+					return nil, domain.ErrNotFound
+				},
 				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.repoUpsertErr
 				},
@@ -191,6 +228,9 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
 				CreateFromArchiveFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
 					return tc.repoUpdateFilesCreateFromArchiveUpdate, tc.repoUpdateFilesCreateFromArchiveErr
+				},
+				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					return nil
 				},
 			}
 
@@ -310,10 +350,8 @@ func TestUpdateService_Prune(t *testing.T) {
 		filesRepoGet     []queue.Item[fileDetail]
 		filesRepoDelete  queue.Errs
 		repoDeleteByUUID queue.Errs
-		deleteUnknownErr error
 
 		assertErr require.ErrorAssertionFunc
-		wantKnown []uuid.UUID
 	}{
 		{
 			name: "success",
@@ -356,13 +394,6 @@ func TestUpdateService_Prune(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantKnown: []uuid.UUID{uuidgen.FromPattern(t, "2")},
-		},
-		{
-			name:             "error - filesRepo.DeleteUnknown",
-			deleteUnknownErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
 		},
 		{
 			name:          "error - repo.GetAll",
@@ -430,9 +461,6 @@ func TestUpdateService_Prune(t *testing.T) {
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.filesRepoDelete.PopOrNil(t)
 				},
-				DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
-					return tc.deleteUnknownErr
-				},
 			}
 
 			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
@@ -444,13 +472,65 @@ func TestUpdateService_Prune(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Empty(t, tc.repoDeleteByUUID)
-
-			if tc.wantKnown != nil {
-				require.Len(t, repoUpdateFiles.DeleteUnknownCalls(), 1)
-				require.Equal(t, tc.wantKnown, repoUpdateFiles.DeleteUnknownCalls()[0].Known)
-			}
 		})
 	}
+}
+
+func TestUpdateService_Prune_fileTargets(t *testing.T) {
+	t.Parallel()
+
+	localReady := provisioning.Update{UUID: uuidgen.FromPattern(t, "1"), Status: api.UpdateStatusReady, MemberID: 1, Files: provisioning.UpdateFiles{{Filename: "file", Size: 1}}}
+	remoteReady := provisioning.Update{UUID: uuidgen.FromPattern(t, "2"), Status: api.UpdateStatusReady, MemberID: 2}
+	remoteIncomplete := provisioning.Update{UUID: uuidgen.FromPattern(t, "3"), Status: api.UpdateStatusReady, MemberID: 2}
+	remotePending := provisioning.Update{UUID: uuidgen.FromPattern(t, "4"), Status: api.UpdateStatusPending, MemberID: 2}
+	unreachableReady := provisioning.Update{UUID: uuidgen.FromPattern(t, "5"), Status: api.UpdateStatusReady, MemberID: 3}
+
+	var deletedRows []uuid.UUID
+	repo := &repoMock.UpdateRepoMock{
+		GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+			return provisioning.Updates{localReady, remoteReady, remoteIncomplete, remotePending, unreachableReady}, nil
+		},
+		DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+			deletedRows = append(deletedRows, id)
+			return nil
+		},
+	}
+
+	repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+		GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+			return io.NopCloser(bytes.NewBufferString("1")), 1, nil
+		},
+	}
+
+	var remoteDeleted []uuid.UUID
+	fileTargets := &adapterMock.UpdateFileTargetPortMock{
+		LocalMemberIDFunc: func(ctx context.Context) (int64, error) {
+			return 1, nil
+		},
+		CheckFilesFunc: func(ctx context.Context, memberID int64, updates provisioning.Updates) ([]uuid.UUID, error) {
+			if memberID == 3 {
+				return nil, domain.ErrUnavailable
+			}
+
+			require.ElementsMatch(t, provisioning.Updates{remoteReady, remoteIncomplete}, updates)
+
+			return []uuid.UUID{remoteIncomplete.UUID}, nil
+		},
+		DeleteFilesFunc: func(ctx context.Context, update provisioning.Update) error {
+			remoteDeleted = append(remoteDeleted, update.UUID)
+			return nil
+		},
+	}
+
+	updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil, provisioningUpdate.WithFileTargets(fileTargets))
+	t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+	err := updateSvc.Prune(t.Context())
+	require.NoError(t, err)
+
+	// The updates of the unreachable member are kept.
+	require.ElementsMatch(t, []uuid.UUID{remoteIncomplete.UUID, remotePending.UUID}, deletedRows)
+	require.ElementsMatch(t, []uuid.UUID{remoteIncomplete.UUID, remotePending.UUID}, remoteDeleted)
 }
 
 func TestUpdateService_GetAll(t *testing.T) {

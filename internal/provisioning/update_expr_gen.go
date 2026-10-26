@@ -25,6 +25,7 @@ type ExprUpdate struct {
 	URL              string                 `json:"url" expr:"url"`
 	Status           api.UpdateStatus       `json:"-" expr:"status"`
 	LastUpdated      time.Time              `json:"-" expr:"last_updated" db:"update_timestamp"`
+	MemberID         int64                  `json:"-" expr:"-"`
 }
 
 func ToExprUpdate(u Update) ExprUpdate {
@@ -42,5 +43,6 @@ func ToExprUpdate(u Update) ExprUpdate {
 		URL:              u.URL,
 		Status:           u.Status,
 		LastUpdated:      u.LastUpdated,
+		MemberID:         u.MemberID,
 	}
 }

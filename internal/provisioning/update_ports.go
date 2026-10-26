@@ -32,6 +32,9 @@ type UpdateService interface {
 	Prune(ctx context.Context) error
 	Refresh(ctx context.Context) error
 
+	RefreshLocalFiles(ctx context.Context, id uuid.UUID) error
+	CheckLocalFiles(ctx context.Context, updates Updates) ([]uuid.UUID, error)
+
 	SetServerService(serverSvc ServerService)
 }
 
@@ -60,7 +63,6 @@ type UpdateFilesRepo interface {
 	PruneFiles(ctx context.Context, update Update) (_ error)
 	UsageInformation(ctx context.Context) (file.UsageInformation, error)
 	CleanupAll(ctx context.Context) error
-	DeleteUnknown(ctx context.Context, known []uuid.UUID) error
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
 

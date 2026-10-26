@@ -10,6 +10,7 @@ import (
 
 type ImageIncusService interface {
 	AddVersion(ctx context.Context, mr *multipart.Reader) (name string, _ error)
+	UploadImageName(ctx context.Context, mr *multipart.Reader) (name string, _ error)
 	GetAll(ctx context.Context) (IncusImages, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*IncusImage, error)
@@ -20,6 +21,9 @@ type ImageIncusService interface {
 	Update(ctx context.Context, incusImage IncusImage) error
 	ValidateFilterExpression(ctx context.Context, filterExpression string) error
 	RefreshFromSource(ctx context.Context, source IncusImageSource) error
+
+	// Actions on the files stored on this member, requested by other cluster members.
+	SyncLocalImage(ctx context.Context, source IncusImageSource, image IncusImage) error
 }
 
 // ImageFileTargetPort lets other cluster members manage the image files they store.

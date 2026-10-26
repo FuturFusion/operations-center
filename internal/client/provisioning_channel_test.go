@@ -430,6 +430,7 @@ func Test_DeleteChannel(t *testing.T) {
 					Version:  "1",
 					Severity: images.UpdateSeverityNone,
 					Status:   api.UpdateStatusReady,
+					MemberID: 1,
 				})
 				require.NoError(t, err)
 

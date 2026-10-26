@@ -39,6 +39,7 @@ daemon:
 
 image:
 
+- `image.image_file_target_port`
 - `image.image_incus_file_repo`
 - `image.image_incus_repo`
 - `image.image_incus_service`
@@ -126,6 +127,7 @@ provisioning:
 - `provisioning.token_client_port`
 - `provisioning.token_repo`
 - `provisioning.token_service`
+- `provisioning.update_file_target_port`
 - `provisioning.update_files_repo`
 - `provisioning.update_repo`
 - `provisioning.update_service`

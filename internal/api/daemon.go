@@ -42,6 +42,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/imagefiletarget"
+	imageAdapterMiddleware "github.com/FuturFusion/operations-center/internal/image/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
@@ -65,6 +67,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updatefiletarget"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
 	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
@@ -874,6 +877,11 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 				imageFilesRepo,
 			),
 			simplestreams.New(),
+			image.WithFileTargets(
+				imageAdapterMiddleware.NewImageFileTargetPortWithSlog(
+					imagefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+				),
+			),
 		),
 	)
 
@@ -921,6 +929,11 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 
 	updateServiceOptions := []provisioningUpdate.Option{
 		provisioningUpdate.WithLatestLimit(3),
+		provisioningUpdate.WithFileTargets(
+			provisioningAdapterMiddleware.NewUpdateFileTargetPortWithSlog(
+				updatefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+			),
+		),
 	}
 
 	updateServer := updateserver.New(
@@ -1256,6 +1269,15 @@ func (d *Daemon) setupAPIRoutes(
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
 
+	internalUpdatesRouter := internalRouter.SubGroup("/updates").AddMiddlewares(requireDatabase)
+	registerInternalUpdateFilesHandler(internalUpdatesRouter, d.authorizer, updateSvc)
+
+	internalImagesRouter := internalRouter.SubGroup("/images").AddMiddlewares(requireDatabase)
+	registerInternalImageFilesHandler(internalImagesRouter, d.authorizer, incusImageSvc, imageSourceSvc)
+
+	internalFilesRouter := internalRouter.SubGroup("/files")
+	registerInternalMemberFilesHandler(internalFilesRouter, d.authorizer, memberfiles.NewLocal(d.env.VarDir()))
+
 	internalMembershipRouter := router.SubGroup("/internal/membership")
 	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart)
 
@@ -1356,7 +1378,7 @@ func (d *Daemon) setupAPIRoutes(
 	imageSourceRouter := imageRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
 	imageIncusRouter := imageRouter.SubGroup("/incus")
-	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
+	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc, forward)
 	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 
@@ -1391,7 +1413,7 @@ func (d *Daemon) setupAPIRoutes(
 	)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
+	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc, forward)
 
 	provisioningChannelRouter := provisioningRouter.SubGroup("/channels")
 	registerChannelsHandler(provisioningChannelRouter, d.authorizer, channelSvc)

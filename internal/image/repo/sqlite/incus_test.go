@@ -24,6 +24,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "default",
 		Description:     "almalinux 10 (default) (amd64)",
+		MemberID:        1,
 	}
 
 	incusImageB := image.IncusImage{
@@ -33,6 +34,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "cloud",
 		Description:     "almalinux 10 (cloud) (amd64)",
+		MemberID:        1,
 	}
 
 	incusImageC := image.IncusImage{
@@ -42,6 +44,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "cloud",
 		Description:     "rocky 10 (cloud) (amd64)",
+		MemberID:        1,
 	}
 
 	ctx := context.Background()

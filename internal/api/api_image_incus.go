@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -11,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -21,11 +25,13 @@ import (
 
 type imageIncusHandler struct {
 	service image.ImageIncusService
+	forward forwarder
 }
 
-func registerImageIncusHandler(router Router, simplestreamsRouter Router, authorizer *authz.Authorizer, service image.ImageIncusService) {
+func registerImageIncusHandler(router Router, simplestreamsRouter Router, authorizer *authz.Authorizer, service image.ImageIncusService, forward forwarder) {
 	handler := &imageIncusHandler{
 		service: service,
+		forward: forward,
 	}
 
 	// public simplestreams routes, available without authentication
@@ -385,6 +391,11 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
+	resp := i.toFileTarget(r, name)
+	if resp != nil {
+		return resp
+	}
+
 	err := i.service.DeleteByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
@@ -449,6 +460,23 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 		return response.BadRequest(fmt.Errorf(`Content-type header misses boundary parameter`))
 	}
 
+	// The first part names the image, a version of an existing image is added by its file target.
+	recorded := &cappedBuffer{limit: uploadFirstPartLimit}
+	imageName, err := i.service.UploadImageName(r.Context(), multipart.NewReader(io.TeeReader(r.Body, recorded), boundary))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	r.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(recorded.Bytes()), r.Body), r.Body}
+
+	resp := i.toFileTarget(r, imageName)
+	if resp != nil {
+		return resp
+	}
+
 	name, err := i.service.AddVersion(r.Context(), multipart.NewReader(r.Body, boundary))
 	if err != nil {
 		return response.SmartError(err)
@@ -491,6 +519,11 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
 	version := r.PathValue("version")
+
+	resp := i.toFileTarget(r, name)
+	if resp != nil {
+		return resp
+	}
 
 	err := i.service.DeleteVersionByName(r.Context(), name, version)
 	if err != nil {
@@ -543,6 +576,11 @@ func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.R
 	version := r.PathValue("version")
 	filename := r.PathValue("filename")
 
+	resp := i.toFileTarget(r, name)
+	if resp != nil {
+		return resp
+	}
+
 	rc, size, err := i.service.GetVersionFileByName(r.Context(), name, version, filename)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get file %q for incus image %q, version %q: %w", filename, name, version, err))
@@ -553,4 +591,36 @@ func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.R
 	}
 
 	return response.ReadCloserResponse(r, rc, false, filename, int(size), headers)
+}
+
+// toFileTarget forwards the request to the associated cluster member, returning its response.
+func (i *imageIncusHandler) toFileTarget(r *http.Request, name string) response.Response {
+	img, err := i.service.GetByName(r.Context(), name)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil
+	}
+
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return i.forward.toMember(r, img.MemberID)
+}
+
+// uploadFirstPartLimit limits the first part of an image upload, which is held in memory to learn the image name.
+const uploadFirstPartLimit = 32 * 1024 * 1024
+
+// cappedBuffer records up to limit bytes and fails once more are written.
+type cappedBuffer struct {
+	bytes.Buffer
+
+	limit int
+}
+
+func (c *cappedBuffer) Write(p []byte) (int, error) {
+	if c.Len()+len(p) > c.limit {
+		return 0, domain.NewValidationErrf("The first part of the image upload exceeds %d bytes", c.limit)
+	}
+
+	return c.Buffer.Write(p)
 }

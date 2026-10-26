@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -42,13 +43,20 @@ const (
 	defaultPendingGraceTime = 24 * time.Hour
 )
 
+// standaloneMemberID is the member ID of a server that is not clustered.
+const standaloneMemberID = 1
+
 type updateService struct {
 	repo               provisioning.UpdateRepo
 	filesRepo          provisioning.UpdateFilesRepo
 	source             provisioning.UpdateSourcePort
 	serverSvc          provisioning.ServerService
+	fileTargets        provisioning.UpdateFileTargetPort
 	latestLimit        int
 	pendingGracePeriod time.Duration
+
+	// refreshing holds the updates whose files this member refreshes.
+	refreshing *sync.Map
 }
 
 var _ provisioning.UpdateService = &updateService{}
@@ -58,6 +66,13 @@ type Option func(service *updateService)
 func WithLatestLimit(limit int) Option {
 	return func(service *updateService) {
 		service.latestLimit = limit
+	}
+}
+
+// WithFileTargets lets other cluster members manage the update files they store.
+func WithFileTargets(fileTargets provisioning.UpdateFileTargetPort) Option {
+	return func(service *updateService) {
+		service.fileTargets = fileTargets
 	}
 }
 
@@ -79,6 +94,7 @@ func New(repo provisioning.UpdateRepo, filesRepo provisioning.UpdateFilesRepo, s
 		serverSvc:          serverSvc,
 		latestLimit:        defaultLatestLimit,
 		pendingGracePeriod: defaultPendingGraceTime,
+		refreshing:         &sync.Map{},
 	}
 
 	for _, opt := range opts {
@@ -106,12 +122,28 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 
 	update.Status = api.UpdateStatusReady
 
+	update.MemberID, err = s.localMemberID(ctx)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
 	err = update.Validate()
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("Validate update: %w", err)
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// The update might be stored by another cluster member already.
+		_, err := s.repo.GetByUUID(ctx, update.UUID)
+		if err == nil {
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "Update %q exists already", update.UUID.String()).
+				WithDetail("update", update.UUID.String())
+		}
+
+		if !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+
 		err = s.repo.Upsert(ctx, *update)
 		if err != nil {
 			return fmt.Errorf("Failed to persist the update from archive in the repository: %w", err)
@@ -125,7 +157,7 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 		return nil
 	})
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.UUID{}, errors.Join(err, s.filesRepo.Delete(ctx, *update))
 	}
 
 	return update.UUID, nil
@@ -139,6 +171,13 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 	err := s.filesRepo.CleanupAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to cleanup: %w", err)
+	}
+
+	if s.fileTargets != nil {
+		err = s.fileTargets.DeleteAllFiles(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to cleanup on the other cluster members: %w", err)
+		}
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
@@ -174,69 +213,186 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 //   - Updates in ready state, where files are missing (most likely caused
 //     by a restore of the application's backuped state by IncusOS.
 func (s updateService) Prune(ctx context.Context) error {
-	var fileRepoErrs []error
-	var known []uuid.UUID
+	localMemberID, err := s.localMemberID(ctx)
+	if err != nil {
+		return err
+	}
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		updates, err := s.repo.GetAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get all updates during prune: %w", err)
+	updates, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get all updates during prune: %w", err)
+	}
+
+	// memberOf returns the ID of the member storing update.
+	memberOf := func(update provisioning.Update) int64 {
+		if s.isLocal(localMemberID, update) {
+			return localMemberID
 		}
 
+		return update.MemberID
+	}
+
+	readyByMember := map[int64]provisioning.Updates{}
+	for _, update := range updates {
+		if update.Status == api.UpdateStatusReady {
+			readyByMember[memberOf(update)] = append(readyByMember[memberOf(update)], update)
+		}
+	}
+
+	// Each member checks the files of the updates it stores.
+	incomplete := map[uuid.UUID]bool{}
+	unreachable := map[int64]bool{}
+	for memberID, memberUpdates := range readyByMember {
+		var incompleteUUIDs []uuid.UUID
+		if memberID == localMemberID {
+			incompleteUUIDs, err = s.CheckLocalFiles(ctx, memberUpdates)
+		} else {
+			incompleteUUIDs, err = s.fileTargets.CheckFiles(ctx, memberID, memberUpdates)
+		}
+
+		if errors.Is(err, domain.ErrUnavailable) {
+			slog.WarnContext(ctx, "Skipping the updates of an unreachable cluster member during prune", slog.Int64("member", memberID), logger.Err(err))
+			unreachable[memberID] = true
+			continue
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to check the files of the updates during prune: %w", err)
+		}
+
+		for _, id := range incompleteUUIDs {
+			incomplete[id] = true
+		}
+	}
+
+	var removed provisioning.Updates
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		for _, update := range updates {
-			remove := false
-
-			switch update.Status {
-			case api.UpdateStatusPending:
-				remove = true
-
-			case api.UpdateStatusReady:
-				for _, file := range update.Files {
-					rc, size, err := s.filesRepo.Get(ctx, update, file.Filename)
-					if rc != nil {
-						_ = rc.Close()
-					}
-
-					if err != nil || file.Size != size {
-						// TODO: currently, we only check if the file exist and the file size
-						// matches. We could be extra careful and also check if the hash
-						// is correct, but this would be significantly slower and would
-						// cause startup of the daemon to be significantly slower.
-						remove = true
-						break
-					}
-				}
-			}
-
-			if !remove {
-				known = append(known, update.UUID)
+			if unreachable[memberOf(update)] {
 				continue
 			}
 
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
+			if update.Status != api.UpdateStatusPending && !incomplete[update.UUID] {
+				continue
 			}
 
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
 				return fmt.Errorf("Failed to delete update %v: %w", update.UUID, err)
 			}
+
+			removed = append(removed, update)
 		}
 
 		return nil
 	})
-	if err == nil {
-		// Files of updates unknown to the database, e.g. after a restore, are removed.
-		err = s.filesRepo.DeleteUnknown(ctx, known)
+	if err != nil {
+		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
 
-	err = errors.Join(append([]error{err}, fileRepoErrs...)...)
+	var errs []error
+	for _, update := range removed {
+		err = s.deleteFiles(ctx, localMemberID, update)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
+		}
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
 
 	return nil
+}
+
+// CheckLocalFiles returns the updates whose files on this member are missing or incomplete.
+func (s updateService) CheckLocalFiles(ctx context.Context, updates provisioning.Updates) ([]uuid.UUID, error) {
+	var incomplete []uuid.UUID
+	for _, update := range updates {
+		for _, updateFile := range update.Files {
+			rc, size, err := s.filesRepo.Get(ctx, update, updateFile.Filename)
+			if rc != nil {
+				_ = rc.Close()
+			}
+
+			if err != nil || updateFile.Size != size {
+				// TODO: currently, we only check if the file exist and the file size
+				// matches. We could be extra careful and also check if the hash
+				// is correct, but this would be significantly slower and would
+				// cause startup of the daemon to be significantly slower.
+				incomplete = append(incomplete, update.UUID)
+				break
+			}
+		}
+	}
+
+	return incomplete, nil
+}
+
+// RefreshLocalFiles downloads any missing files of the update id stored on this member and deletes the files it no longer needs.
+func (s updateService) RefreshLocalFiles(ctx context.Context, id uuid.UUID) error {
+	_, running := s.refreshing.LoadOrStore(id, true)
+	if running {
+		return nil
+	}
+
+	defer s.refreshing.Delete(id)
+
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = s.filesRepo.PruneFiles(ctx, *update)
+	if err != nil {
+		return fmt.Errorf("Failed to delete the files update %s no longer needs: %w", update.UUID, err)
+	}
+
+	return s.downloadMissingFiles(ctx, *update)
+}
+
+// localMemberID returns the ID of this member.
+func (s updateService) localMemberID(ctx context.Context) (int64, error) {
+	if s.fileTargets == nil {
+		return standaloneMemberID, nil
+	}
+
+	return s.fileTargets.LocalMemberID(ctx)
+}
+
+// isLocal reports whether update is stored on this member.
+func (s updateService) isLocal(localMemberID int64, update provisioning.Update) bool {
+	return s.fileTargets == nil || update.MemberID == localMemberID
+}
+
+// deleteFiles deletes the files of update on the member storing them. An unreachable member deletes them on its next startup.
+func (s updateService) deleteFiles(ctx context.Context, localMemberID int64, update provisioning.Update) error {
+	if s.isLocal(localMemberID, update) {
+		return s.filesRepo.Delete(ctx, update)
+	}
+
+	err := s.fileTargets.DeleteFiles(ctx, update)
+	if errors.Is(err, domain.ErrUnavailable) {
+		slog.WarnContext(ctx, "Failed to delete the files of an update on its file target", slog.String("update", update.UUID.String()), logger.Err(err))
+		return nil
+	}
+
+	return err
+}
+
+// getFile returns a file of update from the member storing it.
+func (s updateService) getFile(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+	localMemberID, err := s.localMemberID(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if s.isLocal(localMemberID, update) {
+		return s.filesRepo.Get(ctx, update, filename)
+	}
+
+	return s.fileTargets.GetFile(ctx, update, filename)
 }
 
 func (s updateService) GetAll(ctx context.Context) (provisioning.Updates, error) {
@@ -434,7 +590,7 @@ func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, pr
 func (s updateService) readManifest(ctx context.Context, update provisioning.Update, filename string, manifest *manifests.IncusOSManifest) (err error) {
 	var manifestFileGz io.ReadCloser
 
-	manifestFileGz, _, err = s.filesRepo.Get(ctx, update, filename)
+	manifestFileGz, _, err = s.getFile(ctx, update, filename)
 	if err != nil {
 		return err
 	}
@@ -546,7 +702,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 			WithDetail("file", filename)
 	}
 
-	return s.filesRepo.Get(ctx, *update, filename)
+	return s.getFile(ctx, *update, filename)
 }
 
 // Refresh refreshes the updates from an origin.
@@ -590,8 +746,14 @@ func (s updateService) Refresh(ctx context.Context) error {
 		originUpdates[i].Channels = []string{config.GetUpdates().UpdatesDefaultChannel}
 	}
 
+	localMemberID, err := s.localMemberID(ctx)
+	if err != nil {
+		return err
+	}
+
 	toDownloadUpdates := make([]provisioning.Update, 0, len(originUpdates))
 	var toRefreshUpdates []provisioning.Update
+	var remoteDeleteUpdates []provisioning.Update
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.serverSvc.GetAll(ctx)
 		if err != nil {
@@ -611,11 +773,15 @@ func (s updateService) Refresh(ctx context.Context) error {
 		var toDeleteUpdates []provisioning.Update
 		toDeleteUpdates, toRefreshUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates, updateVersionsInUse)
 
-		// Remove updates marked for removal.
+		// Remove updates marked for removal, the files on other members are removed after the transaction.
 		for _, update := range toDeleteUpdates {
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
+			if s.isLocal(localMemberID, update) {
+				err = s.filesRepo.Delete(ctx, update)
+				if err != nil {
+					return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
+				}
+			} else {
+				remoteDeleteUpdates = append(remoteDeleteUpdates, update)
 			}
 
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
@@ -624,11 +790,13 @@ func (s updateService) Refresh(ctx context.Context) error {
 			}
 		}
 
-		// Prune obsolete files from existing updates.
+		// Delete the files existing updates no longer need. Other members do this on their next refresh.
 		for _, update := range toRefreshUpdates {
-			err = s.filesRepo.PruneFiles(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to prune obsolete files for update %s: %w", update.UUID, err)
+			if s.isLocal(localMemberID, update) {
+				err = s.filesRepo.PruneFiles(ctx, update)
+				if err != nil {
+					return fmt.Errorf("Failed to delete the files update %s no longer needs: %w", update.UUID, err)
+				}
 			}
 
 			err = s.repo.Upsert(ctx, update)
@@ -643,41 +811,32 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return fmt.Errorf("Unable to refresh updates from source: %w", err)
 	}
 
-	for _, update := range toRefreshUpdates {
-		// Make sure, we do have enough space left in the files repository before downloading the files.
-		refreshUpdate := provisioning.Update{
-			Version: update.Version,
-			Files:   make(provisioning.UpdateFiles, 0, len(update.Files)),
-		}
-
-		for _, updateFile := range update.Files {
-			ok, err := s.filesRepo.Exists(ctx, update, updateFile.Filename)
-			if err != nil {
-				return fmt.Errorf(`Failed to confirm existence for update file %s@%s: %w`, updateFile.Filename, update.Version, err)
-			}
-
-			if ok {
-				// File already present, no need to download it again.
-				continue
-			}
-
-			refreshUpdate.Files = append(refreshUpdate.Files, updateFile)
-		}
-
-		err = s.isSpaceAvailable(ctx, []provisioning.Update{refreshUpdate})
+	for _, update := range remoteDeleteUpdates {
+		err = s.deleteFiles(ctx, localMemberID, update)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
 		}
+	}
 
-		for _, updateFile := range refreshUpdate.Files {
-			if ctx.Err() != nil {
-				return fmt.Errorf("Stop refresh, context cancelled: %w", context.Cause(ctx))
-			}
-
-			err = s.downloadFile(ctx, update, updateFile)
+	for _, update := range toRefreshUpdates {
+		if s.isLocal(localMemberID, update) {
+			err = s.downloadMissingFiles(ctx, update)
 			if err != nil {
 				return err
 			}
+
+			continue
+		}
+
+		// The member storing the update downloads its missing files itself.
+		err = s.fileTargets.RefreshFiles(ctx, update)
+		if errors.Is(err, domain.ErrUnavailable) {
+			slog.WarnContext(ctx, "Skipping the refresh of an update of an unreachable cluster member", slog.String("update", update.UUID.String()), logger.Err(err))
+			continue
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to refresh the files of update %s on its file target: %w", update.UUID, err)
 		}
 	}
 
@@ -688,10 +847,11 @@ func (s updateService) Refresh(ctx context.Context) error {
 			return err
 		}
 
-		// Move updates marked for download in pending state.
+		// Move updates marked for download in pending state, this member stores them.
 		for i, update := range toDownloadUpdates {
 			// Overwrite origin with our value to ensure cleanup to work.
 			update.Status = api.UpdateStatusPending
+			update.MemberID = localMemberID
 
 			err = update.Validate()
 			if err != nil {
@@ -1097,6 +1257,47 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []p
 			WithHintf("Free space in the files repository, e.g. by removing updates which are no longer needed.").
 			WithDetail("required_bytes", strconv.Itoa(requiredSpaceTotal)).
 			WithDetail("available_bytes", strconv.FormatUint(ui.AvailableSpaceBytes, 10))
+	}
+
+	return nil
+}
+
+// downloadMissingFiles downloads the files of update not stored by this member.
+func (s updateService) downloadMissingFiles(ctx context.Context, update provisioning.Update) error {
+	// Make sure, we do have enough space left in the files repository before downloading the files.
+	refreshUpdate := provisioning.Update{
+		Version: update.Version,
+		Files:   make(provisioning.UpdateFiles, 0, len(update.Files)),
+	}
+
+	for _, updateFile := range update.Files {
+		ok, err := s.filesRepo.Exists(ctx, update, updateFile.Filename)
+		if err != nil {
+			return fmt.Errorf(`Failed to confirm existence for update file %s@%s: %w`, updateFile.Filename, update.Version, err)
+		}
+
+		if ok {
+			// File already present, no need to download it again.
+			continue
+		}
+
+		refreshUpdate.Files = append(refreshUpdate.Files, updateFile)
+	}
+
+	err := s.isSpaceAvailable(ctx, []provisioning.Update{refreshUpdate})
+	if err != nil {
+		return err
+	}
+
+	for _, updateFile := range refreshUpdate.Files {
+		if ctx.Err() != nil {
+			return fmt.Errorf("Stop refresh, context cancelled: %w", context.Cause(ctx))
+		}
+
+		err = s.downloadFile(ctx, update, updateFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

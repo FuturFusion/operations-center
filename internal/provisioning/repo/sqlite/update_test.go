@@ -32,6 +32,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UpstreamChannels: []string{"daily"},
 		Status:           api.UpdateStatusReady,
 		URL:              "/217816150",
+		MemberID:         1,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -56,6 +57,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UpstreamChannels: []string{"stable", "daily"},
 		Status:           api.UpdateStatusReady,
 		URL:              "/217808146",
+		MemberID:         1,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",

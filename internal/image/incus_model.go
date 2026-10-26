@@ -25,6 +25,9 @@ type IncusImage struct {
 
 	Source *string `json:"source" db:"leftjoin=incus_image_sources.name"`
 
+	// MemberID is the ID of the file target, the cluster member storing the files of all versions.
+	MemberID int64 `json:"-"`
+
 	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
 

@@ -43,6 +43,20 @@ func NewUpdateServiceWithPrometheus(base provisioning.UpdateService, instanceNam
 	}
 }
 
+// CheckLocalFiles implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) CheckLocalFiles(ctx context.Context, updates provisioning.Updates) (uUIDs []uuid.UUID, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CheckLocalFiles", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CheckLocalFiles(ctx, updates)
+}
+
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) CleanupAll(ctx context.Context) (err error) {
 	_since := time.Now()
@@ -237,6 +251,20 @@ func (_d UpdateServiceWithPrometheus) Refresh(ctx context.Context) (err error) {
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Refresh", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Refresh(ctx)
+}
+
+// RefreshLocalFiles implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) RefreshLocalFiles(ctx context.Context, id uuid.UUID) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RefreshLocalFiles", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RefreshLocalFiles(ctx, id)
 }
 
 // SetServerService implements provisioning.UpdateService.

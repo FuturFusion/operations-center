@@ -14,14 +14,14 @@ import (
 )
 
 var incusImageObjects = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.member_id, incus_images.last_updated
   FROM incus_images
   LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByID = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.member_id, incus_images.last_updated
   FROM incus_images
   LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.id = ? )
@@ -29,7 +29,7 @@ SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.de
 `)
 
 var incusImageObjectsByName = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.member_id, incus_images.last_updated
   FROM incus_images
   LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.name = ? )
@@ -37,7 +37,7 @@ SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.de
 `)
 
 var incusImageObjectsBySource = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.member_id, incus_images.last_updated
   FROM incus_images
   LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( source = ? )
@@ -56,18 +56,18 @@ SELECT incus_images.id FROM incus_images
 `)
 
 var incusImageCreate = RegisterStmt(`
-INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
+INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, member_id, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?, ?)
 `)
 
 var incusImageCreateOrReplace = RegisterStmt(`
-INSERT OR REPLACE INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
- VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
+INSERT OR REPLACE INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, member_id, last_updated)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?, ?)
 `)
 
 var incusImageUpdate = RegisterStmt(`
 UPDATE incus_images
-  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, incus_image_source_id = (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), last_updated = ?
+  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, incus_image_source_id = (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), member_id = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -155,7 +155,7 @@ func GetIncusImage(ctx context.Context, db dbtx, name string) (_ *image.IncusIma
 // incusImageColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the IncusImage entity.
 func incusImageColumns() string {
-	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated"
+	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.member_id, incus_images.last_updated"
 }
 
 // getIncusImages can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -165,7 +165,7 @@ func getIncusImages(ctx context.Context, stmt *sql.Stmt, args ...any) ([]image.I
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
 		var aliasesStr string
-		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.LastUpdated)
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.MemberID, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func getIncusImagesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
 		var aliasesStr string
-		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.LastUpdated)
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.MemberID, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -408,7 +408,7 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	args := make([]any, 10)
+	args := make([]any, 11)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
@@ -425,7 +425,8 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 	args[6] = object.Variant
 	args[7] = object.Versions
 	args[8] = object.Source
-	args[9] = time.Now().UTC().Format(time.RFC3339)
+	args[9] = object.MemberID
+	args[10] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := StmtContext(ctx, db, incusImageCreate)
@@ -458,7 +459,7 @@ func CreateOrReplaceIncusImage(ctx context.Context, db dbtx, object image.IncusI
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	args := make([]any, 10)
+	args := make([]any, 11)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
@@ -475,7 +476,8 @@ func CreateOrReplaceIncusImage(ctx context.Context, db dbtx, object image.IncusI
 	args[6] = object.Variant
 	args[7] = object.Versions
 	args[8] = object.Source
-	args[9] = time.Now().UTC().Format(time.RFC3339)
+	args[9] = object.MemberID
+	args[10] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := StmtContext(ctx, db, incusImageCreateOrReplace)
@@ -523,7 +525,7 @@ func UpdateIncusImage(ctx context.Context, db tx, name string, object image.Incu
 		return err
 	}
 
-	result, err := stmt.Exec(object.Name, marshaledAliases, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, object.Source, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.Name, marshaledAliases, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, object.Source, object.MemberID, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"incus_images\" entry failed: %w", err)
 	}

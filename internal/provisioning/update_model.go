@@ -36,6 +36,7 @@ type Update struct {
 	URL              string                 `json:"url"`
 	Status           api.UpdateStatus       `json:"-" expr:"status"`
 	LastUpdated      time.Time              `json:"-" expr:"last_updated" db:"update_timestamp"`
+	MemberID         int64                  `json:"-"`
 }
 
 func (u Update) Validate() error {

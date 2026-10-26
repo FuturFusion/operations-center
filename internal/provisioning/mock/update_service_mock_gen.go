@@ -27,6 +27,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //
 //		// make and configure a mocked provisioning.UpdateService
 //		mockedUpdateService := &UpdateServiceMock{
+//			CheckLocalFilesFunc: func(ctx context.Context, updates provisioning.Updates) ([]uuid.UUID, error) {
+//				panic("mock out the CheckLocalFiles method")
+//			},
 //			CleanupAllFunc: func(ctx context.Context) error {
 //				panic("mock out the CleanupAll method")
 //			},
@@ -69,6 +72,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			RefreshFunc: func(ctx context.Context) error {
 //				panic("mock out the Refresh method")
 //			},
+//			RefreshLocalFilesFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the RefreshLocalFiles method")
+//			},
 //			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
 //				panic("mock out the SetServerService method")
 //			},
@@ -82,6 +88,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //
 //	}
 type UpdateServiceMock struct {
+	// CheckLocalFilesFunc mocks the CheckLocalFiles method.
+	CheckLocalFilesFunc func(ctx context.Context, updates provisioning.Updates) ([]uuid.UUID, error)
+
 	// CleanupAllFunc mocks the CleanupAll method.
 	CleanupAllFunc func(ctx context.Context) error
 
@@ -124,6 +133,9 @@ type UpdateServiceMock struct {
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) error
 
+	// RefreshLocalFilesFunc mocks the RefreshLocalFiles method.
+	RefreshLocalFilesFunc func(ctx context.Context, id uuid.UUID) error
+
 	// SetServerServiceFunc mocks the SetServerService method.
 	SetServerServiceFunc func(serverSvc provisioning.ServerService)
 
@@ -132,6 +144,13 @@ type UpdateServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CheckLocalFiles holds details about calls to the CheckLocalFiles method.
+		CheckLocalFiles []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Updates is the updates argument value.
+			Updates provisioning.Updates
+		}
 		// CleanupAll holds details about calls to the CleanupAll method.
 		CleanupAll []struct {
 			// Ctx is the ctx argument value.
@@ -232,6 +251,13 @@ type UpdateServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// RefreshLocalFiles holds details about calls to the RefreshLocalFiles method.
+		RefreshLocalFiles []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// SetServerService holds details about calls to the SetServerService method.
 		SetServerService []struct {
 			// ServerSvc is the serverSvc argument value.
@@ -245,6 +271,7 @@ type UpdateServiceMock struct {
 			Update provisioning.Update
 		}
 	}
+	lockCheckLocalFiles                 sync.RWMutex
 	lockCleanupAll                      sync.RWMutex
 	lockCreateFromArchive               sync.RWMutex
 	lockGetAll                          sync.RWMutex
@@ -259,8 +286,45 @@ type UpdateServiceMock struct {
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
 	lockPrune                           sync.RWMutex
 	lockRefresh                         sync.RWMutex
+	lockRefreshLocalFiles               sync.RWMutex
 	lockSetServerService                sync.RWMutex
 	lockUpdate                          sync.RWMutex
+}
+
+// CheckLocalFiles calls CheckLocalFilesFunc.
+func (mock *UpdateServiceMock) CheckLocalFiles(ctx context.Context, updates provisioning.Updates) ([]uuid.UUID, error) {
+	if mock.CheckLocalFilesFunc == nil {
+		panic("UpdateServiceMock.CheckLocalFilesFunc: method is nil but UpdateService.CheckLocalFiles was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Updates provisioning.Updates
+	}{
+		Ctx:     ctx,
+		Updates: updates,
+	}
+	mock.lockCheckLocalFiles.Lock()
+	mock.calls.CheckLocalFiles = append(mock.calls.CheckLocalFiles, callInfo)
+	mock.lockCheckLocalFiles.Unlock()
+	return mock.CheckLocalFilesFunc(ctx, updates)
+}
+
+// CheckLocalFilesCalls gets all the calls that were made to CheckLocalFiles.
+// Check the length with:
+//
+//	len(mockedUpdateService.CheckLocalFilesCalls())
+func (mock *UpdateServiceMock) CheckLocalFilesCalls() []struct {
+	Ctx     context.Context
+	Updates provisioning.Updates
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Updates provisioning.Updates
+	}
+	mock.lockCheckLocalFiles.RLock()
+	calls = mock.calls.CheckLocalFiles
+	mock.lockCheckLocalFiles.RUnlock()
+	return calls
 }
 
 // CleanupAll calls CleanupAllFunc.
@@ -768,6 +832,42 @@ func (mock *UpdateServiceMock) RefreshCalls() []struct {
 	mock.lockRefresh.RLock()
 	calls = mock.calls.Refresh
 	mock.lockRefresh.RUnlock()
+	return calls
+}
+
+// RefreshLocalFiles calls RefreshLocalFilesFunc.
+func (mock *UpdateServiceMock) RefreshLocalFiles(ctx context.Context, id uuid.UUID) error {
+	if mock.RefreshLocalFilesFunc == nil {
+		panic("UpdateServiceMock.RefreshLocalFilesFunc: method is nil but UpdateService.RefreshLocalFiles was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockRefreshLocalFiles.Lock()
+	mock.calls.RefreshLocalFiles = append(mock.calls.RefreshLocalFiles, callInfo)
+	mock.lockRefreshLocalFiles.Unlock()
+	return mock.RefreshLocalFilesFunc(ctx, id)
+}
+
+// RefreshLocalFilesCalls gets all the calls that were made to RefreshLocalFiles.
+// Check the length with:
+//
+//	len(mockedUpdateService.RefreshLocalFilesCalls())
+func (mock *UpdateServiceMock) RefreshLocalFilesCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockRefreshLocalFiles.RLock()
+	calls = mock.calls.RefreshLocalFiles
+	mock.lockRefreshLocalFiles.RUnlock()
 	return calls
 }
 

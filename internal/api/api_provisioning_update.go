@@ -23,11 +23,13 @@ import (
 
 type updateHandler struct {
 	service provisioning.UpdateService
+	forward forwarder
 }
 
-func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service provisioning.UpdateService, forward forwarder) {
 	handler := &updateHandler{
 		service: service,
+		forward: forward,
 	}
 
 	// no authentication required for all GET routes
@@ -629,6 +631,17 @@ func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
 		return response.BadRequest(err)
+	}
+
+	update, err := u.service.GetByUUID(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// The file target of the update serves its files.
+	resp := u.forward.toMember(r, update.MemberID)
+	if resp != nil {
+		return resp
 	}
 
 	rc, fileSize, err := u.service.GetUpdateFileByFilename(r.Context(), UUID, filename)
