@@ -19,8 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	clusterEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -170,16 +169,13 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup DB
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err = db.Close()
 		require.NoError(t, err)
 	})
-
-	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
-	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
 	clusterStmts, err := clusterEntities.PrepareStmts(tx.(transaction.Preparer), false)

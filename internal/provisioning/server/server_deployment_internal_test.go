@@ -909,6 +909,7 @@ func Test_deploymentSettleSnapshot(t *testing.T) {
 func Test_checkDeploymentPoweredOff(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{
 		IsIncusOSFunc: func() bool { return false },
+		ClusteredFunc: func() bool { return false },
 	}, nil)
 
 	tests := []struct {
@@ -1855,6 +1856,7 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{
 		IsIncusOSFunc: func() bool { return false },
+		ClusteredFunc: func() bool { return false },
 	}, nil)
 
 	server := provisioning.Server{

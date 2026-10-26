@@ -2991,6 +2991,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			// Setup
 			config.InitTest(t, &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool { return false },
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			err := config.UpdateSecurity(t.Context(), system.SecurityPut{

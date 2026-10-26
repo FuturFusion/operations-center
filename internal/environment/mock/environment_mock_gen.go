@@ -26,6 +26,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //			CacheDirFunc: func() string {
 //				panic("mock out the CacheDir method")
 //			},
+//			ClusteredFunc: func() bool {
+//				panic("mock out the Clustered method")
+//			},
 //			GetSecureBootCertificatesFunc: func(ctx context.Context) (api.InternalSecureBootCertificates, error) {
 //				panic("mock out the GetSecureBootCertificates method")
 //			},
@@ -66,6 +69,9 @@ type EnvironmentMock struct {
 	// CacheDirFunc mocks the CacheDir method.
 	CacheDirFunc func() string
 
+	// ClusteredFunc mocks the Clustered method.
+	ClusteredFunc func() bool
+
 	// GetSecureBootCertificatesFunc mocks the GetSecureBootCertificates method.
 	GetSecureBootCertificatesFunc func(ctx context.Context) (api.InternalSecureBootCertificates, error)
 
@@ -100,6 +106,9 @@ type EnvironmentMock struct {
 	calls struct {
 		// CacheDir holds details about calls to the CacheDir method.
 		CacheDir []struct {
+		}
+		// Clustered holds details about calls to the Clustered method.
+		Clustered []struct {
 		}
 		// GetSecureBootCertificates holds details about calls to the GetSecureBootCertificates method.
 		GetSecureBootCertificates []struct {
@@ -139,6 +148,7 @@ type EnvironmentMock struct {
 		}
 	}
 	lockCacheDir                       sync.RWMutex
+	lockClustered                      sync.RWMutex
 	lockGetSecureBootCertificates      sync.RWMutex
 	lockGetSecureBootPlatformKeyUpdate sync.RWMutex
 	lockGetToken                       sync.RWMutex
@@ -175,6 +185,33 @@ func (mock *EnvironmentMock) CacheDirCalls() []struct {
 	mock.lockCacheDir.RLock()
 	calls = mock.calls.CacheDir
 	mock.lockCacheDir.RUnlock()
+	return calls
+}
+
+// Clustered calls ClusteredFunc.
+func (mock *EnvironmentMock) Clustered() bool {
+	if mock.ClusteredFunc == nil {
+		panic("EnvironmentMock.ClusteredFunc: method is nil but Environment.Clustered was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockClustered.Lock()
+	mock.calls.Clustered = append(mock.calls.Clustered, callInfo)
+	mock.lockClustered.Unlock()
+	return mock.ClusteredFunc()
+}
+
+// ClusteredCalls gets all the calls that were made to Clustered.
+// Check the length with:
+//
+//	len(mockedEnvironment.ClusteredCalls())
+func (mock *EnvironmentMock) ClusteredCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockClustered.RLock()
+	calls = mock.calls.Clustered
+	mock.lockClustered.RUnlock()
 	return calls
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestRunner_ServerRegistrationRun(t *testing.T) {
@@ -632,6 +633,9 @@ def server_registration(candidate):
 				IsIncusOSFunc: func() bool {
 					return false
 				},
+				ClusteredFunc: func() bool {
+					return false
+				},
 			}, nil)
 
 			logBuf := &log.SyncBuffer{}
@@ -665,15 +669,13 @@ def server_registration(candidate):
 			loader := incusScriptlet.NewLoader()
 			runner, err := scriptlet.New(loader, client)
 			require.NoError(t, err)
-			defer lifecycle.SettingsUpdateSignal.Reset()
-			defer lifecycle.SettingsValidateSignal.Reset()
+			defer lifecycle.SharedSettingsUpdateSignal.Reset()
+			defer lifecycle.SharedSettingsValidateSignal.Reset()
 
 			// Load script
-			// Keep the other settings. A change of the metrics settings is logged.
-			settings := config.GetSettings().SettingsPut
-			settings.ServerRegistrationScriptlet = tc.script
-
-			err = config.UpdateSettings(t.Context(), settings)
+			err = config.UpdateSettings(t.Context(), system.SettingsGlobalPut{
+				ServerRegistrationScriptlet: tc.script,
+			})
 			tc.assertSetScriptletErr(t, err)
 			if err != nil {
 				return

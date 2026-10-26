@@ -21,8 +21,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "empty",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "",
-				OperationsCenterAddress: "",
+				RestServerAddress: "",
 			},
 
 			assertErr: require.NoError,
@@ -30,8 +29,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: ":",
 			cfg: system.NetworkPut{
-				RestServerAddress:       ":",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: ":",
 			},
 
 			assertErr: require.NoError,
@@ -40,8 +38,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: ":1234",
 			cfg: system.NetworkPut{
-				RestServerAddress:       ":1234",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: ":1234",
 			},
 
 			assertErr: require.NoError,
@@ -50,8 +47,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv4 - 0.0.0.0",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "0.0.0.0",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "0.0.0.0",
 			},
 
 			assertErr: require.NoError,
@@ -60,8 +56,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv4 - 0.0.0.0:",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "0.0.0.0:",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "0.0.0.0:",
 			},
 
 			assertErr: require.NoError,
@@ -70,8 +65,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv6 - ::",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "::",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "::",
 			},
 
 			assertErr: require.NoError,
@@ -80,8 +74,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv6 - [::]",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "[::]",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "[::]",
 			},
 
 			assertErr: require.NoError,
@@ -90,8 +83,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv6 - [::]:",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "[::]:",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "[::]:",
 			},
 
 			assertErr: require.NoError,
@@ -100,8 +92,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "ipv6 - abcd::0",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "abcd::0",
-				OperationsCenterAddress: "https://localhost:7443",
+				RestServerAddress: "abcd::0",
 			},
 
 			assertErr: require.NoError,
@@ -110,20 +101,9 @@ func TestUpdateNetwork(t *testing.T) {
 
 		// Errors
 		{
-			name: "error - OperationsCenterAddress not set",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "127.0.0.1:7443",
-				OperationsCenterAddress: "",
-			},
-
-			assertErr: require.Error,
-			want:      "",
-		},
-		{
 			name: "error - :0",
 			cfg: system.NetworkPut{
-				RestServerAddress:       ":0",
-				OperationsCenterAddress: "",
+				RestServerAddress: ":0",
 			},
 
 			assertErr: require.Error,
@@ -132,8 +112,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "error - no ip",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "a.b.c.d",
-				OperationsCenterAddress: "",
+				RestServerAddress: "a.b.c.d",
 			},
 
 			assertErr: require.Error,
@@ -142,8 +121,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "error - no ip with port",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "a.b.c.d:7443",
-				OperationsCenterAddress: "",
+				RestServerAddress: "a.b.c.d:7443",
 			},
 
 			assertErr: require.Error,
@@ -154,16 +132,17 @@ func TestUpdateNetwork(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			config.InitTest(t, &mock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}, nil)
 
-			err := config.UpdateNetwork(t.Context(), tc.cfg)
+			err := config.UpdateLocalNetwork(t.Context(), tc.cfg)
 
 			tc.assertErr(t, err)
 
-			require.Equal(t, tc.want, config.GetNetwork().RestServerAddress)
+			require.Equal(t, tc.want, config.GetLocalNetwork().RestServerAddress)
 		})
 	}
 }

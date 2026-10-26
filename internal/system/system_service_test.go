@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"os/user"
@@ -85,6 +86,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 			}
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				VarDirFunc: func() string {
 					return tmpDir
 				},
@@ -680,6 +682,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.NoError(t, err)
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				VarDirFunc: func() string {
 					return tmpDir
 				},
@@ -836,6 +839,7 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			require.NoError(t, err)
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				VarDirFunc: func() string {
 					return tmpDir
 				},
@@ -869,10 +873,10 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 					func(
 						ctx context.Context,
 						fsEnv interface {
-							VarDir() string
 							CacheDir() string
 						},
 						cfg systemapi.SecurityACME,
+						current *x509.Certificate,
 						force bool,
 					) (*systemapi.CertificatePost, error) {
 						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
@@ -893,7 +897,7 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 	tests := []struct {
 		name                       string
-		networkConfig              systemapi.Network
+		networkConfig              systemapi.NetworkFullPut
 		serverGetAll               provisioning.Servers
 		serverGetAllErr            error
 		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
@@ -901,25 +905,23 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		configSaveErr              error
 
 		assertErr         require.ErrorAssertionFunc
-		wantNetworkConfig systemapi.Network
+		wantNetworkConfig systemapi.NetworkFull
 	}{
 		{
-			name: "success - empty",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			name:          "success - empty",
+			networkConfig: systemapi.NetworkFullPut{},
 
-			assertErr: require.NoError,
-			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			assertErr:         require.NoError,
+			wantNetworkConfig: systemapi.NetworkFull{},
 		},
 		{
 			name: "success - OperationsCenterAddress change",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -948,19 +950,27 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+			wantNetworkConfig: systemapi.NetworkFull{
+				Network: systemapi.Network{
+					NetworkPut: systemapi.NetworkPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "success - OperationsCenterAddress change - system provider config not initialized",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -979,19 +989,27 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+			wantNetworkConfig: systemapi.NetworkFull{
+				Network: systemapi.Network{
+					NetworkPut: systemapi.NetworkPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "success - OperationsCenterAddress change - unregistered server skipped",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1021,16 +1039,22 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+			wantNetworkConfig: systemapi.NetworkFull{
+				Network: systemapi.Network{
+					NetworkPut: systemapi.NetworkPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "error - NetworkSetDefaults",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
 					RestServerAddress: ":::", // invalid
 				},
@@ -1040,8 +1064,8 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - validation",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkFullPut{
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: ":|\\", // invalid
 				},
 			},
@@ -1049,20 +1073,20 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - config.UpdateNetwork",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			name:          "error - config.UpdateNetwork",
+			networkConfig: systemapi.NetworkFullPut{},
 			configSaveErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - OperationsCenterAddress change - repo.GetAll",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAllErr: boom.Error,
@@ -1071,10 +1095,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.GetSystemProvider",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1093,10 +1119,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider first",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1126,10 +1154,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert ok",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1174,10 +1204,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert error",
-			networkConfig: systemapi.Network{
+			networkConfig: systemapi.NetworkFullPut{
 				NetworkPut: systemapi.NetworkPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1231,6 +1263,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1255,7 +1288,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			systemSvc := system.NewSystemService(nil, serverSvc, nil)
 
 			// Run test
-			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.NetworkPut)
+			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig)
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
 
 			// Assert
@@ -1279,21 +1312,31 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			networkConfig := systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://someaddress:1234",
-					RestServerAddress:       testingnet.LocalhostIP(t) + ":1234",
+			networkConfig := systemapi.NetworkFull{
+				Network: systemapi.Network{
+					NetworkPut: systemapi.NetworkPut{
+						RestServerAddress: testingnet.LocalhostIP(t) + ":1234",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://someaddress:1234",
+					},
 				},
 			}
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}
 
 			config.InitTest(t, env, nil)
-			err := config.UpdateNetwork(t.Context(), networkConfig.NetworkPut)
+			err := config.UpdateLocalNetwork(t.Context(), networkConfig.NetworkPut)
+			require.NoError(t, err)
+
+			err = config.UpdateNetwork(t.Context(), networkConfig.NetworkGlobalPut)
 			require.NoError(t, err)
 
 			systemSvc := system.NewSystemService(nil, nil, nil)
@@ -1402,6 +1445,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1424,40 +1468,44 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 	tests := []struct {
 		name           string
-		securityConfig systemapi.Settings
+		securityConfig systemapi.SettingsFullPut
 
 		assertErr          require.ErrorAssertionFunc
-		wantSettingsConfig systemapi.Settings
+		wantSettingsConfig systemapi.SettingsFull
 	}{
 		{
 			name: "success",
-			securityConfig: systemapi.Settings{
+			securityConfig: systemapi.SettingsFullPut{
 				SettingsPut: systemapi.SettingsPut{
 					LogLevel: "INFO",
 				},
 			},
 
 			assertErr: require.NoError,
-			wantSettingsConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
-					LogLevel: "INFO",
+			wantSettingsConfig: systemapi.SettingsFull{
+				Settings: systemapi.Settings{
+					SettingsPut: systemapi.SettingsPut{
+						LogLevel: "INFO",
+					},
 				},
 			},
 		},
 		{
 			name: "error",
-			securityConfig: systemapi.Settings{
+			securityConfig: systemapi.SettingsFullPut{
 				SettingsPut: systemapi.SettingsPut{
 					LogLevel: "invalid", // invalid log level
 				},
 			},
 
 			assertErr: require.Error,
-			wantSettingsConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
-					LogLevel:          "",
-					MetricsEnabled:    true,
-					MetricsComponents: []string{"runtime"},
+			wantSettingsConfig: systemapi.SettingsFull{
+				Settings: systemapi.Settings{
+					SettingsPut: systemapi.SettingsPut{
+						LogLevel:          "",
+						MetricsEnabled:    true,
+						MetricsComponents: []string{"runtime"},
+					},
 				},
 			},
 		},
@@ -1467,6 +1515,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1476,7 +1525,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			systemSvc := system.NewSystemService(nil, nil, nil)
 
 			// Run test
-			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SettingsPut)
+			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig)
 			gotSettingsConfig := systemSvc.GetSettingsConfig(t.Context())
 
 			// Assert
@@ -1545,6 +1594,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},

@@ -2592,6 +2592,7 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return true
 				},
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			// Setup
@@ -2656,9 +2657,13 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				},
 			}
 
-			err = config.UpdateNetwork(t.Context(), system.NetworkPut{
+			err = config.UpdateLocalNetwork(t.Context(), system.NetworkPut{
+				RestServerAddress: "[::]:8443",
+			})
+			require.NoError(t, err)
+
+			err = config.UpdateNetwork(t.Context(), system.NetworkGlobalPut{
 				OperationsCenterAddress: "https://192.168.1.200:8443",
-				RestServerAddress:       "[::]:8443",
 			})
 			require.NoError(t, err)
 

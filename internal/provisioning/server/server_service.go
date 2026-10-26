@@ -1110,7 +1110,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		s.mu.Unlock()
 
 		// Ignore the error, since operationsCenterRESTAddress has been validated before.
-		operationsCenterRESTAddressHost, operationsCenterRESTAddressPort, _ := net.SplitHostPort(config.GetNetwork().RestServerAddress)
+		operationsCenterRESTAddressHost, operationsCenterRESTAddressPort, _ := net.SplitHostPort(config.GetLocalNetwork().RestServerAddress)
 		if operationsCenterRESTAddressHost == "::" {
 			operationsCenterRESTAddressHost = "::1"
 		}

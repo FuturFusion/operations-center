@@ -1308,12 +1308,17 @@ func TestServerService_DeployByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			config.InitTest(t, &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool { return false },
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			if tc.operationsCenterAddress != "" {
-				err := config.UpdateNetwork(t.Context(), system.NetworkPut{
+				err := config.UpdateLocalNetwork(t.Context(), system.NetworkPut{
+					RestServerAddress: "[::]:8443",
+				})
+				require.NoError(t, err)
+
+				err = config.UpdateNetwork(t.Context(), system.NetworkGlobalPut{
 					OperationsCenterAddress: tc.operationsCenterAddress,
-					RestServerAddress:       "[::]:8443",
 				})
 				require.NoError(t, err)
 			}

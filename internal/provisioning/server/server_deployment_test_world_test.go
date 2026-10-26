@@ -31,8 +31,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -1092,11 +1091,16 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 
 	config.InitTest(t, &envMock.EnvironmentMock{
 		IsIncusOSFunc: func() bool { return false },
+		ClusteredFunc: func() bool { return false },
 	}, nil)
 
-	err := config.UpdateNetwork(ctx, system.NetworkPut{
+	err := config.UpdateLocalNetwork(ctx, system.NetworkPut{
+		RestServerAddress: "[::]:8443",
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: deploymentTestOperationsCenterAddress,
-		RestServerAddress:       "[::]:8443",
 	})
 	require.NoError(t, err)
 
@@ -1110,18 +1114,13 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 	err = logger.InitLogger(logSink, "", false, true, true)
 	require.NoError(t, err)
 
-	tmpDir := t.TempDir()
-
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err := db.Close()
 		require.NoError(t, err)
 	})
-
-	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
-	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
 

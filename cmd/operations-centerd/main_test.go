@@ -95,6 +95,7 @@ network:
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
+		ClusteredFunc: func() bool { return false },
 	}
 
 	// Start daemon.
@@ -232,6 +233,7 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 				GetTokenFunc: func(ctx context.Context) (string, error) {
 					return "", nil
 				},
+				ClusteredFunc: func() bool { return false },
 			}
 
 			err := main0(tc.args, nil, nil, env)

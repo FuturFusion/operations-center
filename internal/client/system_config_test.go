@@ -38,7 +38,7 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 		name   string
 		client client.OperationsCenterClient
 
-		networkConfig system.NetworkPut
+		networkConfig system.NetworkFullPut
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -46,7 +46,7 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			networkConfig: currentConfig.NetworkPut,
+			networkConfig: system.NetworkFullPut{NetworkPut: currentConfig.NetworkPut, NetworkGlobalPut: currentConfig.NetworkGlobalPut},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -56,9 +56,11 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			name:   "error - validation, rest server address is not an address",
 			client: d.socketClient,
 
-			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-address",
+			networkConfig: system.NetworkFullPut{
+				NetworkPut: system.NetworkPut{
+					RestServerAddress: "not-an-address",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -69,9 +71,11 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			name:   "error - validation, rest server address without valid ip",
 			client: d.socketClient,
 
-			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-ip:8443",
+			networkConfig: system.NetworkFullPut{
+				NetworkPut: system.NetworkPut{
+					RestServerAddress: "not-an-ip:8443",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -157,8 +161,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			client: d.socketClient,
 
 			settingsConfig: system.SettingsPut{
-				LogLevel:                    "DEBUG",
-				ServerRegistrationScriptlet: "",
+				LogLevel: "DEBUG",
 			},
 
 			assertErr: require.NoError,
@@ -201,7 +204,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, map[string]string{"provisioning": "ERROR"}, settingsConfig.LogLevels)
 
-				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{}))
+				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsFullPut{}))
 			},
 		},
 		{
@@ -247,7 +250,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemSettingsConfig(t.Context(), tc.settingsConfig)
+			err := tc.client.UpdateSystemSettingsConfig(t.Context(), system.SettingsFullPut{SettingsPut: tc.settingsConfig})
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)

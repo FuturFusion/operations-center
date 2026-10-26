@@ -28,17 +28,20 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			GetCertificateFunc: func(ctx context.Context) (system.Certificate, error) {
 //				panic("mock out the GetCertificate method")
 //			},
-//			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
+//			GetNetworkConfigFunc: func(ctx context.Context) system.NetworkFull {
 //				panic("mock out the GetNetworkConfig method")
 //			},
 //			GetSecurityConfigFunc: func(ctx context.Context) system.Security {
 //				panic("mock out the GetSecurityConfig method")
 //			},
-//			GetSettingsConfigFunc: func(ctx context.Context) system.Settings {
+//			GetSettingsConfigFunc: func(ctx context.Context) system.SettingsFull {
 //				panic("mock out the GetSettingsConfig method")
 //			},
 //			GetUpdatesConfigFunc: func(ctx context.Context) system.Updates {
 //				panic("mock out the GetUpdatesConfig method")
+//			},
+//			PropagateCertificateFunc: func(ctx context.Context) error {
+//				panic("mock out the PropagateCertificate method")
 //			},
 //			TriggerCertificateRenewFunc: func(ctx context.Context, force bool) (bool, error) {
 //				panic("mock out the TriggerCertificateRenew method")
@@ -46,13 +49,13 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			UpdateCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
-//			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system.NetworkPut) error {
+//			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system.NetworkFullPut) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
 //			UpdateSecurityConfigFunc: func(ctx context.Context, cfg system.SecurityPut) error {
 //				panic("mock out the UpdateSecurityConfig method")
 //			},
-//			UpdateSettingsConfigFunc: func(ctx context.Context, cfg system.SettingsPut) error {
+//			UpdateSettingsConfigFunc: func(ctx context.Context, cfg system.SettingsFullPut) error {
 //				panic("mock out the UpdateSettingsConfig method")
 //			},
 //			UpdateUpdatesConfigFunc: func(ctx context.Context, cfg system.UpdatesPut) error {
@@ -72,16 +75,19 @@ type SystemServiceMock struct {
 	GetCertificateFunc func(ctx context.Context) (system.Certificate, error)
 
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
-	GetNetworkConfigFunc func(ctx context.Context) system.Network
+	GetNetworkConfigFunc func(ctx context.Context) system.NetworkFull
 
 	// GetSecurityConfigFunc mocks the GetSecurityConfig method.
 	GetSecurityConfigFunc func(ctx context.Context) system.Security
 
 	// GetSettingsConfigFunc mocks the GetSettingsConfig method.
-	GetSettingsConfigFunc func(ctx context.Context) system.Settings
+	GetSettingsConfigFunc func(ctx context.Context) system.SettingsFull
 
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
 	GetUpdatesConfigFunc func(ctx context.Context) system.Updates
+
+	// PropagateCertificateFunc mocks the PropagateCertificate method.
+	PropagateCertificateFunc func(ctx context.Context) error
 
 	// TriggerCertificateRenewFunc mocks the TriggerCertificateRenew method.
 	TriggerCertificateRenewFunc func(ctx context.Context, force bool) (bool, error)
@@ -90,13 +96,13 @@ type SystemServiceMock struct {
 	UpdateCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
-	UpdateNetworkConfigFunc func(ctx context.Context, cfg system.NetworkPut) error
+	UpdateNetworkConfigFunc func(ctx context.Context, cfg system.NetworkFullPut) error
 
 	// UpdateSecurityConfigFunc mocks the UpdateSecurityConfig method.
 	UpdateSecurityConfigFunc func(ctx context.Context, cfg system.SecurityPut) error
 
 	// UpdateSettingsConfigFunc mocks the UpdateSettingsConfig method.
-	UpdateSettingsConfigFunc func(ctx context.Context, cfg system.SettingsPut) error
+	UpdateSettingsConfigFunc func(ctx context.Context, cfg system.SettingsFullPut) error
 
 	// UpdateUpdatesConfigFunc mocks the UpdateUpdatesConfig method.
 	UpdateUpdatesConfigFunc func(ctx context.Context, cfg system.UpdatesPut) error
@@ -133,6 +139,11 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// PropagateCertificate holds details about calls to the PropagateCertificate method.
+		PropagateCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// TriggerCertificateRenew holds details about calls to the TriggerCertificateRenew method.
 		TriggerCertificateRenew []struct {
 			// Ctx is the ctx argument value.
@@ -154,7 +165,7 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.NetworkPut
+			Cfg system.NetworkFullPut
 		}
 		// UpdateSecurityConfig holds details about calls to the UpdateSecurityConfig method.
 		UpdateSecurityConfig []struct {
@@ -168,7 +179,7 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
-			Cfg system.SettingsPut
+			Cfg system.SettingsFullPut
 		}
 		// UpdateUpdatesConfig holds details about calls to the UpdateUpdatesConfig method.
 		UpdateUpdatesConfig []struct {
@@ -184,6 +195,7 @@ type SystemServiceMock struct {
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
 	lockGetUpdatesConfig        sync.RWMutex
+	lockPropagateCertificate    sync.RWMutex
 	lockTriggerCertificateRenew sync.RWMutex
 	lockUpdateCertificate       sync.RWMutex
 	lockUpdateNetworkConfig     sync.RWMutex
@@ -257,7 +269,7 @@ func (mock *SystemServiceMock) GetCertificateCalls() []struct {
 }
 
 // GetNetworkConfig calls GetNetworkConfigFunc.
-func (mock *SystemServiceMock) GetNetworkConfig(ctx context.Context) system.Network {
+func (mock *SystemServiceMock) GetNetworkConfig(ctx context.Context) system.NetworkFull {
 	if mock.GetNetworkConfigFunc == nil {
 		panic("SystemServiceMock.GetNetworkConfigFunc: method is nil but SystemService.GetNetworkConfig was just called")
 	}
@@ -321,7 +333,7 @@ func (mock *SystemServiceMock) GetSecurityConfigCalls() []struct {
 }
 
 // GetSettingsConfig calls GetSettingsConfigFunc.
-func (mock *SystemServiceMock) GetSettingsConfig(ctx context.Context) system.Settings {
+func (mock *SystemServiceMock) GetSettingsConfig(ctx context.Context) system.SettingsFull {
 	if mock.GetSettingsConfigFunc == nil {
 		panic("SystemServiceMock.GetSettingsConfigFunc: method is nil but SystemService.GetSettingsConfig was just called")
 	}
@@ -381,6 +393,38 @@ func (mock *SystemServiceMock) GetUpdatesConfigCalls() []struct {
 	mock.lockGetUpdatesConfig.RLock()
 	calls = mock.calls.GetUpdatesConfig
 	mock.lockGetUpdatesConfig.RUnlock()
+	return calls
+}
+
+// PropagateCertificate calls PropagateCertificateFunc.
+func (mock *SystemServiceMock) PropagateCertificate(ctx context.Context) error {
+	if mock.PropagateCertificateFunc == nil {
+		panic("SystemServiceMock.PropagateCertificateFunc: method is nil but SystemService.PropagateCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockPropagateCertificate.Lock()
+	mock.calls.PropagateCertificate = append(mock.calls.PropagateCertificate, callInfo)
+	mock.lockPropagateCertificate.Unlock()
+	return mock.PropagateCertificateFunc(ctx)
+}
+
+// PropagateCertificateCalls gets all the calls that were made to PropagateCertificate.
+// Check the length with:
+//
+//	len(mockedSystemService.PropagateCertificateCalls())
+func (mock *SystemServiceMock) PropagateCertificateCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockPropagateCertificate.RLock()
+	calls = mock.calls.PropagateCertificate
+	mock.lockPropagateCertificate.RUnlock()
 	return calls
 }
 
@@ -461,13 +505,13 @@ func (mock *SystemServiceMock) UpdateCertificateCalls() []struct {
 }
 
 // UpdateNetworkConfig calls UpdateNetworkConfigFunc.
-func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) error {
+func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkFullPut) error {
 	if mock.UpdateNetworkConfigFunc == nil {
 		panic("SystemServiceMock.UpdateNetworkConfigFunc: method is nil but SystemService.UpdateNetworkConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.NetworkPut
+		Cfg system.NetworkFullPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -484,11 +528,11 @@ func (mock *SystemServiceMock) UpdateNetworkConfig(ctx context.Context, cfg syst
 //	len(mockedSystemService.UpdateNetworkConfigCalls())
 func (mock *SystemServiceMock) UpdateNetworkConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.NetworkPut
+	Cfg system.NetworkFullPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.NetworkPut
+		Cfg system.NetworkFullPut
 	}
 	mock.lockUpdateNetworkConfig.RLock()
 	calls = mock.calls.UpdateNetworkConfig
@@ -533,13 +577,13 @@ func (mock *SystemServiceMock) UpdateSecurityConfigCalls() []struct {
 }
 
 // UpdateSettingsConfig calls UpdateSettingsConfigFunc.
-func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) error {
+func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsFullPut) error {
 	if mock.UpdateSettingsConfigFunc == nil {
 		panic("SystemServiceMock.UpdateSettingsConfigFunc: method is nil but SystemService.UpdateSettingsConfig was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Cfg system.SettingsPut
+		Cfg system.SettingsFullPut
 	}{
 		Ctx: ctx,
 		Cfg: cfg,
@@ -556,11 +600,11 @@ func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg sys
 //	len(mockedSystemService.UpdateSettingsConfigCalls())
 func (mock *SystemServiceMock) UpdateSettingsConfigCalls() []struct {
 	Ctx context.Context
-	Cfg system.SettingsPut
+	Cfg system.SettingsFullPut
 } {
 	var calls []struct {
 		Ctx context.Context
-		Cfg system.SettingsPut
+		Cfg system.SettingsFullPut
 	}
 	mock.lockUpdateSettingsConfig.RLock()
 	calls = mock.calls.UpdateSettingsConfig

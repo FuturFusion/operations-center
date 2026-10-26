@@ -15,6 +15,7 @@ func Test_Init_persistsOnlyOnChange(t *testing.T) {
 	env := &mock.EnvironmentMock{
 		VarDirFunc:    func() string { return dir },
 		IsIncusOSFunc: func() bool { return false },
+		ClusteredFunc: func() bool { return false },
 	}
 
 	previousStore := defaultStore.Load()

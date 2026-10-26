@@ -68,7 +68,7 @@ func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certi
 }
 
 // GetNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (network system.Network) {
+func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (networkFull system.NetworkFull) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,7 +88,7 @@ func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (se
 }
 
 // GetSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (settings system.Settings) {
+func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (settingsFull system.SettingsFull) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -105,6 +105,20 @@ func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (upd
 		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetUpdatesConfig(ctx)
+}
+
+// PropagateCertificate implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) PropagateCertificate(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PropagateCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PropagateCertificate(ctx)
 }
 
 // TriggerCertificateRenew implements system0.SystemService.
@@ -136,7 +150,7 @@ func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, cer
 }
 
 // UpdateNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) (err error) {
+func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkFullPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -164,7 +178,7 @@ func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, 
 }
 
 // UpdateSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) (err error) {
+func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsFullPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

@@ -16,7 +16,7 @@ import (
 )
 
 func Test_notify_smoke(t *testing.T) {
-	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 	var (
 		acmeEmits    int
@@ -50,29 +50,27 @@ func Test_notify_smoke(t *testing.T) {
 	require.NoError(t, UpdateSecurity(t.Context(), put))
 	require.Equal(t, 1, acmeEmits, "identical security PUT triggered an ACME renewal")
 
-	require.NoError(t, UpdateNetwork(t.Context(), system.NetworkPut{
-		RestServerAddress:       "0.0.0.0",
-		OperationsCenterAddress: "https://localhost:7443",
+	require.NoError(t, UpdateLocalNetwork(t.Context(), system.NetworkPut{
+		RestServerAddress: "0.0.0.0",
 	}))
 	require.Equal(t, []string{"0.0.0.0:7443"}, networkEmits, "listeners got the un-normalized address")
 
 	// Re-submitting the network config applies it again, so an operator can
 	// recover a listener which failed to pick up the previous update.
-	require.NoError(t, UpdateNetwork(t.Context(), system.NetworkPut{
-		RestServerAddress:       "0.0.0.0:7443",
-		OperationsCenterAddress: "https://localhost:7443",
+	require.NoError(t, UpdateLocalNetwork(t.Context(), system.NetworkPut{
+		RestServerAddress: "0.0.0.0:7443",
 	}))
 	require.Len(t, networkEmits, 2)
 
 	// An update of an unrelated section must leave the network alone.
-	require.NoError(t, UpdateSettings(t.Context(), system.SettingsPut{
+	require.NoError(t, UpdateLocalSettings(t.Context(), system.SettingsPut{
 		LogLevel: "DEBUG",
 	}))
 	require.Len(t, networkEmits, 2, "an unrelated update disturbed the network config")
 }
 
 func Test_notify_componentLogLevels(t *testing.T) {
-	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 	logBuf := &log.SyncBuffer{}
 
@@ -87,14 +85,14 @@ func Test_notify_componentLogLevels(t *testing.T) {
 	slog.DebugContext(ctx, "before update")
 	require.Empty(t, logBuf.String(), "the default log level WARN suppresses debug records")
 
-	require.NoError(t, UpdateSettings(t.Context(), system.SettingsPut{
+	require.NoError(t, UpdateLocalSettings(t.Context(), system.SettingsPut{
 		LogLevels: map[string]string{"provisioning": "DEBUG"},
 	}))
 
 	slog.DebugContext(ctx, "after update")
 	require.Contains(t, logBuf.String(), "after update", "the log level configured for a parent component was not applied")
 
-	require.NoError(t, UpdateSettings(t.Context(), system.SettingsPut{}))
+	require.NoError(t, UpdateLocalSettings(t.Context(), system.SettingsPut{}))
 
 	logBuf.Reset()
 	slog.DebugContext(ctx, "after reset")
@@ -156,7 +154,7 @@ func Test_notify_metricsComponents(t *testing.T) {
 			setup: func(t *testing.T) {
 				t.Helper()
 
-				err := UpdateSettings(t.Context(), system.SettingsPut{
+				err := UpdateLocalSettings(t.Context(), system.SettingsPut{
 					MetricsEnabled:    false,
 					MetricsComponents: []string{"test"},
 				})
@@ -174,7 +172,7 @@ func Test_notify_metricsComponents(t *testing.T) {
 			setup: func(t *testing.T) {
 				t.Helper()
 
-				err := UpdateSettings(t.Context(), system.SettingsPut{
+				err := UpdateLocalSettings(t.Context(), system.SettingsPut{
 					MetricsEnabled:    true,
 					MetricsComponents: []string{"test"},
 				})
@@ -192,7 +190,7 @@ func Test_notify_metricsComponents(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 			component := metrics.RegisterComponent("test.notify_metrics_components")
 
@@ -202,7 +200,7 @@ func Test_notify_metricsComponents(t *testing.T) {
 			require.NotEqual(t, tc.want, component.Enabled(), "the test starts in the opposite state")
 
 			// Run test
-			err := UpdateSettings(t.Context(), tc.settings)
+			err := UpdateLocalSettings(t.Context(), tc.settings)
 
 			// Assert
 			require.NoError(t, err)

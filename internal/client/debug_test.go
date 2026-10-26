@@ -55,11 +55,11 @@ func Test_GetPprof(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			err := d.socketClient.UpdateSystemSettingsConfig(t.Context(), tc.settings)
+			err := d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsFullPut{SettingsPut: tc.settings})
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
-				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(context.Background(), system.SettingsPut{}))
+				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(context.Background(), system.SettingsFullPut{}))
 			})
 
 			// Run test

@@ -109,7 +109,7 @@ func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate
 }
 
 // GetNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network system.Network) {
+func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (networkFull system.NetworkFull) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -122,7 +122,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network s
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("network", network),
+				slog.Any("networkFull", networkFull),
 			)
 		} else {
 		}
@@ -155,7 +155,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (security
 }
 
 // GetSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (settings system.Settings) {
+func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (settingsFull system.SettingsFull) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -168,7 +168,7 @@ func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (settings
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("settings", settings),
+				slog.Any("settingsFull", settingsFull),
 			)
 		} else {
 		}
@@ -198,6 +198,36 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (updates s
 		log.DebugContext(ctx, "<= method GetUpdatesConfig finished")
 	}()
 	return _d._base.GetUpdatesConfig(ctx)
+}
+
+// PropagateCertificate implements system0.SystemService.
+func (_d SystemServiceWithSlog) PropagateCertificate(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PropagateCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method PropagateCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method PropagateCertificate finished")
+		}
+	}()
+	return _d._base.PropagateCertificate(ctx)
 }
 
 // TriggerCertificateRenew implements system0.SystemService.
@@ -265,7 +295,7 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 }
 
 // UpdateNetworkConfig implements system0.SystemService.
-func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) (err error) {
+func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg system.NetworkFullPut) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -327,7 +357,7 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg sy
 }
 
 // UpdateSettingsConfig implements system0.SystemService.
-func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) (err error) {
+func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg system.SettingsFullPut) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
