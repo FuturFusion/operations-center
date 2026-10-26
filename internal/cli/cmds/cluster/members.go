@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -35,6 +36,10 @@ func (c *CmdMembers) Command() *cobra.Command {
 	// Remove
 	clusterRemoveCmd := cmdMembersRemove{ocClient: c.OCClient}
 	cmd.AddCommand(clusterRemoveCmd.Command())
+
+	// Move files
+	clusterMoveFilesCmd := cmdMembersMoveFiles{ocClient: c.OCClient}
+	cmd.AddCommand(clusterMoveFilesCmd.Command())
 
 	return cmd
 }
@@ -82,7 +87,7 @@ func (c *cmdMembersList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Address", "Role", "Last Heartbeat", "Status"}
+	header := []string{"Name", "Address", "Role", "Last Heartbeat", "Status", "File Sets"}
 	data := [][]string{}
 
 	for _, m := range members {
@@ -102,6 +107,7 @@ func (c *cmdMembersList) run(cmd *cobra.Command, args []string) error {
 			role,
 			time.Since(m.LastHeartbeat).Truncate(time.Second).String() + " ago",
 			status,
+			strconv.Itoa(m.FileSets),
 		})
 	}
 
@@ -125,11 +131,13 @@ func (c *cmdMembersRemove) Command() *cobra.Command {
 	cmd.Long = `Description:
   Remove cluster members
 
-  The removed member is reset to an empty standalone server. Use --force to skip
-  the checks and the reset, e.g. if the member is offline.
+  The removed member is reset to an empty standalone server. A member, which
+  is the file target of files of updates, images or cluster artifacts, is only removed after
+  its files were moved to another member with "move-files". Use --force to skip
+  the checks and the reset, e.g. if the member is offline, its files are lost.
 `
 
-	cmd.Flags().BoolVar(&c.flagForce, "force", false, "Remove the member without checks and without resetting it")
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "Remove the member without checks and without resetting it, its files are lost")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -154,6 +162,45 @@ func (c *cmdMembersRemove) run(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err := c.ocClient.DoRequest(cmd.Context(), http.MethodDelete, "/membership/members/"+url.PathEscape(args[0]), query, nil)
+
+	return err
+}
+
+// Move the files of cluster members.
+type cmdMembersMoveFiles struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdMembersMoveFiles) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "move-files <name> <target>"
+	cmd.Short = "Move the files of a cluster member to another one"
+	cmd.Long = `Description:
+  Move the files of a cluster member to another one
+
+  The files of updates, images and cluster artifacts are stored by a single
+  member. Move them off a member, before removing it from the cluster. Both
+  members need to be online.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdMembersMoveFiles) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdMembersMoveFiles) run(cmd *cobra.Command, args []string) error {
+	_, err := c.ocClient.DoRequest(cmd.Context(), http.MethodPost, "/membership/members/"+url.PathEscape(args[0])+"/:move-files", nil, api.ClusterMemberMoveFilesPost{Target: args[1]})
 
 	return err
 }

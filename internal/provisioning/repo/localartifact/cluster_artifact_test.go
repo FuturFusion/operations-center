@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dsnet/golib/memfile"
+	"github.com/google/uuid"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
@@ -123,6 +125,37 @@ func TestLocalArtifact_MigrateNameLayout(t *testing.T) {
 
 	require.FileExists(t, filepath.Join(storageDir, dbCluster.UUID.String(), "one", "one.txt"))
 	require.NoDirExists(t, filepath.Join(storageDir, "clusterOne"))
+}
+
+func TestLocalArtifact_Prune(t *testing.T) {
+	tx, cluster, sourcePath := setupArtifactTest(t)
+
+	storageDir := filepath.Join(t.TempDir(), "artifacts")
+	artifactRepo, err := localartifact.New(tx, storageDir, standalone)
+	require.NoError(t, err)
+
+	_, err = artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, sourcePath, nil)
+	require.NoError(t, err)
+
+	dbCluster, err := cluster.GetByName(t.Context(), "clusterOne")
+	require.NoError(t, err)
+
+	// Files of an artifact of a deleted cluster.
+	unknownFile := filepath.Join(storageDir, uuid.NewString(), "one", "one.txt")
+	err = os.MkdirAll(filepath.Dir(unknownFile), 0o700)
+	require.NoError(t, err)
+	err = os.WriteFile(unknownFile, []byte(`one`), 0o600)
+	require.NoError(t, err)
+
+	old := time.Now().Add(-time.Hour)
+	err = os.Chtimes(unknownFile, old, old)
+	require.NoError(t, err)
+
+	err = artifactRepo.Prune(t.Context())
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(storageDir, dbCluster.UUID.String(), "one", "one.txt"))
+	require.NoDirExists(t, filepath.Dir(filepath.Dir(unknownFile)))
 }
 
 // standalone resolves no other cluster members.

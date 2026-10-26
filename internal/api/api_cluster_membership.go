@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	clusterSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -18,6 +20,9 @@ type membershipHandler struct {
 
 	// restart restarts the daemon, so it comes up clustered.
 	restart func()
+
+	// mover moves the files of a member to another one.
+	mover memberfiles.Mover
 }
 
 func registerClusterMembershipHandler(
@@ -25,11 +30,13 @@ func registerClusterMembershipHandler(
 	authorizer *authz.Authorizer,
 	service clusterSvc.MembershipService,
 	restart func(),
+	mover memberfiles.Mover,
 ) {
 	handler := &membershipHandler{
 		authorizer: authorizer,
 		service:    service,
 		restart:    restart,
+		mover:      mover,
 	}
 
 	// Clustering:
@@ -42,6 +49,8 @@ func registerClusterMembershipHandler(
 	router.HandleFunc("GET /members", response.With(handler.membersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	// Remove a cluster member.
 	router.HandleFunc("DELETE /members/{name}", response.With(handler.memberDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	// Move the files of a cluster member to another one.
+	router.HandleFunc("POST /members/{name}/:move-files", response.With(handler.memberMoveFilesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 
 	// Tokens:
 	//
@@ -106,6 +115,13 @@ func (m *membershipHandler) membersGet(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	for i := range members {
+		members[i].FileSets, err = m.mover.CountByTarget(r.Context(), members[i].Name)
+		if err != nil {
+			return response.SmartError(err)
+		}
+	}
+
 	return response.SyncResponse(true, members)
 }
 
@@ -154,7 +170,38 @@ func (m *membershipHandler) memberDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
 	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
+	// The files only stored by the member would be lost.
+	if !force {
+		fileSets, err := m.mover.CountByTarget(r.Context(), name)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		if fileSets > 0 {
+			return response.SmartError(domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster member %q is the file target of %d file sets, which no other member stores", name, fileSets).
+				WithHintf("Move the files to another cluster member first, or force the removal, which loses them.").
+				WithDetail("member", name).
+				WithDetail("file_sets", strconv.Itoa(fileSets)))
+		}
+	}
+
 	err := m.service.RemoveMember(r.Context(), name, force)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) memberMoveFilesPost(r *http.Request) response.Response {
+	var req api.ClusterMemberMoveFilesPost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = m.mover.Move(r.Context(), r.PathValue("name"), req.Target)
 	if err != nil {
 		return response.SmartError(err)
 	}

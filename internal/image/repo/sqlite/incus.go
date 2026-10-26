@@ -2,10 +2,13 @@ package sqlite
 
 import (
 	"context"
+	"path/filepath"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/sqlite/query"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
@@ -13,7 +16,10 @@ type incusImage struct {
 	db sqlite.DBTX
 }
 
-var _ image.ImageIncusRepo = &incusImage{}
+var (
+	_ image.ImageIncusRepo       = &incusImage{}
+	_ memberfiles.FileTargetRepo = &incusImage{}
+)
 
 func NewIncusImage(db sqlite.DBTX) *incusImage {
 	return &incusImage{
@@ -80,4 +86,36 @@ func (i incusImage) Upsert(ctx context.Context, in image.IncusImage) error {
 
 func (i incusImage) DeleteByName(ctx context.Context, name string) error {
 	return entities.DeleteIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+}
+
+// GetUnitsByTarget returns the files of the images stored on the member memberID.
+func (i incusImage) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
+	var units []memberfiles.Unit
+
+	err := query.Scan(ctx, transaction.GetDBTX(ctx, i.db), `SELECT id, operating_system, release, architecture, variant FROM incus_images WHERE member_id = ?`, func(scan func(dest ...any) error) error {
+		var unit memberfiles.Unit
+		var img image.IncusImage
+
+		err := scan(&unit.ID, &img.OperatingSystem, &img.Release, &img.Architecture, &img.Variant)
+		if err != nil {
+			return err
+		}
+
+		unit.Store = memberfiles.StoreImages
+		unit.Name = filepath.ToSlash(img.FilePath())
+		units = append(units, unit)
+
+		return nil
+	}, memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	return units, nil
+}
+
+// SetUnitTarget records that the member memberID stores the files of the image unit.
+func (i incusImage) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
+	_, err := transaction.GetDBTX(ctx, i.db).ExecContext(ctx, `UPDATE incus_images SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+	return err
 }

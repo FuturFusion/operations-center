@@ -6,18 +6,24 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/sqlite/query"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type update struct {
 	db sqlite.DBTX
 }
 
-var _ provisioning.UpdateRepo = &update{}
+var (
+	_ provisioning.UpdateRepo    = &update{}
+	_ memberfiles.FileTargetRepo = &update{}
+)
 
 func NewUpdate(db sqlite.DBTX) *update {
 	return &update{
@@ -172,4 +178,34 @@ func (u update) GetUpdatesByAssignedChannelName(ctx context.Context, name string
 	}
 
 	return updates, nil
+}
+
+// GetUnitsByTarget returns the files of the ready updates stored on the member memberID.
+func (u update) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
+	var units []memberfiles.Unit
+
+	err := query.Scan(ctx, transaction.GetDBTX(ctx, u.db), `SELECT id, uuid FROM updates WHERE member_id = ? AND status = ?`, func(scan func(dest ...any) error) error {
+		var unit memberfiles.Unit
+
+		err := scan(&unit.ID, &unit.Name)
+		if err != nil {
+			return err
+		}
+
+		unit.Store = memberfiles.StoreUpdates
+		units = append(units, unit)
+
+		return nil
+	}, memberID, api.UpdateStatusReady)
+	if err != nil {
+		return nil, err
+	}
+
+	return units, nil
+}
+
+// SetUnitTarget records that the member memberID stores the files of the update unit.
+func (u update) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
+	_, err := transaction.GetDBTX(ctx, u.db).ExecContext(ctx, `UPDATE updates SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+	return err
 }

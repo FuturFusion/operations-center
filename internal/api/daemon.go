@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -433,6 +434,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		seedImageProgress,
 		secureBootMedia,
 		membershipSvc,
+		memberfiles.NewMover(
+			func() memberfiles.Cluster { return d.membershipSvc },
+			provisioningSqlite.NewUpdate(dbWithTransaction),
+			imageSqlite.NewIncusImage(dbWithTransaction),
+			clusterArtifactRepo,
+		),
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -493,7 +500,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	err = clusterArtifactRepo.MigrateNameLayout(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to move cluster artifacts to the directories named by cluster UUID: %w", err)
+		return fmt.Errorf("Failed to migrate cluster artifacts: %w", err)
+	}
+
+	// File records deleted on other members while this one was offline should be removed.
+	err = d.pruneLocalFiles(ctx, updateSvc, incusImageSvc, clusterArtifactRepo.Prune)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to prune stale local files", logger.Err(err))
 	}
 
 	membershipSvc.StartLeaderTasks()
@@ -987,6 +1000,54 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 	), nil
 }
 
+// pruneLocalFiles removes the local files of updates, images and cluster artifacts not assigned to this member.
+func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.UpdateService, imageSvc image.ImageIncusService, pruneClusterArtifacts func(ctx context.Context) error) error {
+	localMemberID, err := d.membershipSvc.LocalMemberID()
+	if err != nil {
+		return err
+	}
+
+	updates, err := updateSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownUpdateFiles := map[string]bool{}
+	for _, update := range updates {
+		if update.MemberID != localMemberID {
+			continue
+		}
+
+		for _, updateFile := range update.Files {
+			knownUpdateFiles[path.Join(update.UUID.String(), updateFile.Filename)] = true
+		}
+	}
+
+	images, err := imageSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownImageFiles := map[string]bool{}
+	for _, img := range images {
+		if img.MemberID != localMemberID {
+			continue
+		}
+
+		for versionIdentifier, imageVersion := range img.Versions {
+			for filename := range imageVersion.Items {
+				knownImageFiles[path.Join(filepath.ToSlash(img.FilePath()), versionIdentifier, filename)] = true
+			}
+		}
+	}
+
+	return errors.Join(
+		memberfiles.DeleteUnknownFiles(filepath.Join(d.env.VarDir(), memberfiles.StoreUpdates), knownUpdateFiles),
+		memberfiles.DeleteUnknownFiles(filepath.Join(d.env.VarDir(), memberfiles.StoreImages), knownImageFiles),
+		pruneClusterArtifacts(ctx),
+	)
+}
+
 func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher) {
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
@@ -1224,6 +1285,7 @@ func (d *Daemon) setupAPIRoutes(
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	membershipSvc clusteringSvc.MembershipService,
+	fileMover memberfiles.Mover,
 	db *dbtxWrapper,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1286,7 +1348,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerInternalImageFilesHandler(internalImagesRouter, d.authorizer, incusImageSvc, imageSourceSvc)
 
 	internalFilesRouter := internalRouter.SubGroup("/files")
-	registerInternalMemberFilesHandler(internalFilesRouter, d.authorizer, memberfiles.NewLocal(d.env.VarDir()))
+	registerInternalMemberFilesHandler(internalFilesRouter, d.authorizer, memberfiles.NewLocal(d.env.VarDir()), membershipSvc.MemberClient)
 
 	internalMembershipRouter := router.SubGroup("/internal/membership")
 	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart)
@@ -1396,7 +1458,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
 
 	membershipRouter := api10router.SubGroup("/membership")
-	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart)
+	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart, fileMover)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
 

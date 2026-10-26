@@ -235,8 +235,8 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 	return c.doRawRequest(ctx, method, apiVersionPrefix, endpoint, query, content, reqOpts...)
 }
 
-func (c OperationsCenterClient) doInternalRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {
-	return c.doRawRequest(ctx, method, internalPrefix, endpoint, query, content, reqOpts...)
+func (c OperationsCenterClient) doInternalRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any) (*http.Response, error) {
+	return c.doRawRequest(ctx, method, internalPrefix, endpoint, query, content)
 }
 
 func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string, prefix string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {

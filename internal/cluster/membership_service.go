@@ -41,6 +41,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	"github.com/FuturFusion/operations-center/internal/client"
 	membershipapi "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -852,6 +853,12 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 	// Stop the background tasks before the files and the database are replaced.
 	m.stopLeaderTasks(ctx)
 
+	// Remove the stored files of the local database.
+	err = memberfiles.DeleteStores(m.env.VarDir())
+	if err != nil {
+		return fmt.Errorf("Failed to remove the files of the local database: %w", err)
+	}
+
 	err = cowsqlmembership.Join[struct{}](m.Gateway(), networkCert, req.ServerName, nodes)
 	if err != nil {
 		return err
@@ -889,6 +896,11 @@ func (m *membership) resetToStandalone(ctx context.Context) {
 	// Stop trusting the other members, so a late heartbeat does not restore the raft members.
 	m.setCertificateCache(nil)
 
+	err := memberfiles.DeleteStores(m.env.VarDir())
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to remove the files of the cluster database", logger.Err(err))
+	}
+
 	for _, suffix := range []string{"ca", "crt", "key"} {
 		err := os.Remove(filepath.Join(m.env.VarDir(), "cluster."+suffix))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -896,17 +908,8 @@ func (m *membership) resetToStandalone(ctx context.Context) {
 		}
 	}
 
-	err := m.Gateway().Reset(m.serverCert.Load())
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to reset cluster database", logger.Err(err))
-		return
-	}
-
-	// The database server is started again standalone, so it is shut down once on restart.
-	err = m.Gateway().Initialize(false)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to start standalone database server", logger.Err(err))
-	}
+	// Remove the database on shutdown, since another member could still restore the raft members.
+	m.resetPending.Store(true)
 }
 
 func (m *membership) Gateway() cowsqlcluster.Gateway {

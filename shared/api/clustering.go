@@ -15,6 +15,15 @@ type ClusterMember struct {
 
 	// Offline is true if the member missed its heartbeats for longer than the offline threshold.
 	Offline bool `json:"offline" yaml:"offline"`
+
+	// FileSets is the number of file sets of updates, image versions and cluster artifacts only stored by this member.
+	FileSets int `json:"file_sets" yaml:"file_sets"`
+}
+
+// ClusterMemberMoveFilesPost moves the files of a cluster member to another one.
+type ClusterMemberMoveFilesPost struct {
+	// Target is the name of the cluster member taking over the files.
+	Target string `json:"target" yaml:"target"`
 }
 
 type ClusterBootstrapPost struct {

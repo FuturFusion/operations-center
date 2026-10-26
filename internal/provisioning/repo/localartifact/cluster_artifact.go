@@ -36,7 +36,10 @@ type clusterArtifact struct {
 	targets    memberfiles.Targets
 }
 
-var _ provisioning.ClusterArtifactRepo = &clusterArtifact{}
+var (
+	_ provisioning.ClusterArtifactRepo = &clusterArtifact{}
+	_ memberfiles.FileTargetRepo       = &clusterArtifact{}
+)
 
 // New returns the artifacts stored in storageDir by this member, targets resolves the other members.
 func New(db sqlite.DBTX, storageDir string, targets memberfiles.Targets) (*clusterArtifact, error) {
@@ -336,6 +339,32 @@ func copyToArchive(w io.Writer, f provisioning.ClusterArtifactFile) error {
 	return nil
 }
 
+// Prune removes the artifact files the database does not assign to this member.
+func (c clusterArtifact) Prune(ctx context.Context) error {
+	localMemberID, err := c.targets.LocalID()
+	if err != nil {
+		return err
+	}
+
+	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db))
+	if err != nil {
+		return err
+	}
+
+	known := map[string]bool{}
+	for _, artifact := range artifacts {
+		if artifact.MemberID != localMemberID {
+			continue
+		}
+
+		for _, artifactFile := range artifact.Files {
+			known[filePath(artifact, artifactFile.Name)] = true
+		}
+	}
+
+	return memberfiles.DeleteUnknownFiles(c.storageDir, known)
+}
+
 // MigrateNameLayout moves the files, which are stored by cluster name, to the
 // directory named by the UUID of the cluster.
 func (c clusterArtifact) MigrateNameLayout(ctx context.Context) error {
@@ -370,4 +399,40 @@ func (c clusterArtifact) MigrateNameLayout(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// GetUnitsByTarget returns the files of the cluster artifacts stored on the member memberID.
+func (c clusterArtifact) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
+	var units []memberfiles.Unit
+
+	err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `
+SELECT cluster_artifacts.id, clusters.uuid, cluster_artifacts.name
+  FROM cluster_artifacts
+  JOIN clusters ON clusters.id = cluster_artifacts.cluster_id
+  WHERE cluster_artifacts.member_id = ?`, func(scan func(dest ...any) error) error {
+		var unit memberfiles.Unit
+		var clusterUUID, name string
+
+		err := scan(&unit.ID, &clusterUUID, &name)
+		if err != nil {
+			return err
+		}
+
+		unit.Store = memberfiles.StoreArtifacts
+		unit.Name = filepath.ToSlash(filepath.Join(clusterUUID, name))
+		units = append(units, unit)
+
+		return nil
+	}, memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	return units, nil
+}
+
+// SetUnitTarget records that the member memberID stores the files of the cluster artifact unit.
+func (c clusterArtifact) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
+	_, err := transaction.GetDBTX(ctx, c.db).ExecContext(ctx, `UPDATE cluster_artifacts SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+	return err
 }

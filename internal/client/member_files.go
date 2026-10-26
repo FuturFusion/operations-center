@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 )
 
@@ -20,6 +21,12 @@ func (c OperationsCenterClient) GetMemberFile(ctx context.Context, store string,
 	}
 
 	return resp.Body, resp.ContentLength, nil
+}
+
+// PullMemberFiles lets the cluster member copy a directory of a store from the cluster member at source.
+func (c OperationsCenterClient) PullMemberFiles(ctx context.Context, store string, name string, source string) error {
+	_, err := c.DoInternalRequest(ctx, http.MethodPost, path.Join("/files", store, name), url.Values{"source": []string{source}}, nil)
+	return err
 }
 
 // DeleteMemberFile deletes a file or directory of a store on the cluster member. An empty name deletes all files of the store.
