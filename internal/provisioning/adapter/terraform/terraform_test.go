@@ -14,6 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -72,8 +73,7 @@ func TestTerraform_Init(t *testing.T) {
 
 			tf, err := terraform.New(
 				tmpDir,
-				"",
-				"",
+				securitytls.NewClientKeypairHolder("", ""),
 				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 					return tc.terraformInitErr
 				}),
@@ -300,8 +300,7 @@ func TestTerraform_Init_trustedClientCertificates(t *testing.T) {
 
 	tf, err := terraform.New(
 		tmpDir,
-		"",
-		"",
+		securitytls.NewClientKeypairHolder("", ""),
 		terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 			return nil
 		}),
@@ -367,8 +366,7 @@ func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
 
 			tf, err := terraform.New(
 				tmpDir,
-				"",
-				"",
+				securitytls.NewClientKeypairHolder("", ""),
 				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 					return nil
 				}),
@@ -556,8 +554,7 @@ func TestTerraform_Apply(t *testing.T) {
 
 			tf, err := terraform.New(
 				tmpDir,
-				"",
-				"",
+				securitytls.NewClientKeypairHolder("", ""),
 				terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
 					return tc.terraformApplyErr
 				}),

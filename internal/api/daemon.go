@@ -148,8 +148,7 @@ type Daemon struct {
 	// oidcVerifier, authorizer and the likes.
 	configReloadMu *sync.Mutex
 
-	clientCertificate string
-	clientKey         string
+	clientKeypair *securitytls.ClientKeypairHolder
 
 	authenticator *authn.Authenticator
 	oidcVerifier  *authnoidc.Verifier
@@ -187,25 +186,17 @@ func (d *dbtxWrapper) Register(dbtx transaction.DBTX) {
 func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
 
-	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
-	clientCert, err := os.ReadFile(clientCertFilename)
+	clientCert, clientKey, err := securitytls.LoadClientKeypair(env.VarDir())
 	if err != nil {
-		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
-	}
-
-	clientKeyFilename := filepath.Join(env.VarDir(), config.ClientKeyFilename)
-	clientKey, err := os.ReadFile(clientKeyFilename)
-	if err != nil {
-		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
+		slog.WarnContext(ctx, "Failed to read client keypair", logger.Err(err))
 	}
 
 	d := &Daemon{
-		env:               env,
-		configReloadMu:    &sync.Mutex{},
-		clientCertificate: string(clientCert),
-		clientKey:         string(clientKey),
-		restartCh:         make(chan struct{}, 1),
-		listeners:         &listener.ListenerSet{},
+		env:            env,
+		configReloadMu: &sync.Mutex{},
+		clientKeypair:  securitytls.NewClientKeypairHolder(clientCert, clientKey),
+		restartCh:      make(chan struct{}, 1),
+		listeners:      &listener.ListenerSet{},
 
 		oidcVerifier: &authnoidc.Verifier{},
 		authorizer: func() *authz.Authorizer {
@@ -280,6 +271,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	})
 
+	// Replace the client keypair when the cluster updates it.
+	lifecycle.ClientKeypairUpdateSignal.AddListener(func(_ context.Context, msg lifecycle.ClientKeypairMessage) {
+		d.clientKeypair.Set(msg.Certificate, msg.Key)
+	})
+
 	// On update of ACME configuration, perform renewal of the server certificate.
 	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa apisystem.SecurityACME) {
 		// Only the leader renews and distributes the shared certificate.
@@ -309,8 +305,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	client := incusAdapter.New(
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 		incusAdapter.WithEnvironment(d.env),
 		incusAdapter.WithSkipGetServer(true),
 	)
@@ -812,17 +807,8 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		}
 	}
 
-	trustedFingerprints := make([]string, 0, len(cfg.TrustedTLSClientCertFingerprints)+1)
-
-	// Always trust our own client certificate if present.
-	// This required to self connect if Operations Center is self-registered.
-	clientCertFingerprint, err := incustls.CertFingerprintStr(d.clientCertificate)
-	if err == nil {
-		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
-	}
-
 	// Setup client cert fingerprint authentication.
-	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+	trustedFingerprints := slices.Clone(cfg.TrustedTLSClientCertFingerprints)
 
 	// The trusted client certificates grant access just like a bare fingerprint does.
 	// The fingerprints of the valid certificates are used even if others fail to
@@ -834,7 +820,16 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
 
-	configTLS := func() []string { return trustedFingerprints }
+	configTLS := func() []string {
+		// Always trust our own client certificate if present.
+		// This required to self connect if Operations Center is self-registered.
+		clientFingerprint := d.clientKeypair.Get().Fingerprint
+		if clientFingerprint == "" {
+			return trustedFingerprints
+		}
+
+		return append(slices.Clone(trustedFingerprints), clientFingerprint)
+	}
 
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
@@ -1191,8 +1186,7 @@ func (d *Daemon) setupClusterService(
 
 	terraformProvisioner, err := terraform.New(
 		tmpTerraformDir,
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 	)
 	if err != nil {
 		return nil, err
@@ -1293,8 +1287,7 @@ func (d *Daemon) setupAPIRoutes(
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		serverMiddleware.NewServerClientWithErrorWrapper(
 			incusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+				d.clientKeypair,
 			),
 			domain.RetryableWrapper(),
 		),
@@ -1480,8 +1473,7 @@ func (d *Daemon) setupAPIRoutes(
 		"/1.0/provisioning/servers",
 		d.authorizer,
 		serverSvc,
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 	)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
@@ -2479,6 +2471,7 @@ func (d *Daemon) Stop(ctx context.Context) error {
 
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()
+	lifecycle.ClientKeypairUpdateSignal.Reset()
 	lifecycle.NetworkUpdateSignal.Reset()
 	lifecycle.SecurityValidateSignal.Reset()
 	lifecycle.SecurityUpdateSignal.Reset()

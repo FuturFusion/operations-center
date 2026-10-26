@@ -13,6 +13,7 @@ import (
 
 var (
 	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
+	ClientKeypairUpdateSignal     = signals.NewSync[ClientKeypairMessage]()
 
 	NetworkUpdateSignal       = signals.NewSync[apisystem.Network]()
 	SharedNetworkUpdateSignal = signals.NewSync[apisystem.NetworkGlobal]()
@@ -37,6 +38,12 @@ var (
 
 	BMCVirtualMediaSignal = signals.NewSync[BMCVirtualMediaMessage]()
 )
+
+// ClientKeypairMessage reports the PEM encoded client keypair that replaced the previous one.
+type ClientKeypairMessage struct {
+	Certificate string
+	Key         string
+}
 
 type ClusterUpdateMessage struct {
 	Operation ClusterUpdateOperation

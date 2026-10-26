@@ -47,6 +47,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	authtls "github.com/FuturFusion/operations-center/internal/security/authn/tls"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	utilmaps "github.com/FuturFusion/operations-center/internal/util/maps"
@@ -478,12 +479,19 @@ func (m *membership) Accept(ctx context.Context, req api.ClusterAcceptPost) (*me
 
 	m.updateCertificateCacheFromGlobal(ctx)
 
+	clientCertificate, clientKey, err := securitytls.LoadClientKeypair(m.env.VarDir())
+	if err != nil {
+		return nil, err
+	}
+
 	resp := membershipapi.InternalClusterAcceptResponse{
 		LeaderAddress:      m.Gateway().State().ClusterAddress(),
 		RaftNodes:          make([]membershipapi.InternalRaftNode, 0, len(nodes)),
 		PublicKey:          string(m.Gateway().NetworkCert().PublicKey()),
 		PrivateKey:         string(m.Gateway().NetworkCert().PrivateKey()),
 		ServerCertificates: apiCerts,
+		ClientCertificate:  clientCertificate,
+		ClientKey:          clientKey,
 	}
 
 	for _, n := range nodes {
@@ -859,6 +867,11 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 		return fmt.Errorf("Failed to remove the files of the local database: %w", err)
 	}
 
+	err = m.applyClientKeypair(ctx, cfg.ClientCertificate, cfg.ClientKey)
+	if err != nil {
+		return err
+	}
+
 	err = cowsqlmembership.Join[struct{}](m.Gateway(), networkCert, req.ServerName, nodes)
 	if err != nil {
 		return err
@@ -899,6 +912,12 @@ func (m *membership) resetToStandalone(ctx context.Context) {
 	err := memberfiles.DeleteStores(m.env.VarDir())
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to remove the files of the cluster database", logger.Err(err))
+	}
+
+	// Replace the client keypair of the cluster.
+	err = m.generateClientKeypair(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to replace the client keypair of the cluster", logger.Err(err))
 	}
 
 	for _, suffix := range []string{"ca", "crt", "key"} {

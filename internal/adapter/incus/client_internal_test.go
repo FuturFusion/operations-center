@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -95,7 +96,7 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 
-			client := New(string(clientCertPEMByte), string(clientKeyPEMByte), WithSkipGetServer(true))
+			client := New(securitytls.NewClientKeypairHolder(string(clientCertPEMByte), string(clientKeyPEMByte)), WithSkipGetServer(true))
 			client.clientCA = string(serverCA)
 
 			// serverTarget without cluster certificate set, which is simulating the
@@ -189,7 +190,7 @@ func Test_getClient(t *testing.T) {
 	ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		_, err := New("", "", WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
+		_, err := New(securitytls.NewClientKeypairHolder("", ""), WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
 			Name: "name",
 		})
 		require.NoError(t, err)

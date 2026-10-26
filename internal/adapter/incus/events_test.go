@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
@@ -322,7 +323,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			httpHandler = tc.handler(ready, done)
 
-			client := incus.New(tc.clientCertPEM, tc.clientKeyPEM, incus.WithSkipGetServer(true))
+			client := incus.New(securitytls.NewClientKeypairHolder(tc.clientCertPEM, tc.clientKeyPEM), incus.WithSkipGetServer(true))
 
 			// Run test
 			events, errChan, err := client.SubscribeLifecycleEvents(ctx, target)

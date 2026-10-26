@@ -46,10 +46,9 @@ var terraformProviders = map[string]struct {
 var templatesFS embed.FS
 
 type terraform struct {
-	storageDir        string
-	tmpDir            string
-	clientCertificate string
-	clientKey         string
+	storageDir string
+	tmpDir     string
+	keypair    *securitytls.ClientKeypairHolder
 
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
@@ -85,8 +84,7 @@ type Option func(*terraform)
 
 func New(
 	tmpDir string,
-	clientCertificate string,
-	clientKey string,
+	keypair *securitytls.ClientKeypairHolder,
 	opts ...Option,
 ) (terraform, error) {
 	storageDir := filepath.Join(tmpDir, "cluster-configs")
@@ -96,10 +94,9 @@ func New(
 	}
 
 	t := terraform{
-		storageDir:        storageDir,
-		tmpDir:            tmpDir,
-		clientCertificate: clientCertificate,
-		clientKey:         clientKey,
+		storageDir: storageDir,
+		tmpDir:     tmpDir,
+		keypair:    keypair,
 
 		incusProviderVersion:  terraformProviders["incus"].minVersion,
 		randomProviderVersion: terraformProviders["random"].minVersion,
@@ -242,12 +239,14 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 
 	// Additionally, we need to make sure, the client.crt and client.key are available
 	// for Incus as well.
-	err = os.WriteFile(filepath.Join(t.tmpDir, "client.key"), []byte(t.clientKey), 0o600)
+	keypair := t.keypair.Get()
+
+	err = os.WriteFile(filepath.Join(t.tmpDir, "client.key"), []byte(keypair.Key), 0o600)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(t.tmpDir, "client.crt"), []byte(t.clientCertificate), 0o600)
+	err = os.WriteFile(filepath.Join(t.tmpDir, "client.crt"), []byte(keypair.Certificate), 0o600)
 	if err != nil {
 		return err
 	}

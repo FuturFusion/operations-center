@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -29,11 +30,10 @@ import (
 )
 
 type serverHandler struct {
-	service           provisioning.ServerService
-	preNamePrefix     string
-	clientCertificate string
-	clientKey         string
-	clientCA          string
+	service       provisioning.ServerService
+	preNamePrefix string
+	clientKeypair *securitytls.ClientKeypairHolder
+	clientCA      string
 }
 
 func registerProvisioningServerHandler(
@@ -41,14 +41,12 @@ func registerProvisioningServerHandler(
 	preNamePrefix string,
 	authorizer *authz.Authorizer,
 	service provisioning.ServerService,
-	clientCertificate string,
-	clientKey string,
+	clientKeypair *securitytls.ClientKeypairHolder,
 ) {
 	handler := &serverHandler{
-		preNamePrefix:     preNamePrefix,
-		service:           service,
-		clientCertificate: clientCertificate,
-		clientKey:         clientKey,
+		preNamePrefix: preNamePrefix,
+		service:       service,
+		clientKeypair: clientKeypair,
 	}
 
 	// Creating new servers (POST requests for servers) supports two ways of
@@ -364,7 +362,7 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 	}
 
 	result := api.ServerRegistrationResponse{
-		ClientCertificate: s.clientCertificate,
+		ClientCertificate: s.clientKeypair.Get().Certificate,
 	}
 
 	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
@@ -1812,7 +1810,9 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Invalid connection URL %q for server: %q: %w", server.GetConnectionURL(), name, err))
 	}
 
-	tlsConfig, err := localtls.GetTLSConfigMem(s.clientCertificate, s.clientKey, s.clientCA, server.GetCertificate(), false)
+	clientKeypair := s.clientKeypair.Get()
+
+	tlsConfig, err := localtls.GetTLSConfigMem(clientKeypair.Certificate, clientKeypair.Key, s.clientCA, server.GetCertificate(), false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get TLS config for %q: %w", name, err))
 	}

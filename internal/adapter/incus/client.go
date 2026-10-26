@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
@@ -22,8 +23,7 @@ type Environment interface {
 }
 
 type Client struct {
-	clientCert    string
-	clientKey     string
+	keypair       *securitytls.ClientKeypairHolder
 	clientCA      string
 	env           Environment
 	skipGetServer bool
@@ -70,10 +70,9 @@ func (t *transportWrapper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.transport.RoundTrip(req)
 }
 
-func New(clientCert string, clientKey string, opts ...Option) Client {
+func New(keypair *securitytls.ClientKeypairHolder, opts ...Option) Client {
 	c := Client{
-		clientCert: clientCert,
-		clientKey:  clientKey,
+		keypair: keypair,
 	}
 
 	for _, opt := range opts {
@@ -102,9 +101,11 @@ func (c Client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (
 		return incus.ConnectIncusUnix(c.env.GetUnixSocket(), &incus.ConnectionArgs{})
 	}
 
+	keypair := c.keypair.Get()
+
 	args := &incus.ConnectionArgs{
-		TLSClientCert: c.clientCert,
-		TLSClientKey:  c.clientKey,
+		TLSClientCert: keypair.Certificate,
+		TLSClientKey:  keypair.Key,
 		TLSServerCert: endpoint.GetCertificate(),
 		TLSCA:         c.clientCA,
 		SkipGetServer: c.skipGetServer,

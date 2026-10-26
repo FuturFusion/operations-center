@@ -27,4 +27,8 @@ type InternalClusterAcceptResponse struct {
 	PublicKey          string                  `json:"public_key" yaml:"public_key"`
 	PrivateKey         string                  `json:"private_key" yaml:"private_key"`
 	ServerCertificates []api.ServerCertificate `json:"server_certificates" yaml:"server_certificates"`
+
+	// ClientCertificate and ClientKey are the client keypair shared by the cluster members.
+	ClientCertificate string `json:"client_certificate" yaml:"client_certificate"`
+	ClientKey         string `json:"client_key" yaml:"client_key"`
 }

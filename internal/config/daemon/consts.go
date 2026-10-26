@@ -3,6 +3,8 @@ package config
 import (
 	_ "embed"
 	"time"
+
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 )
 
 // FIXME: Check which constants need to be public.
@@ -257,10 +259,10 @@ const (
 	ACMECertificateExpiryWarningLifetimeRatio = 0.9
 
 	// Filename of the client certificate.
-	ClientCertificateFilename = "client.crt"
+	ClientCertificateFilename = securitytls.ClientCertificateFilename
 
 	// Filename of the client key.
-	ClientKeyFilename = "client.key"
+	ClientKeyFilename = securitytls.ClientKeyFilename
 
 	// Filename of the server certificate.
 	ServerCertificateFilename = "server.crt"

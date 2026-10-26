@@ -13,7 +13,10 @@ import (
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -95,4 +98,29 @@ func (m *membership) takePendingClusterCertificate() cowsqltls.CertInfo {
 	m.pendingClusterCert = nil
 
 	return certInfo
+}
+
+// applyClientKeypair persists the client keypair and lets the daemon use it.
+func (m *membership) applyClientKeypair(ctx context.Context, certificatePEM string, keyPEM string) error {
+	_, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return domain.NewValidationErrf("Failed to validate client keypair: %v", err)
+	}
+
+	err = securitytls.WriteClientKeypair(m.env.VarDir(), certificatePEM, keyPEM)
+	if err != nil {
+		return err
+	}
+
+	return lifecycle.ClientKeypairUpdateSignal.TryEmit(ctx, lifecycle.ClientKeypairMessage{Certificate: certificatePEM, Key: keyPEM})
+}
+
+// generateClientKeypair replaces the client keypair with a newly generated one.
+func (m *membership) generateClientKeypair(ctx context.Context) error {
+	certificatePEM, keyPEM, err := securitytls.GenerateClientKeypair(m.env.VarDir())
+	if err != nil {
+		return err
+	}
+
+	return lifecycle.ClientKeypairUpdateSignal.TryEmit(ctx, lifecycle.ClientKeypairMessage{Certificate: certificatePEM, Key: keyPEM})
 }
