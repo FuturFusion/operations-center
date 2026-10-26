@@ -91,7 +91,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: log.Noop,
+			assertLog: log.Empty,
 		},
 		{
 			name:   "error - getClient",
@@ -105,7 +105,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			clientKeyPEM:  certPEM, // invalid value
 
 			assertErr: require.Error,
-			assertLog: log.Noop,
+			assertLog: log.Empty,
 		},
 		{
 			name:   "error - GetEventsAllProjects",
@@ -119,7 +119,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			clientKeyPEM:  keyPEM,
 
 			assertErr: require.Error,
-			assertLog: log.Noop,
+			assertLog: log.Empty,
 		},
 		{
 			name:   "error - invalid lifecycle event",
@@ -217,7 +217,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: log.Noop,
+			assertLog: log.Empty,
 		},
 		{
 			name:              "handle event - cancelled context",
@@ -259,7 +259,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
-			assertLog:        log.Noop,
+			assertLog:        log.Empty,
 		},
 		{
 			name:   "error - webserver disconnect websocket immediately",
@@ -282,7 +282,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.Error,
-			assertLog:        log.Noop,
+			assertLog:        log.Empty,
 		},
 	}
 
@@ -317,7 +317,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			done := make(chan struct{})
 
 			logBuf := &log.SyncBuffer{}
-			ctx, cancel := tc.getCtx(logger.ContextWithTestLogger(t, logBuf, false, false, false))
+			ctx, cancel := tc.getCtx(logger.ContextWithTestLogger(t, logBuf, false, false))
 			defer cancel()
 
 			httpHandler = tc.handler(ready, done)

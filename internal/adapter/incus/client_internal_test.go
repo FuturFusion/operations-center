@@ -186,7 +186,7 @@ func Test_getClient(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &log.SyncBuffer{}
-	ctx := logger.ContextWithTestLogger(t, logBuf, false, false, false)
+	ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		_, err := New("", "", WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
