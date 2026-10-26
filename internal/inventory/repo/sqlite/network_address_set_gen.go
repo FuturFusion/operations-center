@@ -37,7 +37,6 @@ func (r networkAddressSet) Create(ctx context.Context, in inventory.NetworkAddre
 	)
 	INSERT INTO network_address_sets (uuid, cluster_id, project_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkAddressSet)
@@ -45,7 +44,7 @@ func (r networkAddressSet) Create(ctx context.Context, in inventory.NetworkAddre
 			return inventory.NetworkAddressSet{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -53,11 +52,12 @@ func (r networkAddressSet) Create(ctx context.Context, in inventory.NetworkAddre
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkAddressSet{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkAddressSet{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkAddressSet(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -257,7 +257,6 @@ func (r networkAddressSet) UpdateByUUID(ctx context.Context, in inventory.Networ
 	)
 	UPDATE network_address_sets SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkAddressSet)
@@ -265,7 +264,7 @@ func (r networkAddressSet) UpdateByUUID(ctx context.Context, in inventory.Networ
 			return inventory.NetworkAddressSet{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -273,11 +272,12 @@ func (r networkAddressSet) UpdateByUUID(ctx context.Context, in inventory.Networ
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkAddressSet{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkAddressSet{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkAddressSet(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 

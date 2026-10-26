@@ -41,7 +41,6 @@ func (r storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (
 	)
 	INSERT INTO storage_buckets (uuid, cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
@@ -49,7 +48,7 @@ func (r storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (
 			return inventory.StorageBucket{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("server_name", in.Server),
@@ -59,11 +58,12 @@ func (r storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.StorageBucket{}, sqlite.MapErr(err)
 		}
 
-		return scanStorageBucket(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -290,7 +290,6 @@ func (r storageBucket) UpdateByUUID(ctx context.Context, in inventory.StorageBuc
 	)
 	UPDATE storage_buckets SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
@@ -298,7 +297,7 @@ func (r storageBucket) UpdateByUUID(ctx context.Context, in inventory.StorageBuc
 			return inventory.StorageBucket{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("server_name", in.Server),
@@ -308,11 +307,12 @@ func (r storageBucket) UpdateByUUID(ctx context.Context, in inventory.StorageBuc
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.StorageBucket{}, sqlite.MapErr(err)
 		}
 
-		return scanStorageBucket(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
