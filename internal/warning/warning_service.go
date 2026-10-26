@@ -62,15 +62,9 @@ func (w warningService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 // Emit records the given warning. If another warning of the same scope and type already exists,
 // their messages and count will be merged, with new messages appearing at the end of the list.
 func (w warningService) Emit(ctx context.Context, warning Warning) {
-	var err error
-	defer func() {
-		if err != nil {
-			slog.WarnContext(ctx, "Failed to record warning", slog.String("uuid", warning.UUID.String()), logger.Err(err))
-		}
-	}()
-
-	err = warning.Validate()
+	err := warning.Validate()
 	if err != nil {
+		slog.WarnContext(ctx, "Failed to record warning", slog.String("uuid", warning.UUID.String()), logger.Err(err))
 		return
 	}
 
@@ -94,7 +88,23 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		logAttrs...,
 	)
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
+	// Record the warning in its own transaction after the commit, since a failed write would not fail the caller's transaction.
+	if transaction.IsActive(ctx) {
+		_ = transaction.AfterCommit(ctx, func() error {
+			w.record(logger.DetachedContext(ctx), warning)
+
+			return nil
+		})
+
+		return
+	}
+
+	w.record(ctx, warning)
+}
+
+// record stores the warning, merged with an existing warning of the same scope and type.
+func (w warningService) record(ctx context.Context, warning Warning) {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		scope := api.WarningScope{Scope: warning.Scope, EntityType: warning.EntityType, Entity: warning.Entity}
 		dbWarnings, err := w.repo.GetByScopeAndType(ctx, scope, warning.Type)
 		if err != nil {
@@ -136,7 +146,7 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		return nil
 	})
 	if err != nil {
-		return
+		slog.WarnContext(ctx, "Failed to record warning", slog.String("uuid", warning.UUID.String()), logger.Err(err))
 	}
 }
 
