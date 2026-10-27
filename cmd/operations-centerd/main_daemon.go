@@ -70,7 +70,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
 
-	err = systemLocalfs.NewBackup(c.env.VarDir()).ApplyRestore()
+	err = applyRestore(c.env.VarDir())
 	if err != nil {
 		if !errors.Is(err, system.ErrRestoreRolledBack) {
 			return fmt.Errorf("Failed to prepare data directory %q: %w", c.env.VarDir(), err)
@@ -184,4 +184,16 @@ func restartDaemon(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// applyRestore applies or rolls back a staged restore in varDir.
+func applyRestore(varDir string) error {
+	varRoot, err := os.OpenRoot(varDir)
+	if err != nil {
+		return err
+	}
+
+	defer varRoot.Close()
+
+	return systemLocalfs.NewBackup(varRoot).ApplyRestore()
 }
