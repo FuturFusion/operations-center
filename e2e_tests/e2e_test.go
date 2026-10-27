@@ -4,22 +4,36 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestE2E_WithToken_SetupOnly(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - basic operations center interactions",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+func TestE2E_OperationsCenter(t *testing.T) {
+	runE2ESuite(t, []e2eScenario{
+		{
+			name: "basic_interactions",
+			run:  basicOperationsCenterInteractions,
 		},
-		basicOperationsCenterInteractions,
-	)
+		{
+			name: "provisioning_updates_channels_tokens",
+			run:  provisioningUpdatesChannelsAndTokens,
+		},
+		{
+			name: "oidc_authentication",
+			run:  oidcAuthentication,
+		},
+		{
+			name: "openfga_authorization",
+			run:  openFGAAuthorization,
+		},
+		{
+			// Deletes all the updates, so it runs last.
+			name: "updates_cleanup_and_refresh",
+			run:  basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
+		},
+	})
 }
 
 func TestE2E_WithToken_RegisterServer(t *testing.T) {
@@ -51,67 +65,12 @@ func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
 	)
 }
 
-func TestE2E_ProvisioningUpdatesChannelsAndTokens(t *testing.T) {
-	runE2ETest(
-		t,
-		"provisioning updates, channels and tokens without servers",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
-		},
-		provisioningUpdatesChannelsAndTokens,
-	)
-}
-
-func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
-	runE2ETest(
-		t,
-		"updates cleanup and refresh",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
-		},
-		basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
-	)
-}
-
-func TestE2E_OIDCAuthentication(t *testing.T) {
-	runE2ETest(
-		t,
-		"authenticate against operations center using OIDC",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
-		},
-		oidcAuthentication,
-	)
-}
-
-func TestE2E_OpenFGAAuthorization(t *testing.T) {
-	runE2ETest(
-		t,
-		"authorize OIDC users of operations center using OpenFGA",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
-		},
-		openFGAAuthorization,
-	)
-}
-
 func TestE2E_WithToken_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - create cluster",
 		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-	)
-}
-
-func TestE2E_WithToken_CreateSingleNodeCluster(t *testing.T) {
-	t.Skip("included in TestE2E_WithToken_OCImagesRemoteLaunchInstance")
-
-	runE2ETest(
-		t,
-		"token - create single node cluster",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		createCluster([]string{"IncusOS01"}),
 	)
 }
 
@@ -240,46 +199,21 @@ func runE2ETest(
 ) {
 	t.Helper()
 
-	e2eTest := os.Getenv("OPERATIONS_CENTER_E2E_TEST")
-	runE2ETest, _ := strconv.ParseBool(e2eTest)
-	if !runE2ETest {
-		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
+	if listOnly {
+		t.Skip("OPERATIONS_CENTER_E2E_TEST_LIST env var set, only listing end 2 end tests.")
 	}
 
-	logEnvSettings(t)
+	skipUnlessE2ETestEnabled(t)
 
-	reason := setupBrokenReason()
-	if reason != "" {
-		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
-	}
+	runE2EScenario(t, name, func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
 
-	timeout := strechedTimeout(testTimeout)
+		setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
 
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	defer cancel()
+		setup(ctx, t, tmpDir)
 
-	defer func() {
-		if ctx.Err() != nil {
-			t.Errorf("Test exceeded its timeout of %v: %v", timeout, ctx.Err())
-		}
-	}()
-
-	tmpDir := e2eTestTmpDir(t)
-
-	resetDebugOutput()
-	resetVMDebugInfo()
-
-	debugOutputCollect := onTestFailDebugOutput(t, tmpDir)
-	defer debugOutputCollect()
-
-	stop := timeTrack(t, name)
-	defer stop()
-
-	setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
-
-	setup(ctx, t, tmpDir)
-
-	test(ctx, t, tmpDir)
+		test(ctx, t, tmpDir)
+	})
 }
 
 var (
