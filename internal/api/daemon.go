@@ -86,6 +86,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/supportbundle"
+	supportBundleAdapterMiddleware "github.com/FuturFusion/operations-center/internal/supportbundle/adapter/middleware"
+	supportBundleServiceMiddleware "github.com/FuturFusion/operations-center/internal/supportbundle/middleware"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
@@ -357,6 +360,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	backupRepo := systemLocalfs.NewBackup(d.env.VarDir())
 
 	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+	supportBundleSvc := setupSupportBundleService(serverSvc, clusterSvc, client)
 
 	restored := backupRepo.IsRestoreApplied()
 	if restored {
@@ -381,6 +385,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		incusImageSvc,
 		seedImageProgress,
 		secureBootMedia,
+		supportBundleSvc,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -1036,6 +1041,21 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 	)
 }
 
+func setupSupportBundleService(serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, client supportbundle.SupportBundleClientPort) supportbundle.SupportBundleService {
+	return supportBundleServiceMiddleware.NewSupportBundleServiceWithSlog(
+		supportbundle.New(
+			clusterSvc,
+			serverSvc,
+			supportBundleAdapterMiddleware.NewSupportBundleClientPortWithSlog(
+				supportBundleAdapterMiddleware.NewSupportBundleClientPortWithErrorWrapper(
+					client,
+					domain.RetryableWrapper(),
+				),
+			),
+		),
+	)
+}
+
 // requestRestart asks the daemon to restart. It does not block.
 func (d *Daemon) requestRestart() {
 	select {
@@ -1063,6 +1083,7 @@ func (d *Daemon) setupAPIRoutes(
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
+	supportBundleSvc supportbundle.SupportBundleService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1192,6 +1213,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	systemRouter := api10router.SubGroup("/system")
 	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
+
+	supportBundleRouter := api10router.SubGroup("/support-bundle")
+	registerSupportBundleHandler(supportBundleRouter, d.authorizer, supportBundleSvc)
 
 	warningRouter := api10router.SubGroup("/warnings")
 	registerWarningHandler(warningRouter, d.authorizer, warningSvc)

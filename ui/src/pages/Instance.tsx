@@ -8,6 +8,7 @@ import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import ServerLink from "components/ServerLink";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import type { Instance } from "types/instance";
 import { formatDate } from "util/date";
 
@@ -42,6 +43,7 @@ const Instance = () => {
     "Server",
     "Type",
     "Last updated",
+    "Actions",
   ];
   const rows = instances.map((item) => {
     return {
@@ -80,6 +82,18 @@ const Instance = () => {
         {
           content: formatDate(item.last_updated),
           sortKey: item.last_updated,
+        },
+        {
+          content: (
+            <SupportBundleBtn
+              target={{
+                type: "instance",
+                cluster: item.cluster,
+                project: item.project_name,
+                name: item.name,
+              }}
+            />
+          ),
         },
       ],
     };

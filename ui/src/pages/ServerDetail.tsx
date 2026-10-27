@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router";
 import { deleteServer, fetchServer } from "api/server";
 import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
+import SupportBundleBtn from "components/SupportBundleBtn";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ServerBMC from "pages/ServerBMC";
@@ -86,6 +87,10 @@ const ServerDetail = () => {
       <div className="fixed-footer p-3">
         {(!activeTab || activeTab == "overview") && (
           <div className="d-flex justify-content-end gap-2">
+            <SupportBundleBtn
+              target={{ type: "server", server: name }}
+              asButton
+            />
             <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
               Delete
             </Button>

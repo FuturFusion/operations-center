@@ -145,6 +145,13 @@ security:
 - `security.authz.tls`
 - `security.authz.unixsocket`
 
+supportbundle:
+
+- `supportbundle.provisioning_cluster_service`
+- `supportbundle.provisioning_server_service`
+- `supportbundle.support_bundle_client_port`
+- `supportbundle.support_bundle_service`
+
 system:
 
 - `system.backup_repo`
