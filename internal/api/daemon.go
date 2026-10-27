@@ -771,10 +771,12 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 }
 
 func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusService, error) {
-	imageFilesRepo, err := imageLocalfs.New(filepath.Join(d.env.VarDir(), "images"))
+	imagesRoot, err := d.openSubRoot(d.varRoot, "images", 0o700)
 	if err != nil {
 		return nil, err
 	}
+
+	imageFilesRepo := imageLocalfs.New(imagesRoot)
 
 	imageIncusSvc := imageServiceMiddleware.NewImageIncusServiceWithSlog(
 		image.NewIncusImage(
