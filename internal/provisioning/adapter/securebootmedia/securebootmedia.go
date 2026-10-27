@@ -416,7 +416,7 @@ func (m *Media) write(imageType api.ImageType, id string, body func(io.Writer) e
 
 // open returns the stored image, or reports errCacheMiss, if it is not stored.
 func (m *Media) open(ctx context.Context, imageType api.ImageType, id string) (*provisioning.SecureBootMediaImage, error) {
-	file, err := m.root.Open(m.filename(imageType, id))
+	imageFile, err := m.root.Open(m.filename(imageType, id))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, errCacheMiss
@@ -425,15 +425,15 @@ func (m *Media) open(ctx context.Context, imageType api.ImageType, id string) (*
 		return nil, fmt.Errorf("Failed to open the secure boot enrollment media %q: %w", id, err)
 	}
 
-	fileInfo, err := file.Stat()
+	fileInfo, err := imageFile.Stat()
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("Failed to stat the secure boot enrollment media %q: %w", id, err), file.Close())
+		return nil, errors.Join(fmt.Errorf("Failed to stat the secure boot enrollment media %q: %w", id, err), imageFile.Close())
 	}
 
 	m.touch(ctx, imageType, id)
 
 	return &provisioning.SecureBootMediaImage{
-		Content:  file,
+		Content:  imageFile,
 		Filename: id + imageType.FileExt(),
 		Size:     fileInfo.Size(),
 		ModTime:  fileInfo.ModTime(),

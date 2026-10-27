@@ -338,8 +338,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("Failed to load the secure boot certificate catalog: %w", err)
 	}
 
+	secureBootMediaRoot, err := d.openSubRoot(d.cacheRoot, "secure-boot-media")
+	if err != nil {
+		return err
+	}
+
 	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
-		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media")),
+		securebootmedia.New(secureBootMediaRoot),
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
