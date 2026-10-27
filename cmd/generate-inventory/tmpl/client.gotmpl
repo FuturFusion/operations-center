@@ -8,10 +8,9 @@ import (
 	"path"
 
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 )
 
-func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]api.{{ .Name | pascalcase }}, error) {
+func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(ctx context.Context, filter api.{{ .Name | pascalcase }}Filter) ([]api.{{ .Name | pascalcase }}, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)

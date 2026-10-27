@@ -100,7 +100,7 @@ func Test_GetWithFilter{{ .PluralName | pascalcase }}(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilter{{ .PluralName | pascalcase }}(t.Context(), inventory.{{ .Name | pascalcase }}Filter{})
+			result, err := tc.client.GetWithFilter{{ .PluralName | pascalcase }}(t.Context(), api.{{ .Name | pascalcase }}Filter{})
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

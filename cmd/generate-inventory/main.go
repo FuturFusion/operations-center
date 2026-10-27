@@ -122,6 +122,11 @@ var targets = []struct {
 		TargetFileType: FileTypeGo,
 	},
 	{
+		TemplateName:   "shared_api_test.gotmpl",
+		TargetName:     "shared/api/inventory_{{ .Name }}_gen_test.go",
+		TargetFileType: FileTypeGo,
+	},
+	{
 		TemplateName:   "ui_types.gotmpl",
 		TargetName:     "ui/src/types/{{ .Name }}_gen.d.ts",
 		TargetFileType: FileTypeTS,
