@@ -3,15 +3,17 @@
 package localfs
 
 import (
+	"os"
+
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
-// NewBackup returns a backup repo for the state of Operations Center in varDir.
-func NewBackup(varDir string) backup {
+// NewBackup returns a backup repo for the state of Operations Center in varRoot.
+func NewBackup(varRoot *os.Root) backup {
 	return backup{
-		varDir: varDir,
+		varRoot: varRoot,
 		usage: func() (file.UsageInformation, error) {
-			return file.UsageInformationForPath(varDir)
+			return file.UsageInformationForPath(varRoot.Name())
 		},
 	}
 }

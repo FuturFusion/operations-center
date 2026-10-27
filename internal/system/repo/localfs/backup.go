@@ -65,8 +65,8 @@ type backupManifest struct {
 type usageFunc func() (file.UsageInformation, error)
 
 type backup struct {
-	varDir string
-	usage  usageFunc
+	varRoot *os.Root
+	usage   usageFunc
 }
 
 var _ system.BackupRepo = backup{}
@@ -78,18 +78,18 @@ func (b backup) Create(ctx context.Context, options system.BackupOptions, snapsh
 			continue
 		}
 
-		_, err := os.Stat(filepath.Join(b.varDir, entry.name))
+		_, err := b.varRoot.Stat(entry.name)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to access %q for backup: %w", entry.name, err)
 		}
 	}
 
-	err := os.MkdirAll(filepath.Join(b.varDir, backupDirName), 0o700)
+	err := b.varRoot.MkdirAll(backupDirName, 0o700)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshotDir, err := os.MkdirTemp(filepath.Join(b.varDir, backupDirName), "")
+	snapshotDir, err := file.MkdirTempIn(b.varRoot, backupDirName, "")
 	if err != nil {
 		return nil, err
 	}
@@ -98,16 +98,26 @@ func (b backup) Create(ctx context.Context, options system.BackupOptions, snapsh
 	defer reverter.Fail()
 
 	reverter.Add(func() {
-		err := os.RemoveAll(snapshotDir)
+		err := b.varRoot.RemoveAll(snapshotDir)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to remove database snapshot after unsuccessful backup", slog.String("directory", snapshotDir), logger.Err(err))
 		}
 	})
 
-	err = snapshotDatabase(ctx, snapshotDir)
+	// SQLite writes the database snapshot and needs a real path.
+	err = snapshotDatabase(ctx, filepath.Join(b.varRoot.Name(), snapshotDir))
 	if err != nil {
 		return nil, err
 	}
+
+	snapshotRoot, err := b.varRoot.OpenRoot(snapshotDir)
+	if err != nil {
+		return nil, err
+	}
+
+	reverter.Add(func() {
+		_ = snapshotRoot.Close()
+	})
 
 	pr, pw := io.Pipe()
 	done := make(chan struct{})
@@ -115,15 +125,17 @@ func (b backup) Create(ctx context.Context, options system.BackupOptions, snapsh
 	go func() {
 		defer close(done)
 
-		_ = pw.CloseWithError(writeBackup(pw, b.varDir, snapshotDir, options))
+		_ = pw.CloseWithError(writeBackup(pw, b.varRoot, snapshotRoot, options))
 	}()
 
 	reverter.Success()
 
 	return &backupReader{
-		PipeReader:  pr,
-		done:        done,
-		snapshotDir: snapshotDir,
+		PipeReader:   pr,
+		done:         done,
+		varRoot:      b.varRoot,
+		snapshotDir:  snapshotDir,
+		snapshotRoot: snapshotRoot,
 	}, nil
 }
 
@@ -131,19 +143,23 @@ func (b backup) Create(ctx context.Context, options system.BackupOptions, snapsh
 type backupReader struct {
 	*io.PipeReader
 
-	done        chan struct{}
-	snapshotDir string
+	done         chan struct{}
+	varRoot      *os.Root
+	snapshotDir  string
+	snapshotRoot *os.Root
 }
 
 func (b *backupReader) Close() error {
 	_ = b.PipeReader.Close()
 	<-b.done
 
-	return os.RemoveAll(b.snapshotDir)
+	return errors.Join(b.snapshotRoot.Close(), b.varRoot.RemoveAll(b.snapshotDir))
 }
 
+// Extract extracts the backup. It returns the absolute path of the directory
+// holding the extracted backup.
 func (b backup) Extract(ctx context.Context, archive io.Reader) (_ string, err error) {
-	restoreDir := filepath.Join(b.varDir, restoreDirName)
+	restoreDir := restoreDirName
 	pendingDir := filepath.Join(restoreDir, "pending")
 
 	// The state replaced by an applied restore is needed to roll it back.
@@ -152,12 +168,12 @@ func (b backup) Extract(ctx context.Context, archive io.Reader) (_ string, err e
 	}
 
 	// Leftovers of a previous upload, which has been interrupted.
-	err = os.RemoveAll(pendingDir)
+	err = b.varRoot.RemoveAll(pendingDir)
 	if err != nil {
 		return "", err
 	}
 
-	err = os.MkdirAll(pendingDir, 0o700)
+	err = b.varRoot.MkdirAll(pendingDir, 0o700)
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +188,14 @@ func (b backup) Extract(ctx context.Context, archive io.Reader) (_ string, err e
 		}
 	})
 
-	err = extractBackup(ctx, archive, pendingDir, b.usage)
+	pendingRoot, err := b.varRoot.OpenRoot(pendingDir)
+	if err != nil {
+		return "", err
+	}
+
+	defer pendingRoot.Close()
+
+	err = extractBackup(ctx, archive, pendingRoot, b.usage)
 	if err != nil {
 		return "", err
 	}
@@ -182,7 +205,7 @@ func (b backup) Extract(ctx context.Context, archive io.Reader) (_ string, err e
 			continue
 		}
 
-		_, err = os.Stat(filepath.Join(pendingDir, entry.name))
+		_, err = pendingRoot.Stat(entry.name)
 		if err != nil {
 			return "", invalidBackupErr(err, "Backup is missing %q", entry.name)
 		}
@@ -190,18 +213,26 @@ func (b backup) Extract(ctx context.Context, archive io.Reader) (_ string, err e
 
 	reverter.Success()
 
-	return pendingDir, nil
+	return filepath.Join(b.varRoot.Name(), pendingDir), nil
 }
 
 func (b backup) Stage(_ context.Context) error {
-	restoreDir := filepath.Join(b.varDir, restoreDirName)
-
 	// The staged restore is moved in place by the next start.
-	return os.Rename(filepath.Join(restoreDir, "pending"), filepath.Join(restoreDir, "staged"))
+	err := b.varRoot.Rename(filepath.Join(restoreDirName, "pending"), filepath.Join(restoreDirName, "staged"))
+	if err != nil {
+		return fmt.Errorf("Failed to stage the restore in %q: %w", b.varRoot.Name(), err)
+	}
+
+	return nil
 }
 
 func (b backup) Discard(_ context.Context) error {
-	return os.RemoveAll(filepath.Join(b.varDir, restoreDirName))
+	err := b.varRoot.RemoveAll(restoreDirName)
+	if err != nil {
+		return fmt.Errorf("Failed to discard the restore in %q: %w", b.varRoot.Name(), err)
+	}
+
+	return nil
 }
 
 type backupEntry struct {
@@ -237,8 +268,9 @@ func backupEntryNames() []string {
 	return names
 }
 
-// writeBackup writes the backup as gzip compressed tar archive to w.
-func writeBackup(w io.Writer, varDir string, snapshotDir string, options system.BackupOptions) (err error) {
+// writeBackup writes the backup as gzip compressed tar archive to w. The
+// database is read from snapshotRoot, everything else from varRoot.
+func writeBackup(w io.Writer, varRoot *os.Root, snapshotRoot *os.Root, options system.BackupOptions) (err error) {
 	gzw := gzip.NewWriter(w)
 	tw := tar.NewWriter(gzw)
 
@@ -258,9 +290,9 @@ func writeBackup(w io.Writer, varDir string, snapshotDir string, options system.
 			continue
 		}
 
-		root := varDir
+		root := varRoot
 		if entry.name == databaseFilename {
-			root = snapshotDir
+			root = snapshotRoot
 		}
 
 		err = addToArchive(tw, root, entry.name)
@@ -343,11 +375,11 @@ func readManifest(tr *tar.Reader) (backupManifest, error) {
 	return manifest, nil
 }
 
-func addToArchive(tw *tar.Writer, root string, name string) error {
-	return filepath.WalkDir(filepath.Join(root, name), func(filename string, dirEntry fs.DirEntry, err error) error {
+func addToArchive(tw *tar.Writer, root *os.Root, name string) error {
+	return fs.WalkDir(root.FS(), name, func(filename string, dirEntry fs.DirEntry, err error) error {
 		if err != nil {
 			// Optional entries, which do not exist, are skipped.
-			if errors.Is(err, fs.ErrNotExist) && filename == filepath.Join(root, name) {
+			if errors.Is(err, fs.ErrNotExist) && filename == name {
 				return nil
 			}
 
@@ -369,12 +401,7 @@ func addToArchive(tw *tar.Writer, root string, name string) error {
 			return fmt.Errorf("Failed to create archive header for %q: %w", filename, err)
 		}
 
-		relName, err := filepath.Rel(root, filename)
-		if err != nil {
-			return err
-		}
-
-		header.Name = filepath.ToSlash(relName)
+		header.Name = filename
 		if info.IsDir() {
 			header.Name += "/"
 		}
@@ -388,7 +415,7 @@ func addToArchive(tw *tar.Writer, root string, name string) error {
 			return nil
 		}
 
-		f, err := os.Open(filename)
+		f, err := root.Open(filename)
 		if err != nil {
 			return err
 		}
@@ -404,8 +431,8 @@ func addToArchive(tw *tar.Writer, root string, name string) error {
 	})
 }
 
-// extractBackup extracts the known backup entries from r to dir.
-func extractBackup(ctx context.Context, r io.Reader, dir string, usage usageFunc) error {
+// extractBackup extracts the known backup entries from r to root.
+func extractBackup(ctx context.Context, r io.Reader, root *os.Root, usage usageFunc) error {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return invalidBackupErr(err, "Backup is not a gzip compressed archive")
@@ -454,18 +481,18 @@ func extractBackup(ctx context.Context, r io.Reader, dir string, usage usageFunc
 			return invalidBackupErr(nil, "Backup contains unexpected entry %q", header.Name)
 		}
 
-		filename := filepath.Join(dir, filepath.FromSlash(name))
+		filename := filepath.FromSlash(name)
 		mode := header.FileInfo().Mode().Perm()
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			err = os.MkdirAll(filename, mode|0o700)
+			err = root.MkdirAll(filename, mode|0o700)
 			if err != nil {
 				return err
 			}
 
 		case tar.TypeReg:
-			err = os.MkdirAll(filepath.Dir(filename), 0o700)
+			err = root.MkdirAll(filepath.Dir(filename), 0o700)
 			if err != nil {
 				return err
 			}
@@ -476,7 +503,7 @@ func extractBackup(ctx context.Context, r io.Reader, dir string, usage usageFunc
 				return err
 			}
 
-			err = extractFile(tr, filename, mode)
+			err = extractFile(tr, root, filename, mode)
 			if err != nil {
 				return err
 			}
@@ -516,8 +543,8 @@ func checkSpaceAvailable(usage usageFunc, required int64) error {
 	return nil
 }
 
-func extractFile(r io.Reader, filename string, mode fs.FileMode) error {
-	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+func extractFile(r io.Reader, root *os.Root, filename string, mode fs.FileMode) error {
+	f, err := root.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return err
 	}
@@ -554,47 +581,50 @@ func (t *trackingReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// databaseAuxiliaryFilenames are the files SQLite keeps next to the database.
+var databaseAuxiliaryFilenames = []string{databaseFilename + "-journal", databaseFilename + "-wal", databaseFilename + "-shm"}
+
 // replacedEntryNames returns the entries replaced by the restore staged in stagedDir.
-func replacedEntryNames(stagedDir string) []string {
-	names := make([]string, 0, len(backupEntries)+3)
+func replacedEntryNames(root *os.Root, stagedDir string) []string {
+	names := make([]string, 0, len(backupEntries)+len(databaseAuxiliaryFilenames))
 	for _, entry := range backupEntries {
-		if entry.keptIfAbsent && !file.PathExists(filepath.Join(stagedDir, entry.name)) {
+		if entry.keptIfAbsent && !file.PathExistsIn(root, filepath.Join(stagedDir, entry.name)) {
 			continue
 		}
 
 		names = append(names, entry.name)
 	}
 
-	return append(names, databaseFilename+"-journal", databaseFilename+"-wal", databaseFilename+"-shm")
+	return append(names, databaseAuxiliaryFilenames...)
 }
 
 // ApplyRestore applies or rolls back a staged restore, it must run before the var dir is read.
 func (b backup) ApplyRestore() (err error) {
-	varDir := b.varDir
+	root := b.varRoot
 
-	err = os.RemoveAll(filepath.Join(varDir, backupDirName))
+	err = root.RemoveAll(backupDirName)
 	if err != nil {
 		return err
 	}
 
-	restoreDir := filepath.Join(varDir, restoreDirName)
+	restoreDir := restoreDirName
 	stagedDir := filepath.Join(restoreDir, "staged")
 	previousDir := filepath.Join(restoreDir, "previous")
 	markerFile := filepath.Join(restoreDir, restoreAppliedMarker)
 
-	if file.PathExists(markerFile) {
+	if file.PathExistsIn(root, markerFile) {
 		var marker restoreMarker
-		marker, err = readRestoreMarker(markerFile)
+		marker, err = readRestoreMarker(root, markerFile)
 		if err != nil {
 			return err
 		}
 
-		err = rollbackRestore(varDir, previousDir, marker)
+		err = rollbackRestore(root, previousDir, marker)
 		if err != nil {
 			return fmt.Errorf("Failed to roll back restore, which did not complete: %w", err)
 		}
 
-		err = os.RemoveAll(restoreDir)
+		err = root.RemoveAll(restoreDir)
 		if err != nil {
 			return err
 		}
@@ -602,25 +632,25 @@ func (b backup) ApplyRestore() (err error) {
 		return system.ErrRestoreRolledBack
 	}
 
-	if !file.PathExists(stagedDir) {
+	if !file.PathExistsIn(root, stagedDir) {
 		// Clean up leftovers of an interrupted upload.
-		return os.RemoveAll(restoreDir)
+		return root.RemoveAll(restoreDir)
 	}
 
-	err = os.MkdirAll(previousDir, 0o700)
+	err = root.MkdirAll(previousDir, 0o700)
 	if err != nil {
 		return err
 	}
 
-	names := replacedEntryNames(stagedDir)
+	names := replacedEntryNames(root, stagedDir)
 
 	// Move the current state out of the way, this is safe to repeat.
 	for _, name := range names {
-		if !file.PathExists(filepath.Join(varDir, name)) {
+		if !file.PathExistsIn(root, name) {
 			continue
 		}
 
-		err = os.Rename(filepath.Join(varDir, name), filepath.Join(previousDir, name))
+		err = root.Rename(name, filepath.Join(previousDir, name))
 		if err != nil {
 			return err
 		}
@@ -628,13 +658,13 @@ func (b backup) ApplyRestore() (err error) {
 
 	marker := restoreMarker{Replaced: names}
 	for _, name := range names {
-		if file.PathExists(filepath.Join(previousDir, name)) {
+		if file.PathExistsIn(root, filepath.Join(previousDir, name)) {
 			marker.Previous = append(marker.Previous, name)
 		}
 	}
 
 	// From here on, previousDir holds the replaced state, the marker records its entries.
-	err = writeRestoreMarker(markerFile, marker)
+	err = writeRestoreMarker(root, markerFile, marker)
 	if err != nil {
 		return err
 	}
@@ -643,9 +673,9 @@ func (b backup) ApplyRestore() (err error) {
 	defer reverter.Fail()
 
 	reverter.Add(func() {
-		revertErr := rollbackRestore(varDir, previousDir, marker)
+		revertErr := rollbackRestore(root, previousDir, marker)
 		if revertErr == nil {
-			revertErr = os.RemoveAll(restoreDir)
+			revertErr = root.RemoveAll(restoreDir)
 		}
 
 		if revertErr != nil {
@@ -654,17 +684,17 @@ func (b backup) ApplyRestore() (err error) {
 	})
 
 	for _, name := range backupEntryNames() {
-		if !file.PathExists(filepath.Join(stagedDir, name)) {
+		if !file.PathExistsIn(root, filepath.Join(stagedDir, name)) {
 			continue
 		}
 
-		err = os.Rename(filepath.Join(stagedDir, name), filepath.Join(varDir, name))
+		err = root.Rename(filepath.Join(stagedDir, name), name)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = os.RemoveAll(stagedDir)
+	err = root.RemoveAll(stagedDir)
 	if err != nil {
 		return err
 	}
@@ -683,8 +713,8 @@ type restoreMarker struct {
 	Previous []string `json:"previous"`
 }
 
-func readRestoreMarker(filename string) (restoreMarker, error) {
-	content, err := os.ReadFile(filename)
+func readRestoreMarker(root *os.Root, filename string) (restoreMarker, error) {
+	content, err := root.ReadFile(filename)
 	if err != nil {
 		return restoreMarker{}, err
 	}
@@ -696,36 +726,44 @@ func readRestoreMarker(filename string) (restoreMarker, error) {
 		return restoreMarker{}, fmt.Errorf("Failed to read restore marker %q: %w", filename, err)
 	}
 
+	// The names are used as paths in the var dir. Only accept known entries.
+	knownNames := append(backupEntryNames(), databaseAuxiliaryFilenames...)
+	for _, name := range slices.Concat(marker.Replaced, marker.Previous) {
+		if !slices.Contains(knownNames, name) {
+			return restoreMarker{}, fmt.Errorf("Restore marker %q contains unexpected entry %q", filename, name)
+		}
+	}
+
 	return marker, nil
 }
 
-func writeRestoreMarker(filename string, marker restoreMarker) error {
+func writeRestoreMarker(root *os.Root, filename string, marker restoreMarker) error {
 	content, err := json.Marshal(marker)
 	if err != nil {
 		return err
 	}
 
-	return file.WriteFileAtomic(filename, content, 0o600)
+	return file.WriteFileAtomicIn(root, filename, content, 0o600)
 }
 
-// rollbackRestore replaces the entries in varDir with the ones in previousDir, it is safe to repeat.
-func rollbackRestore(varDir string, previousDir string, marker restoreMarker) error {
+// rollbackRestore replaces the entries in root with the ones in previousDir. It is safe to repeat.
+func rollbackRestore(root *os.Root, previousDir string, marker restoreMarker) error {
 	for _, name := range marker.Replaced {
 		// Already put back by a roll back, which has been interrupted.
-		if slices.Contains(marker.Previous, name) && !file.PathExists(filepath.Join(previousDir, name)) {
+		if slices.Contains(marker.Previous, name) && !file.PathExistsIn(root, filepath.Join(previousDir, name)) {
 			continue
 		}
 
-		err := os.RemoveAll(filepath.Join(varDir, name))
+		err := root.RemoveAll(name)
 		if err != nil {
 			return err
 		}
 
-		if !file.PathExists(filepath.Join(previousDir, name)) {
+		if !file.PathExistsIn(root, filepath.Join(previousDir, name)) {
 			continue
 		}
 
-		err = os.Rename(filepath.Join(previousDir, name), filepath.Join(varDir, name))
+		err = root.Rename(filepath.Join(previousDir, name), name)
 		if err != nil {
 			return err
 		}
@@ -736,26 +774,26 @@ func rollbackRestore(varDir string, previousDir string, marker restoreMarker) er
 
 // IsRestoreApplied reports, if a restore is in place but not yet completed.
 func (b backup) IsRestoreApplied() bool {
-	return file.PathExists(filepath.Join(b.varDir, restoreDirName, restoreAppliedMarker))
+	return file.PathExistsIn(b.varRoot, filepath.Join(restoreDirName, restoreAppliedMarker))
 }
 
 // CompleteRestore removes the state replaced by a successful restore.
 func (b backup) CompleteRestore() error {
-	restoreDir := filepath.Join(b.varDir, restoreDirName)
+	restoreDir := restoreDirName
 
 	// Removing the marker first makes the restore final, even if the cleanup is interrupted.
-	err := os.Remove(filepath.Join(restoreDir, restoreAppliedMarker))
+	err := b.varRoot.Remove(filepath.Join(restoreDir, restoreAppliedMarker))
 	if err != nil {
 		return err
 	}
 
-	err = os.RemoveAll(filepath.Join(restoreDir, "previous"))
+	err = b.varRoot.RemoveAll(filepath.Join(restoreDir, "previous"))
 	if err != nil {
 		return err
 	}
 
 	// The directory is kept, if a new upload has started in the meantime.
-	err = os.Remove(restoreDir)
+	err = b.varRoot.Remove(restoreDir)
 	if err != nil && !errors.Is(err, syscall.ENOTEMPTY) {
 		return err
 	}
