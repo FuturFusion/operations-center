@@ -24,19 +24,21 @@ import (
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-// testCluster is an Operations Center cluster of three members.
+// testCluster is an Operations Center cluster of members run on the local host.
 type testCluster struct {
+	root    string
 	members []*member
 }
 
-func setupCluster(t *testing.T) *testCluster {
+// testEnvironment returns the daemon, the address and the first port of the members, skipping the test unless the cluster tests are enabled.
+func testEnvironment(t *testing.T) (binary string, ip string, basePort int) {
 	t.Helper()
 
 	if os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST") == "" {
 		t.Skip("Set OPERATIONS_CENTER_CLUSTER_TEST to run the cluster tests")
 	}
 
-	binary := os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_BINARY")
+	binary = os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_BINARY")
 	if binary == "" {
 		binary = "../bin/operations-centerd"
 	}
@@ -45,25 +47,28 @@ func setupCluster(t *testing.T) *testCluster {
 	require.NoError(t, err)
 	require.FileExists(t, binary, `Build the daemon with "make build" or set OPERATIONS_CENTER_CLUSTER_TEST_BINARY`)
 
-	ip := os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_ADDRESS")
+	ip = os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_ADDRESS")
 	if ip == "" {
 		ip = globalUnicastIP(t)
 	}
 
-	basePort := 17443
+	basePort = 17443
 	if os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_PORT") != "" {
 		basePort, err = strconv.Atoi(os.Getenv("OPERATIONS_CENTER_CLUSTER_TEST_PORT"))
 		require.NoError(t, err)
 	}
 
+	return binary, ip, basePort
+}
+
+// newTestCluster returns an empty cluster below a temporary directory removed with the test.
+func newTestCluster(t *testing.T) *testCluster {
+	t.Helper()
+
 	root, err := os.MkdirTemp("", "oc-cluster-")
 	require.NoError(t, err)
 
-	c := &testCluster{}
-	for i := range 3 {
-		address := net.JoinHostPort(ip, strconv.Itoa(basePort+i))
-		c.members = append(c.members, newMember(t, binary, root, fmt.Sprintf("m%d", i+1), address))
-	}
+	c := &testCluster{root: root}
 
 	t.Cleanup(func() {
 		for _, m := range c.members {
@@ -80,6 +85,20 @@ func setupCluster(t *testing.T) *testCluster {
 			t.Logf("The members are kept in %q", root)
 		}
 	})
+
+	return c
+}
+
+func setupCluster(t *testing.T) *testCluster {
+	t.Helper()
+
+	binary, ip, basePort := testEnvironment(t)
+
+	c := newTestCluster(t)
+	for i := range 3 {
+		address := net.JoinHostPort(ip, strconv.Itoa(basePort+i))
+		c.members = append(c.members, newMember(t, binary, c.root, fmt.Sprintf("m%d", i+1), address))
+	}
 
 	first := c.members[0]
 	first.start(t)

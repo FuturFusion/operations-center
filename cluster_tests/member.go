@@ -24,12 +24,16 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// readyLog is the log line of a daemon whose database is available.
+const readyLog = "Cluster database startup completed"
+
 // member is an Operations Center daemon run as a separate process.
 type member struct {
 	binary  string
 	name    string
 	dir     string
 	address string
+	ready   string
 
 	cmd    *exec.Cmd
 	exited chan struct{}
@@ -53,6 +57,7 @@ func newMember(t *testing.T, binary string, root string, name string, address st
 		name:    name,
 		dir:     dir,
 		address: address,
+		ready:   readyLog,
 		client: &http.Client{
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _ string, _ string) (net.Conn, error) {
@@ -119,7 +124,7 @@ func (m *member) tryStart() error {
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		log := readFrom(logFile, offset)
-		if strings.Contains(log, "Cluster database startup completed") {
+		if strings.Contains(log, m.ready) {
 			return nil
 		}
 
