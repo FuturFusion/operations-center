@@ -98,7 +98,9 @@ type NetworkACLFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f NetworkACLFilter) AppendToURLValues(query url.Values) url.Values {
+func (f NetworkACLFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -119,11 +121,7 @@ func (f NetworkACLFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f NetworkACLFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }
 
 // generate-database does not handle acronyms for pascalcase variant.

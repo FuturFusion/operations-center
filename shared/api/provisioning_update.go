@@ -3,10 +3,13 @@ package api
 import (
 	"database/sql/driver"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type UpdateStatus string
@@ -159,3 +162,69 @@ type UpdateChangelog = images.Changelog
 //
 // swagger:model
 type UpdateChangelogs []UpdateChangelog
+
+// UpdateFilter holds the query parameters to filter the list of updates.
+type UpdateFilter struct {
+	// UpstreamChannel is the channel of the update source.
+	// Query parameter: "channel".
+	UpstreamChannel *string
+
+	// Channel is the update channel in Operations Center.
+	// Query parameter: "update_channel".
+	Channel *string
+
+	Origin *string
+	Status *UpdateStatus
+}
+
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
+func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UpstreamChannel != nil {
+		query.Add("channel", *f.UpstreamChannel)
+	}
+
+	if f.Channel != nil {
+		query.Add("update_channel", *f.Channel)
+	}
+
+	if f.Origin != nil {
+		query.Add("origin", *f.Origin)
+	}
+
+	if f.Status != nil {
+		query.Add("status", f.Status.String())
+	}
+
+	return query
+}
+
+// UpdateFilterFromURLValues reads the filter from the query parameters.
+// It returns a validation error if the status is invalid.
+func UpdateFilterFromURLValues(query url.Values) (UpdateFilter, error) {
+	var filter UpdateFilter
+
+	if query.Get("channel") != "" {
+		filter.UpstreamChannel = new(query.Get("channel"))
+	}
+
+	if query.Get("update_channel") != "" {
+		filter.Channel = new(query.Get("update_channel"))
+	}
+
+	if query.Get("origin") != "" {
+		filter.Origin = new(query.Get("origin"))
+	}
+
+	if query.Get("status") != "" {
+		var status UpdateStatus
+		err := status.UnmarshalText([]byte(query.Get("status")))
+		if err != nil {
+			return UpdateFilter{}, domain.NewValidationErrf("Invalid value %q for query parameter %q", query.Get("status"), "status")
+		}
+
+		filter.Status = &status
+	}
+
+	return filter, nil
+}

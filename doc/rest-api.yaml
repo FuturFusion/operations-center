@@ -10671,6 +10671,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/InventoryAggregatesResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
                 "403":
                     $ref: '#/responses/Forbidden'
                 "500":
@@ -12068,6 +12070,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/URLsResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
                 "403":
                     $ref: '#/responses/Forbidden'
                 "500":
@@ -13445,6 +13449,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/ServersResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
                 "403":
                     $ref: '#/responses/Forbidden'
                 "500":
@@ -14108,6 +14114,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/URLsResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the updates
@@ -14354,6 +14362,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/responses/UpdatesResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the updates

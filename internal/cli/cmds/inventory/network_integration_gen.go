@@ -16,9 +16,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdNetworkIntegration struct {
@@ -127,7 +127,7 @@ func (c *cmdNetworkIntegrationList) validateArgsAndFlags(cmd *cobra.Command, arg
 }
 
 func (c *cmdNetworkIntegrationList) run(cmd *cobra.Command, args []string) error {
-	var filter inventory.NetworkIntegrationFilter
+	var filter api.NetworkIntegrationFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = new(c.flagFilterCluster)

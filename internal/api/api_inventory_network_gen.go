@@ -101,18 +101,12 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	var filter inventory.NetworkFilter
+	apiFilter := api.NetworkFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("project") != "" {
-		filter.ProjectName = new(r.URL.Query().Get("project"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.NetworkFilter{
+		Cluster:     apiFilter.Cluster,
+		ProjectName: apiFilter.ProjectName,
+		Expression:  apiFilter.Expression,
 	}
 
 	if recursion == 1 {

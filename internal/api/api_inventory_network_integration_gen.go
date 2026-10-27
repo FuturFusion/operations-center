@@ -91,14 +91,11 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 		recursion = 0
 	}
 
-	var filter inventory.NetworkIntegrationFilter
+	apiFilter := api.NetworkIntegrationFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.NetworkIntegrationFilter{
+		Cluster:    apiFilter.Cluster,
+		Expression: apiFilter.Expression,
 	}
 
 	if recursion == 1 {

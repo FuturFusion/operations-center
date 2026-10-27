@@ -104,7 +104,9 @@ type InstanceFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f InstanceFilter) AppendToURLValues(query url.Values) url.Values {
+func (f InstanceFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -129,9 +131,5 @@ func (f InstanceFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f InstanceFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

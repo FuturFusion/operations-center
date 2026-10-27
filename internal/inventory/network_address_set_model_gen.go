@@ -98,7 +98,9 @@ type NetworkAddressSetFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f NetworkAddressSetFilter) AppendToURLValues(query url.Values) url.Values {
+func (f NetworkAddressSetFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -119,9 +121,5 @@ func (f NetworkAddressSetFilter) AppendToURLValues(query url.Values) url.Values 
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f NetworkAddressSetFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

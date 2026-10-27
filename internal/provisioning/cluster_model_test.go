@@ -2,6 +2,7 @@ package provisioning_test
 
 import (
 	"database/sql/driver"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -294,6 +295,44 @@ func TestCluster_Filter(t *testing.T) {
 
 			require.Equal(t, tc.want, tc.filter.String())
 			require.Equal(t, tc.wantIsEmpty, tc.filter.IsEmpty())
+		})
+	}
+}
+
+func TestClusterFilter_StringMatchesAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.ClusterFilter
+	}{
+		{
+			name:   "empty filter",
+			filter: api.ClusterFilter{},
+		},
+		{
+			name:   "expression",
+			filter: api.ClusterFilter{Expression: new(`name == "value"`)},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// The conversion fails to compile if the fields of the API filter change.
+			// Then add the field to the mapping and to the test cases.
+			fields := struct {
+				Expression *string
+			}(tc.filter)
+
+			filter := provisioning.ClusterFilter{
+				Expression: fields.Expression,
+			}
+
+			got := filter.String()
+
+			require.Equal(t, tc.filter.AppendToURLValues(url.Values{}).Encode(), got, "the service filter uses the same query parameters as the API filter")
 		})
 	}
 }

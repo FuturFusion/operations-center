@@ -25,6 +25,8 @@ func Test_GetWithFilterNetworkIntegrations(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		filter api.NetworkIntegrationFilter
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.NetworkIntegration)
 	}{
@@ -70,6 +72,39 @@ func Test_GetWithFilterNetworkIntegrations(t *testing.T) {
 			},
 		},
 		{
+			name:       "success - filter by cluster, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.NetworkIntegrationFilter{
+				Cluster: new("clusterOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.NetworkIntegration) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.NetworkIntegrationFilter{
+				Cluster: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.NetworkIntegration) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
 			name:       "error - not authorized",
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
@@ -87,7 +122,7 @@ func Test_GetWithFilterNetworkIntegrations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilterNetworkIntegrations(t.Context(), inventory.NetworkIntegrationFilter{})
+			result, err := tc.client.GetWithFilterNetworkIntegrations(t.Context(), tc.filter)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

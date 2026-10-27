@@ -87,7 +87,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		return "", domain.NewValidationErrf(`Incomplete metadata, not all required properties set os=%q, architecture=%q, version=%q`, os, architecture, versionIdentifier)
 	}
 
-	err = ValidateIncusImageVersion(versionIdentifier)
+	err = api.ValidateIncusImageVersion(versionIdentifier)
 	if err != nil {
 		return "", fmt.Errorf("Invalid incus image version: %w", err)
 	}

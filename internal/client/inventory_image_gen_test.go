@@ -25,6 +25,8 @@ func Test_GetWithFilterImages(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		filter api.ImageFilter
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Image)
 	}{
@@ -54,9 +56,10 @@ func Test_GetWithFilterImages(t *testing.T) {
 				require.NoError(t, err)
 
 				_, err = entities.CreateImage(t.Context(), d.db, inventory.Image{
-					UUID:    uuidgen.FromPattern(t, "1"),
-					Name:    "one",
-					Cluster: "clusterOne",
+					UUID:        uuidgen.FromPattern(t, "1"),
+					Name:        "one",
+					Cluster:     "clusterOne",
+					ProjectName: "default",
 				})
 				require.NoError(t, err)
 			},
@@ -67,6 +70,72 @@ func Test_GetWithFilterImages(t *testing.T) {
 
 				require.Len(t, result, 1)
 				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ImageFilter{
+				Cluster: new("clusterOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Image) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ImageFilter{
+				Cluster: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Image) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
+			name:       "success - filter by project, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ImageFilter{
+				ProjectName: new("default"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Image) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by project, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ImageFilter{
+				ProjectName: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Image) {
+				t.Helper()
+
+				require.Empty(t, result)
 			},
 		},
 		{
@@ -87,7 +156,7 @@ func Test_GetWithFilterImages(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilterImages(t.Context(), inventory.ImageFilter{})
+			result, err := tc.client.GetWithFilterImages(t.Context(), tc.filter)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

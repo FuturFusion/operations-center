@@ -126,15 +126,11 @@ deps:
       - cli
       - client
       - util
-      # TODO: Move these validators and types to shared/api. Then drop these entries.
-      - service
 
   client:
     mayDependOn:
       - client
       - util
-      # TODO: Move these types to shared/api. Then drop these entries.
-      - service
       - domain
       - shared
 

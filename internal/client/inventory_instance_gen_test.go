@@ -25,6 +25,8 @@ func Test_GetWithFilterInstances(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		filter api.InstanceFilter
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Instance)
 	}{
@@ -60,10 +62,11 @@ func Test_GetWithFilterInstances(t *testing.T) {
 				require.NoError(t, err)
 
 				_, err = entities.CreateInstance(t.Context(), d.db, inventory.Instance{
-					UUID:    uuidgen.FromPattern(t, "1"),
-					Name:    "one",
-					Cluster: "clusterOne",
-					Server:  "serverOne",
+					UUID:        uuidgen.FromPattern(t, "1"),
+					Name:        "one",
+					Cluster:     "clusterOne",
+					ProjectName: "default",
+					Server:      "serverOne",
 				})
 				require.NoError(t, err)
 			},
@@ -74,6 +77,105 @@ func Test_GetWithFilterInstances(t *testing.T) {
 
 				require.Len(t, result, 1)
 				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				Cluster: new("clusterOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				Cluster: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
+			name:       "success - filter by server, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				Server: new("serverOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by server, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				Server: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
+			name:       "success - filter by project, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				ProjectName: new("default"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by project, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.InstanceFilter{
+				ProjectName: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Instance) {
+				t.Helper()
+
+				require.Empty(t, result)
 			},
 		},
 		{
@@ -94,7 +196,7 @@ func Test_GetWithFilterInstances(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilterInstances(t.Context(), inventory.InstanceFilter{})
+			result, err := tc.client.GetWithFilterInstances(t.Context(), tc.filter)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

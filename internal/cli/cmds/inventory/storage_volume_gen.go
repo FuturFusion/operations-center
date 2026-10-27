@@ -16,9 +16,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdStorageVolume struct {
@@ -145,7 +145,7 @@ func (c *cmdStorageVolumeList) validateArgsAndFlags(cmd *cobra.Command, args []s
 }
 
 func (c *cmdStorageVolumeList) run(cmd *cobra.Command, args []string) error {
-	var filter inventory.StorageVolumeFilter
+	var filter api.StorageVolumeFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = new(c.flagFilterCluster)

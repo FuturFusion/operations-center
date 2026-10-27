@@ -98,7 +98,9 @@ type ImageFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f ImageFilter) AppendToURLValues(query url.Values) url.Values {
+func (f ImageFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -119,9 +121,5 @@ func (f ImageFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f ImageFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

@@ -85,6 +85,15 @@ func ValidationErrorContains(contains string) require.ErrorAssertionFunc {
 	}
 }
 
+// StatusErrorContains asserts that err is an api.StatusError with the given
+// status code and that its message contains the given string.
+func StatusErrorContains(statusCode int, contains string) require.ErrorAssertionFunc {
+	return func(tt require.TestingT, err error, a ...any) {
+		require.ErrorContains(tt, err, contains, a...)
+		require.True(tt, api.StatusErrorCheck(err, statusCode), a...)
+	}
+}
+
 // DomainError asserts that err is a domain.Error of the given kind, which
 // reports the given reason.
 func DomainError(kind error, reason api.ErrorReason) require.ErrorAssertionFunc {

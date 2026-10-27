@@ -25,6 +25,8 @@ func Test_GetWithFilterProjects(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		filter api.ProjectFilter
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Project)
 	}{
@@ -70,6 +72,39 @@ func Test_GetWithFilterProjects(t *testing.T) {
 			},
 		},
 		{
+			name:       "success - filter by cluster, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ProjectFilter{
+				Cluster: new("clusterOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Project) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ProjectFilter{
+				Cluster: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Project) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
 			name:       "error - not authorized",
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
@@ -87,7 +122,7 @@ func Test_GetWithFilterProjects(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilterProjects(t.Context(), inventory.ProjectFilter{})
+			result, err := tc.client.GetWithFilterProjects(t.Context(), tc.filter)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

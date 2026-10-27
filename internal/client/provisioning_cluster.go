@@ -8,15 +8,14 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func (c OperationsCenterClient) GetClusters(ctx context.Context) ([]api.Cluster, error) {
-	return c.GetWithFilterClusters(ctx, provisioning.ClusterFilter{})
+	return c.GetWithFilterClusters(ctx, api.ClusterFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterClusters(ctx context.Context, filter provisioning.ClusterFilter) ([]api.Cluster, error) {
+func (c OperationsCenterClient) GetWithFilterClusters(ctx context.Context, filter api.ClusterFilter) ([]api.Cluster, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)

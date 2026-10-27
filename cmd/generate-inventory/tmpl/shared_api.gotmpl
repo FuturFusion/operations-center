@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,4 +35,69 @@ type {{ .Name | pascalcase }} struct {
 {{- end }}
 	Object      incusapi.{{ .ObjectType | pascalcase }} `json:"object" yaml:"object"`
 	LastUpdated time.Time             `json:"last_updated" yaml:"last_updated"`
+}
+
+// {{ .Name | pascalcase }}Filter holds the query parameters to filter the list of {{ .PluralName | words }}.
+type {{ .Name | pascalcase }}Filter struct {
+	Cluster     *string
+{{- if .ServerIDByLocation }}
+	Server      *string
+{{- end }}
+{{- if .HasProject }}
+	ProjectName *string
+{{- end }}
+	Expression  *string
+}
+
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
+func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+{{- if .ServerIDByLocation }}
+
+	if f.Server != nil {
+		query.Add("server", *f.Server)
+	}
+{{- end }}
+{{- if .HasProject }}
+
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
+	}
+{{- end }}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+// {{ .Name | pascalcase }}FilterFromURLValues reads the filter from the query parameters.
+func {{ .Name | pascalcase }}FilterFromURLValues(query url.Values) {{ .Name | pascalcase }}Filter {
+	var filter {{ .Name | pascalcase }}Filter
+
+	if query.Get("cluster") != "" {
+		filter.Cluster = new(query.Get("cluster"))
+	}
+{{- if .ServerIDByLocation }}
+
+	if query.Get("server") != "" {
+		filter.Server = new(query.Get("server"))
+	}
+{{- end }}
+{{- if .HasProject }}
+
+	if query.Get("project") != "" {
+		filter.ProjectName = new(query.Get("project"))
+	}
+{{- end }}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter
 }

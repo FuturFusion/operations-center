@@ -3,7 +3,6 @@ package image
 import (
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -43,8 +42,9 @@ func (i IncusImage) Validate() error {
 		return domain.NewValidationErrf("Invalid incus image, release can not be empty")
 	}
 
-	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, i.Architecture) {
-		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
+	err = api.ValidateIncusImageArchitecture(i.Architecture)
+	if err != nil {
+		return err
 	}
 
 	if i.Variant == "" {
@@ -81,20 +81,13 @@ func ValidateIncusImageName(name string) error {
 		return domain.NewValidationErrf("Invalid incus image, release can not be empty")
 	}
 
-	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, nameParts[2]) {
-		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
+	err := api.ValidateIncusImageArchitecture(nameParts[2])
+	if err != nil {
+		return err
 	}
 
 	if nameParts[3] == "" {
 		return domain.NewValidationErrf("Invalid incus image, variant can not be empty")
-	}
-
-	return nil
-}
-
-func ValidateIncusImageArchitecture(architecture string) error {
-	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, architecture) {
-		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
 	}
 
 	return nil
@@ -111,24 +104,6 @@ func fixArchitectureMapping(architecture string) string {
 	default:
 		return architecture
 	}
-}
-
-// ValidateIncusImageVersion checks the version matches the expected version
-// format in simplestreams.
-// https://github.com/lxc/incus/blob/1d64af1e40ced8716280bd4fcf044dce4ca6d5cf/shared/simplestreams/products.go#L87-L95
-func ValidateIncusImageVersion(version string) error {
-	const versionLayout = "20060102"
-
-	if len(version) < 8 {
-		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
-	}
-
-	_, err := time.Parse(versionLayout, version[0:8])
-	if err != nil {
-		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd": %v`, err)
-	}
-
-	return nil
 }
 
 func (i IncusImage) Path() string {

@@ -2,6 +2,13 @@
 
 package api
 
+import (
+	"net/url"
+	"strconv"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+)
+
 // InventoryAggregate holds the inventory resources of a single cluster.
 //
 // swagger:model
@@ -23,4 +30,113 @@ type InventoryAggregate struct {
 	StorageBuckets       []StorageBucket       `json:"storage_buckets" yaml:"storage_buckets"`
 	StoragePools         []StoragePool         `json:"storage_pools" yaml:"storage_pools"`
 	StorageVolumes       []StorageVolume       `json:"storage_volumes" yaml:"storage_volumes"`
+}
+
+// InventoryAggregateFilter holds the query parameters to filter the inventory query.
+type InventoryAggregateFilter struct {
+	Kinds    []string
+	Clusters []string
+	Servers  []string
+
+	// ServerIncludeNull also includes resources where the server is not set.
+	ServerIncludeNull bool
+
+	Projects []string
+
+	// ProjectIncludeNull also includes resources where the project is not set.
+	ProjectIncludeNull bool
+
+	Parents []string
+
+	// ParentIncludeNull also includes resources where the parent is not set.
+	ParentIncludeNull bool
+
+	Expression *string
+}
+
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
+func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values {
+	for _, kind := range f.Kinds {
+		query.Add("kind", kind)
+	}
+
+	for _, cluster := range f.Clusters {
+		query.Add("cluster", cluster)
+	}
+
+	for _, server := range f.Servers {
+		query.Add("server", server)
+	}
+
+	if f.ServerIncludeNull {
+		query.Add("server_include_null", strconv.FormatBool(f.ServerIncludeNull))
+	}
+
+	for _, project := range f.Projects {
+		query.Add("project", project)
+	}
+
+	if f.ProjectIncludeNull {
+		query.Add("project_include_null", strconv.FormatBool(f.ProjectIncludeNull))
+	}
+
+	for _, parent := range f.Parents {
+		query.Add("parent", parent)
+	}
+
+	if f.ParentIncludeNull {
+		query.Add("parent_include_null", strconv.FormatBool(f.ParentIncludeNull))
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+// String returns the filter encoded as query parameters.
+func (f InventoryAggregateFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
+}
+
+// InventoryAggregateFilterFromURLValues reads the filter from the query parameters.
+// It returns a validation error if an include null parameter is not a boolean.
+func InventoryAggregateFilterFromURLValues(query url.Values) (InventoryAggregateFilter, error) {
+	var filter InventoryAggregateFilter
+
+	filter.Kinds = query["kind"]
+	filter.Clusters = query["cluster"]
+	filter.Servers = query["server"]
+	filter.Projects = query["project"]
+	filter.Parents = query["parent"]
+
+	includeNullFields := []struct {
+		name  string
+		value *bool
+	}{
+		{name: "server_include_null", value: &filter.ServerIncludeNull},
+		{name: "project_include_null", value: &filter.ProjectIncludeNull},
+		{name: "parent_include_null", value: &filter.ParentIncludeNull},
+	}
+
+	for _, field := range includeNullFields {
+		if query.Get(field.name) == "" {
+			continue
+		}
+
+		value, err := strconv.ParseBool(query.Get(field.name))
+		if err != nil {
+			return InventoryAggregateFilter{}, domain.NewValidationErrf("Invalid value %q for query parameter %q", query.Get(field.name), field.name)
+		}
+
+		*field.value = value
+	}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter, nil
 }

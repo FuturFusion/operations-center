@@ -3,6 +3,7 @@
 package api
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,4 +26,48 @@ type NetworkAddressSet struct {
 	Name        string                     `json:"name" yaml:"name"`
 	Object      incusapi.NetworkAddressSet `json:"object" yaml:"object"`
 	LastUpdated time.Time                  `json:"last_updated" yaml:"last_updated"`
+}
+
+// NetworkAddressSetFilter holds the query parameters to filter the list of network address sets.
+type NetworkAddressSetFilter struct {
+	Cluster     *string
+	ProjectName *string
+	Expression  *string
+}
+
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
+func (f NetworkAddressSetFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+// NetworkAddressSetFilterFromURLValues reads the filter from the query parameters.
+func NetworkAddressSetFilterFromURLValues(query url.Values) NetworkAddressSetFilter {
+	var filter NetworkAddressSetFilter
+
+	if query.Get("cluster") != "" {
+		filter.Cluster = new(query.Get("cluster"))
+	}
+
+	if query.Get("project") != "" {
+		filter.ProjectName = new(query.Get("project"))
+	}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter
 }

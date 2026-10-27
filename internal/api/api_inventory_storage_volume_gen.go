@@ -112,22 +112,13 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 		recursion = 0
 	}
 
-	var filter inventory.StorageVolumeFilter
+	apiFilter := api.StorageVolumeFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = new(r.URL.Query().Get("server"))
-	}
-
-	if r.URL.Query().Get("project") != "" {
-		filter.ProjectName = new(r.URL.Query().Get("project"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.StorageVolumeFilter{
+		Cluster:     apiFilter.Cluster,
+		Server:      apiFilter.Server,
+		ProjectName: apiFilter.ProjectName,
+		Expression:  apiFilter.Expression,
 	}
 
 	if recursion == 1 {

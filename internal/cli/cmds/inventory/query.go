@@ -11,7 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 //go:embed templates/resource_tree.gotmpl
@@ -105,7 +105,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var filter inventory.InventoryAggregateFilter
+	var filter api.InventoryAggregateFilter
 
 	filter.Kinds = c.flagFilterKinds
 

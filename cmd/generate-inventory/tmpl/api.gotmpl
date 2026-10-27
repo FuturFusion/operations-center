@@ -120,26 +120,17 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		recursion = 0
 	}
 
-	var filter inventory.{{ .Name | pascalcase }}Filter
+	apiFilter := api.{{ .Name | pascalcase }}FilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-{{ if .ServerIDByLocation }}
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = new(r.URL.Query().Get("server"))
-	}
-{{ end }}
-
-{{ if .HasProject }}
-	if r.URL.Query().Get("project") != "" {
-		filter.ProjectName = new(r.URL.Query().Get("project"))
-	}
-{{ end }}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.{{ .Name | pascalcase }}Filter{
+		Cluster:     apiFilter.Cluster,
+{{- if .ServerIDByLocation }}
+		Server:      apiFilter.Server,
+{{- end }}
+{{- if .HasProject }}
+		ProjectName: apiFilter.ProjectName,
+{{- end }}
+		Expression:  apiFilter.Expression,
 	}
 
 	if recursion == 1 {

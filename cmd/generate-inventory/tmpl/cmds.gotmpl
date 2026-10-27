@@ -14,7 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -208,7 +208,7 @@ func (c *cmd{{ .Name | pascalcase }}List) validateArgsAndFlags(cmd *cobra.Comman
 }
 
 func (c *cmd{{ .Name | pascalcase }}List) run(cmd *cobra.Command, args []string) error {
-	var filter inventory.{{ .Name | pascalcase }}Filter
+	var filter api.{{ .Name | pascalcase }}Filter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = new(c.flagFilterCluster)

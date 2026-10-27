@@ -9,11 +9,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]api.NetworkIntegration, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(ctx context.Context, filter api.NetworkIntegrationFilter) ([]api.NetworkIntegration, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)

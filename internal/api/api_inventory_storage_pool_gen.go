@@ -91,14 +91,11 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 		recursion = 0
 	}
 
-	var filter inventory.StoragePoolFilter
+	apiFilter := api.StoragePoolFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.StoragePoolFilter{
+		Cluster:    apiFilter.Cluster,
+		Expression: apiFilter.Expression,
 	}
 
 	if recursion == 1 {

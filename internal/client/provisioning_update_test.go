@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"io"
+	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -104,7 +106,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		filter provisioning.UpdateFilter
+		filter api.UpdateFilter
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Update)
@@ -118,7 +120,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 				seedUpdate(t, d, uuidgen.FromPattern(t, "1"))
 			},
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Origin: new("test-origin"),
 			},
 
@@ -134,7 +136,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Origin: new("unknown-origin"),
 			},
 
@@ -150,7 +152,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Status: new(api.UpdateStatusReady),
 			},
 
@@ -173,7 +175,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 				require.NoError(t, err)
 			},
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Channel: new(defaultChannelName),
 			},
 
@@ -196,7 +198,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 				require.NoError(t, err)
 			},
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Channel: new("other"),
 			},
 
@@ -212,7 +214,7 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				UpstreamChannel: new(defaultChannelName),
 			},
 
@@ -228,11 +230,11 @@ func Test_GetWithFilterUpdates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.UpdateFilter{
+			filter: api.UpdateFilter{
 				Status: new(api.UpdateStatus("invalid")),
 			},
 
-			assertErr: require.Error,
+			assertErr: errassert.StatusErrorContains(http.StatusBadRequest, `Invalid value "invalid" for query parameter "status"`),
 			assertFunc: func(t *testing.T, result []api.Update) {
 				t.Helper()
 			},

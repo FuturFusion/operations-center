@@ -17,7 +17,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -145,7 +144,7 @@ func (c *cmdUpdateList) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 }
 
 func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
-	var filter provisioning.UpdateFilter
+	var filter api.UpdateFilter
 
 	if c.flagFilterUpstreamChannel != "" {
 		filter.UpstreamChannel = new(c.flagFilterUpstreamChannel)

@@ -9,11 +9,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterStorageBuckets(ctx context.Context, filter inventory.StorageBucketFilter) ([]api.StorageBucket, error) {
+func (c OperationsCenterClient) GetWithFilterStorageBuckets(ctx context.Context, filter api.StorageBucketFilter) ([]api.StorageBucket, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)

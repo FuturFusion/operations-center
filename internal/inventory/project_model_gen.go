@@ -91,7 +91,9 @@ type ProjectFilter struct {
 	Expression *string `db:"ignore"`
 }
 
-func (f ProjectFilter) AppendToURLValues(query url.Values) url.Values {
+func (f ProjectFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -108,9 +110,5 @@ func (f ProjectFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f ProjectFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }
