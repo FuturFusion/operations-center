@@ -9,7 +9,6 @@ import (
 
 type Verifier interface {
 	Verify(sjson []byte) (content []byte, _ error)
-	VerifyFile(filename string) (content []byte, _ error)
 }
 
 type verifier struct {
@@ -27,14 +26,14 @@ func NewVerifier(rootCAPEM []byte) Verifier {
 }
 
 func (v verifier) Verify(sjson []byte) ([]byte, error) {
-	rootCAFile, err := os.CreateTemp("", "operations-center-updates-rootca-*.crt")
+	rootCAFile, err := os.CreateTemp("", "operations-center-updates-rootca-*.crt") //nolint:forbidigo // External tool needs a path.
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create temporary file for root CA PEM: %w", err)
 	}
 
 	defer func() {
 		_ = rootCAFile.Close()
-		_ = os.Remove(rootCAFile.Name())
+		_ = os.Remove(rootCAFile.Name()) //nolint:forbidigo // Temporary file outside of any root.
 	}()
 
 	_, err = rootCAFile.Write(v.rootCAPEM)
@@ -62,15 +61,6 @@ func (v verifier) Verify(sjson []byte) ([]byte, error) {
 	return stdoutBuf.Bytes(), nil
 }
 
-func (v verifier) VerifyFile(filename string) ([]byte, error) {
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read %q: %w", filename, err)
-	}
-
-	return v.Verify(content)
-}
-
 type noopVerifier struct{}
 
 func NewNoopVerifier() Verifier {
@@ -89,13 +79,4 @@ func (noopVerifier) Verify(sjson []byte) ([]byte, error) {
 	}
 
 	return stdoutBuf.Bytes(), nil
-}
-
-func (n noopVerifier) VerifyFile(filename string) ([]byte, error) {
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read %q: %w", filename, err)
-	}
-
-	return n.Verify(content)
 }
