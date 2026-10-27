@@ -92,12 +92,23 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		return "", fmt.Errorf("Invalid incus image version: %w", err)
 	}
 
+	// The version is used as directory name.
+	err = ValidateIncusImageFilename(versionIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("Invalid incus image version: %w", err)
+	}
+
 	if release == "" {
 		release = "current"
 	}
 
 	if variant == "" {
 		variant = "default"
+	}
+
+	err = validateFilePathElements(os, release, variant)
+	if err != nil {
+		return "", fmt.Errorf("Invalid metadata: %w", err)
 	}
 
 	name := strings.Join([]string{os, release, architecture, variant}, ":")
@@ -612,6 +623,15 @@ func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name strin
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return nil, 0, fmt.Errorf("Failed to get incus image %q: %w", name, err)
+	}
+
+	// Only serve files, which are part of the image.
+	_, ok := img.Versions[version].Items[filename]
+	if !ok {
+		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q has no file %q in version %q", name, filename, version).
+			WithDetail("image", name).
+			WithDetail("version", version).
+			WithDetail("file_name", filename)
 	}
 
 	rc, size, err := s.filesRepo.Get(ctx, img, version, filename)

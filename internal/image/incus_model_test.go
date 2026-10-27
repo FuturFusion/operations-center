@@ -7,6 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 )
 
 func TestIncusImage_Validate(t *testing.T) {
@@ -117,6 +118,30 @@ func TestIncusImage_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - release is parent directory",
+			image: image.IncusImage{
+				Name:            "almalinux:..:amd64:cloud",
+				OperatingSystem: "almalinux",
+				Release:         "..",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, ".." is not a valid file name`),
+		},
+		{
+			name: "error - variant with path separator",
+			image: image.IncusImage{
+				Name:            "almalinux:10:amd64:cloud/../..",
+				OperatingSystem: "almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud/../..",
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, "cloud/../.." is not a valid file name`),
+		},
+		{
 			name: "error - empty arch",
 			image: image.IncusImage{
 				Name:            "almalinux:10:amd64:cloud",
@@ -184,6 +209,70 @@ func TestIncusImage_Validate(t *testing.T) {
 			t.Parallel()
 
 			err := tc.image.Validate()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestValidateIncusImageFilename(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		filename string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:     "success",
+			filename: "root.squashfs",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "error - empty",
+			filename: "",
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, "" is not a valid file name`),
+		},
+		{
+			name:     "error - current directory",
+			filename: ".",
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, "." is not a valid file name`),
+		},
+		{
+			name:     "error - parent directory",
+			filename: "..",
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, ".." is not a valid file name`),
+		},
+		{
+			name:     "error - relative path",
+			filename: "../root.squashfs",
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, "../root.squashfs" is not a valid file name`),
+		},
+		{
+			name:     "error - absolute path",
+			filename: "/root.squashfs",
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, "/root.squashfs" is not a valid file name`),
+		},
+		{
+			name:     "error - backslash",
+			filename: `..\root.squashfs`,
+
+			assertErr: errassert.ValidationErrorContains(`is not a valid file name`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := image.ValidateIncusImageFilename(tc.filename)
 
 			tc.assertErr(t, err)
 		})
