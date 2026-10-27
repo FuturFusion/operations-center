@@ -16,7 +16,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/render"
@@ -208,21 +207,21 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		}
 
 	default:
-		clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), provisioning.ClusterFilter{
+		clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), api.ClusterFilter{
 			Expression: new(fmt.Sprintf(`channel == %q`, name)),
 		})
 		if err != nil {
 			return err
 		}
 
-		servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), provisioning.ServerFilter{
+		servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), api.ServerFilter{
 			Expression: new(fmt.Sprintf(`version_data.update_channel == %q`, name)),
 		})
 		if err != nil {
 			return err
 		}
 
-		updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), provisioning.UpdateFilter{
+		updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), api.UpdateFilter{
 			Channel: new(name),
 		})
 		if err != nil {

@@ -19,7 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -358,7 +357,7 @@ func (c *cmdClusterList) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
-	var filter provisioning.ClusterFilter
+	var filter api.ClusterFilter
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = new(c.flagFilterExpression)
