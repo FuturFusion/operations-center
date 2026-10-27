@@ -69,21 +69,9 @@ func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *queryHandler) querysGet(r *http.Request) response.Response {
-	apiFilter, err := api.InventoryAggregateFilterFromURLValues(r.URL.Query())
+	filter, err := api.InventoryAggregateFilterFromURLValues(r.URL.Query())
 	if err != nil {
 		return response.SmartError(err)
-	}
-
-	filter := inventory.InventoryAggregateFilter{
-		Kinds:              apiFilter.Kinds,
-		Clusters:           apiFilter.Clusters,
-		Servers:            apiFilter.Servers,
-		ServerIncludeNull:  apiFilter.ServerIncludeNull,
-		Projects:           apiFilter.Projects,
-		ProjectIncludeNull: apiFilter.ProjectIncludeNull,
-		Parents:            apiFilter.Parents,
-		ParentIncludeNull:  apiFilter.ParentIncludeNull,
-		Expression:         apiFilter.Expression,
 	}
 
 	// FIXME: Should we require a non empty filter with recursion?

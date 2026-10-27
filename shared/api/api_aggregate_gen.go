@@ -34,18 +34,28 @@ type InventoryAggregate struct {
 
 // InventoryAggregateFilter holds the query parameters to filter the inventory query.
 type InventoryAggregateFilter struct {
-	Kinds              []string
-	Clusters           []string
-	Servers            []string
-	ServerIncludeNull  bool
-	Projects           []string
+	Kinds    []string
+	Clusters []string
+	Servers  []string
+
+	// ServerIncludeNull also includes resources where the server is not set.
+	ServerIncludeNull bool
+
+	Projects []string
+
+	// ProjectIncludeNull also includes resources where the project is not set.
 	ProjectIncludeNull bool
-	Parents            []string
-	ParentIncludeNull  bool
-	Expression         *string
+
+	Parents []string
+
+	// ParentIncludeNull also includes resources where the parent is not set.
+	ParentIncludeNull bool
+
+	Expression *string
 }
 
-// AppendToURLValues adds the set fields of the filter to query.
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
 func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values {
 	for _, kind := range f.Kinds {
 		query.Add("kind", kind)
@@ -86,7 +96,13 @@ func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values
 	return query
 }
 
+// String returns the filter encoded as query parameters.
+func (f InventoryAggregateFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
+}
+
 // InventoryAggregateFilterFromURLValues reads the filter from the query parameters.
+// It returns a validation error if an include null parameter is not a boolean.
 func InventoryAggregateFilterFromURLValues(query url.Values) (InventoryAggregateFilter, error) {
 	var filter InventoryAggregateFilter
 

@@ -59,8 +59,9 @@ func TestInventoryAggregateFilter_URLValues(t *testing.T) {
 			query := tc.filter.AppendToURLValues(url.Values{})
 			filter, err := api.InventoryAggregateFilterFromURLValues(query)
 
-			require.Equal(t, tc.want, query.Encode())
 			require.NoError(t, err)
+			require.Equal(t, tc.want, query.Encode(), "the filter is encoded as query parameters")
+			require.Equal(t, tc.want, tc.filter.String(), "String returns the encoded query")
 			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
 		})
 	}
