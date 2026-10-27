@@ -1114,6 +1114,8 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 				systemSqlite.NewDatabase(db),
 			),
 			systemRepoMiddleware.NewBackupRepoWithSlog(backupRepo),
+			// Do not wrap with slog. This repo handles the private key of the server.
+			systemLocalfs.NewCertificate(d.varRoot),
 			d.requestRestart,
 		),
 	)
