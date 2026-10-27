@@ -127,6 +127,9 @@ type environment interface {
 type Daemon struct {
 	env environment
 
+	varRoot   *os.Root
+	cacheRoot *os.Root
+
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
 	configReloadMu *sync.Mutex
@@ -158,24 +161,10 @@ type Daemon struct {
 func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
 
-	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
-	clientCert, err := os.ReadFile(clientCertFilename)
-	if err != nil {
-		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
-	}
-
-	clientKeyFilename := filepath.Join(env.VarDir(), config.ClientKeyFilename)
-	clientKey, err := os.ReadFile(clientKeyFilename)
-	if err != nil {
-		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
-	}
-
 	d := &Daemon{
-		env:               env,
-		configReloadMu:    &sync.Mutex{},
-		clientCertificate: string(clientCert),
-		clientKey:         string(clientKey),
-		restartCh:         make(chan struct{}, 1),
+		env:            env,
+		configReloadMu: &sync.Mutex{},
+		restartCh:      make(chan struct{}, 1),
 
 		authenticator: &authn.Authenticator{},
 		oidcVerifier:  &authnoidc.Verifier{},
@@ -195,6 +184,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	ctx = logger.ContextWithComponent(ctx, componentDaemon)
 
 	slog.InfoContext(ctx, "Starting up", slog.String("version", version.Version))
+
+	err := d.openRoots()
+	if err != nil {
+		return err
+	}
+
+	d.loadClientCertificate(ctx)
 
 	dbWithTransaction, err := d.initDB(ctx)
 	if err != nil {
@@ -570,9 +566,54 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	return dbWithTransaction, nil
 }
 
+// openRoots opens the var and cache directories as roots.
+func (d *Daemon) openRoots() error {
+	var err error
+
+	d.varRoot, err = file.MkdirAllOpenRoot(d.env.VarDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Failed to open var directory: %w", err)
+	}
+
+	d.cacheRoot, err = file.MkdirAllOpenRoot(d.env.CacheDir(), 0o700)
+	if err != nil {
+		return fmt.Errorf("Failed to open cache directory: %w", err)
+	}
+
+	return nil
+}
+
+// closeRoots closes the roots opened by openRoots.
+func (d *Daemon) closeRoots() error {
+	errs := []error{}
+
+	for _, root := range []*os.Root{d.varRoot, d.cacheRoot} {
+		if root != nil {
+			errs = append(errs, root.Close())
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (d *Daemon) loadClientCertificate(ctx context.Context) {
+	clientCert, err := d.varRoot.ReadFile(config.ClientCertificateFilename)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", config.ClientCertificateFilename), logger.Err(err))
+	}
+
+	clientKey, err := d.varRoot.ReadFile(config.ClientKeyFilename)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to read client key", slog.String("file", config.ClientKeyFilename), logger.Err(err))
+	}
+
+	d.clientCertificate = string(clientCert)
+	d.clientKey = string(clientKey)
+}
+
 func (d *Daemon) initAndLoadServerCert() error {
-	certFile := filepath.Join(d.env.VarDir(), config.ServerCertificateFilename)
-	keyFile := filepath.Join(d.env.VarDir(), config.ServerKeyFilename)
+	certFile := filepath.Join(d.varRoot.Name(), config.ServerCertificateFilename)
+	keyFile := filepath.Join(d.varRoot.Name(), config.ServerKeyFilename)
 
 	// Ensure that the certificate exists, or create a new one if it does not.
 	err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
@@ -580,12 +621,12 @@ func (d *Daemon) initAndLoadServerCert() error {
 		return err
 	}
 
-	serverCertificatePEM, err := os.ReadFile(certFile)
+	serverCertificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read server certificate from %q: %w", certFile, err)
 	}
 
-	serverKeyPEM, err := os.ReadFile(keyFile)
+	serverKeyPEM, err := d.varRoot.ReadFile(config.ServerKeyFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
 	}
@@ -2089,6 +2130,10 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		errgroupWaitErr := d.errgroup.Wait()
 		errs = append(errs, errgroupWaitErr)
 	}
+
+	// Close the roots last. The shutdown functions and the background tasks
+	// might still access files.
+	errs = append(errs, d.closeRoots())
 
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()
