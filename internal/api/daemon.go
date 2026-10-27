@@ -199,7 +199,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Apply all patches that need to be run before daemon security infrastructure
 	// like certificates, authenticators and authorizers are initialized.
-	err = patchesApply(ctx, dbWithTransaction, patchPreSecurityInfrastructure)
+	err = patchesApply(ctx, d, dbWithTransaction, patchPreSecurityInfrastructure)
 	if err != nil {
 		return err
 	}
