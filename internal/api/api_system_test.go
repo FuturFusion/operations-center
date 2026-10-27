@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -378,7 +379,7 @@ func TestSystemBackupRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Restart with the restored state.
-	err = systemLocalfs.NewBackup(varDir).ApplyRestore()
+	err = systemLocalfs.NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(filepath.Join(varDir, config.ConfigFilename))
@@ -395,5 +396,5 @@ func TestSystemBackupRestore(t *testing.T) {
 
 	require.NoError(t, err)
 
-	require.False(t, systemLocalfs.NewBackup(varDir).IsRestoreApplied())
+	require.False(t, systemLocalfs.NewBackup(fsroot.Open(t, varDir)).IsRestoreApplied())
 }

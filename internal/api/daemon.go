@@ -359,7 +359,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	backupRepo := systemLocalfs.NewBackup(d.env.VarDir())
+	backupRepo := systemLocalfs.NewBackup(d.varRoot)
 
 	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
 
@@ -1108,7 +1108,7 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 		system.NewSystemService(
 			d.env, serverSvc, clusterSvc,
 			systemRepoMiddleware.NewCacheRepoWithSlog(
-				systemLocalfs.New(d.env.CacheDir(), seedImageCacheDir),
+				systemLocalfs.New(d.cacheRoot, seedImageCacheDir),
 			),
 			systemRepoMiddleware.NewDatabaseRepoWithSlog(
 				systemSqlite.NewDatabase(db),
