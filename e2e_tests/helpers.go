@@ -499,6 +499,7 @@ const (
 	agentWaitAttemptTimeout     = 30 * time.Second
 	incusOSStartupProbeInterval = 10 * time.Second
 	incusOSStartupRestartGrace  = 2 * time.Minute
+	logReadAttemptTimeout       = 30 * time.Second
 )
 
 // waitAgentRunningWithContext waits for the incus agent to be running inside
@@ -711,12 +712,15 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 	vm = fmt.Sprintf(vm, args...)
 
+	start := time.Now()
 	count := 0
 	lastErr := ""
 	lastLog := ""
 
 	for {
-		resp := runQuietWithContext(ctx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
+		attemptCtx, cancel := context.WithTimeout(ctx, strechedTimeout(logReadAttemptTimeout))
+		resp := runQuietWithContext(attemptCtx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
+		cancel()
 		if resp.err != nil {
 			return resp.err
 		}
@@ -757,13 +761,13 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 				if stateErr != nil {
 					logVMDebugInfo(t, vm)
 
-					return fmt.Errorf("Giving up waiting for log %q on %s after %ds: %w", want, vm, count, stateErr)
+					return fmt.Errorf("Giving up waiting for log %q on %s after %s: %w", want, vm, time.Since(start).Truncate(time.Second), stateErr)
 				}
 			}
 		}
 
 		if count%10 == 0 {
-			t.Logf("Waiting %ds for log %q on %s", count, want, vm)
+			t.Logf("Waiting %s for log %q on %s", time.Since(start).Truncate(time.Second), want, vm)
 		}
 
 		count++
@@ -775,19 +779,19 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 			}
 
 			if lastErr != "" {
-				return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last error: %s: %w", count, want, vm, lastErr, ctx.Err())
+				return fmt.Errorf("Timed out after %s waiting for log %q on %s, last error: %s: %w", time.Since(start).Truncate(time.Second), want, vm, lastErr, ctx.Err())
 			}
 
 			// The log of the unit was readable, it just never contained what we
 			// were waiting for, so report its tail, since it is the only hint
 			// about what the unit was busy with instead.
-			return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last log of unit %q:\n%s\n: %w", count, want, vm, unit, tail(lastLog, 50), ctx.Err())
+			return fmt.Errorf("Timed out after %s waiting for log %q on %s, last log of unit %q:\n%s\n: %w", time.Since(start).Truncate(time.Second), want, vm, unit, tail(lastLog, 50), ctx.Err())
 
 		case <-time.After(1 * time.Second):
 		}
 	}
 
-	t.Logf("Log %q appeared on %s after %ds", want, vm, count)
+	t.Logf("Log %q appeared on %s after %s", want, vm, time.Since(start).Truncate(time.Second))
 
 	return nil
 }

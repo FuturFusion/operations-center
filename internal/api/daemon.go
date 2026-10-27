@@ -1268,19 +1268,21 @@ func (d *Daemon) setupBackgroundTasks(
 
 	// Give IncusOS some time to download update before starting to refresh
 	// image sources.
-	delayFirstImageSourcesRefresh := sync.OnceFunc(func() {})
+	delayFirstImageSourcesRefresh := delayFirstCall(0)
 	if d.env.IsIncusOS() {
-		delayFirstImageSourcesRefresh = sync.OnceFunc(func() {
-			slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
-			time.Sleep(10 * time.Minute)
-		})
+		slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
+		delayFirstImageSourcesRefresh = delayFirstCall(10 * time.Minute)
 	}
 
 	// Start background task to refresh images from the sources.
 	refreshImageSourcesTask := func(ctx context.Context) {
-		delayFirstImageSourcesRefresh()
+		err := delayFirstImageSourcesRefresh(ctx)
+		if err != nil {
+			return
+		}
+
 		slog.InfoContext(ctx, "Refresh image sources triggered")
-		err := imageSourceSvc.RefreshAll(ctx)
+		err = imageSourceSvc.RefreshAll(ctx)
 		scope := api.WarningScope{
 			Scope:      "refresh",
 			EntityType: "image_sources",
@@ -1750,6 +1752,24 @@ func (d *Daemon) setupBackgroundTasks(
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
+}
+
+// delayFirstCall returns a function, which waits for delay on its first call
+// only. The wait ends early, if ctx is done, so the delay does not block the
+// shutdown of the daemon. The function returns the error of ctx.
+func delayFirstCall(delay time.Duration) func(ctx context.Context) error {
+	var once sync.Once
+
+	return func(ctx context.Context) error {
+		once.Do(func() {
+			select {
+			case <-ctx.Done():
+			case <-time.After(delay):
+			}
+		})
+
+		return ctx.Err()
+	}
 }
 
 // attachedSecureBootMediaIDs returns the secure boot enrollment media, that the
