@@ -1035,13 +1035,22 @@ func (d *Daemon) setupClusterService(
 
 	localClusterArtifactRepo := provisioningClusterArtifactRepo.New(db, artifactsRoot)
 
+	// Terraform runs as an external tool, which requires an absolute path. The
+	// directory is created in the temporary directory of the system.
 	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
 	if err != nil {
-		tmpTerraformDir = os.TempDir()
+		return nil, fmt.Errorf("Failed to create the temporary directory for terraform: %w", err)
 	}
 
+	terraformRoot, err := os.OpenRoot(tmpTerraformDir)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open the temporary directory for terraform: %w", err)
+	}
+
+	d.subRoots = append(d.subRoots, terraformRoot)
+
 	terraformProvisioner, err := terraform.New(
-		tmpTerraformDir,
+		terraformRoot,
 		d.clientCertificate,
 		d.clientKey,
 	)
