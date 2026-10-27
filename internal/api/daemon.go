@@ -372,7 +372,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(
+	serveMux, inventorySyncers, err := d.setupAPIRoutes(
 		ctx,
 		updateSvc,
 		tokenSvc,
@@ -388,6 +388,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		secureBootMedia,
 		dbWithTransaction,
 	)
+	if err != nil {
+		return err
+	}
+
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
@@ -1149,7 +1153,7 @@ func (d *Daemon) setupAPIRoutes(
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	db dbdriver.DBTX,
-) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
+) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
@@ -1166,7 +1170,19 @@ func (d *Daemon) setupAPIRoutes(
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
 
-	registerUIHandlers(ctx, router, ui.FS(), d.env.UsrShareDir())
+	embeddedUI := ui.FS()
+
+	var uiRoot *os.Root
+	if embeddedUI == nil {
+		var err error
+
+		uiRoot, err = d.openUIRoot(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	registerUIHandlers(ctx, router, embeddedUI, uiRoot)
 	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"
@@ -1285,7 +1301,7 @@ func (d *Daemon) setupAPIRoutes(
 
 	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter, inventoryInventoryAggregateSvc)
 
-	return serveMux, inventorySyncers
+	return serveMux, inventorySyncers, nil
 }
 
 func (d *Daemon) setupBackgroundTasks(
