@@ -439,6 +439,8 @@ func TestChannelService_GetChangelog(t *testing.T) {
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
 	updateV3UUID := uuidgen.FromPattern(t, "3")
+	updateV1LocalUUID := uuidgen.FromPattern(t, "4")
+	updateV2LocalUUID := uuidgen.FromPattern(t, "5")
 
 	tests := []struct {
 		name                      string
@@ -567,6 +569,99 @@ func TestChannelService_GetChangelog(t *testing.T) {
 			},
 		},
 
+		{
+			name:            "success - skip updates with same version",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+						{
+							UUID:    updateV2UUID,
+							Version: "2",
+						},
+						{
+							UUID:    updateV2LocalUUID,
+							Version: "2",
+						},
+						{
+							UUID:    updateV3UUID,
+							Version: "3",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "3",
+						PriorVersion:   "2",
+					},
+				},
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "2",
+						PriorVersion:   "1",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: api.UpdateChangelogs{
+				{
+					CurrentVersion: "3",
+					PriorVersion:   "2",
+				},
+				{
+					CurrentVersion: "2",
+					PriorVersion:   "1",
+				},
+			},
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV3UUID, updateV2UUID},
+				{updateV2UUID, updateV1UUID},
+			},
+		},
+		{
+			name:            "success - single version with multiple updates",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+						{
+							UUID:    updateV1LocalUUID,
+							Version: "1",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "1",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: api.UpdateChangelogs{
+				{
+					CurrentVersion: "1",
+				},
+			},
+			wantGetChangelogUpdates: [][2]uuid.UUID{
+				{updateV1UUID, uuid.Nil},
+			},
+		},
 		{
 			name:            "error - updateSvc.GetAllWithFilter",
 			nameArg:         "stable",
