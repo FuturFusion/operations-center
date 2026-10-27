@@ -1468,6 +1468,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 
 	updateV1UUID := uuidgen.FromPattern(t, "1")
 	updateV2UUID := uuidgen.FromPattern(t, "2")
+	updateV2LocalUUID := uuidgen.FromPattern(t, "3")
+	updateV2OtherUUID := uuidgen.FromPattern(t, "4")
 
 	manifestAsGZReadCloser := func(t *testing.T, m any) io.ReadCloser {
 		t.Helper()
@@ -1496,8 +1498,9 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 		repoGetByUUID      []queue.Item[*provisioning.Update]
 		repoUpdateFilesGet []queue.Item[io.ReadCloser]
 
-		assertErr     require.ErrorAssertionFunc
-		wantChangelog api.UpdateChangelog
+		wantGetByUUIDIDs []uuid.UUID
+		assertErr        require.ErrorAssertionFunc
+		wantChangelog    api.UpdateChangelog
 	}{
 		{
 			name:            "success - not upstream",
@@ -1574,7 +1577,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			wantGetByUUIDIDs: []uuid.UUID{updateV2UUID, updateV1UUID},
+			assertErr:        require.NoError,
 			wantChangelog: images.Changelog{
 				CurrentVersion: "2",
 				PriorVersion:   "1",
@@ -1633,7 +1637,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			wantGetByUUIDIDs: []uuid.UUID{updateV2UUID},
+			assertErr:        require.NoError,
 			wantChangelog: images.Changelog{
 				CurrentVersion: "2",
 				Channel:        "stable",
@@ -1719,7 +1724,106 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			wantGetByUUIDIDs: []uuid.UUID{updateV2UUID, updateV1UUID},
+			assertErr:        require.NoError,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Channel:        "stable",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Updated: []string{"foo version 1 to version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:            "success - skip updates with same version",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2LocalUUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						{
+							UUID:     updateV2OtherUUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+						},
+					},
+				},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+				// prior
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "1",
+							},
+						},
+					}),
+				},
+			},
+
+			wantGetByUUIDIDs: []uuid.UUID{updateV2UUID, updateV1UUID},
+			assertErr:        require.NoError,
 			wantChangelog: images.Changelog{
 				CurrentVersion: "2",
 				PriorVersion:   "1",
@@ -1743,7 +1847,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
-			assertErr: boom.ErrorIs,
+			wantGetByUUIDIDs: nil,
+			assertErr:        boom.ErrorIs,
 		},
 		{
 			name:            "error - currrent not found",
@@ -1764,6 +1869,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
+			wantGetByUUIDIDs: nil,
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
 			},
@@ -1797,7 +1903,8 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			},
 
-			assertErr: boom.ErrorIs,
+			wantGetByUUIDIDs: []uuid.UUID{updateV2UUID},
+			assertErr:        boom.ErrorIs,
 		},
 	}
 
@@ -1806,6 +1913,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 			t.Parallel()
 
 			// Setup
+			var gotGetByUUIDIDs []uuid.UUID
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 					return queue.Pop(t, &tc.repoGetAll)
@@ -1814,6 +1922,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 					return queue.Pop(t, &tc.repoGetAll)
 				},
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					gotGetByUUIDIDs = append(gotGetByUUIDIDs, id)
 					return queue.Pop(t, &tc.repoGetByUUID)
 				},
 			}
@@ -1834,6 +1943,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantChangelog, changelog)
+			require.Equal(t, tc.wantGetByUUIDIDs, gotGetByUUIDIDs, "expect the current and the prior update to be requested")
 
 			require.Empty(t, tc.repoGetAll)
 			require.Empty(t, tc.repoGetByUUID)
