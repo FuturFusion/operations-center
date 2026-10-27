@@ -236,6 +236,13 @@ const (
 	// budget of the operation on retrying.
 	BMCRequestRetryBudget = 30 * time.Second
 
+	// Upper bound for a request or response body kept in a BMC recording.
+	BMCRecordingBodyLimit = 1 << 20
+
+	// Number of BMC recordings kept per server. Older ones are removed when a
+	// new one is opened.
+	BMCRecordingsPerServer = 5
+
 	// Time after the last access, after which a cached seed image is removed.
 	SeedImageCacheTTL = 2 * time.Hour
 
