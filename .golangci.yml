@@ -97,6 +97,18 @@ linters:
           msg: Pure packages must not load certificates from disk. Use a port.
         - pattern: ^time\.Sleep$
           msg: Pure packages must not block. Inject a clock or use a port.
+        # File system access goes through os.Root to prevent path traversal.
+        # Paths that come from the user, fixed system directories and paths for
+        # external tools are excluded below or annotated with //nolint:forbidigo.
+        - pattern: ^os\.(Chmod|Chown|Chtimes|Create|CreateTemp|DirFS|Lchown|Link|Lstat|Mkdir|MkdirAll|MkdirTemp|Open|OpenFile|ReadDir|ReadFile|Readlink|Remove|RemoveAll|Rename|Stat|Symlink|Truncate|WriteFile)$
+          msg: Use os.Root for file system access.
+        - pattern: ^filepath\.(Glob|Walk|WalkDir)$
+          msg: Use os.Root for file system access, for example fs.WalkDir(root.FS(), ...).
+        - pattern: ^http\.Dir$
+          msg: Use os.Root for file system access, for example http.FS(root.FS()).
+        - pattern: ^file\.(Copy|PathExists|WriteFileAtomic)$
+          pkg: ^github\.com/FuturFusion/operations-center/internal/util/file$
+          msg: Use os.Root for file system access, for example file.PathExistsIn or file.WriteFileAtomicIn.
     gocritic:
       disable-all: true
       enabled-checks:
@@ -265,10 +277,6 @@ linters:
         path: '^internal/provisioning/cluster_ports\.go$'
         text: "incus/v7/client"
       - linters:
-          - depguard
-        path: '^internal/system/system_service\.go$'
-        text: "'os'"
-      - linters:
           - forbidigo
         path: '^internal/provisioning/cluster/cluster_service\.go$'
         text: "Pure packages must"
@@ -278,12 +286,23 @@ linters:
         text: "Pure packages must"
       - linters:
           - forbidigo
-        path: '^internal/system/system_service(_backup)?\.go$'
+        path: '^internal/system/system_service_backup\.go$'
         text: "Pure packages must"
       - linters:
           - forbidigo
         path: '^internal/provisioning/server/server_service\.go$'
         text: "Pure packages must"
+      # File system access through os.Root. Tests, tools, the command line
+      # client and low level helpers work with paths provided by the user.
+      - linters:
+          - forbidigo
+        text: "Use os.Root for file system access"
+        path: '(_test\.go$|^e2e_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
+      # The work dir of the secure boot media is passed to external tools, which need absolute paths.
+      - linters:
+          - forbidigo
+        text: "Use os.Root for file system access"
+        path: '^internal/provisioning/adapter/securebootmedia/build\.go$'
       - linters:
           - revive
         # generate-database expects to find declarations of the form //generate-database: in the entities package.
