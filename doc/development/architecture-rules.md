@@ -86,8 +86,8 @@ The lint configuration lists these exceptions. The baseline entries in
 `.golangci.yml` and the `TODO` comments in `.go-arch-lint.yml` mark the open
 work. Remove an exception when its code is fixed.
 
-* The CLI and the client import service packages for validation functions and
-  constant values. These should move to `shared/api`.
+* The CLI imports service packages for validation functions and constant
+  values. These should move to `shared/api`.
 * Some pure packages use `net/http`, `os` or `time.Sleep`. These should use
   ports or injected clocks.
 * The Incus client is used by the cluster ports file. It should move behind an
