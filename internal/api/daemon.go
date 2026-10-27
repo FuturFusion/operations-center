@@ -315,7 +315,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
-	tokenSvc, imageFlasher := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+	tokenSvc, imageFlasher, err := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+	if err != nil {
+		return err
+	}
 
 	seedImageProgress := provisioningAdapterMiddleware.NewSeedImageProgressPortWithSlog(
 		seedprogress.New(),
@@ -880,11 +883,16 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	), nil
 }
 
-func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher) {
+func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher, error) {
+	seedImageCacheRoot, err := d.openSubRoot(d.cacheRoot, seedImageCacheDir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
-		flasher.WithCacheDir(filepath.Join(d.env.CacheDir(), seedImageCacheDir)),
+		flasher.WithCacheRoot(seedImageCacheRoot),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
 	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -937,7 +945,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		}
 	})
 
-	return tokenSvc, imageFlasher
+	return tokenSvc, imageFlasher, nil
 }
 
 func (d *Daemon) setupServerService(

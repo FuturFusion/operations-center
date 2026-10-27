@@ -30,6 +30,7 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -57,6 +58,7 @@ func Test_tokenSeedImageGet_servedFromCache(t *testing.T) {
 	require.NoError(t, gzipWriter.Close())
 
 	cacheDir := filepath.Join(t.TempDir(), "seed-images")
+	require.NoError(t, os.Mkdir(cacheDir, 0o700))
 
 	requireSpaceForCachedImage(t, filepath.Dir(cacheDir))
 
@@ -66,7 +68,7 @@ func Test_tokenSeedImageGet_servedFromCache(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheDir(cacheDir))
+	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)))
 
 	repo := &repoMock.TokenRepoMock{
 		GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
@@ -176,6 +178,7 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	require.NoError(t, gzipWriter.Close())
 
 	cacheDir := filepath.Join(t.TempDir(), "seed-images")
+	require.NoError(t, os.Mkdir(cacheDir, 0o700))
 
 	requireSpaceForCachedImage(t, filepath.Dir(cacheDir))
 
@@ -185,7 +188,7 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheDir(cacheDir))
+	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)))
 
 	var lookups atomic.Int64
 
