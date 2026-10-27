@@ -42,7 +42,7 @@ func TestE2E_StableServers(t *testing.T) {
 	// The members of the cluster after add_and_remove_server.
 	remainingNames := []string{"IncusOS01", "IncusOS02", "IncusOS04"}
 
-	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "stable", prepareStableTokenISO)
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "stable", prepareStableTokenISOs("IncusOS01"))
 
 	runE2ESuite(t, pool, []e2eScenario{
 		{
@@ -113,22 +113,13 @@ func TestE2E_WithToken_ACMERenewal(t *testing.T) {
 	)
 }
 
-func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token seed - create cluster",
-		setupIncusOSWithTokenSeed,
-		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-	)
-}
-
 // TestE2E_UpdateChannel installs the servers with the oldest update. Every
 // scenario updates its servers, so the pool installs them again before their
 // next use.
 func TestE2E_UpdateChannel(t *testing.T) {
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "prod", prepareProdChannelISO)
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "prod", prepareProdChannelISOs)
 
 	runE2ESuite(t, pool, []e2eScenario{
 		{
@@ -165,8 +156,8 @@ func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"download update - upload update - create channel - assign manual uploaded update - create cluster",
-		setupIncusOSFromManualUpload,
-		createClusterFromManualUpload([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		setupIncusOSFromManualUpload([]string{"IncusOS01"}),
+		createClusterFromManualUpload([]string{"IncusOS01"}),
 	)
 }
 

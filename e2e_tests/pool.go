@@ -22,9 +22,9 @@ type serverPool struct {
 	// the token, which installs the servers.
 	channel string
 
-	// prepareISO returns the name of the ISO storage volume, which installs a
-	// server of the pool.
-	prepareISO func(ctx context.Context, t *testing.T, tmpDir string) string
+	// prepareISOs returns the names of the ISO storage volumes, which install
+	// the given servers, by the name of the server.
+	prepareISOs func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string
 
 	// dirty holds the servers, which the pool installs again before their next
 	// use. A failed scenario might have left them in a bad state.
@@ -32,15 +32,15 @@ type serverPool struct {
 	cleanupRegistered bool
 }
 
-func newServerPool(t *testing.T, names []string, channel string, prepareISO func(ctx context.Context, t *testing.T, tmpDir string) string) *serverPool {
+func newServerPool(t *testing.T, names []string, channel string, prepareISOs func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string) *serverPool {
 	t.Helper()
 
 	return &serverPool{
-		suite:      t,
-		names:      names,
-		channel:    channel,
-		prepareISO: prepareISO,
-		dirty:      map[string]bool{},
+		suite:       t,
+		names:       names,
+		channel:     channel,
+		prepareISOs: prepareISOs,
+		dirty:       map[string]bool{},
 	}
 }
 
@@ -78,9 +78,9 @@ func (p *serverPool) ensureStandalone(ctx context.Context, t *testing.T, tmpDir 
 
 		mustRemoveServers(ctx, t, plan.reinstall, observed)
 
-		iso := p.prepareISO(ctx, t, tmpDir)
+		isos := p.prepareISOs(ctx, t, tmpDir, plan.reinstall)
 
-		createIncusOSInstances(ctx, t, iso, plan.reinstall)
+		createIncusOSInstances(ctx, t, isos)
 
 		for _, name := range plan.reinstall {
 			delete(p.dirty, name)
