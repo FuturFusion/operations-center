@@ -3,10 +3,12 @@ package localfs
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -24,6 +26,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -94,8 +97,7 @@ func TestLocalfs_Exists(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
 			exists, err := lfs.Exists(t.Context(), tc.update, "file1.txt")
@@ -173,8 +175,7 @@ func TestLocalfs_Get(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
 			gotReader, _, err := lfs.Get(t.Context(), tc.update, tc.filename)
@@ -262,8 +263,7 @@ func TestLocalfs_Put(t *testing.T) {
 
 			// Setup
 			tmpDir := t.TempDir()
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
 			commit, cancel, err := lfs.Put(t.Context(), tc.update, "file.name", tc.stream)
@@ -282,6 +282,84 @@ func TestLocalfs_Put(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertCommitErr(t, commitErr)
 			tc.assertCancelErr(t, cancelErr)
+		})
+	}
+}
+
+func TestLocalfs_invalidFilename(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		filename string
+		run      func(ctx context.Context, lfs *localfs, update provisioning.Update, filename string) error
+	}{
+		{
+			name:     "Exists - file of other update",
+			filename: "../" + uuidgen.FromPattern(t, "1").String() + "/file1.txt",
+			run: func(ctx context.Context, lfs *localfs, update provisioning.Update, filename string) error {
+				_, err := lfs.Exists(ctx, update, filename)
+				return err
+			},
+		},
+		{
+			name:     "Get - file of other update",
+			filename: "../" + uuidgen.FromPattern(t, "1").String() + "/file1.txt",
+			run: func(ctx context.Context, lfs *localfs, update provisioning.Update, filename string) error {
+				_, _, err := lfs.Get(ctx, update, filename)
+				return err
+			},
+		},
+		{
+			name:     "Get - absolute path",
+			filename: "/file1.txt",
+			run: func(ctx context.Context, lfs *localfs, update provisioning.Update, filename string) error {
+				_, _, err := lfs.Get(ctx, update, filename)
+				return err
+			},
+		},
+		{
+			name:     "Put - file outside of storage",
+			filename: "../../escape.txt",
+			run: func(ctx context.Context, lfs *localfs, update provisioning.Update, filename string) error {
+				content := io.NopCloser(bytes.NewBufferString("escape"))
+				_, cancel, err := lfs.Put(ctx, update, filename, content)
+				return errors.Join(err, cancel())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			parentDir := t.TempDir()
+			storageDir := filepath.Join(parentDir, "storage")
+			otherUpdateDir := filepath.Join(storageDir, uuidgen.FromPattern(t, "1").String())
+			err := os.MkdirAll(otherUpdateDir, 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(otherUpdateDir, "file1.txt"), []byte(`file1 body`), 0o600)
+			require.NoError(t, err)
+
+			lfs := New(fsroot.Open(t, storageDir), "")
+			update := provisioning.Update{
+				UUID: uuidgen.FromPattern(t, "0"),
+			}
+
+			// Run test
+			err = tc.run(t.Context(), lfs, update, tc.filename)
+
+			// Assert
+			require.ErrorContains(t, err, "Invalid file name")
+
+			parentEntries, err := os.ReadDir(parentDir)
+			require.NoError(t, err)
+			require.Len(t, parentEntries, 1, "nothing must be created outside of the storage directory")
+
+			storageEntries, err := os.ReadDir(storageDir)
+			require.NoError(t, err)
+			require.Len(t, storageEntries, 1, "only the directory of the other update must exist")
 		})
 	}
 }
@@ -335,11 +413,10 @@ func TestLocalfs_Delete(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
-			err = lfs.Delete(t.Context(), tc.update)
+			err := lfs.Delete(t.Context(), tc.update)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -405,11 +482,10 @@ func TestLocalfs_PruneFiles(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
-			err = lfs.PruneFiles(t.Context(), tc.update)
+			err := lfs.PruneFiles(t.Context(), tc.update)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -480,11 +556,10 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
-			err = lfs.CleanupAll(t.Context())
+			err := lfs.CleanupAll(t.Context())
 
 			// Assert
 			require.NoError(t, err)
@@ -504,10 +579,9 @@ func TestLocalfs_DeleteUnknown(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	lfs, err := New(tmpDir, "")
-	require.NoError(t, err)
+	lfs := New(fsroot.Open(t, tmpDir), "")
 
-	err = lfs.DeleteUnknown(t.Context(), []uuid.UUID{known})
+	err := lfs.DeleteUnknown(t.Context(), []uuid.UUID{known})
 	require.NoError(t, err)
 
 	require.DirExists(t, filepath.Join(tmpDir, known.String()))
@@ -751,8 +825,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
 			// TODO: Mock verifier to simulate different error cases
-			lfs, err := New(tmpDir, string(caCert))
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), string(caCert))
 
 			// Run test
 			gotUpdate, err := lfs.CreateFromArchive(t.Context(), tr)
@@ -833,8 +906,9 @@ func TestLocalfs_CreateFromArchive_pathTraversal(t *testing.T) {
 			storageDir := filepath.Join(parentDir, "storage")
 
 			caCert, _, _ := signaturetest.GenerateCertChain(t)
-			lfs, err := New(storageDir, string(caCert))
+			err := os.Mkdir(storageDir, 0o700)
 			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, storageDir), string(caCert))
 
 			inMemoryTar := &bytes.Buffer{}
 			tw := tar.NewWriter(inMemoryTar)

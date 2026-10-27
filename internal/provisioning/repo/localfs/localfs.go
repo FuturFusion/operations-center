@@ -31,7 +31,7 @@ import (
 )
 
 type localfs struct {
-	storageDir string
+	root *os.Root
 
 	verifier   signature.Verifier
 	verifierMu *sync.Mutex
@@ -39,23 +39,32 @@ type localfs struct {
 
 var _ provisioning.UpdateFilesRepo = localfs{}
 
-func New(storageDir string, signatureVerificationRootCA string) (*localfs, error) {
-	err := os.MkdirAll(storageDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create directory for local update storage: %w", err)
-	}
-
+// New returns an update files repository, which stores the files in root.
+func New(root *os.Root, signatureVerificationRootCA string) *localfs {
 	return &localfs{
 		verifierMu: &sync.Mutex{},
-		storageDir: storageDir,
+		root:       root,
 		verifier:   signature.NewVerifier([]byte(signatureVerificationRootCA)),
-	}, nil
+	}
+}
+
+// updateFilename returns the name of filename relative to the root.
+// Names, which leave the directory of the update, are rejected.
+func updateFilename(update provisioning.Update, filename string) (string, error) {
+	if !filepath.IsLocal(filename) {
+		return "", fmt.Errorf("Invalid file name %q for update %q", filename, update.UUID.String())
+	}
+
+	return filepath.Join(update.UUID.String(), filename), nil
 }
 
 func (l localfs) Exists(ctx context.Context, update provisioning.Update, filename string) (bool, error) {
-	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
+	name, err := updateFilename(update, filename)
+	if err != nil {
+		return false, err
+	}
 
-	_, err := os.Stat(fullFilename)
+	_, err = l.root.Stat(name)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return false, nil
@@ -68,15 +77,19 @@ func (l localfs) Exists(ctx context.Context, update provisioning.Update, filenam
 }
 
 func (l localfs) Get(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
-
-	fi, err := os.Stat(fullFilename)
+	name, err := updateFilename(update, filename)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	f, err := os.Open(fullFilename)
+	f, err := l.root.Open(name)
 	if err != nil {
+		return nil, 0, err
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		f.Close()
 		return nil, 0, err
 	}
 
@@ -84,8 +97,12 @@ func (l localfs) Get(ctx context.Context, update provisioning.Update, filename s
 }
 
 func (l localfs) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
-	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
-	temporaryFullFilename := fullFilename + ".partial"
+	name, err := updateFilename(update, filename)
+	if err != nil {
+		return nil, content.Close, err
+	}
+
+	temporaryName := name + ".partial"
 	var target *os.File
 	committed := false
 
@@ -104,19 +121,19 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 			targetCloseErr = target.Close()
 		}
 
-		if file.PathExists(temporaryFullFilename) {
-			temporaryFileRemoveErr = os.Remove(temporaryFullFilename)
+		if file.PathExistsIn(l.root, temporaryName) {
+			temporaryFileRemoveErr = l.root.Remove(temporaryName)
 		}
 
 		return errors.Join(contentCloseErr, targetCloseErr, temporaryFileRemoveErr)
 	}
 
-	err := os.MkdirAll(filepath.Dir(fullFilename), 0o700)
+	err = l.root.MkdirAll(filepath.Dir(name), 0o700)
 	if err != nil {
 		return nil, cancel, err
 	}
 
-	target, err = os.OpenFile(temporaryFullFilename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
+	target, err = l.root.OpenFile(temporaryName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, cancel, err
 	}
@@ -128,8 +145,8 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 
 	commit := func() (err error) {
 		defer func() {
-			if file.PathExists(temporaryFullFilename) {
-				removeErr := os.Remove(temporaryFullFilename)
+			if file.PathExistsIn(l.root, temporaryName) {
+				removeErr := l.root.Remove(temporaryName)
 				if removeErr != nil {
 					err = errors.Join(err, removeErr)
 				}
@@ -146,7 +163,7 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 			targetCloseErr = target.Close()
 		}
 
-		temporaryFileRenameErr = os.Rename(temporaryFullFilename, fullFilename)
+		temporaryFileRenameErr = l.root.Rename(temporaryName, name)
 
 		err = errors.Join(contentCloseErr, targetCloseErr, temporaryFileRenameErr)
 		if err != nil {
@@ -162,21 +179,19 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 }
 
 func (l localfs) Delete(ctx context.Context, update provisioning.Update) error {
-	fullFilename := filepath.Join(l.storageDir, update.UUID.String())
-
-	return os.RemoveAll(fullFilename)
+	return l.root.RemoveAll(update.UUID.String())
 }
 
 func (l localfs) PruneFiles(ctx context.Context, update provisioning.Update) error {
 	// Remove all files from the update, that are not required by the update.
-	basePath := filepath.Join(l.storageDir, update.UUID.String())
+	basePath := update.UUID.String()
 
 	filesLookup := make(map[string]bool, len(update.Files))
 	for _, updateFile := range update.Files {
 		filesLookup[updateFile.Filename] = true
 	}
 
-	err := filepath.WalkDir(basePath, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(l.root.FS(), basePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
@@ -199,7 +214,7 @@ func (l localfs) PruneFiles(ctx context.Context, update provisioning.Update) err
 		}
 
 		if !filesLookup[relPath] {
-			err = os.RemoveAll(path)
+			err = l.root.RemoveAll(path)
 			if err != nil {
 				return err
 			}
@@ -212,21 +227,21 @@ func (l localfs) PruneFiles(ctx context.Context, update provisioning.Update) err
 }
 
 func (l localfs) CleanupAll(ctx context.Context) error {
-	dir, err := os.ReadDir(l.storageDir)
+	dir, err := fs.ReadDir(l.root.FS(), ".")
 	if err != nil {
-		return fmt.Errorf("Failed to read storage directory %q: %w", l.storageDir, err)
+		return fmt.Errorf("Failed to read storage directory %q: %w", l.root.Name(), err)
 	}
 
 	var errs []error
 	for _, entry := range dir {
-		err = os.RemoveAll(filepath.Join(l.storageDir, entry.Name()))
+		err = l.root.RemoveAll(entry.Name())
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 
 	if len(errs) != 0 {
-		return fmt.Errorf("Cleanup storage directory %q caused errors, operation might be still partly successful: %v", l.storageDir, errors.Join(errs...))
+		return fmt.Errorf("Cleanup storage directory %q caused errors, operation might be still partly successful: %v", l.root.Name(), errors.Join(errs...))
 	}
 
 	return nil
@@ -234,9 +249,9 @@ func (l localfs) CleanupAll(ctx context.Context) error {
 
 // DeleteUnknown removes the files of all updates, which are not in known.
 func (l localfs) DeleteUnknown(ctx context.Context, known []uuid.UUID) error {
-	dir, err := os.ReadDir(l.storageDir)
+	dir, err := fs.ReadDir(l.root.FS(), ".")
 	if err != nil {
-		return fmt.Errorf("Failed to read storage directory %q: %w", l.storageDir, err)
+		return fmt.Errorf("Failed to read storage directory %q: %w", l.root.Name(), err)
 	}
 
 	var errs []error
@@ -246,7 +261,7 @@ func (l localfs) DeleteUnknown(ctx context.Context, known []uuid.UUID) error {
 			continue
 		}
 
-		err = os.RemoveAll(filepath.Join(l.storageDir, entry.Name()))
+		err = l.root.RemoveAll(entry.Name())
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -258,14 +273,8 @@ func (l localfs) DeleteUnknown(ctx context.Context, known []uuid.UUID) error {
 const tmpUpdateDirPrefix = "tmp-update-*"
 
 func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.Update, err error) {
-	// Ensure, storage directory is present
-	err = os.MkdirAll(l.storageDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to add update: %w", err)
-	}
-
 	var tmpDir string
-	tmpDir, err = os.MkdirTemp(l.storageDir, tmpUpdateDirPrefix)
+	tmpDir, err = file.MkdirTempIn(l.root, ".", tmpUpdateDirPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to add update: %w", err)
 	}
@@ -275,25 +284,36 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 			return
 		}
 
-		removeErr := os.RemoveAll(tmpDir)
+		removeErr := l.root.RemoveAll(tmpDir)
 		if removeErr != nil {
 			slog.ErrorContext(ctx, "Failed to cleanup after unsuccessfully adding update files", slog.String("directory", tmpDir), logger.Err(removeErr))
 		}
 	}()
 
+	tmpRoot, err := l.root.OpenRoot(tmpDir)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to add update: %w", err)
+	}
+
+	defer tmpRoot.Close()
+
 	// Extract content from tar archive.
-	extractedFiles, err := extractTar(ctx, tarReader, tmpDir)
+	extractedFiles, err := extractTar(ctx, tarReader, tmpRoot)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify update.sjson signature.
-	filename := filepath.Join(tmpDir, "update.sjson")
+	updateSJSONBody, err := tmpRoot.ReadFile("update.sjson")
+	if err != nil {
+		return nil, fmt.Errorf(`Invalid archive, failed to read "update.sjson": %w`, err)
+	}
+
 	l.verifierMu.Lock()
-	verifiedUpdateJSONBody, err := l.verifier.VerifyFile(filename)
+	verifiedUpdateJSONBody, err := l.verifier.Verify(updateSJSONBody)
 	l.verifierMu.Unlock()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to verify signature for %q: %w", filename, err)
+		return nil, fmt.Errorf(`Failed to verify signature for "update.sjson": %w`, err)
 	}
 
 	// Read Changelog.
@@ -303,19 +323,19 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 	}
 
 	// Return an error, if update with the same UUID is already present.
-	_, err = os.Stat(filepath.Join(l.storageDir, updateManifest.UUID.String()))
+	_, err = l.root.Stat(updateManifest.UUID.String())
 	if err == nil {
 		return nil, fmt.Errorf("Update already existing")
 	}
 
 	// Verify files of the update.
-	err = verifyUpdateFiles(ctx, tmpDir, updateManifest, extractedFiles)
+	err = verifyUpdateFiles(ctx, tmpRoot, updateManifest, extractedFiles)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update processed successfully, rename the temporary folder to the UUID of the update.
-	err = os.Rename(tmpDir, filepath.Join(l.storageDir, updateManifest.UUID.String()))
+	err = l.root.Rename(tmpDir, updateManifest.UUID.String())
 	if err != nil {
 		return nil, fmt.Errorf("Filed to rename update files folder %q to %q: %w", tmpDir, updateManifest.UUID.String(), err)
 	}
@@ -352,14 +372,7 @@ func uuidFromUpdate(u Update) uuid.UUID {
 	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
 }
 
-func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (extractedFiles map[string]struct{}, err error) {
-	destRoot, err := os.OpenRoot(destDir)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open target directory %q: %w", destDir, err)
-	}
-
-	defer destRoot.Close()
-
+func extractTar(ctx context.Context, tarReader *tar.Reader, destRoot *os.Root) (extractedFiles map[string]struct{}, err error) {
 	extractedFiles = make(map[string]struct{}, 20)
 	for {
 		var hdr *tar.Header
@@ -379,7 +392,7 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (ext
 			}
 
 			sourceFile := filepath.Clean(hdr.Name)
-			targetFile := filepath.Join(destDir, sourceFile)
+			targetFile := filepath.Join(destRoot.Name(), sourceFile)
 
 			slog.DebugContext(ctx, "extract tar", slog.String("target_file", targetFile), slog.String("source_file", sourceFile))
 
@@ -475,12 +488,12 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, extractedFiles map[string
 	return update, nil
 }
 
-func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *provisioning.Update, extractedFiles map[string]struct{}) error {
+func verifyUpdateFiles(ctx context.Context, destRoot *os.Root, updateManifest *provisioning.Update, extractedFiles map[string]struct{}) error {
 	var err error
 
 	for _, updateFile := range updateManifest.Files {
 		err = func() error {
-			f, err := os.Open(filepath.Join(destDir, updateFile.Filename))
+			f, err := destRoot.Open(updateFile.Filename)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					return nil
@@ -522,7 +535,7 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 
 	// Delete any extra file.
 	for entry := range extractedFiles {
-		err = os.Remove(filepath.Join(destDir, entry))
+		err = destRoot.Remove(entry)
 		if err != nil {
 			return fmt.Errorf("Failed to delete extra file %q: %w", entry, err)
 		}
