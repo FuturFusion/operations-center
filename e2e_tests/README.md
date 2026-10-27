@@ -7,7 +7,7 @@ needs to be set to a truthy value when running `go test`.
 
 ```shell
 export OPERATIONS_CENTER_E2E_TEST=1
-go test ./e2e_tests/ -v -timeout 60m -count 1 | tee e2e_tests_$(date +%F-%H-%M-%S).out
+go test ./e2e_tests/ -v -timeout 180m -count 1 | tee e2e_tests_$(date +%F-%H-%M-%S).out
 ```
 
 Use `-count 1` to disable test caching, which is important since the tests have side effects
@@ -36,6 +36,65 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
+
+## Test structure
+
+The end to end tests consist of suites and of single tests. A suite runs
+several scenarios in a fixed order. The scenarios of a suite share a pool of
+IncusOS servers, so the servers are only installed once per suite in the best
+case. See [Suites and scenarios](#suites-and-scenarios) for the details.
+
+All the tests share one Operations Center VM. The tests run in the following
+order:
+
+| Top level test                           | Server pool                                  | Content                                                                    |
+|------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|
+| `TestE2E_OperationsCenter`               | none                                         | Suite of the scenarios, which need no IncusOS server                       |
+| `TestE2E_StableServers`                  | IncusOS01 to IncusOS04 on the stable channel | Suite of the scenarios with servers and clusters                           |
+| `TestE2E_UpdateChannel`                  | IncusOS01 to IncusOS04 on the prod channel   | Suite of the update scenarios                                              |
+| `TestE2E_WithTokenSeed_DeployServer`     | none                                         | Single test, deploys IncusOS01 through its BMC                             |
+| `TestE2E_FromManualUpload_CreateCluster` | none                                         | Single test, creates a single node cluster from a manually uploaded update |
+
+### `TestE2E_OperationsCenter`
+
+| Scenario                               | Content                                                                                                      |
+|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `basic_interactions`                   | CLI commands for admin, query, system, debug, metrics, backup and restore, token seeds and cluster templates |
+| `provisioning_updates_channels_tokens` | Updates, channels and tokens, see [Updates, channels and tokens](#updates-channels-and-tokens)               |
+| `oidc_authentication`                  | Authentication through OIDC, see [Fake OIDC provider](#fake-oidc-provider)                                   |
+| `openfga_authorization`                | Authorization through OpenFGA, see [OpenFGA server](#openfga-server)                                         |
+| `updates_cleanup_and_refresh`          | Removes all the updates and refreshes them. Runs last.                                                       |
+
+### `TestE2E_StableServers`
+
+The servers register with a token of the stable channel. The registration
+scriptlet sets their description and their properties. IncusOS01 is installed
+from the ISO of a token seed, the other servers from the ISO of the token.
+
+| Scenario                                | Standalone servers     | Cluster members                 | Content                                                     |
+|-----------------------------------------|------------------------|---------------------------------|-------------------------------------------------------------|
+| `register_server`                       | IncusOS01              |                                 | Effects of the registration scriptlet                       |
+| `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc) |
+| `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                          |
+| `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                |
+| `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates |
+| `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                 |
+| `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                        |
+| `factory_reset_cluster_with_token_seed` |                        | IncusOS01, IncusOS02, IncusOS04 | Factory reset with a given token and token seed             |
+| `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)             |
+| `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last. |
+
+### `TestE2E_UpdateChannel`
+
+The servers register with a token of the prod channel. The prod channel holds
+the oldest update, so the servers have updates pending. Every scenario updates
+its servers, so the pool installs them again before their next use.
+
+| Scenario                    | Standalone servers | Cluster members        | Content                      |
+|-----------------------------|--------------------|------------------------|------------------------------|
+| `update_server_application` | IncusOS04          |                        | Updates a single application |
+| `update_server_os_only`     | IncusOS04          |                        | Updates only the OS          |
+| `cluster_rolling_update`    |                    | IncusOS01 to IncusOS03 | Rolling update with workload |
 
 ## Setup
 
@@ -182,7 +241,7 @@ incus start e2e
 ```shell
 export OPERATIONS_CENTER_E2E_TEST=1
 export OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$HOME/tmp-e2e
-go test ./e2e_tests/ -v -timeout 60m -count 1 | tee e2e_tests.out
+go test ./e2e_tests/ -v -timeout 240m -count 1 | tee e2e_tests.out
 ```
 
 or
