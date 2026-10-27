@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterInventoryAggregates(ctx context.Context, filter inventory.InventoryAggregateFilter) ([]api.InventoryAggregate, error) {
+func (c OperationsCenterClient) GetWithFilterInventoryAggregates(ctx context.Context, filter api.InventoryAggregateFilter) ([]api.InventoryAggregate, error) {
 	query := url.Values{}
 	query = filter.AppendToURLValues(query)
 

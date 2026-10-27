@@ -72,7 +72,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		filter inventory.InventoryAggregateFilter
+		filter api.InventoryAggregateFilter
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.InventoryAggregate)
@@ -116,7 +116,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: inventory.InventoryAggregateFilter{
+			filter: api.InventoryAggregateFilter{
 				Kinds: []string{"network"},
 			},
 
@@ -136,7 +136,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: inventory.InventoryAggregateFilter{
+			filter: api.InventoryAggregateFilter{
 				Clusters: []string{"unknown"},
 			},
 
@@ -152,7 +152,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: inventory.InventoryAggregateFilter{
+			filter: api.InventoryAggregateFilter{
 				Expression: new(`name == "netOne"`),
 			},
 
@@ -171,7 +171,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: inventory.InventoryAggregateFilter{
+			filter: api.InventoryAggregateFilter{
 				Parents: []string{"poolOne"},
 			},
 
@@ -191,7 +191,7 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: inventory.InventoryAggregateFilter{
+			filter: api.InventoryAggregateFilter{
 				Parents:           []string{"poolOne"},
 				ParentIncludeNull: true,
 			},
