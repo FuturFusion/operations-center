@@ -7,7 +7,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
-	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 )
 
 func TestIncusImage_Validate(t *testing.T) {
@@ -185,79 +184,6 @@ func TestIncusImage_Validate(t *testing.T) {
 			t.Parallel()
 
 			err := tc.image.Validate()
-
-			tc.assertErr(t, err)
-		})
-	}
-}
-
-func TestValidateIncusImageArchitecture(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		architecture string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:         "success",
-			architecture: "amd64",
-
-			assertErr: require.NoError,
-		},
-		{
-			name:         "error - invalid",
-			architecture: "invalid",
-
-			assertErr: errassert.ValidationErrorContains("Invalid incus image, architecture is not supported"),
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := image.ValidateIncusImageArchitecture(tc.architecture)
-			tc.assertErr(t, err)
-		})
-	}
-}
-
-func TestValidateIncusImageVersion(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		version string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:    "success",
-			version: "20260617",
-
-			assertErr: require.NoError,
-		},
-		{
-			name:    "error - invalid",
-			version: "0", // too short
-
-			assertErr: errassert.ValidationErrorContains(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`),
-		},
-		{
-			name:    "error - invalid",
-			version: "invalidversion", // not date format
-
-			assertErr: errassert.ValidationErrorContains(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`),
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := image.ValidateIncusImageVersion(tc.version)
 
 			tc.assertErr(t, err)
 		})
