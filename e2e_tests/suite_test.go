@@ -13,13 +13,19 @@ type e2eScenario struct {
 	// name is the name of the subtest. Use snake_case, since "go test"
 	// replaces spaces with underscores.
 	name string
-	run  func(ctx context.Context, t *testing.T, tmpDir string)
+
+	// standalone lists the servers of the pool, which the scenario requires
+	// as ready servers, which are not clustered.
+	standalone []string
+
+	run func(ctx context.Context, t *testing.T, tmpDir string)
 }
 
 // runE2ESuite runs the scenarios in the given order as subtests of t. The
-// scenarios share the setup of the Operations Center. The setup runs in the
-// first scenario selected by "-run" and again after a failed scenario.
-func runE2ESuite(t *testing.T, scenarios []e2eScenario) {
+// scenarios share the setup of the Operations Center and the servers of pool.
+// The setup runs in the first scenario selected by "-run" and again after a
+// failed scenario. pool is nil, if no scenario requires a server.
+func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 	t.Helper()
 
 	if listOnly {
@@ -34,6 +40,7 @@ func runE2ESuite(t *testing.T, scenarios []e2eScenario) {
 
 	skipUnlessE2ETestEnabled(t)
 
+	suite := t
 	needsSetup := true
 
 	for _, scenario := range scenarios {
@@ -42,17 +49,26 @@ func runE2ESuite(t *testing.T, scenarios []e2eScenario) {
 				t.Helper()
 
 				if needsSetup {
-					setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
+					setupOperationsCenterOrMarkBroken(ctx, t, suite, tmpDir)
 					needsSetup = false
+				}
+
+				if len(scenario.standalone) > 0 {
+					pool.ensureStandalone(ctx, t, tmpDir, scenario.standalone)
 				}
 
 				scenario.run(ctx, t, tmpDir)
 			})
 		})
 
-		// A failed scenario might leave the Operations Center in a bad state.
+		// A failed scenario might leave the Operations Center and its servers
+		// in a bad state.
 		if !ok {
 			needsSetup = true
+
+			if len(scenario.standalone) > 0 {
+				pool.markDirty(scenario.standalone)
+			}
 		}
 	}
 }

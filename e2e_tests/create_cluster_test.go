@@ -143,34 +143,3 @@ func createClusterWithChannelName(channelName string, serverNames []string) func
 		assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
 	}
 }
-
-func clusterCleanup(t *testing.T) func() {
-	t.Helper()
-
-	return func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		stop := timeTrack(t, "cluster cleanup")
-		defer stop()
-
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
-		if !resp.Success() {
-			t.Error(resp.Error())
-			return
-		}
-
-		for cluster := range strings.Lines(resp.Output()) {
-			cluster = strings.TrimSpace(cluster)
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
-		}
-	}
-}
