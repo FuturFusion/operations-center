@@ -52,11 +52,11 @@ creates from `.go-arch-lint.yml`.
 
 ## Where to put a type
 
-| Package                              | Use for                                                |
-|--------------------------------------|--------------------------------------------------------|
-| `shared/api`                         | Types of the REST API. The client and the UI use them. |
-| `internal/<service>/<name>_model.go` | Types that the business logic and the adapters use.    |
-| `internal/domain`                    | Errors and helpers that more than one service uses.    |
+| Package                              | Use for                                                                                 |
+|--------------------------------------|-----------------------------------------------------------------------------------------|
+| `shared/api`                         | Types, filters and validation of the REST API. The client, the CLI and the UI use them. |
+| `internal/<service>/<name>_model.go` | Types that the business logic and the adapters use.                                     |
+| `internal/domain`                    | Errors and helpers that more than one service uses.                                     |
 
 A model may use types from `shared/api` to keep the code simple.
 `shared/api` must not import service packages.
@@ -86,8 +86,6 @@ The lint configuration lists these exceptions. The baseline entries in
 `.golangci.yml` and the `TODO` comments in `.go-arch-lint.yml` mark the open
 work. Remove an exception when its code is fixed.
 
-* The CLI imports service packages for validation functions and constant
-  values. These should move to `shared/api`.
 * Some pure packages use `net/http`, `os` or `time.Sleep`. These should use
   ports or injected clocks.
 * The Incus client is used by the cluster ports file. It should move behind an
