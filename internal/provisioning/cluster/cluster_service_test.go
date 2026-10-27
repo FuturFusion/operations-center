@@ -17138,6 +17138,22 @@ func TestClusterService_Rename(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name:    "error - new name with path separator",
+			oldName: "one",
+			newName: "../../escape", // invalid
+
+			assertErr:     errassert.ValidationErrorContains(`Invalid cluster, name can not contain any of`),
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - new name is parent directory",
+			oldName: "one",
+			newName: "..", // invalid
+
+			assertErr:     errassert.ValidationErrorContains(`Invalid cluster, name can not be ".."`),
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name:          "error - repo.Rename",
 			oldName:       "one",
 			newName:       "one new",

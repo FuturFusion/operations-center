@@ -40,16 +40,31 @@ type Cluster struct {
 
 const nameProhibitedCharacters = `\/:*?"<>|`
 
-func (c Cluster) Validate() error {
-	if c.Name == "" {
+// ValidateClusterName checks, that name is a valid cluster name.
+// The name is used as directory name, so "." and ".." are not allowed.
+func ValidateClusterName(name string) error {
+	if name == "" {
 		return domain.NewValidationErrf("Invalid cluster, name can not be empty")
 	}
 
-	if strings.ContainsAny(c.Name, nameProhibitedCharacters) {
+	if strings.ContainsAny(name, nameProhibitedCharacters) {
 		return domain.NewValidationErrf("Invalid cluster, name can not contain any of %q", nameProhibitedCharacters)
 	}
 
-	_, err := url.Parse(c.ConnectionURL)
+	if name == "." || name == ".." {
+		return domain.NewValidationErrf("Invalid cluster, name can not be %q", name)
+	}
+
+	return nil
+}
+
+func (c Cluster) Validate() error {
+	err := ValidateClusterName(c.Name)
+	if err != nil {
+		return err
+	}
+
+	_, err = url.Parse(c.ConnectionURL)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)
 	}

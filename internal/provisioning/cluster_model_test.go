@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -62,6 +63,42 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - name is current directory",
+			cluster: provisioning.Cluster{
+				Name:          ".", // invalid
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid cluster, name can not be "."`),
+		},
+		{
+			name: "error - name is parent directory",
+			cluster: provisioning.Cluster{
+				Name:          "..", // invalid
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid cluster, name can not be ".."`),
+		},
+		{
+			name: "success - name with dots",
+			cluster: provisioning.Cluster{
+				Name:          "..cluster.example..", // dots are allowed, if the name is not "." or ".."
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
+			},
+
+			assertErr: require.NoError,
 		},
 		{
 			name: "error - server name list empty",
