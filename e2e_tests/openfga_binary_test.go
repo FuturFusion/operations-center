@@ -14,15 +14,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 )
 
 const (
-	openFGAVersion = "1.8.9"
+	// openFGAVersion must match the version of the github.com/openfga/openfga
+	// module in go.mod.
+	openFGAVersion = "1.22.0"
 
 	openFGABinaryName = "openfga"
 
@@ -35,8 +39,8 @@ const (
 // openFGAVersion. The sums are from the checksums.txt file of the release.
 // Update the sums together with openFGAVersion.
 var openFGATarballSHA256 = map[string]string{
-	"linux_amd64": "a3123260754323b7c592f8218179feccdee0e12851e241cd4fe53b509dc4bf5b",
-	"linux_arm64": "0978aa24057f1183c4a0a11a24f31c4f89c26ee95144d51ab7c07301563ea5af",
+	"linux_amd64": "eaa86a22c7ece1e461467082447fdf943bd2aca03ed400e31d5c82953d85cf14",
+	"linux_arm64": "51d74f9a98ef958f0fd41caff96384962b22c66a803572ee7532438839f9f6a4",
 }
 
 // ensureOpenFGABinary returns the path of the OpenFGA binary below tmpDir. It
@@ -211,4 +215,21 @@ func extractOpenFGABinary(tarball io.Reader, target string) (err error) {
 	}
 
 	return os.Rename(binary.Name(), target)
+}
+
+func TestOpenFGAVersionMatchesGoMod(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	goMod, err := os.ReadFile("../go.mod")
+	require.NoError(t, err, "Failed to read go.mod")
+
+	// Run test
+	modFile, err := modfile.ParseLax("go.mod", goMod, nil)
+	require.NoError(t, err, "Failed to parse go.mod")
+
+	// Assert
+	require.True(t, slices.ContainsFunc(modFile.Require, func(r *modfile.Require) bool {
+		return r.Mod.Path == "github.com/openfga/openfga" && r.Mod.Version == "v"+openFGAVersion
+	}), "go.mod requires a different version of github.com/openfga/openfga than openFGAVersion %q", openFGAVersion)
 }

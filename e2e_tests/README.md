@@ -499,8 +499,8 @@ pinned version. OpenFGA writes its log to `openfga.log` in the temporary
 directory.
 
 The download needs access to `github.com`. Only Linux hosts on amd64 and arm64
-are supported. The pinned version is independent of the OpenFGA module version
-in `go.mod`.
+are supported. The pinned version must match the OpenFGA module version in
+`go.mod`. `TestOpenFGAVersionMatchesGoMod` verifies this.
 
 A test run without cleanup leaves OpenFGA running. Run
 `make clean-e2e-test-soft` to stop it.
