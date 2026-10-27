@@ -231,6 +231,8 @@ doc-linkcheck: doc-setup
 doc-lint:
 	doc/.sphinx/.markdownlint/doc-lint.sh
 
+# GO_TEST_RUN is used with $(value ...), so the "$" anchors of a regex like
+# '^TestE2E_Suite$/^scenario$' reach "go test" unchanged.
 GO_TEST_RUN ?= "^TestE2E"
 
 GO_TEST_TIMEOUT ?= 240m
@@ -238,16 +240,16 @@ GO_TEST_COVER_TIMEOUT ?= 360m
 
 .PHONY: e2e-test
 e2e-test: bld
-	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
+	@echo "go test flags: $(value GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout $(GO_TEST_TIMEOUT) -count 1 -failfast -run "$(GO_TEST_RUN)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout $(GO_TEST_TIMEOUT) -count 1 -failfast -run "$(value GO_TEST_RUN)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
 
 .PHONY: e2e-test-cover
 e2e-test-cover: bld-cover
-	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test-cover GO_TEST_RUN=TestMyTest')"
+	@echo "go test flags: $(value GO_TEST_RUN) (change by running 'make e2e-test-cover GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(GOCOVERDIR)
 	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -cover -covermode atomic -coverpkg=./... -v -count 1 -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/unit_tests_$(EXECUTION_DATETIME).log
-	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -covermode atomic -coverpkg=./... -v -timeout $(GO_TEST_COVER_TIMEOUT) -count 1 -run "$(GO_TEST_RUN)" -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -covermode atomic -coverpkg=./... -v -timeout $(GO_TEST_COVER_TIMEOUT) -count 1 -run "$(value GO_TEST_RUN)" -args -test.gocoverdir="$(GOCOVERDIR)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
 	@echo ""
 	@echo "================= Coverage Report ================="
 	@$(GO) tool covdata percent -pkg $$($(GO) tool covdata pkglist -i $(GOCOVERDIR) | grep -vE '(middleware|mock|version|lifecycle)$$' | paste -sd,) -i=$(GOCOVERDIR) -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
@@ -255,9 +257,10 @@ e2e-test-cover: bld-cover
 
 .PHONY: e2e-test-list
 e2e-test-list:
-	@$(GO) test -list '^TestE2E' ./e2e_tests/
+	@GO=$(GO) scripts/e2e/select.sh list
 	@echo ""
 	@echo "Run a single test case by running 'make e2e-test GO_TEST_RUN=\"^TestMyTest$$\"'"
+	@echo "Run a single scenario of a suite by running 'make e2e-test GO_TEST_RUN=\"^TestMySuite$$/^my_scenario$$\"'"
 	@echo "Select test cases interactively by running 'make e2e-test-select' or 'make e2e-test-select-multi'"
 
 # E2E_TARGET is the make target that runs the selected e2e tests.

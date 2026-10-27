@@ -10,22 +10,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createClusterAndThenClusterReboot(ctx context.Context, t *testing.T, tmpDir string) {
+func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	clusterName := "incus-os-cluster"
+	clusterName := incusOSClusterName
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	createCluster(names)(ctx, t, tmpDir)
-
-	t.Log("Start some small VMs for the cluster to have some minimal workload.")
 	instanceNames := make([]string, 0, len(names))
 	for i := range names {
 		instanceNames = append(instanceNames, fmt.Sprintf("mini-alpine-%d", i))
-		mustRun(t, `incus launch --vm images:alpine/edge %s:%s -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, instanceNames[i])
+	}
+
+	// Register cleanup
+	t.Cleanup(workloadCleanup(t, clusterName, instanceNames))
+
+	t.Log("Start some small VMs for the cluster to have some minimal workload.")
+	for _, instanceName := range instanceNames {
+		mustRun(t, `incus launch --vm images:alpine/edge %s:%s -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, instanceName)
 	}
 
 	assertWorkloadRunning(ctx, t, "Reboot cluster - pre reboot workload", clusterName, instanceNames)
@@ -116,6 +120,32 @@ func createClusterAndThenClusterReboot(ctx context.Context, t *testing.T, tmpDir
 	assertWorkloadRunning(ctx, t, "Reboot cluster - post reboot workload", clusterName, instanceNames)
 
 	t.Log("Reboot cluster - rolling reboot completed")
+}
+
+// workloadCleanup removes the workload, so the next scenario gets the cluster
+// without it.
+func workloadCleanup(t *testing.T, clusterName string, instanceNames []string) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(2*time.Minute))
+		defer cancel()
+
+		stop := timeTrack(t, "workload cleanup")
+		defer stop()
+
+		for _, instanceName := range instanceNames {
+			resp := runWithContext(ctx, t, `incus delete --force %s:%s`, clusterName, instanceName)
+			if !resp.Success() {
+				t.Logf("Failed to remove instance %q during cleanup: %s", instanceName, resp.Error())
+			}
+		}
+	}
 }
 
 const workloadAgentTimeout = 5 * time.Minute

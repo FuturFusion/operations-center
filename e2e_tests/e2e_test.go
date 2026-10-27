@@ -4,214 +4,143 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestE2E_WithToken_SetupOnly(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - basic operations center interactions",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+func TestE2E_OperationsCenter(t *testing.T) {
+	runE2ESuite(t, nil, []e2eScenario{
+		{
+			name: "basic_interactions",
+			run:  basicOperationsCenterInteractions,
 		},
-		basicOperationsCenterInteractions,
-	)
-}
-
-func TestE2E_WithToken_RegisterServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - basic operations center interactions",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		registerServer,
-	)
-}
-
-func TestE2E_WithToken_ACMERenewal(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - ACME renewal with private CA",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+		{
+			name: "provisioning_updates_channels_tokens",
+			run:  provisioningUpdatesChannelsAndTokens,
 		},
-		acmeRenewal([]string{"IncusOS01", "IncusOS02"}),
-	)
-}
-
-func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - register Operations Center as images remote and launch instance",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		ocIncusImagesRemoteLaunchInstance([]string{"IncusOS01"}),
-	)
-}
-
-func TestE2E_ProvisioningUpdatesChannelsAndTokens(t *testing.T) {
-	runE2ETest(
-		t,
-		"provisioning updates, channels and tokens without servers",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+		{
+			name: "oidc_authentication",
+			run:  oidcAuthentication,
 		},
-		provisioningUpdatesChannelsAndTokens,
-	)
-}
-
-func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
-	runE2ETest(
-		t,
-		"updates cleanup and refresh",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+		{
+			name: "openfga_authorization",
+			run:  openFGAAuthorization,
 		},
-		basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
-	)
-}
-
-func TestE2E_OIDCAuthentication(t *testing.T) {
-	runE2ETest(
-		t,
-		"authenticate against operations center using OIDC",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+		{
+			// Deletes all the updates, so it runs last.
+			name: "updates_cleanup_and_refresh",
+			run:  basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
 		},
-		oidcAuthentication,
-	)
+	})
 }
 
-func TestE2E_OpenFGAAuthorization(t *testing.T) {
-	runE2ETest(
-		t,
-		"authorize OIDC users of operations center using OpenFGA",
-		func(ctx context.Context, t *testing.T, tmpDir string) {
-			t.Helper()
+func TestE2E_StableServers(t *testing.T) {
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
+	// The members of the cluster after add_and_remove_server.
+	remainingNames := []string{"IncusOS01", "IncusOS02", "IncusOS04"}
+
+	acmeNames := []string{"IncusOS01", "IncusOS02"}
+	acme := newACMERenewal(acmeNames)
+
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "stable", prepareStableTokenISOs("IncusOS01"))
+
+	runE2ESuite(t, pool, []e2eScenario{
+		{
+			// Runs first, so the pool installs all the servers after prepare.
+			// This way, the following scenarios reuse the servers.
+			name:       "acme_renewal",
+			standalone: acmeNames,
+			prepare:    acme.prepare,
+			run:        acme.run,
 		},
-		openFGAAuthorization,
-	)
+		{
+			name:       "register_server",
+			standalone: []string{"IncusOS01"},
+			run:        registerServer,
+		},
+		{
+			name:       "bmc_power_off_and_on",
+			standalone: []string{"IncusOS01"},
+			run:        serverBMCPowerOffAndOn("IncusOS01"),
+		},
+		{
+			name:       "create_cluster",
+			standalone: names,
+			run:        createAndAssertCluster("stable", names),
+		},
+		{
+			name:    "cluster_rolling_reboot",
+			cluster: names,
+			run:     clusterRollingReboot,
+		},
+		{
+			name:    "factory_reset_cluster",
+			cluster: names,
+			run:     factoryResetCluster,
+		},
+		{
+			name:       "create_cluster_from_template",
+			standalone: names,
+			run:        createClusterFromTemplate,
+		},
+		{
+			name:       "add_and_remove_server",
+			standalone: []string{"IncusOS04"},
+			cluster:    names,
+			run:        addAndRemoveServer,
+		},
+		{
+			name:    "factory_reset_cluster_with_token_seed",
+			cluster: remainingNames,
+			run:     factoryResetClusterWithTokenSeed(remainingNames),
+		},
+		{
+			// Uses the server, which add_and_remove_server removed from the
+			// cluster. It leaves IncusOS03 clustered without a record.
+			name:       "images_remote_launch_instance",
+			standalone: []string{"IncusOS03"},
+			run:        ocIncusImagesRemoteLaunchInstance([]string{"IncusOS03"}),
+		},
+		{
+			// Stops IncusOS04, so it runs last.
+			name:    "force_remove_lost_server",
+			cluster: remainingNames,
+			run:     forceRemoveLostServer("IncusOS04", []string{"IncusOS01", "IncusOS02"}),
+		},
+	})
 }
 
-func TestE2E_WithToken_CreateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-	)
-}
+// TestE2E_UpdateChannel installs the servers with the oldest update. Every
+// scenario updates its servers, so the pool installs them again before their
+// next use.
+func TestE2E_UpdateChannel(t *testing.T) {
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-func TestE2E_WithToken_CreateSingleNodeCluster(t *testing.T) {
-	t.Skip("included in TestE2E_WithToken_OCImagesRemoteLaunchInstance")
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "prod", prepareProdChannelISOs)
 
-	runE2ETest(
-		t,
-		"token - create single node cluster",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		createCluster([]string{"IncusOS01"}),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndAddServerAndRemoveServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}),
-		createClusterAndAddServerAndRemoveServer(),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndForceRemoveLostServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndForceRemoveLostServer(),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster from cluster template",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterFromTemplate,
-	)
-}
-
-func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - factory reset cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		factoryResetCluster,
-	)
-}
-
-func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - factory reset cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		factoryResetClusterWithTokenSeed,
-	)
-}
-
-func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token seed - create cluster",
-		setupIncusOSWithTokenSeed,
-		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-	)
-}
-
-func TestE2E_WithTokenAndUpdateChannel_CreateAndUpdateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - create cluster and perform a rolling update",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndThenClusterUpdate,
-	)
-}
-
-func TestE2E_WithTokenAndUpdateChannel_UpdateServerApplication(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - update a single application of a server",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
-		updateServerApplication("IncusOS01"),
-	)
-}
-
-func TestE2E_WithTokenAndUpdateChannel_UpdateServerOSOnly(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - update only the OS of a server",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
-		updateServerOSOnly("IncusOS01"),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster and perform an on demand rolling reboot",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndThenClusterReboot,
-	)
-}
-
-func TestE2E_WithToken_ServerBMCPowerOffAndOn(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - power a server off and on again via BMC",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
-		serverBMCPowerOffAndOn("IncusOS01"),
-	)
+	runE2ESuite(t, pool, []e2eScenario{
+		{
+			name:        "update_server_application",
+			standalone:  []string{"IncusOS04"},
+			leavesDirty: []string{"IncusOS04"},
+			run:         updateServerApplication("IncusOS04"),
+		},
+		{
+			name:        "update_server_os_only",
+			standalone:  []string{"IncusOS04"},
+			leavesDirty: []string{"IncusOS04"},
+			run:         updateServerOSOnly("IncusOS04"),
+		},
+		{
+			name:        "cluster_rolling_update",
+			cluster:     names,
+			leavesDirty: names,
+			run:         clusterRollingUpdate,
+		},
+	})
 }
 
 func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
@@ -227,8 +156,8 @@ func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"download update - upload update - create channel - assign manual uploaded update - create cluster",
-		setupIncusOSFromManualUpload,
-		createClusterFromManualUpload([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		setupIncusOSFromManualUpload([]string{"IncusOS01"}),
+		createClusterFromManualUpload([]string{"IncusOS01"}),
 	)
 }
 
@@ -240,46 +169,21 @@ func runE2ETest(
 ) {
 	t.Helper()
 
-	e2eTest := os.Getenv("OPERATIONS_CENTER_E2E_TEST")
-	runE2ETest, _ := strconv.ParseBool(e2eTest)
-	if !runE2ETest {
-		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
+	if listOnly {
+		t.Skip("OPERATIONS_CENTER_E2E_TEST_LIST env var set, only listing end 2 end tests.")
 	}
 
-	logEnvSettings(t)
+	skipUnlessE2ETestEnabled(t)
 
-	reason := setupBrokenReason()
-	if reason != "" {
-		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
-	}
+	runE2EScenario(t, name, func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
 
-	timeout := strechedTimeout(testTimeout)
+		setupOperationsCenterOrMarkBroken(ctx, t, t, tmpDir)
 
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	defer cancel()
+		setup(ctx, t, tmpDir)
 
-	defer func() {
-		if ctx.Err() != nil {
-			t.Errorf("Test exceeded its timeout of %v: %v", timeout, ctx.Err())
-		}
-	}()
-
-	tmpDir := e2eTestTmpDir(t)
-
-	resetDebugOutput()
-	resetVMDebugInfo()
-
-	debugOutputCollect := onTestFailDebugOutput(t, tmpDir)
-	defer debugOutputCollect()
-
-	stop := timeTrack(t, name)
-	defer stop()
-
-	setupOperationsCenterOrMarkBroken(ctx, t, tmpDir)
-
-	setup(ctx, t, tmpDir)
-
-	test(ctx, t, tmpDir)
+		test(ctx, t, tmpDir)
+	})
 }
 
 var (
@@ -289,7 +193,7 @@ var (
 
 // setupOperationsCenterOrMarkBroken sets the Operations Center up and records a
 // failure to do so, so the remaining tests skip instead of reproducing it.
-func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, tmpDir string) {
+func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
 	// A failure unwinds through runtime.Goexit, which runs the deferred
@@ -307,7 +211,7 @@ func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, tmpDir
 		}
 	}()
 
-	setupOperationsCenter(ctx, t, tmpDir)
+	setupOperationsCenter(ctx, t, owner, tmpDir)
 }
 
 // setupBrokenReason returns the report of the test, which found the setup of the

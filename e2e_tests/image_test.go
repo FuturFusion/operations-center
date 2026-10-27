@@ -49,12 +49,14 @@ const (
 // endpoints directly instead of through the server.
 //
 // The background task, which refreshes all the image sources, runs every 6
-// hours and its first run is delayed by 10 minutes on IncusOS. Since the
-// Operations Center daemon is restarted at the beginning of every end 2 end
-// test, no background refresh can interfere with the assertions below.
+// hours and its first run is delayed by 10 minutes on IncusOS. The scenario
+// restarts the Operations Center daemon at its beginning, so no background
+// refresh can interfere with the assertions below.
 func ocIncusImagesRemoteLaunchInstance(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
+
+		restartOperationsCenter(ctx, t)
 
 		createCluster(names)(ctx, t, tmpDir)
 

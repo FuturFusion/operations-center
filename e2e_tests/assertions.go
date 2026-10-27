@@ -501,28 +501,12 @@ func assertOperationsCenterCliProvisioningClusterTemplate(t *testing.T, tmpDir s
 func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	t.Helper()
 
-	t.Log("Add incus remote")
-
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .connection_url'`, cpuArch, clusterName)
-	clusterConnectionURL := resp.OutputTrimmed()
-
-	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s %s`, clusterName, clusterConnectionURL)
-	t.Cleanup(func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		mustRunWithContext(ctx, t, `incus remote remove %s`, clusterName)
-	})
+	mustAddIncusRemote(t, clusterName)
 
 	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == %d'`, clusterName, len(serverNames))
 
 	// Every cluster member has its own source address pinned for the internal mesh network.
-	resp = mustRun(t, `incus cluster list %s: -f json | jq -r '.[].server_name'`, clusterName)
+	resp := mustRun(t, `incus cluster list %s: -f json | jq -r '.[].server_name'`, clusterName)
 
 	meshTunnelLocalAddresses := map[string]string{}
 	for memberName := range strings.FieldsSeq(resp.Output()) {
@@ -778,12 +762,15 @@ func assertClusterTemplateApplied(t *testing.T, clusterName string, serverNames 
 	require.Equal(t, "E2E Test IncusOS Cluster", resp.OutputTrimmed(), "expect UI title to be set from the default of the cluster template variable")
 }
 
-func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
+// assertRemovedServerToReappear waits for the removed server to register again
+// with its hostname after the factory reset. It also waits for the server to
+// become ready, so the next scenario can use it.
+func assertRemovedServerToReappear(ctx context.Context, t *testing.T, hostname string) {
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, 5*time.Minute, cpuArch)
-	require.NoError(t, err, "expect 1 not clustered server")
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .cluster == "" and .server_type == "incus" and .server_status == "ready") ] | length == 1'`, 5*time.Minute, cpuArch, hostname)
+	require.NoErrorf(t, err, "expect the not clustered server %q", hostname)
 	if !ok {
 		fmt.Println("====[ Server List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)

@@ -3,10 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,73 +15,72 @@ func createCluster(serverNames []string) func(ctx context.Context, t *testing.T,
 	return createClusterWithChannelName("stable", serverNames)
 }
 
-func createClusterAndAddServerAndRemoveServer() func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
+// addAndRemoveServer leaves the cluster with IncusOS01, IncusOS02 and IncusOS04.
+// IncusOS03 is factory reset and registered with its hostname again.
+func addAndRemoveServer(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
 
-		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(ctx, t, tmpDir)
+	printServerList(t)
 
-		printServerList(t)
+	// Update LVM settings.
+	err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
+	require.NoError(t, err)
 
-		// Update LVM settings.
-		err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
-		require.NoError(t, err)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server os service edit IncusOS04:lvm < %s`, cpuArch, filepath.Join(tmpDir, "lvm_enable.yaml"))
 
-		mustRun(t, `../bin/operations-center.linux.%s provisioning server os service edit IncusOS04:lvm < %s`, cpuArch, filepath.Join(tmpDir, "lvm_enable.yaml"))
+	// Add IncusOS04 to cluster.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add-servers incus-os-cluster --server-names IncusOS04`, cpuArch)
 
-		// Add IncusOS04 to cluster.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add-servers incus-os-cluster --server-names IncusOS04`, cpuArch)
+	// Assertions
+	assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"})
 
-		// Assertions
-		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"})
+	// Evacuate IncusOS03.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server system evacuate IncusOS03`, cpuArch)
 
-		// Evacuate IncusOS03.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning server system evacuate IncusOS03`, cpuArch)
-
-		t.Log("Wait for server to be evacuated")
-		ok, err := waitForSuccessWithTimeout(ctx, t, "server evacuated", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS03") | .version_data.in_maintenance == 2'`, 2*time.Minute, cpuArch)
-		require.NoError(t, err, "expect IncusOS03 to be evacuated")
-		if !ok {
-			fmt.Println("====[ Instance List ]====")
-			resp := mustRun(t, "../bin/operations-center.linux.%s inventory instance list", cpuArch)
-			fmt.Println(resp.Output())
-			t.FailNow()
-		}
-
-		mustDeleteClusterImages(t, "incus-os-cluster")
-
-		// Remove IncusOS03 from cluster.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03`, cpuArch)
-
-		// Assertions
-		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
-		assertRemovedServerToReappear(ctx, t)
+	t.Log("Wait for server to be evacuated")
+	ok, err := waitForSuccessWithTimeout(ctx, t, "server evacuated", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS03") | .version_data.in_maintenance == 2'`, 2*time.Minute, cpuArch)
+	require.NoError(t, err, "expect IncusOS03 to be evacuated")
+	if !ok {
+		fmt.Println("====[ Instance List ]====")
+		resp := mustRun(t, "../bin/operations-center.linux.%s inventory instance list", cpuArch)
+		fmt.Println(resp.Output())
+		t.FailNow()
 	}
+
+	mustDeleteClusterImages(t, "incus-os-cluster")
+
+	_, hostnames := mustGetInstanceIPAndNames(t, []string{"IncusOS03"})
+
+	// Remove IncusOS03 from cluster.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03`, cpuArch)
+
+	// Assertions
+	assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
+	assertRemovedServerToReappear(ctx, t, hostnames[0])
 }
 
-func createClusterAndForceRemoveLostServer() func(ctx context.Context, t *testing.T, tmpDir string) {
+// forceRemoveLostServer stops the VM of lost, so lost is not usable afterwards.
+func forceRemoveLostServer(lost string, remaining []string) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(ctx, t, tmpDir)
-
 		printServerList(t)
 
-		// Lose IncusOS03, it is neither evacuated nor reachable from now on.
-		err := stopInstanceWithContext(ctx, t, "IncusOS03")
-		require.NoError(t, err, "expect IncusOS03 to be stopped")
+		// Lose the server, it is neither evacuated nor reachable from now on.
+		err := stopInstanceWithContext(ctx, t, lost)
+		require.NoErrorf(t, err, "expect %s to be stopped", lost)
 
-		// Remove the lost IncusOS03 from the cluster.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03 --force`, cpuArch)
+		// Remove the lost server from the cluster.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names %s --force`, cpuArch, lost)
 
 		// Assertions
-		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02"})
-		assertServerDetachedFromCluster(t, "IncusOS03")
+		assertClusterMembers(t, "incus-os-cluster", remaining)
+		assertServerDetachedFromCluster(t, lost)
 
 		// The kept server record can now be removed from operations center.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning server remove IncusOS03`, cpuArch)
+		mustRun(t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, lost)
 
-		assertServerGone(t, "IncusOS03")
+		assertServerGone(t, lost)
 	}
 }
 
@@ -101,76 +98,32 @@ func createClusterWithChannelName(channelName string, serverNames []string) func
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
+		// Register cleanup
+		t.Cleanup(clusterCleanup(t))
+
+		createAndAssertCluster(channelName, serverNames)(ctx, t, tmpDir)
+	}
+}
+
+// createAndAssertCluster keeps the cluster, so the next scenario of a suite can
+// use it.
+func createAndAssertCluster(channelName string, serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
 		stop := timeTrack(t, "create cluster with channel name")
 		defer stop()
 
 		// Pre check
-		mustNotBeAlreadyClustered(t)
-
-		// Register cleanup
-		t.Cleanup(clusterCleanup(t))
-
-		// Setup
-		err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
-		require.NoError(t, err)
-
-		clientCertificate := getClientCertificate(t)
-
-		err = os.WriteFile(
-			filepath.Join(tmpDir, "application.yaml"),
-			replacePlaceholders(
-				incusOSClusterApplicationConfig,
-				map[string]string{
-					"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
-				},
-			),
-			0o600,
-		)
-		require.NoError(t, err)
-
-		instanceIPs, _ := mustGetInstanceIPAndNames(t, serverNames)
-
-		servers := strings.Join(serverNames, " --server-names ")
+		mustNotBeAlreadyClustered(t, serverNames[0])
 
 		// Run test
-		t.Log("Create cluster")
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+		mustCreateCluster(t, tmpDir, channelName, serverNames)
 
 		// Assertions
-		assertIncusRemote(t, "incus-os-cluster", serverNames)
-		assertInventory(t, "incus-os-cluster", serverNames)
-		assertTerraformArtifact(t, "incus-os-cluster")
-		assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
-	}
-}
-
-func clusterCleanup(t *testing.T) func() {
-	t.Helper()
-
-	return func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		stop := timeTrack(t, "cluster cleanup")
-		defer stop()
-
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
-		if !resp.Success() {
-			t.Error(resp.Error())
-			return
-		}
-
-		for cluster := range strings.Lines(resp.Output()) {
-			cluster = strings.TrimSpace(cluster)
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
-		}
+		assertIncusRemote(t, incusOSClusterName, serverNames)
+		assertInventory(t, incusOSClusterName, serverNames)
+		assertTerraformArtifact(t, incusOSClusterName)
+		assertWebsocketEventsInventoryUpdate(ctx, t, incusOSClusterName)
 	}
 }
