@@ -190,17 +190,6 @@ $CLIENT_CERTIFICATE$
     description: Initial admin client
 `)
 
-	incusOSClusterApplicationConfigPostFactoryReset = []byte(`---
-config:
-  user.ui.title: E2E Test IncusOS Cluster
-certificates:
-  - type: client
-    name: my-client-cert
-    description: "Client certificate for accessing the cluster"
-    certificate: |-
-$CLIENT_CERTIFICATE$
-`)
-
 	incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed = []byte(`---
 config:
   user.ui.title: E2E Test IncusOS Cluster

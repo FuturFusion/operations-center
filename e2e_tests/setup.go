@@ -26,6 +26,7 @@ const (
 	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
 	operationsCenterVMHealthTimeout = 2 * time.Minute
 	instanceCreationStagger         = 5 * time.Second
+	incusOSClusterName              = "incus-os-cluster"
 )
 
 // setupOperationsCenter collects the coverage data of the daemon when owner
@@ -279,6 +280,36 @@ func cleanupIncusOS(t *testing.T, names []string) func() {
 			}
 		}
 	}
+}
+
+// mustCreateCluster creates the cluster incus-os-cluster from the given
+// servers.
+func mustCreateCluster(t *testing.T, tmpDir string, channelName string, serverNames []string) {
+	t.Helper()
+
+	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
+	require.NoError(t, err)
+
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfig,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
+	require.NoError(t, err)
+
+	instanceIPs, _ := mustGetInstanceIPAndNames(t, serverNames)
+
+	servers := strings.Join(serverNames, " --server-names ")
+
+	t.Log("Create cluster")
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, incusOSClusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 }
 
 func clusterCleanup(t *testing.T) func() {

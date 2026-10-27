@@ -1518,6 +1518,35 @@ func retryStorageCmdWithContext(ctx context.Context, t *testing.T, desc string, 
 	return fmt.Errorf("Giving up after %d attempts: %w", storageRetryAttempts, lastErr)
 }
 
+// mustAddIncusRemote adds the cluster as Incus remote until the end of the
+// test. It replaces a left over remote of an earlier run.
+func mustAddIncusRemote(t *testing.T, clusterName string) {
+	t.Helper()
+
+	t.Log("Add incus remote")
+
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .connection_url'`, cpuArch, clusterName)
+	clusterConnectionURL := resp.OutputTrimmed()
+
+	resp = run(t, `incus remote list -f json | jq -e 'has("%s")'`, clusterName)
+	if resp.Success() {
+		mustRun(t, `incus remote remove %s`, clusterName)
+	}
+
+	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s %s`, clusterName, clusterConnectionURL)
+	t.Cleanup(func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		mustRunWithContext(ctx, t, `incus remote remove %s`, clusterName)
+	})
+}
+
 func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []string, instanceNames []string) {
 	t.Helper()
 

@@ -501,28 +501,12 @@ func assertOperationsCenterCliProvisioningClusterTemplate(t *testing.T, tmpDir s
 func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	t.Helper()
 
-	t.Log("Add incus remote")
-
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .connection_url'`, cpuArch, clusterName)
-	clusterConnectionURL := resp.OutputTrimmed()
-
-	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s %s`, clusterName, clusterConnectionURL)
-	t.Cleanup(func() {
-		if noCleanup || (noCleanupOnError && t.Failed()) {
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-		defer cancel()
-
-		mustRunWithContext(ctx, t, `incus remote remove %s`, clusterName)
-	})
+	mustAddIncusRemote(t, clusterName)
 
 	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == %d'`, clusterName, len(serverNames))
 
 	// Every cluster member has its own source address pinned for the internal mesh network.
-	resp = mustRun(t, `incus cluster list %s: -f json | jq -r '.[].server_name'`, clusterName)
+	resp := mustRun(t, `incus cluster list %s: -f json | jq -r '.[].server_name'`, clusterName)
 
 	meshTunnelLocalAddresses := map[string]string{}
 	for memberName := range strings.FieldsSeq(resp.Output()) {
