@@ -60,61 +60,16 @@ func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, 
 	mustWaitUpdatesReady(ctx, t)
 }
 
-func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
-
-		stop := timeTrack(t, "setupIncusOSWithToken "+strings.Join(names, ", "))
-		defer stop()
-
-		// Register cleanup
-		t.Cleanup(cleanupIncusOS(t, names))
-
-		isos := prepareStableTokenISOs("")(ctx, t, tmpDir, names)
-
-		createIncusOSInstances(ctx, t, isos)
-
-		printServerList(t)
+// stableTokenISOs returns the names of the ISOs, which prepareStableTokenISOs
+// caches for token.
+func stableTokenISOs(token string) []string {
+	return []string{
+		incusOSPreseededISOName(token),
+		incusOSPreseededISOFromTokenSeedName(token),
 	}
 }
 
-// setupIncusOSWithTokenFreshISO is setupIncusOSWithToken with an ISO, which is
-// generated for this test only. Use it, if the test changes a setting of
-// Operations Center, which goes into the seed, before the setup. The cached
-// ISO of setupIncusOSWithToken does not contain such a change.
-func setupIncusOSWithTokenFreshISO(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
-
-		stop := timeTrack(t, "setupIncusOSWithTokenFreshISO "+strings.Join(names, ", "))
-		defer stop()
-
-		token := createProvisioningToken(t)
-
-		incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-fresh-%[1]s.iso", token)
-
-		// Register cleanup. The instances use the storage volume of the ISO, so
-		// the ISO is removed after the instances.
-		t.Cleanup(cleanupIncusOSISO(t, tmpDir, incusOSPreseededISOFilename))
-		t.Cleanup(cleanupIncusOS(t, names))
-
-		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
-
-		// A left over ISO contains the seed of an earlier run.
-		err := removeIncusOSISOWithContext(ctx, t, tmpDir, incusOSPreseededISOFilename)
-		require.NoError(t, err)
-
-		generateIncusOSPreseededISO(t, tmpDir, token, incusOSPreseededISOFilename)
-
-		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
-
-		createIncusOSInstances(ctx, t, sameISO(names, incusOSPreseededISOFilename))
-
-		printServerList(t)
-	}
-}
-
-func cleanupIncusOSISO(t *testing.T, tmpDir string, incusOSPreseededISOFilename string) func() {
+func cleanupIncusOSISOs(t *testing.T, tmpDir string, incusOSPreseededISOFilenames []string) func() {
 	t.Helper()
 
 	return func() {
@@ -126,12 +81,14 @@ func cleanupIncusOSISO(t *testing.T, tmpDir string, incusOSPreseededISOFilename 
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(2*time.Minute))
 		defer cancel()
 
-		stop := timeTrack(t, "cleanup IncusOS ISO")
+		stop := timeTrack(t, "cleanup IncusOS ISOs")
 		defer stop()
 
-		err := removeIncusOSISOWithContext(ctx, t, tmpDir, incusOSPreseededISOFilename)
-		if err != nil {
-			t.Logf("Failed to remove the ISO %q during cleanup: %v", incusOSPreseededISOFilename, err)
+		for _, incusOSPreseededISOFilename := range incusOSPreseededISOFilenames {
+			err := removeIncusOSISOWithContext(ctx, t, tmpDir, incusOSPreseededISOFilename)
+			if err != nil {
+				t.Logf("Failed to remove the ISO %q during cleanup: %v", incusOSPreseededISOFilename, err)
+			}
 		}
 	}
 }
@@ -737,12 +694,16 @@ func channelCleanup(t *testing.T, channelName string) func() {
 func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string {
 	t.Helper()
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-%[1]s.iso", token)
+	incusOSPreseededISOFilename := incusOSPreseededISOName(token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		generateIncusOSPreseededISO(t, tmpDir, token, incusOSPreseededISOFilename)
 	}
 
 	return incusOSPreseededISOFilename
+}
+
+func incusOSPreseededISOName(token string) string {
+	return fmt.Sprintf("IncusOS-preseeded-%s.iso", token)
 }
 
 func generateIncusOSPreseededISO(t *testing.T, tmpDir string, token string, incusOSPreseededISOFilename string) {
@@ -764,7 +725,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 
 	t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token[:8])
+	incusOSPreseededISOFilename := incusOSPreseededISOFromTokenSeedName(token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
@@ -779,6 +740,10 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 	}
 
 	return incusOSPreseededISOFilename
+}
+
+func incusOSPreseededISOFromTokenSeedName(token string) string {
+	return fmt.Sprintf("IncusOS-preseeded-from-token-seed-%s.iso", token[:8])
 }
 
 func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseededISOFilename string) {

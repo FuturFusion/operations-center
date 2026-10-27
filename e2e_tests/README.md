@@ -70,19 +70,23 @@ order:
 The servers register with a token of the stable channel. The registration
 scriptlet sets their description and their properties. IncusOS01 is installed
 from the ISO of a token seed, the other servers from the ISO of the token.
+The scenario `acme_renewal` runs first. It adds the CA certificates of the
+fake ACME server to the Operations Center host before the pool installs the
+servers, so the seed of all the servers contains them.
 
-| Scenario                                | Standalone servers     | Cluster members                 | Content                                                     |
-|-----------------------------------------|------------------------|---------------------------------|-------------------------------------------------------------|
-| `register_server`                       | IncusOS01              |                                 | Effects of the registration scriptlet                       |
-| `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc) |
-| `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                          |
-| `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                |
-| `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates |
-| `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                 |
-| `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                        |
-| `factory_reset_cluster_with_token_seed` |                        | IncusOS01, IncusOS02, IncusOS04 | Factory reset with a given token and token seed             |
-| `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)             |
-| `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last. |
+| Scenario                                | Standalone servers     | Cluster members                 | Content                                                                   |
+|-----------------------------------------|------------------------|---------------------------------|---------------------------------------------------------------------------|
+| `acme_renewal`                          | IncusOS01, IncusOS02   |                                 | ACME renewal with a private CA, see [Fake ACME server](#fake-acme-server) |
+| `register_server`                       | IncusOS01              |                                 | Effects of the registration scriptlet                                     |
+| `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc)               |
+| `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                                        |
+| `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                              |
+| `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates               |
+| `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                               |
+| `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                                      |
+| `factory_reset_cluster_with_token_seed` |                        | IncusOS01, IncusOS02, IncusOS04 | Factory reset with a given token and token seed                           |
+| `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)                           |
+| `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last.               |
 
 ### `TestE2E_UpdateChannel`
 
@@ -345,6 +349,14 @@ The pool installs these servers again before their next use as well. The pool
 keeps this state in memory only. After a run with
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`, remove the VMs of `TestE2E_UpdateChannel`
 before running it again. Otherwise the pool reuses the updated servers.
+
+Some changes only reach a server during its install, e.g. the content of its
+seed. A scenario, which needs such a change, sets `prepare`. The suite runs
+`prepare` before the pool brings the servers into the required state. The pool
+installs the servers of the scenario again after `prepare`. An example is
+`acme_renewal`, which adds custom CA certificates to the Operations Center
+host. Place such a scenario first, so the pool installs all the servers only
+once.
 
 The pool only installs servers, which a selected scenario requires, so a single
 scenario only pays for its own servers. If it installs, it also installs all
@@ -628,14 +640,20 @@ Operations Center. The certificate of its directory is self signed and the root
 CA of the issued certificates is new for every run. So neither is in any
 default CA bundle, like with the internal ACME server of a company.
 
-The test adds both CA certificates to the custom CA certificates of the IncusOS
-host of Operations Center, before it deploys the servers. This way the seed of
-the servers contains them as well.
+The scenario `acme_renewal` of the suite `TestE2E_StableServers` covers the
+ACME support. In its `prepare` step, it adds both CA certificates to the custom
+CA certificates of the IncusOS host of Operations Center. The pool installs the
+servers after this step. This way the seed of the servers contains them as
+well. The servers keep these CA certificates for the following scenarios.
+The cached ISOs lack the CA certificates of the current run. So the scenario
+removes the cached ISOs in its `prepare` step and again on cleanup.
 
-The test changes the certificate of Operations Center. The CLI pins this
-certificate, so the test adds the remote of the CLI again after every change.
-On cleanup, the test disables ACME, restores the original certificate and the
-custom CA certificates of the host.
+The scenario changes the certificate of Operations Center. The CLI pins this
+certificate, so the scenario adds the remote of the CLI again after every
+change. On cleanup, the scenario disables ACME, restores the original
+certificate and the custom CA certificates of the host. Operations Center
+pushes the restored certificate to the servers, so the following scenarios can
+reuse them.
 
 ### OpenFGA server
 

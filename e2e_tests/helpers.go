@@ -1823,7 +1823,7 @@ func timeTrack(t *testing.T, optionals ...string) (stop func()) {
 
 // shortFuncName returns the name of the function without the package path.
 // For anonymous functions, it keeps the enclosing function, e.g.
-// "setupIncusOSWithToken.func1".
+// "prepareStableTokenISOs.func1".
 func shortFuncName(fullName string) string {
 	name := fullName[strings.LastIndex(fullName, "/")+1:]
 	return name[strings.Index(name, ".")+1:]

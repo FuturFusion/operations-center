@@ -287,9 +287,9 @@ func Test_shortFuncName(t *testing.T) {
 		},
 		{
 			name:     "anonymous function",
-			fullName: "github.com/FuturFusion/operations-center/e2e_tests.setupIncusOSWithToken.func1",
+			fullName: "github.com/FuturFusion/operations-center/e2e_tests.prepareStableTokenISOs.func1",
 
-			want: "setupIncusOSWithToken.func1",
+			want: "prepareStableTokenISOs.func1",
 		},
 		{
 			name:     "nested anonymous function",

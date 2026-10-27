@@ -19,121 +19,150 @@ import (
 )
 
 // acmeRenewal runs Operations Center with certificates from the in-process
-// ACME server, whose CA certificates are in no default CA bundle. The CA
-// certificates are added to the Operations Center host before the servers are
-// deployed, so the seed of the servers contains them as well. Operations Center
-// is reused by the following tests, so every change is reverted on cleanup.
-func acmeRenewal(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
-	return func(ctx context.Context, t *testing.T, tmpDir string) {
-		t.Helper()
+// ACME server, whose CA certificates are in no default CA bundle. Operations
+// Center is reused by the following scenarios, so every change is reverted on
+// cleanup.
+type acmeRenewal struct {
+	names    []string
+	provider *acmeProvider
+}
 
-		stop := timeTrack(t)
-		defer stop()
-
-		// Setup
-
-		// A failed run without cleanup leaves the ACME config behind.
-		err := resetSystemSecurityACMEWithContext(ctx, t, tmpDir)
-		require.NoError(t, err, "Failed to reset the ACME security config")
-
-		provider := startACMEProvider(t)
-
-		mustAddOperationsCenterHostCustomCACerts(t, tmpDir, provider.DirectoryCAPEM, provider.IssuerRootPEM)
-
-		mustBackupOperationsCenterCertificate(t, tmpDir)
-
-		t.Cleanup(systemSecurityACMECleanup(t, tmpDir))
-
-		// The cached ISO of the other tests lacks the CA certificates of this run.
-		setupIncusOSWithTokenFreshISO(names)(ctx, t, tmpDir)
-
-		// Runs first, so the other cleanups can use the CLI, even if the test
-		// failed after a change of the certificate.
-		t.Cleanup(func() {
-			if noCleanup || (noCleanupOnError && t.Failed()) {
-				return
-			}
-
-			// In t.Cleanup, t.Context() is already cancelled, so we need a detached context.
-			ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
-			defer cancel()
-
-			err := retrustOperationsCenterRemoteWithContext(ctx, t)
-			if err != nil {
-				t.Logf("Failed to add the remote of the CLI again: %v", err)
-			}
-		})
-
-		// Run test
-		t.Log("Verify, that the seed added the CA certificates of the ACME server to the servers")
-		for _, name := range names {
-			resp := mustRun(t, `../bin/operations-center.linux.%s provisioning server os system security show %s:`, cpuArch, name)
-
-			var security incusosapi.SystemSecurity
-			err := yaml.Unmarshal([]byte(resp.OutputTrimmed()), &security)
-			require.NoError(t, err)
-
-			require.Containsf(t, security.Config.CustomCACerts, provider.DirectoryCAPEM, "custom CA certificates of %q contain the CA of the ACME directory", name)
-			require.Containsf(t, security.Config.CustomCACerts, provider.IssuerRootPEM, "custom CA certificates of %q contain the root CA of the ACME server", name)
-		}
-
-		initialFingerprint := mustServedOperationsCenterCertificateFingerprint(ctx, t)
-
-		t.Log("Enable ACME, which triggers a renewal of the certificate")
-		ocHostname := mustRun(t, `incus exec OperationsCenter -- hostname`).OutputTrimmed()
-		mustSetSystemSecurityACME(ctx, t, tmpDir, ocHostname, provider.DirectoryURL)
-
-		fingerprint := mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, initialFingerprint)
-		mustRetrustOperationsCenterRemote(ctx, t)
-
-		for _, name := range names {
-			mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
-		}
-
-		mustWaitInventoryReady(ctx, t, names)
-
-		t.Log("Force the renewal of the certificate")
-		mustRun(t, `../bin/operations-center.linux.%s system certificate renew`, cpuArch)
-
-		previousFingerprint := fingerprint
-		fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
-		mustRetrustOperationsCenterRemote(ctx, t)
-
-		for _, name := range names {
-			mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
-		}
-
-		mustWaitInventoryReady(ctx, t, names)
-
-		offlineServer := names[len(names)-1]
-		onlineServers := names[:len(names)-1]
-
-		t.Logf("Force the renewal of the certificate, while %s is offline", offlineServer)
-		require.NoError(t, stopInstanceWithContext(ctx, t, offlineServer))
-
-		// Without this, a server, that is back quickly, stays ready in Operations
-		// Center and only the hourly poll would update its certificate.
-		success, err := waitForSuccessWithTimeout(ctx, t, offlineServer+" offline", `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.server_status == "offline"'`, 7*time.Minute, cpuArch, offlineServer)
-		require.NoError(t, err)
-		require.Truef(t, success, "expect Operations Center to report %s as offline", offlineServer)
-
-		mustRun(t, `../bin/operations-center.linux.%s system certificate renew`, cpuArch)
-
-		previousFingerprint = fingerprint
-		fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
-		mustRetrustOperationsCenterRemote(ctx, t)
-
-		for _, name := range onlineServers {
-			mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
-		}
-
-		require.NoError(t, startInstanceWithContext(ctx, t, offlineServer))
-		mustWaitIncusOSReady(ctx, t, []string{offlineServer})
-		mustWaitInventoryReady(ctx, t, []string{offlineServer})
-
-		// Assert
-		mustWaitServerCertificatePinned(ctx, t, offlineServer, fingerprint)
+func newACMERenewal(names []string) *acmeRenewal {
+	return &acmeRenewal{
+		names: names,
 	}
+}
+
+// prepare adds the CA certificates of the ACME server to the Operations Center
+// host before the pool installs the servers, so the seed of the servers
+// contains them as well.
+func (a *acmeRenewal) prepare(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	// A failed run without cleanup leaves the ACME config behind.
+	err := resetSystemSecurityACMEWithContext(ctx, t, tmpDir)
+	require.NoError(t, err, "Failed to reset the ACME security config")
+
+	a.provider = startACMEProvider(t)
+
+	mustAddOperationsCenterHostCustomCACerts(t, tmpDir, a.provider.DirectoryCAPEM, a.provider.IssuerRootPEM)
+
+	mustBackupOperationsCenterCertificate(t, tmpDir)
+
+	t.Cleanup(systemSecurityACMECleanup(t, tmpDir))
+
+	// The cached ISOs lack the CA certificates of this run. Remove them, so the
+	// pool generates them again. Remove them on cleanup as well, so the other
+	// scenarios do not install the CA certificates of this run.
+	isos := stableTokenISOs(createProvisioningToken(t))
+	for _, iso := range isos {
+		err := removeIncusOSISOWithContext(ctx, t, tmpDir, iso)
+		require.NoError(t, err, "Failed to remove the cached ISO %q", iso)
+	}
+
+	t.Cleanup(cleanupIncusOSISOs(t, tmpDir, isos))
+}
+
+func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	names := a.names
+	provider := a.provider
+
+	// Setup
+
+	// Runs first, so the other cleanups can use the CLI, even if the test
+	// failed after a change of the certificate.
+	t.Cleanup(func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is already cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		err := retrustOperationsCenterRemoteWithContext(ctx, t)
+		if err != nil {
+			t.Logf("Failed to add the remote of the CLI again: %v", err)
+		}
+	})
+
+	// Run test
+	t.Log("Verify, that the seed added the CA certificates of the ACME server to the servers")
+	for _, name := range names {
+		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning server os system security show %s:`, cpuArch, name)
+
+		var security incusosapi.SystemSecurity
+		err := yaml.Unmarshal([]byte(resp.OutputTrimmed()), &security)
+		require.NoError(t, err)
+
+		require.Containsf(t, security.Config.CustomCACerts, provider.DirectoryCAPEM, "custom CA certificates of %q contain the CA of the ACME directory", name)
+		require.Containsf(t, security.Config.CustomCACerts, provider.IssuerRootPEM, "custom CA certificates of %q contain the root CA of the ACME server", name)
+	}
+
+	initialFingerprint := mustServedOperationsCenterCertificateFingerprint(ctx, t)
+
+	t.Log("Enable ACME, which triggers a renewal of the certificate")
+	ocHostname := mustRun(t, `incus exec OperationsCenter -- hostname`).OutputTrimmed()
+	mustSetSystemSecurityACME(ctx, t, tmpDir, ocHostname, provider.DirectoryURL)
+
+	fingerprint := mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, initialFingerprint)
+	mustRetrustOperationsCenterRemote(ctx, t)
+
+	for _, name := range names {
+		mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
+	}
+
+	mustWaitInventoryReady(ctx, t, names)
+
+	t.Log("Force the renewal of the certificate")
+	mustRun(t, `../bin/operations-center.linux.%s system certificate renew`, cpuArch)
+
+	previousFingerprint := fingerprint
+	fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
+	mustRetrustOperationsCenterRemote(ctx, t)
+
+	for _, name := range names {
+		mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
+	}
+
+	mustWaitInventoryReady(ctx, t, names)
+
+	offlineServer := names[len(names)-1]
+	onlineServers := names[:len(names)-1]
+
+	t.Logf("Force the renewal of the certificate, while %s is offline", offlineServer)
+	require.NoError(t, stopInstanceWithContext(ctx, t, offlineServer))
+
+	// Without this, a server, that is back quickly, stays ready in Operations
+	// Center and only the hourly poll would update its certificate.
+	success, err := waitForSuccessWithTimeout(ctx, t, offlineServer+" offline", `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.server_status == "offline"'`, 7*time.Minute, cpuArch, offlineServer)
+	require.NoError(t, err)
+	require.Truef(t, success, "expect Operations Center to report %s as offline", offlineServer)
+
+	mustRun(t, `../bin/operations-center.linux.%s system certificate renew`, cpuArch)
+
+	previousFingerprint = fingerprint
+	fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
+	mustRetrustOperationsCenterRemote(ctx, t)
+
+	for _, name := range onlineServers {
+		mustWaitServerCertificatePinned(ctx, t, name, fingerprint)
+	}
+
+	require.NoError(t, startInstanceWithContext(ctx, t, offlineServer))
+	mustWaitIncusOSReady(ctx, t, []string{offlineServer})
+	mustWaitInventoryReady(ctx, t, []string{offlineServer})
+
+	// Assert
+	mustWaitServerCertificatePinned(ctx, t, offlineServer, fingerprint)
 }
 
 // mustAddOperationsCenterHostCustomCACerts adds the CA certificates to the
