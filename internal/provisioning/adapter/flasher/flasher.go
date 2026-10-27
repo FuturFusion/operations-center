@@ -38,13 +38,14 @@ var _ provisioning.FlasherPort = &Flasher{}
 
 type Option func(f *Flasher)
 
-// WithCacheDir enables the seed image cache and stores the cached images in dir.
+// WithCacheRoot enables the seed image cache and stores the cached images in
+// root.
 //
 // Without it, generating and opening a seeded image report the cache as
 // unavailable.
-func WithCacheDir(dir string) Option {
+func WithCacheRoot(root *os.Root) Option {
 	return func(f *Flasher) {
-		f.cache = newImageCache(dir)
+		f.cache = newImageCache(root)
 	}
 }
 
