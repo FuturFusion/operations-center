@@ -2,6 +2,11 @@
 
 package api
 
+import (
+	"net/url"
+	"strconv"
+)
+
 // InventoryAggregate holds the inventory resources of a single cluster.
 //
 // swagger:model
@@ -23,4 +28,58 @@ type InventoryAggregate struct {
 	StorageBuckets       []StorageBucket       `json:"storage_buckets" yaml:"storage_buckets"`
 	StoragePools         []StoragePool         `json:"storage_pools" yaml:"storage_pools"`
 	StorageVolumes       []StorageVolume       `json:"storage_volumes" yaml:"storage_volumes"`
+}
+
+// InventoryAggregateFilter holds the query parameters to filter the inventory query.
+type InventoryAggregateFilter struct {
+	Kinds              []string
+	Clusters           []string
+	Servers            []string
+	ServerIncludeNull  bool
+	Projects           []string
+	ProjectIncludeNull bool
+	Parents            []string
+	ParentIncludeNull  bool
+	Expression         *string
+}
+
+// AppendToURLValues adds the set fields of the filter to query.
+func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values {
+	for _, kind := range f.Kinds {
+		query.Add("kind", kind)
+	}
+
+	for _, cluster := range f.Clusters {
+		query.Add("cluster", cluster)
+	}
+
+	for _, server := range f.Servers {
+		query.Add("server", server)
+	}
+
+	if f.ServerIncludeNull {
+		query.Add("server_include_null", strconv.FormatBool(f.ServerIncludeNull))
+	}
+
+	for _, project := range f.Projects {
+		query.Add("project", project)
+	}
+
+	if f.ProjectIncludeNull {
+		query.Add("project_include_null", strconv.FormatBool(f.ProjectIncludeNull))
+	}
+
+	for _, parent := range f.Parents {
+		query.Add("parent", parent)
+	}
+
+	if f.ParentIncludeNull {
+		query.Add("parent_include_null", strconv.FormatBool(f.ParentIncludeNull))
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
 }
