@@ -253,15 +253,27 @@ set -euo pipefail
 
 BASE_URL="https://images.linuxcontainers.org/os"
 INDEX_URL="${BASE_URL}/index.json"
-DEST="tmp_manual_update"
 
 echo "Fetching index..."
 index=$(curl -fsSL "$INDEX_URL")
 
-# Extract filenames for x86_64 from the first update entry
+# The index mixes all upstream channels, the other E2E tests use stable.
+update=$(echo "$index" | jq -c '[ .updates[] | select(.channels | index("stable")) ] | sort_by(.version) | last')
+if [[ "$update" == "null" ]]; then
+  echo "No update in the stable channel found in ${INDEX_URL}" >&2
+  exit 1
+fi
+
+version=$(echo "$update" | jq -r '.version')
+echo "Using stable update ${version}"
+
+# Keep the downloads per version, so files of different updates never mix.
+DEST="tmp_manual_update/${version}"
+
+# Extract filenames for x86_64 from the selected update
 mapfile -t files < <(
-  echo "$index" | jq -r '
-    .updates[0].files[]
+  echo "$update" | jq -r '
+    .files[]
     | select(.architecture == "x86_64" or .architecture == "")
     | .filename
   '
@@ -273,7 +285,7 @@ update_index=(
 )
 files+=("${update_index[@]}")
 
-url_path=$(echo "$index" | jq -r '.updates[0].url')
+url_path=$(echo "$update" | jq -r '.url')
 
 echo "Found ${#files[@]} files to download."
 
@@ -291,13 +303,9 @@ done
 
 echo "Done. Files saved to ${DEST}/"
 
-if [[ ! -f "manual_update.tar" ]]; then
-  echo "Creating tar archive..."
-  cd "$DEST"
-  tar -cf ../manual_update.tar *
-  cd -
-  echo "Archive created: manual_update.tar"
-fi
+echo "Creating tar archive..."
+(cd "$DEST" && tar -cf ../../manual_update.tar *)
+echo "Archive created: manual_update.tar"
 `)
 )
 
