@@ -99,10 +99,10 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	var filter provisioning.ClusterFilter
+	apiFilter := api.ClusterFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := provisioning.ClusterFilter{
+		Expression: apiFilter.Expression,
 	}
 
 	if recursion == 1 {

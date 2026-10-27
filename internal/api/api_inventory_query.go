@@ -2,11 +2,11 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/util/response"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type queryHandler struct {
@@ -62,67 +62,28 @@ func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, 
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/InventoryAggregatesResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *queryHandler) querysGet(r *http.Request) response.Response {
-	var filter inventory.InventoryAggregateFilter
-
-	kinds, ok := r.URL.Query()["kind"]
-	if ok {
-		filter.Kinds = kinds
+	apiFilter, err := api.InventoryAggregateFilterFromURLValues(r.URL.Query())
+	if err != nil {
+		return response.SmartError(err)
 	}
 
-	clusters, ok := r.URL.Query()["cluster"]
-	if ok {
-		filter.Clusters = clusters
-	}
-
-	servers, ok := r.URL.Query()["server"]
-	if ok {
-		filter.Servers = servers
-	}
-
-	if r.URL.Query().Get("server_include_null") != "" {
-		serverIncludeNull, err := strconv.ParseBool(r.URL.Query().Get("server_include_null"))
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		filter.ServerIncludeNull = serverIncludeNull
-	}
-
-	projects, ok := r.URL.Query()["project"]
-	if ok {
-		filter.Projects = projects
-	}
-
-	if r.URL.Query().Get("project_include_null") != "" {
-		projectIncludeNull, err := strconv.ParseBool(r.URL.Query().Get("project_include_null"))
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		filter.ProjectIncludeNull = projectIncludeNull
-	}
-
-	parents, ok := r.URL.Query()["parent"]
-	if ok {
-		filter.Parents = parents
-	}
-
-	if r.URL.Query().Get("parent_include_null") != "" {
-		parentIncludeNull, err := strconv.ParseBool(r.URL.Query().Get("parent_include_null"))
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		filter.ParentIncludeNull = parentIncludeNull
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.InventoryAggregateFilter{
+		Kinds:              apiFilter.Kinds,
+		Clusters:           apiFilter.Clusters,
+		Servers:            apiFilter.Servers,
+		ServerIncludeNull:  apiFilter.ServerIncludeNull,
+		Projects:           apiFilter.Projects,
+		ProjectIncludeNull: apiFilter.ProjectIncludeNull,
+		Parents:            apiFilter.Parents,
+		ParentIncludeNull:  apiFilter.ParentIncludeNull,
+		Expression:         apiFilter.Expression,
 	}
 
 	// FIXME: Should we require a non empty filter with recursion?

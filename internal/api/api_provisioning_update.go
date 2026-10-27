@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -79,6 +78,8 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/URLsResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
@@ -116,6 +117,8 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/UpdatesResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesGet(r *http.Request) response.Response {
@@ -125,28 +128,16 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	var filter provisioning.UpdateFilter
-
-	if r.URL.Query().Get("channel") != "" {
-		filter.UpstreamChannel = new(r.URL.Query().Get("channel"))
+	apiFilter, err := api.UpdateFilterFromURLValues(r.URL.Query())
+	if err != nil {
+		return response.SmartError(err)
 	}
 
-	if r.URL.Query().Get("update_channel") != "" {
-		filter.Channel = new(r.URL.Query().Get("update_channel"))
-	}
-
-	if r.URL.Query().Get("origin") != "" {
-		filter.Origin = new(r.URL.Query().Get("origin"))
-	}
-
-	if r.URL.Query().Get("status") != "" {
-		var status api.UpdateStatus
-		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
-		if err != nil {
-			return response.SmartError(domain.NewValidationErrf("Invalid value %q for query parameter %q", r.URL.Query().Get("status"), "status"))
-		}
-
-		filter.Status = &status
+	filter := provisioning.UpdateFilter{
+		UpstreamChannel: apiFilter.UpstreamChannel,
+		Channel:         apiFilter.Channel,
+		Origin:          apiFilter.Origin,
+		Status:          apiFilter.Status,
 	}
 
 	if recursion == 1 {

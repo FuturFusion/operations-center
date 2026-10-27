@@ -140,6 +140,8 @@ func registerProvisioningServerHandler(
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/URLsResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -173,6 +175,8 @@ func registerProvisioningServerHandler(
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ServersResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -184,24 +188,15 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	var filter provisioning.ServerFilter
-
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
+	apiFilter, err := api.ServerFilterFromURLValues(r.URL.Query())
+	if err != nil {
+		return response.SmartError(err)
 	}
 
-	if r.URL.Query().Get("status") != "" {
-		var status api.ServerStatus
-		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
-		if err != nil {
-			return response.SmartError(domain.NewValidationErrf("Invalid value %q for query parameter %q", r.URL.Query().Get("status"), "status"))
-		}
-
-		filter.Status = &status
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := provisioning.ServerFilter{
+		Cluster:    apiFilter.Cluster,
+		Status:     apiFilter.Status,
+		Expression: apiFilter.Expression,
 	}
 
 	if recursion == 1 {
