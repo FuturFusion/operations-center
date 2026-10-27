@@ -4,8 +4,11 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 // IncusImagePut represents the fields available for update for an incus image.
@@ -42,6 +45,36 @@ type IncusImagePost struct {
 	// Version of the incus image.
 	// Example: 20260616
 	Version string `json:"version" yaml:"version"`
+}
+
+var incusImageArchitectures = []string{"amd64", "arm64", "armhf", "riscv64"}
+
+// ValidateIncusImageArchitecture checks that incus images support the
+// architecture.
+func ValidateIncusImageArchitecture(architecture string) error {
+	if !slices.Contains(incusImageArchitectures, architecture) {
+		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
+	}
+
+	return nil
+}
+
+// ValidateIncusImageVersion checks the version matches the expected version
+// format in simplestreams.
+// https://github.com/lxc/incus/blob/1d64af1e40ced8716280bd4fcf044dce4ca6d5cf/shared/simplestreams/products.go#L87-L95
+func ValidateIncusImageVersion(version string) error {
+	const versionLayout = "20060102"
+
+	if len(version) < 8 {
+		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+	}
+
+	_, err := time.Parse(versionLayout, version[0:8])
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd": %v`, err)
+	}
+
+	return nil
 }
 
 // IncusImage defines an incus image.
