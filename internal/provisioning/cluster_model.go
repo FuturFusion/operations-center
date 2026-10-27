@@ -120,16 +120,14 @@ func (f ClusterFilter) IsEmpty() bool {
 	return f.Name == nil
 }
 
-func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
+func (f ClusterFilter) String() string {
+	query := url.Values{}
+
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f ClusterFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }
 
 type ClusterEndpoint []Server

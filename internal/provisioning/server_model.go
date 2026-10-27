@@ -251,7 +251,9 @@ func (f ServerFilter) IsEmpty() bool {
 		f.Type == nil
 }
 
-func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
+func (f ServerFilter) String() string {
+	query := url.Values{}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
@@ -272,11 +274,7 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f ServerFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }
 
 type ServerSelfUpdate struct {

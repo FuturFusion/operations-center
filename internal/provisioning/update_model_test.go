@@ -2,6 +2,7 @@ package provisioning_test
 
 import (
 	"database/sql/driver"
+	"net/url"
 	"sort"
 	"testing"
 
@@ -225,6 +226,71 @@ func TestUpdate_Filter(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
+
+func TestUpdateFilter_StringMatchesAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.UpdateFilter
+	}{
+		{
+			name:   "empty filter",
+			filter: api.UpdateFilter{},
+		},
+		{
+			name:   "upstream channel",
+			filter: api.UpdateFilter{UpstreamChannel: new("stable")},
+		},
+		{
+			name:   "channel",
+			filter: api.UpdateFilter{Channel: new("testing")},
+		},
+		{
+			name:   "origin",
+			filter: api.UpdateFilter{Origin: new("origin")},
+		},
+		{
+			name:   "status",
+			filter: api.UpdateFilter{Status: new(api.UpdateStatusReady)},
+		},
+		{
+			name: "complete filter",
+			filter: api.UpdateFilter{
+				UpstreamChannel: new("stable"),
+				Channel:         new("testing"),
+				Origin:          new("origin"),
+				Status:          new(api.UpdateStatusReady),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// The conversion fails to compile if the fields of the API filter change.
+			// Then add the field to the mapping and to the test cases.
+			fields := struct {
+				UpstreamChannel *string
+				Channel         *string
+				Origin          *string
+				Status          *api.UpdateStatus
+			}(tc.filter)
+
+			filter := provisioning.UpdateFilter{
+				UpstreamChannel: fields.UpstreamChannel,
+				Channel:         fields.Channel,
+				Origin:          fields.Origin,
+				Status:          fields.Status,
+			}
+
+			got := filter.String()
+
+			require.Equal(t, tc.filter.AppendToURLValues(url.Values{}).Encode(), got, "the service filter uses the same query parameters as the API filter")
 		})
 	}
 }

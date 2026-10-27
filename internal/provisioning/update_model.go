@@ -135,7 +135,9 @@ type UpdateFilter struct {
 	Status          *api.UpdateStatus
 }
 
-func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
+func (f UpdateFilter) String() string {
+	query := url.Values{}
+
 	if f.UpstreamChannel != nil {
 		query.Add("channel", *f.UpstreamChannel)
 	}
@@ -152,11 +154,7 @@ func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("update_channel", *f.Channel)
 	}
 
-	return query
-}
-
-func (f UpdateFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }
 
 type UpdateFiles []UpdateFile
