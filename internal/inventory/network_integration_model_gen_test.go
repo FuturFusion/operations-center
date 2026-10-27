@@ -3,14 +3,16 @@
 package inventory_test
 
 import (
+	"net/url"
 	"testing"
 
-	"github.com/lxc/incus/v7/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestIncusNetworkIntegrationWrapper_Value(t *testing.T) {
@@ -27,7 +29,7 @@ func TestIncusNetworkIntegrationWrapper_Value(t *testing.T) {
 			name: "success",
 
 			networkIntegration: inventory.IncusNetworkIntegrationWrapper{
-				NetworkIntegration: api.NetworkIntegration{},
+				NetworkIntegration: incusapi.NetworkIntegration{},
 			},
 
 			assertErr: require.NoError,
@@ -200,6 +202,57 @@ func TestNetworkIntegration_Filter(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
+
+func TestNetworkIntegrationFilter_StringMatchesAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.NetworkIntegrationFilter
+	}{
+		{
+			name:   "empty filter",
+			filter: api.NetworkIntegrationFilter{},
+		},
+		{
+			name:   "cluster",
+			filter: api.NetworkIntegrationFilter{Cluster: new("cluster")},
+		},
+		{
+			name:   "expression",
+			filter: api.NetworkIntegrationFilter{Expression: new(`name == "value"`)},
+		},
+		{
+			name: "complete filter",
+			filter: api.NetworkIntegrationFilter{
+				Cluster:    new("cluster"),
+				Expression: new("true"),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// The conversion fails to compile if the fields of the API filter change.
+			// Then add the field to the mapping and to the test cases.
+			fields := struct {
+				Cluster    *string
+				Expression *string
+			}(tc.filter)
+
+			filter := inventory.NetworkIntegrationFilter{
+				Cluster:    fields.Cluster,
+				Expression: fields.Expression,
+			}
+
+			got := filter.String()
+
+			require.Equal(t, tc.filter.AppendToURLValues(url.Values{}).Encode(), got, "the service filter uses the same query parameters as the API filter")
 		})
 	}
 }

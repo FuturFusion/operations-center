@@ -98,7 +98,9 @@ type NetworkFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f NetworkFilter) AppendToURLValues(query url.Values) url.Values {
+func (f NetworkFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -119,9 +121,5 @@ func (f NetworkFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f NetworkFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

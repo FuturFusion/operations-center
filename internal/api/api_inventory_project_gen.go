@@ -91,14 +91,11 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	var filter inventory.ProjectFilter
+	apiFilter := api.ProjectFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.ProjectFilter{
+		Cluster:    apiFilter.Cluster,
+		Expression: apiFilter.Expression,
 	}
 
 	if recursion == 1 {

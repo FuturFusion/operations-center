@@ -3,14 +3,16 @@
 package inventory_test
 
 import (
+	"net/url"
 	"testing"
 
-	"github.com/lxc/incus/v7/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestIncusNetworkLoadBalancerWrapper_Value(t *testing.T) {
@@ -27,7 +29,7 @@ func TestIncusNetworkLoadBalancerWrapper_Value(t *testing.T) {
 			name: "success",
 
 			networkLoadBalancer: inventory.IncusNetworkLoadBalancerWrapper{
-				NetworkLoadBalancer: api.NetworkLoadBalancer{},
+				NetworkLoadBalancer: incusapi.NetworkLoadBalancer{},
 			},
 
 			assertErr: require.NoError,
@@ -240,6 +242,64 @@ func TestNetworkLoadBalancer_Filter(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
+
+func TestNetworkLoadBalancerFilter_StringMatchesAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.NetworkLoadBalancerFilter
+	}{
+		{
+			name:   "empty filter",
+			filter: api.NetworkLoadBalancerFilter{},
+		},
+		{
+			name:   "cluster",
+			filter: api.NetworkLoadBalancerFilter{Cluster: new("cluster")},
+		},
+		{
+			name:   "project",
+			filter: api.NetworkLoadBalancerFilter{ProjectName: new("project")},
+		},
+		{
+			name:   "expression",
+			filter: api.NetworkLoadBalancerFilter{Expression: new(`name == "value"`)},
+		},
+		{
+			name: "complete filter",
+			filter: api.NetworkLoadBalancerFilter{
+				Cluster:     new("cluster"),
+				ProjectName: new("project"),
+				Expression:  new("true"),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// The conversion fails to compile if the fields of the API filter change.
+			// Then add the field to the mapping and to the test cases.
+			fields := struct {
+				Cluster     *string
+				ProjectName *string
+				Expression  *string
+			}(tc.filter)
+
+			filter := inventory.NetworkLoadBalancerFilter{
+				Cluster:     fields.Cluster,
+				ProjectName: fields.ProjectName,
+				Expression:  fields.Expression,
+			}
+
+			got := filter.String()
+
+			require.Equal(t, tc.filter.AppendToURLValues(url.Values{}).Encode(), got, "the service filter uses the same query parameters as the API filter")
 		})
 	}
 }

@@ -16,9 +16,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdNetworkForward struct {
@@ -137,7 +137,7 @@ func (c *cmdNetworkForwardList) validateArgsAndFlags(cmd *cobra.Command, args []
 }
 
 func (c *cmdNetworkForwardList) run(cmd *cobra.Command, args []string) error {
-	var filter inventory.NetworkForwardFilter
+	var filter api.NetworkForwardFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = new(c.flagFilterCluster)

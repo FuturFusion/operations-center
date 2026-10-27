@@ -105,7 +105,9 @@ type NetworkLoadBalancerFilter struct {
 	Expression  *string `db:"ignore"`
 }
 
-func (f NetworkLoadBalancerFilter) AppendToURLValues(query url.Values) url.Values {
+func (f NetworkLoadBalancerFilter) String() string {
+	query := url.Values{}
+
 	if f.UUID != nil {
 		query.Add("uuid", f.UUID.String())
 	}
@@ -130,9 +132,5 @@ func (f NetworkLoadBalancerFilter) AppendToURLValues(query url.Values) url.Value
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f NetworkLoadBalancerFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

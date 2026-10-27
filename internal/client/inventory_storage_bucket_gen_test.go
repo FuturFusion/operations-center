@@ -25,6 +25,8 @@ func Test_GetWithFilterStorageBuckets(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		filter api.StorageBucketFilter
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.StorageBucket)
 	}{
@@ -60,10 +62,11 @@ func Test_GetWithFilterStorageBuckets(t *testing.T) {
 				require.NoError(t, err)
 
 				_, err = entities.CreateStorageBucket(t.Context(), d.db, inventory.StorageBucket{
-					UUID:    uuidgen.FromPattern(t, "1"),
-					Name:    "one",
-					Cluster: "clusterOne",
-					Server:  new("serverOne"),
+					UUID:        uuidgen.FromPattern(t, "1"),
+					Name:        "one",
+					Cluster:     "clusterOne",
+					ProjectName: "default",
+					Server:      new("serverOne"),
 				})
 				require.NoError(t, err)
 			},
@@ -74,6 +77,105 @@ func Test_GetWithFilterStorageBuckets(t *testing.T) {
 
 				require.Len(t, result, 1)
 				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				Cluster: new("clusterOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by cluster, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				Cluster: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
+			name:       "success - filter by server, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				Server: new("serverOne"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by server, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				Server: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Empty(t, result)
+			},
+		},
+		{
+			name:       "success - filter by project, matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				ProjectName: new("default"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "one", result[0].Name)
+			},
+		},
+		{
+			name:       "success - filter by project, not matching",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.StorageBucketFilter{
+				ProjectName: new("unknown"),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.StorageBucket) {
+				t.Helper()
+
+				require.Empty(t, result)
 			},
 		},
 		{
@@ -94,7 +196,7 @@ func Test_GetWithFilterStorageBuckets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetWithFilterStorageBuckets(t.Context(), inventory.StorageBucketFilter{})
+			result, err := tc.client.GetWithFilterStorageBuckets(t.Context(), tc.filter)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)

@@ -41,7 +41,9 @@ type InventoryAggregateFilter struct {
 	Expression         *string
 }
 
-func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values {
+func (f InventoryAggregateFilter) String() string {
+	query := url.Values{}
+
 	for _, kind := range f.Kinds {
 		query.Add("kind", kind)
 	}
@@ -78,9 +80,5 @@ func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values
 		query.Add("filter", *f.Expression)
 	}
 
-	return query
-}
-
-func (f InventoryAggregateFilter) String() string {
-	return f.AppendToURLValues(url.Values{}).Encode()
+	return query.Encode()
 }

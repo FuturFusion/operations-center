@@ -101,18 +101,12 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 		recursion = 0
 	}
 
-	var filter inventory.NetworkForwardFilter
+	apiFilter := api.NetworkForwardFilterFromURLValues(r.URL.Query())
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = new(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("project") != "" {
-		filter.ProjectName = new(r.URL.Query().Get("project"))
-	}
-
-	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = new(r.URL.Query().Get("filter"))
+	filter := inventory.NetworkForwardFilter{
+		Cluster:     apiFilter.Cluster,
+		ProjectName: apiFilter.ProjectName,
+		Expression:  apiFilter.Expression,
 	}
 
 	if recursion == 1 {

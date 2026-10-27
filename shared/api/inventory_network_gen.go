@@ -3,6 +3,7 @@
 package api
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,4 +26,48 @@ type Network struct {
 	Name        string           `json:"name" yaml:"name"`
 	Object      incusapi.Network `json:"object" yaml:"object"`
 	LastUpdated time.Time        `json:"last_updated" yaml:"last_updated"`
+}
+
+// NetworkFilter holds the query parameters to filter the list of networks.
+type NetworkFilter struct {
+	Cluster     *string
+	ProjectName *string
+	Expression  *string
+}
+
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
+func (f NetworkFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+// NetworkFilterFromURLValues reads the filter from the query parameters.
+func NetworkFilterFromURLValues(query url.Values) NetworkFilter {
+	var filter NetworkFilter
+
+	if query.Get("cluster") != "" {
+		filter.Cluster = new(query.Get("cluster"))
+	}
+
+	if query.Get("project") != "" {
+		filter.ProjectName = new(query.Get("project"))
+	}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter
 }

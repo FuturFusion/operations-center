@@ -16,9 +16,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdInstance struct {
@@ -137,7 +137,7 @@ func (c *cmdInstanceList) validateArgsAndFlags(cmd *cobra.Command, args []string
 }
 
 func (c *cmdInstanceList) run(cmd *cobra.Command, args []string) error {
-	var filter inventory.InstanceFilter
+	var filter api.InstanceFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = new(c.flagFilterCluster)

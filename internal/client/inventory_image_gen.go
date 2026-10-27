@@ -9,11 +9,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterImages(ctx context.Context, filter inventory.ImageFilter) ([]api.Image, error) {
+func (c OperationsCenterClient) GetWithFilterImages(ctx context.Context, filter api.ImageFilter) ([]api.Image, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)

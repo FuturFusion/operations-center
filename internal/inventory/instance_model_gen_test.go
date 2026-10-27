@@ -3,14 +3,16 @@
 package inventory_test
 
 import (
+	"net/url"
 	"testing"
 
-	"github.com/lxc/incus/v7/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestIncusInstanceFullWrapper_Value(t *testing.T) {
@@ -27,7 +29,7 @@ func TestIncusInstanceFullWrapper_Value(t *testing.T) {
 			name: "success",
 
 			instancefull: inventory.IncusInstanceFullWrapper{
-				InstanceFull: api.InstanceFull{},
+				InstanceFull: incusapi.InstanceFull{},
 			},
 
 			assertErr: require.NoError,
@@ -240,6 +242,71 @@ func TestInstance_Filter(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
+
+func TestInstanceFilter_StringMatchesAPI(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.InstanceFilter
+	}{
+		{
+			name:   "empty filter",
+			filter: api.InstanceFilter{},
+		},
+		{
+			name:   "cluster",
+			filter: api.InstanceFilter{Cluster: new("cluster")},
+		},
+		{
+			name:   "server",
+			filter: api.InstanceFilter{Server: new("server")},
+		},
+		{
+			name:   "project",
+			filter: api.InstanceFilter{ProjectName: new("project")},
+		},
+		{
+			name:   "expression",
+			filter: api.InstanceFilter{Expression: new(`name == "value"`)},
+		},
+		{
+			name: "complete filter",
+			filter: api.InstanceFilter{
+				Cluster:     new("cluster"),
+				Server:      new("server"),
+				ProjectName: new("project"),
+				Expression:  new("true"),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// The conversion fails to compile if the fields of the API filter change.
+			// Then add the field to the mapping and to the test cases.
+			fields := struct {
+				Cluster     *string
+				Server      *string
+				ProjectName *string
+				Expression  *string
+			}(tc.filter)
+
+			filter := inventory.InstanceFilter{
+				Cluster:     fields.Cluster,
+				Server:      fields.Server,
+				ProjectName: fields.ProjectName,
+				Expression:  fields.Expression,
+			}
+
+			got := filter.String()
+
+			require.Equal(t, tc.filter.AppendToURLValues(url.Values{}).Encode(), got, "the service filter uses the same query parameters as the API filter")
 		})
 	}
 }
