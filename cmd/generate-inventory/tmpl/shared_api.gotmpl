@@ -49,7 +49,8 @@ type {{ .Name | pascalcase }}Filter struct {
 	Expression  *string
 }
 
-// AppendToURLValues adds the set fields of the filter to query.
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
 func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
@@ -72,4 +73,31 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 	}
 
 	return query
+}
+
+// {{ .Name | pascalcase }}FilterFromURLValues reads the filter from the query parameters.
+func {{ .Name | pascalcase }}FilterFromURLValues(query url.Values) {{ .Name | pascalcase }}Filter {
+	var filter {{ .Name | pascalcase }}Filter
+
+	if query.Get("cluster") != "" {
+		filter.Cluster = new(query.Get("cluster"))
+	}
+{{- if .ServerIDByLocation }}
+
+	if query.Get("server") != "" {
+		filter.Server = new(query.Get("server"))
+	}
+{{- end }}
+{{- if .HasProject }}
+
+	if query.Get("project") != "" {
+		filter.ProjectName = new(query.Get("project"))
+	}
+{{- end }}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter
 }

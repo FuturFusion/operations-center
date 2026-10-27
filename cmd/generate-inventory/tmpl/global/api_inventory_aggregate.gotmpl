@@ -3,6 +3,8 @@ package api
 import (
 	"net/url"
 	"strconv"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 // InventoryAggregate holds the inventory resources of a single cluster.
@@ -68,4 +70,43 @@ func (f InventoryAggregateFilter) AppendToURLValues(query url.Values) url.Values
 	}
 
 	return query
+}
+
+// InventoryAggregateFilterFromURLValues reads the filter from the query parameters.
+func InventoryAggregateFilterFromURLValues(query url.Values) (InventoryAggregateFilter, error) {
+	var filter InventoryAggregateFilter
+
+	filter.Kinds = query["kind"]
+	filter.Clusters = query["cluster"]
+	filter.Servers = query["server"]
+	filter.Projects = query["project"]
+	filter.Parents = query["parent"]
+
+	includeNullFields := []struct {
+		name  string
+		value *bool
+	}{
+		{name: "server_include_null", value: &filter.ServerIncludeNull},
+		{name: "project_include_null", value: &filter.ProjectIncludeNull},
+		{name: "parent_include_null", value: &filter.ParentIncludeNull},
+	}
+
+	for _, field := range includeNullFields {
+		if query.Get(field.name) == "" {
+			continue
+		}
+
+		value, err := strconv.ParseBool(query.Get(field.name))
+		if err != nil {
+			return InventoryAggregateFilter{}, domain.NewValidationErrf("Invalid value %q for query parameter %q", query.Get(field.name), field.name)
+		}
+
+		*field.value = value
+	}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter, nil
 }

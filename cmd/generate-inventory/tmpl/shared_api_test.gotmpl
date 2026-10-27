@@ -9,7 +9,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func Test{{ .Name | pascalcase }}Filter_AppendToURLValues(t *testing.T) {
+func Test{{ .Name | pascalcase }}Filter_URLValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -46,8 +46,53 @@ func Test{{ .Name | pascalcase }}Filter_AppendToURLValues(t *testing.T) {
 			t.Parallel()
 
 			query := tc.filter.AppendToURLValues(url.Values{})
+			filter := api.{{ .Name | pascalcase }}FilterFromURLValues(query)
 
-			require.Equal(t, tc.want, query.Encode())
+			require.Equal(t, tc.want, query.Encode(), "the filter is encoded as query parameters")
+			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
+		})
+	}
+}
+
+func Test{{ .Name | pascalcase }}FilterFromURLValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query url.Values
+
+		want api.{{ .Name | pascalcase }}Filter
+	}{
+		{
+			name:  "empty query",
+			query: url.Values{},
+
+			want: api.{{ .Name | pascalcase }}Filter{},
+		},
+		{
+			name: "empty values are ignored",
+			query: url.Values{
+				"cluster": []string{""},
+{{- if .ServerIDByLocation }}
+				"server":  []string{""},
+{{- end }}
+{{- if .HasProject }}
+				"project": []string{""},
+{{- end }}
+				"filter":  []string{""},
+			},
+
+			want: api.{{ .Name | pascalcase }}Filter{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter := api.{{ .Name | pascalcase }}FilterFromURLValues(tc.query)
+
+			require.Equal(t, tc.want, filter)
 		})
 	}
 }
