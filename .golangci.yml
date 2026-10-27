@@ -33,6 +33,7 @@ linters:
         - (io.WriteCloser).Close
         - (io.ReadWriteCloser).Close
         - (*os.File).Close
+        - (*os.Root).Close
         - (*github.com/gorilla/websocket.Conn).Close
         - (*github.com/mdlayher/vsock.Listener).Close
         - os.Remove
