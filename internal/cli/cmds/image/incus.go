@@ -18,7 +18,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
@@ -320,12 +319,12 @@ func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []strin
 		return fmt.Errorf("Either provide the image attributes through a metadata tarball or pass all the required flags")
 	}
 
-	err = image.ValidateIncusImageArchitecture(c.flagArchitecture)
+	err = api.ValidateIncusImageArchitecture(c.flagArchitecture)
 	if err != nil {
 		return err
 	}
 
-	err = image.ValidateIncusImageVersion(c.flagVersion)
+	err = api.ValidateIncusImageVersion(c.flagVersion)
 	if err != nil {
 		return err
 	}
