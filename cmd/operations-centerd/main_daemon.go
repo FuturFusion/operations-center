@@ -63,7 +63,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure we have the data directory.
-	err := os.MkdirAll(c.env.VarDir(), 0o750)
+	err := os.MkdirAll(c.env.VarDir(), 0o750) //nolint:forbidigo // Creates the directory, which is opened as root afterwards.
 	if err != nil {
 		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
 	}
@@ -80,7 +80,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure we have the run directory.
-	err = os.MkdirAll(c.env.RunDir(), 0o750)
+	err = os.MkdirAll(c.env.RunDir(), 0o750) //nolint:forbidigo // The run dir holds the unix socket, which is accessed by path.
 	if err != nil {
 		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
 	}
