@@ -18,6 +18,7 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
@@ -45,9 +46,12 @@ var terraformProviders = map[string]struct {
 //go:embed templates
 var templatesFS embed.FS
 
+// clusterConfigsDir holds the Terraform configuration of every cluster.
+const clusterConfigsDir = "cluster-configs"
+
 type terraform struct {
-	storageDir        string
-	tmpDir            string
+	// root is a temporary directory. It is also used as INCUS_CONF.
+	root              *os.Root
 	clientCertificate string
 	clientKey         string
 
@@ -83,21 +87,21 @@ var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
+// New returns the Terraform provisioner. It stores the configuration of the
+// clusters and the certificates for Incus in root.
 func New(
-	tmpDir string,
+	root *os.Root,
 	clientCertificate string,
 	clientKey string,
 	opts ...Option,
 ) (terraform, error) {
-	storageDir := filepath.Join(tmpDir, "cluster-configs")
-	err := os.MkdirAll(storageDir, 0o700)
+	err := root.MkdirAll(clusterConfigsDir, 0o700)
 	if err != nil {
 		return terraform{}, fmt.Errorf("Failed to create directory for terraform provisioner: %w", err)
 	}
 
 	t := terraform{
-		storageDir:        storageDir,
-		tmpDir:            tmpDir,
+		root:              root,
 		clientCertificate: clientCertificate,
 		clientKey:         clientKey,
 
@@ -127,8 +131,12 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		return "", nil, fmt.Errorf("Failed to seed server certificates: %w", err)
 	}
 
-	configDir := filepath.Join(t.storageDir, name)
-	err = os.MkdirAll(configDir, 0o700)
+	configDir, err := clusterConfigDir(name)
+	if err != nil {
+		return "", nil, err
+	}
+
+	err = t.root.MkdirAll(configDir, 0o700)
 	if err != nil {
 		return "", nil, fmt.Errorf("Failed to create directory target terraform configuration directory for cluster %q: %w", name, err)
 	}
@@ -165,7 +173,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		err = func() (err error) {
 			targetFilename, _ := strings.CutSuffix(filepath.Join(configDir, templateFile.Name()), ".gotmpl")
 
-			targetFile, err := os.Create(targetFilename)
+			targetFile, err := t.root.Create(targetFilename)
 			if err != nil {
 				return fmt.Errorf("Failed to open terraform target file %q for cluster %q: %w", targetFilename, name, err)
 			}
@@ -216,38 +224,54 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		}
 	}
 
-	err = t.terraformInitFunc(ctx, configDir)
+	absConfigDir := filepath.Join(t.root.Name(), configDir)
+
+	err = t.terraformInitFunc(ctx, absConfigDir)
 	if err != nil {
 		return "", nil, fmt.Errorf("Failed to init Terraform: %w", err)
 	}
 
-	return configDir, cleanup(configDir), nil
+	return absConfigDir, t.cleanup(configDir), nil
+}
+
+// clusterConfigDir returns the directory of the Terraform configuration of the
+// cluster relative to the root.
+func clusterConfigDir(clusterName string) (string, error) {
+	if !file.IsPathElement(clusterName) {
+		return "", domain.NewValidationErrf("Invalid cluster name %q for the Terraform configuration", clusterName)
+	}
+
+	return filepath.Join(clusterConfigsDir, clusterName), nil
 }
 
 func (t terraform) SeedCertificate(ctx context.Context, clusterName string, certificatePEM string) error {
 	// Since we override the INCUS_CONF directory with the operations center var dir,
 	// we need to store the server certificates in the "servercerts" folder
 	// as expected by Incus.
-	servercertsDir := filepath.Join(t.tmpDir, "servercerts")
-	err := os.MkdirAll(servercertsDir, 0o700)
+	if !file.IsPathElement(clusterName) {
+		return domain.NewValidationErrf("Invalid cluster name %q for the server certificate", clusterName)
+	}
+
+	servercertsDir := "servercerts"
+	err := t.root.MkdirAll(servercertsDir, 0o700)
 	if err != nil {
 		return fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
 	}
 
 	servercertsFilename := filepath.Join(servercertsDir, clusterName+".crt")
-	err = os.WriteFile(servercertsFilename, []byte(certificatePEM), 0o600)
+	err = t.root.WriteFile(servercertsFilename, []byte(certificatePEM), 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to write servercert for %q (%s): %w", clusterName, servercertsFilename, err)
 	}
 
 	// Additionally, we need to make sure, the client.crt and client.key are available
 	// for Incus as well.
-	err = os.WriteFile(filepath.Join(t.tmpDir, "client.key"), []byte(t.clientKey), 0o600)
+	err = t.root.WriteFile("client.key", []byte(t.clientKey), 0o600)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(t.tmpDir, "client.crt"), []byte(t.clientCertificate), 0o600)
+	err = t.root.WriteFile("client.crt", []byte(t.clientCertificate), 0o600)
 	if err != nil {
 		return err
 	}
@@ -255,9 +279,9 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 	return err
 }
 
-func cleanup(path string) func() error {
+func (t terraform) cleanup(configDir string) func() error {
 	return func() error {
-		return os.RemoveAll(path)
+		return t.root.RemoveAll(configDir)
 	}
 }
 
@@ -593,17 +617,21 @@ func incusPreseedWithDefaults(config map[string]any, trustedClientCertificates [
 }
 
 func (t terraform) Apply(ctx context.Context, cluster provisioning.Cluster) error {
-	configDir := filepath.Join(t.storageDir, cluster.Name)
-	if !file.PathExists(configDir) {
+	configDir, err := clusterConfigDir(cluster.Name)
+	if err != nil {
+		return err
+	}
+
+	if !file.PathExistsIn(t.root, configDir) {
 		return fmt.Errorf("Initialized Terraform config not found")
 	}
 
-	err := t.terraformApplyFunc(ctx, configDir)
+	err = t.terraformApplyFunc(ctx, filepath.Join(t.root.Name(), configDir))
 	if err != nil {
 		return fmt.Errorf("Failed to apply Terraform configuration: %w", err)
 	}
 
-	err = terraformConfigPostProcessing(configDir, cluster)
+	err = terraformConfigPostProcessing(t.root, configDir, cluster)
 	if err != nil {
 		return fmt.Errorf("Failed to post process terraform configuration: %w", err)
 	}
@@ -613,10 +641,10 @@ func (t terraform) Apply(ctx context.Context, cluster provisioning.Cluster) erro
 
 // terraformConfigPostProcessing updates the Terraform configuration after
 // successful initial apply for future external use.
-func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) error {
+func terraformConfigPostProcessing(root *os.Root, configDir string, cluster provisioning.Cluster) error {
 	// Update "remote" for incus provider to match the cluster's connection URL.
-	providerTf := filepath.Join(path, "providers.tf")
-	src, err := os.ReadFile(providerTf)
+	providerTf := filepath.Join(configDir, "providers.tf")
+	src, err := root.ReadFile(providerTf)
 	if err != nil {
 		return err
 	}
@@ -628,7 +656,7 @@ func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) er
 
 	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("address", cty.StringVal(cluster.ConnectionURL))
 
-	err = os.WriteFile(providerTf, f.Bytes(), 0o600)
+	err = root.WriteFile(providerTf, f.Bytes(), 0o600)
 	if err != nil {
 		return err
 	}
