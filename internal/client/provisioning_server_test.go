@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -91,7 +93,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		filter provisioning.ServerFilter
+		filter api.ServerFilter
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Server)
@@ -112,7 +114,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 				seedServer(t, d, "standaloneServer", nil)
 			},
 
-			filter: provisioning.ServerFilter{
+			filter: api.ServerFilter{
 				Cluster: new("clusterOne"),
 			},
 
@@ -129,7 +131,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.ServerFilter{
+			filter: api.ServerFilter{
 				Cluster: new("unknown"),
 			},
 
@@ -145,7 +147,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.ServerFilter{
+			filter: api.ServerFilter{
 				Status: new(api.ServerStatusUnregistered),
 			},
 
@@ -161,7 +163,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.ServerFilter{
+			filter: api.ServerFilter{
 				Expression: new(`name == "standaloneServer"`),
 			},
 
@@ -171,6 +173,20 @@ func Test_GetWithFilterServers(t *testing.T) {
 
 				require.Len(t, result, 1)
 				require.Equal(t, "standaloneServer", result[0].Name)
+			},
+		},
+		{
+			name:       "error - invalid status",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			filter: api.ServerFilter{
+				Status: new(api.ServerStatus("invalid")),
+			},
+
+			assertErr: errassert.StatusErrorContains(http.StatusBadRequest, `Invalid value "invalid" for query parameter "status"`),
+			assertFunc: func(t *testing.T, result []api.Server) {
+				t.Helper()
 			},
 		},
 		{

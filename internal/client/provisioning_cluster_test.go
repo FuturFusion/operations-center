@@ -96,7 +96,7 @@ func Test_GetWithFilterClusters(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		filter provisioning.ClusterFilter
+		filter api.ClusterFilter
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.Cluster)
@@ -111,7 +111,7 @@ func Test_GetWithFilterClusters(t *testing.T) {
 				seedCluster(t, d, "clusterTwo", api.ClusterStatusPending)
 			},
 
-			filter: provisioning.ClusterFilter{
+			filter: api.ClusterFilter{
 				Expression: new(`name == "clusterOne"`),
 			},
 
@@ -128,7 +128,7 @@ func Test_GetWithFilterClusters(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.ClusterFilter{
+			filter: api.ClusterFilter{
 				Expression: new(`name == "unknown"`),
 			},
 
@@ -144,7 +144,7 @@ func Test_GetWithFilterClusters(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			filter: provisioning.ClusterFilter{
+			filter: api.ClusterFilter{
 				Expression: new("this is not a valid expression"),
 			},
 

@@ -1,6 +1,8 @@
 package client_test
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -226,6 +229,36 @@ func Test_GetWithFilterInventoryAggregates(t *testing.T) {
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)
+		})
+	}
+}
+
+func Test_GetInventoryAggregates_invalidIncludeNull(t *testing.T) {
+	d := daemonSetup(t)
+
+	tests := []struct {
+		name  string
+		query url.Values
+	}{
+		{
+			name:  "server_include_null",
+			query: url.Values{"server_include_null": {"nope"}},
+		},
+		{
+			name:  "project_include_null",
+			query: url.Values{"project_include_null": {"nope"}},
+		},
+		{
+			name:  "parent_include_null",
+			query: url.Values{"parent_include_null": {"nope"}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := d.socketClient.DoRequest(t.Context(), http.MethodGet, "/inventory/query", tc.query, nil)
+
+			errassert.StatusErrorContains(http.StatusBadRequest, `Invalid value "nope" for query parameter "`+tc.name+`"`)(t, err, "the typed client can not send an invalid bool, so use a raw request")
 		})
 	}
 }

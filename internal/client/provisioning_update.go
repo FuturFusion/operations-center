@@ -9,15 +9,14 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func (c OperationsCenterClient) GetUpdates(ctx context.Context) ([]api.Update, error) {
-	return c.GetWithFilterUpdates(ctx, provisioning.UpdateFilter{})
+	return c.GetWithFilterUpdates(ctx, api.UpdateFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterUpdates(ctx context.Context, filter provisioning.UpdateFilter) ([]api.Update, error) {
+func (c OperationsCenterClient) GetWithFilterUpdates(ctx context.Context, filter api.UpdateFilter) ([]api.Update, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
