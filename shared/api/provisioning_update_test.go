@@ -6,10 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestUpdateFilter_AppendToURLValues(t *testing.T) {
+func TestUpdateFilter_URLValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -42,8 +43,63 @@ func TestUpdateFilter_AppendToURLValues(t *testing.T) {
 			t.Parallel()
 
 			query := tc.filter.AppendToURLValues(url.Values{})
+			filter, err := api.UpdateFilterFromURLValues(query)
 
-			require.Equal(t, tc.want, query.Encode())
+			require.NoError(t, err)
+			require.Equal(t, tc.want, query.Encode(), "the filter is encoded as query parameters")
+			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
+		})
+	}
+}
+
+func TestUpdateFilterFromURLValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query url.Values
+
+		assertErr require.ErrorAssertionFunc
+		want      api.UpdateFilter
+	}{
+		{
+			name:  "empty query",
+			query: url.Values{},
+
+			assertErr: require.NoError,
+			want:      api.UpdateFilter{},
+		},
+		{
+			name: "empty values are ignored",
+			query: url.Values{
+				"channel":        []string{""},
+				"update_channel": []string{""},
+				"origin":         []string{""},
+				"status":         []string{""},
+			},
+
+			assertErr: require.NoError,
+			want:      api.UpdateFilter{},
+		},
+		{
+			name: "error - invalid status",
+			query: url.Values{
+				"status": []string{"invalid"},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid value "invalid" for query parameter "status"`),
+			want:      api.UpdateFilter{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter, err := api.UpdateFilterFromURLValues(tc.query)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, filter)
 		})
 	}
 }

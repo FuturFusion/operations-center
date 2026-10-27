@@ -6,10 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestInventoryAggregateFilter_AppendToURLValues(t *testing.T) {
+func TestInventoryAggregateFilter_URLValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -56,8 +57,80 @@ func TestInventoryAggregateFilter_AppendToURLValues(t *testing.T) {
 			t.Parallel()
 
 			query := tc.filter.AppendToURLValues(url.Values{})
+			filter, err := api.InventoryAggregateFilterFromURLValues(query)
 
 			require.Equal(t, tc.want, query.Encode())
+			require.NoError(t, err)
+			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
+		})
+	}
+}
+
+func TestInventoryAggregateFilterFromURLValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query url.Values
+
+		assertErr require.ErrorAssertionFunc
+		want      api.InventoryAggregateFilter
+	}{
+		{
+			name:  "empty query",
+			query: url.Values{},
+
+			assertErr: require.NoError,
+			want:      api.InventoryAggregateFilter{},
+		},
+		{
+			name: "include null false",
+			query: url.Values{
+				"server_include_null":  []string{"false"},
+				"project_include_null": []string{"false"},
+				"parent_include_null":  []string{"false"},
+			},
+
+			assertErr: require.NoError,
+			want:      api.InventoryAggregateFilter{},
+		},
+		{
+			name: "error - invalid server_include_null",
+			query: url.Values{
+				"server_include_null": []string{"invalid"},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid value "invalid" for query parameter "server_include_null"`),
+			want:      api.InventoryAggregateFilter{},
+		},
+		{
+			name: "error - invalid project_include_null",
+			query: url.Values{
+				"project_include_null": []string{"invalid"},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid value "invalid" for query parameter "project_include_null"`),
+			want:      api.InventoryAggregateFilter{},
+		},
+		{
+			name: "error - invalid parent_include_null",
+			query: url.Values{
+				"parent_include_null": []string{"invalid"},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid value "invalid" for query parameter "parent_include_null"`),
+			want:      api.InventoryAggregateFilter{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter, err := api.InventoryAggregateFilterFromURLValues(tc.query)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, filter)
 		})
 	}
 }

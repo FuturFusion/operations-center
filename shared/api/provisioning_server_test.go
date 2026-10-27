@@ -805,7 +805,7 @@ func TestBMCData_ServerArchitecture(t *testing.T) {
 	}
 }
 
-func TestServerFilter_AppendToURLValues(t *testing.T) {
+func TestServerFilter_URLValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -837,8 +837,62 @@ func TestServerFilter_AppendToURLValues(t *testing.T) {
 			t.Parallel()
 
 			query := tc.filter.AppendToURLValues(url.Values{})
+			filter, err := api.ServerFilterFromURLValues(query)
 
-			require.Equal(t, tc.want, query.Encode())
+			require.NoError(t, err)
+			require.Equal(t, tc.want, query.Encode(), "the filter is encoded as query parameters")
+			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
+		})
+	}
+}
+
+func TestServerFilterFromURLValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query url.Values
+
+		assertErr require.ErrorAssertionFunc
+		want      api.ServerFilter
+	}{
+		{
+			name:  "empty query",
+			query: url.Values{},
+
+			assertErr: require.NoError,
+			want:      api.ServerFilter{},
+		},
+		{
+			name: "empty values are ignored",
+			query: url.Values{
+				"cluster": []string{""},
+				"status":  []string{""},
+				"filter":  []string{""},
+			},
+
+			assertErr: require.NoError,
+			want:      api.ServerFilter{},
+		},
+		{
+			name: "error - invalid status",
+			query: url.Values{
+				"status": []string{"invalid"},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid value "invalid" for query parameter "status"`),
+			want:      api.ServerFilter{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter, err := api.ServerFilterFromURLValues(tc.query)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, filter)
 		})
 	}
 }

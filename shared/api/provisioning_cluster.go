@@ -472,11 +472,23 @@ type ClusterFilter struct {
 	Expression *string
 }
 
-// AppendToURLValues adds the set fields of the filter to query.
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
 func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)
 	}
 
 	return query
+}
+
+// ClusterFilterFromURLValues reads the filter from the query parameters.
+func ClusterFilterFromURLValues(query url.Values) ClusterFilter {
+	var filter ClusterFilter
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter
 }

@@ -1218,7 +1218,8 @@ type ServerFilter struct {
 	Expression *string
 }
 
-// AppendToURLValues adds the set fields of the filter to query.
+// AppendToURLValues adds the fields of the filter that are not empty to query.
+// It returns query.
 func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
@@ -1233,4 +1234,30 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 	}
 
 	return query
+}
+
+// ServerFilterFromURLValues reads the filter from the query parameters.
+// It returns a validation error if the status is invalid.
+func ServerFilterFromURLValues(query url.Values) (ServerFilter, error) {
+	var filter ServerFilter
+
+	if query.Get("cluster") != "" {
+		filter.Cluster = new(query.Get("cluster"))
+	}
+
+	if query.Get("status") != "" {
+		var status ServerStatus
+		err := status.UnmarshalText([]byte(query.Get("status")))
+		if err != nil {
+			return ServerFilter{}, domain.NewValidationErrf("Invalid value %q for query parameter %q", query.Get("status"), "status")
+		}
+
+		filter.Status = &status
+	}
+
+	if query.Get("filter") != "" {
+		filter.Expression = new(query.Get("filter"))
+	}
+
+	return filter, nil
 }

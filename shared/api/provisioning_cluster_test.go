@@ -9,7 +9,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestClusterFilter_AppendToURLValues(t *testing.T) {
+func TestClusterFilter_URLValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -39,8 +39,10 @@ func TestClusterFilter_AppendToURLValues(t *testing.T) {
 			t.Parallel()
 
 			query := tc.filter.AppendToURLValues(url.Values{})
+			filter := api.ClusterFilterFromURLValues(query)
 
-			require.Equal(t, tc.want, query.Encode())
+			require.Equal(t, tc.want, query.Encode(), "the filter is encoded as query parameters")
+			require.Equal(t, tc.filter, filter, "parsing the query returns the original filter")
 		})
 	}
 }
