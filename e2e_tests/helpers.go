@@ -1031,12 +1031,12 @@ func fmtRunErr(resp cmdResponse) error {
 	return nil
 }
 
-func mustNotBeAlreadyClustered(t *testing.T) {
+func mustNotBeAlreadyClustered(t *testing.T, name string) {
 	t.Helper()
 
-	clusterListResp := run(t, "incus exec IncusOS01 -- incus cluster list")
+	clusterListResp := run(t, "incus exec %s -- incus cluster list", name)
 	require.NoError(t, clusterListResp.err)
-	require.NotEqual(t, 0, clusterListResp.exitCode, "IncusOS01 is already part of a cluster")
+	require.NotEqualf(t, 0, clusterListResp.exitCode, "%s is already part of a cluster", name)
 }
 
 func mustDeleteClusterImages(t *testing.T, clusterName string) {

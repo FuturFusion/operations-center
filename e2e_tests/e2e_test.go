@@ -39,7 +39,10 @@ func TestE2E_OperationsCenter(t *testing.T) {
 func TestE2E_StableServers(t *testing.T) {
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	pool := newServerPool(t, names, prepareStableTokenISO)
+	// The members of the cluster after add_and_remove_server.
+	remainingNames := []string{"IncusOS01", "IncusOS02", "IncusOS04"}
+
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, prepareStableTokenISO)
 
 	runE2ESuite(t, pool, []e2eScenario{
 		{
@@ -73,10 +76,28 @@ func TestE2E_StableServers(t *testing.T) {
 			run:        createClusterFromTemplate,
 		},
 		{
-			// Leaves IncusOS01 clustered, so it runs last.
+			name:       "add_and_remove_server",
+			standalone: []string{"IncusOS04"},
+			cluster:    names,
+			run:        addAndRemoveServer,
+		},
+		{
+			name:    "factory_reset_cluster_with_token_seed",
+			cluster: remainingNames,
+			run:     factoryResetClusterWithTokenSeed(remainingNames),
+		},
+		{
+			// Uses the server, which add_and_remove_server removed from the
+			// cluster. It leaves IncusOS03 clustered without a record.
 			name:       "images_remote_launch_instance",
-			standalone: []string{"IncusOS01"},
-			run:        ocIncusImagesRemoteLaunchInstance([]string{"IncusOS01"}),
+			standalone: []string{"IncusOS03"},
+			run:        ocIncusImagesRemoteLaunchInstance([]string{"IncusOS03"}),
+		},
+		{
+			// Stops IncusOS04, so it runs last.
+			name:    "force_remove_lost_server",
+			cluster: remainingNames,
+			run:     forceRemoveLostServer("IncusOS04", []string{"IncusOS01", "IncusOS02"}),
 		},
 	})
 }
@@ -89,33 +110,6 @@ func TestE2E_WithToken_ACMERenewal(t *testing.T) {
 			t.Helper()
 		},
 		acmeRenewal([]string{"IncusOS01", "IncusOS02"}),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndAddServerAndRemoveServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}),
-		createClusterAndAddServerAndRemoveServer(),
-	)
-}
-
-func TestE2E_WithToken_CreateClusterAndForceRemoveLostServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - create cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndForceRemoveLostServer(),
-	)
-}
-
-func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
-	runE2ETest(
-		t,
-		"token - factory reset cluster",
-		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		factoryResetClusterWithTokenSeed,
 	)
 }
 

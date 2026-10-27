@@ -762,12 +762,15 @@ func assertClusterTemplateApplied(t *testing.T, clusterName string, serverNames 
 	require.Equal(t, "E2E Test IncusOS Cluster", resp.OutputTrimmed(), "expect UI title to be set from the default of the cluster template variable")
 }
 
-func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
+// assertRemovedServerToReappear waits for the removed server to register again
+// with its hostname after the factory reset. It also waits for the server to
+// become ready, so the next scenario can use it.
+func assertRemovedServerToReappear(ctx context.Context, t *testing.T, hostname string) {
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, 5*time.Minute, cpuArch)
-	require.NoError(t, err, "expect 1 not clustered server")
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .cluster == "" and .server_type == "incus" and .server_status == "ready") ] | length == 1'`, 5*time.Minute, cpuArch, hostname)
+	require.NoErrorf(t, err, "expect the not clustered server %q", hostname)
 	if !ok {
 		fmt.Println("====[ Server List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
