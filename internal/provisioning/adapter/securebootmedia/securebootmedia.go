@@ -30,6 +30,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -43,9 +44,9 @@ var errCacheMiss = errors.New("Secure boot enrollment media is not cached")
 // requiredTools are the external tools the generation shells out to.
 var requiredTools = []string{"cert-to-efi-sig-list", "sign-efi-sig-list", "mkfs.vfat", "mcopy", "systemd-repart"}
 
-// Media generates the secure boot enrollment media and stores it in a directory.
+// Media generates the secure boot enrollment media and stores it in a root.
 type Media struct {
-	dir           string
+	root          *os.Root
 	bootLoaderDir string
 
 	runTool       func(ctx context.Context, name string, args ...string) error
@@ -72,10 +73,10 @@ var _ provisioning.SecureBootMediaPort = &Media{}
 
 type Option func(m *Media)
 
-// New returns the generator, storing the generated media in dir.
-func New(dir string, opts ...Option) *Media {
+// New returns the generator, storing the generated media in root.
+func New(root *os.Root, opts ...Option) *Media {
 	media := &Media{
-		dir:           dir,
+		root:          root,
 		bootLoaderDir: bootLoaderDir,
 		entries:       map[string]*cacheEntry{},
 		runTool:       runTool,
@@ -186,7 +187,7 @@ func (m *Media) Generate(ctx context.Context, imageType api.ImageType, architect
 	id := MediaID(imageType, architecture, certificates)
 
 	for {
-		_, err := os.Stat(m.filename(imageType, id))
+		_, err := m.root.Stat(m.filename(imageType, id))
 		if err == nil {
 			m.touch(ctx, imageType, id)
 
@@ -263,13 +264,13 @@ func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*
 // together with leftovers of interrupted generations. A media named by inUse is
 // kept however old it is.
 func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) error {
-	dirEntries, err := os.ReadDir(m.dir)
+	dirEntries, err := fs.ReadDir(m.root.FS(), ".")
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 
-		return fmt.Errorf("Failed to read the secure boot enrollment media directory %q: %w", m.dir, err)
+		return fmt.Errorf("Failed to read the secure boot enrollment media directory %q: %w", m.root.Name(), err)
 	}
 
 	var errs []error
@@ -319,7 +320,7 @@ func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) er
 			continue
 		}
 
-		err = os.Remove(filepath.Join(m.dir, filename))
+		err = m.root.Remove(filename)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			errs = append(errs, err)
 		}
@@ -374,17 +375,11 @@ func (m *Media) generate(ctx context.Context, imageType api.ImageType, id string
 // write stores the image, going through a partial file, so an interrupted
 // generation never leaves a truncated image behind.
 func (m *Media) write(imageType api.ImageType, id string, body func(io.Writer) error) (err error) {
-	err = os.MkdirAll(m.dir, 0o700)
-	if err != nil {
-		return fmt.Errorf("Failed to create the secure boot enrollment media directory %q: %w", m.dir, err)
-	}
-
-	partial, err := os.CreateTemp(m.dir, id+".*"+partialExt)
+	partial, partialName, err := file.CreateTempIn(m.root, ".", id+".*"+partialExt)
 	if err != nil {
 		return fmt.Errorf("Failed to create the partial file for the secure boot enrollment media %q: %w", id, err)
 	}
 
-	partialName := partial.Name()
 	closePartial := sync.OnceValue(partial.Close)
 
 	defer func() {
@@ -395,7 +390,7 @@ func (m *Media) write(imageType api.ImageType, id string, body func(io.Writer) e
 		err = errors.Join(err, closePartial())
 
 		if partialName != "" {
-			err = errors.Join(err, os.Remove(partialName))
+			err = errors.Join(err, m.root.Remove(partialName))
 		}
 	}()
 
@@ -409,7 +404,7 @@ func (m *Media) write(imageType api.ImageType, id string, body func(io.Writer) e
 		return fmt.Errorf("Failed to close the partial file for the secure boot enrollment media %q: %w", id, err)
 	}
 
-	err = os.Rename(partialName, m.filename(imageType, id))
+	err = m.root.Rename(partialName, m.filename(imageType, id))
 	if err != nil {
 		return fmt.Errorf("Failed to move the secure boot enrollment media %q into place: %w", id, err)
 	}
@@ -421,7 +416,7 @@ func (m *Media) write(imageType api.ImageType, id string, body func(io.Writer) e
 
 // open returns the stored image, or reports errCacheMiss, if it is not stored.
 func (m *Media) open(ctx context.Context, imageType api.ImageType, id string) (*provisioning.SecureBootMediaImage, error) {
-	file, err := os.Open(m.filename(imageType, id))
+	file, err := m.root.Open(m.filename(imageType, id))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, errCacheMiss
@@ -536,14 +531,15 @@ func (m *Media) touch(ctx context.Context, imageType api.ImageType, id string) {
 
 	// The image is only missing, where it has just been pruned, in which case
 	// there is nothing left to record the access on.
-	err := os.Chtimes(m.filename(imageType, id), now, now)
+	err := m.root.Chtimes(m.filename(imageType, id), now, now)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		slog.WarnContext(ctx, "Failed to record the access to the secure boot enrollment media", slog.String("id", id), logger.Err(err))
 	}
 }
 
+// filename returns the name of the stored image relative to the root.
 func (m *Media) filename(imageType api.ImageType, id string) string {
-	return filepath.Join(m.dir, id+imageType.FileExt())
+	return id + imageType.FileExt()
 }
 
 // mediaIDFromFilename returns the ID of the image a stored file holds and
