@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	incusapi "github.com/lxc/incus/v7/shared/api"
@@ -464,4 +465,18 @@ type ClusterUpdatePost struct {
 	// installed applications on the version they are on. It can not be combined
 	// with applications.
 	OSOnly bool `json:"os_only" yaml:"os_only"`
+}
+
+// ClusterFilter holds the query parameters to filter the list of clusters.
+type ClusterFilter struct {
+	Expression *string
+}
+
+// AppendToURLValues adds the set fields of the filter to query.
+func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
 }

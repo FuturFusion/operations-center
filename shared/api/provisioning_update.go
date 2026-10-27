@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql/driver"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -159,3 +160,36 @@ type UpdateChangelog = images.Changelog
 //
 // swagger:model
 type UpdateChangelogs []UpdateChangelog
+
+// UpdateFilter holds the query parameters to filter the list of updates.
+type UpdateFilter struct {
+	// UpstreamChannel is the channel of the update source.
+	UpstreamChannel *string
+
+	// Channel is the update channel in Operations Center.
+	Channel *string
+
+	Origin *string
+	Status *UpdateStatus
+}
+
+// AppendToURLValues adds the set fields of the filter to query.
+func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UpstreamChannel != nil {
+		query.Add("channel", *f.UpstreamChannel)
+	}
+
+	if f.Channel != nil {
+		query.Add("update_channel", *f.Channel)
+	}
+
+	if f.Origin != nil {
+		query.Add("origin", *f.Origin)
+	}
+
+	if f.Status != nil {
+		query.Add("status", f.Status.String())
+	}
+
+	return query
+}

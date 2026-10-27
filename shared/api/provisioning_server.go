@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -1208,4 +1209,28 @@ type ServerUpdateApplication struct {
 	// TriggerUpdate triggers an update for the given application, if the provided
 	// value is set to true.
 	TriggerUpdate bool `json:"trigger_update" yaml:"trigger_update"`
+}
+
+// ServerFilter holds the query parameters to filter the list of servers.
+type ServerFilter struct {
+	Cluster    *string
+	Status     *ServerStatus
+	Expression *string
+}
+
+// AppendToURLValues adds the set fields of the filter to query.
+func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Status != nil {
+		query.Add("status", f.Status.String())
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
 }

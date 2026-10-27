@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -800,6 +801,44 @@ func TestBMCData_ServerArchitecture(t *testing.T) {
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.want, architecture)
+		})
+	}
+}
+
+func TestServerFilter_AppendToURLValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		filter api.ServerFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: api.ServerFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: api.ServerFilter{
+				Cluster:    new("cluster"),
+				Status:     new(api.ServerStatusReady),
+				Expression: new("true"),
+			},
+
+			want: `cluster=cluster&filter=true&status=ready`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			query := tc.filter.AppendToURLValues(url.Values{})
+
+			require.Equal(t, tc.want, query.Encode())
 		})
 	}
 }
