@@ -64,7 +64,7 @@ func loadConfig(env enver) (config, []byte, error) {
 
 	filename := filepath.Join(env.VarDir(), ConfigFilename)
 
-	contents, err := os.ReadFile(filename)
+	contents, err := readConfigFile(env)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return cfg, nil, nil
@@ -79,6 +79,23 @@ func loadConfig(env enver) (config, []byte, error) {
 	}
 
 	return cfg, contents, nil
+}
+
+// openVarRoot opens the var dir of env as root. The config file is accessed
+// through the root, so the access cannot leave the var dir.
+func openVarRoot(env enver) (*os.Root, error) {
+	return os.OpenRoot(env.VarDir())
+}
+
+func readConfigFile(env enver) ([]byte, error) {
+	root, err := openVarRoot(env)
+	if err != nil {
+		return nil, err
+	}
+
+	defer root.Close()
+
+	return root.ReadFile(ConfigFilename)
 }
 
 func marshalConfig(cfg config) ([]byte, error) {
@@ -109,7 +126,14 @@ const configFileMode = 0o600
 func ensureConfigFileMode(env enver) error {
 	filename := filepath.Join(env.VarDir(), ConfigFilename)
 
-	fileInfo, err := os.Stat(filename)
+	root, err := openVarRoot(env)
+	if err != nil {
+		return err
+	}
+
+	defer root.Close()
+
+	fileInfo, err := root.Stat(ConfigFilename)
 	if err != nil {
 		return err
 	}
@@ -118,7 +142,7 @@ func ensureConfigFileMode(env enver) error {
 		return nil
 	}
 
-	err = os.Chmod(filename, configFileMode)
+	err = root.Chmod(ConfigFilename, configFileMode)
 	if err != nil {
 		return fmt.Errorf("Failed to set permissions on config %q: %w", filename, err)
 	}
@@ -136,5 +160,12 @@ func saveToDisk(env enver, cfg config) error {
 		return err
 	}
 
-	return file.WriteFileAtomic(filepath.Join(env.VarDir(), ConfigFilename), contents, configFileMode)
+	root, err := openVarRoot(env)
+	if err != nil {
+		return err
+	}
+
+	defer root.Close()
+
+	return file.WriteFileAtomicIn(root, ConfigFilename, contents, configFileMode)
 }
