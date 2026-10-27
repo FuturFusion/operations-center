@@ -193,7 +193,7 @@ func TestDaemon_openSubRoot(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run test
-			_, err = d.openSubRoot(d.varRoot, tc.subRoot, 0o700)
+			_, err = d.openSubRoot(d.varRoot, tc.subRoot)
 
 			// Assert
 			tc.assertErr(t, err)

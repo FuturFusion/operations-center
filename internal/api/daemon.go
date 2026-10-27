@@ -585,9 +585,9 @@ func (d *Daemon) openRoots() error {
 }
 
 // openSubRoot opens the directory name in parent as root. It creates the
-// directory, if it is missing. closeRoots closes the returned root.
-func (d *Daemon) openSubRoot(parent *os.Root, name string, perm os.FileMode) (*os.Root, error) {
-	root, err := file.MkdirAllOpenSubRoot(parent, name, perm)
+// directory if it is missing. closeRoots closes the returned root.
+func (d *Daemon) openSubRoot(parent *os.Root, name string) (*os.Root, error) {
+	root, err := file.MkdirAllOpenSubRoot(parent, name, 0o700)
 	if err != nil {
 		return nil, err
 	}
@@ -771,7 +771,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 }
 
 func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusService, error) {
-	imagesRoot, err := d.openSubRoot(d.varRoot, "images", 0o700)
+	imagesRoot, err := d.openSubRoot(d.varRoot, "images")
 	if err != nil {
 		return nil, err
 	}
@@ -819,7 +819,7 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
-	updatesRoot, err := d.openSubRoot(d.varRoot, "updates", 0o700)
+	updatesRoot, err := d.openSubRoot(d.varRoot, "updates")
 	if err != nil {
 		return nil, err
 	}
@@ -1015,10 +1015,12 @@ func (d *Daemon) setupClusterService(
 	inventoryAggregateSvc inventory.InventoryAggregateService,
 	warningSvc provisioning.WarningServicePort,
 ) (provisioning.ClusterService, error) {
-	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
+	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
 	if err != nil {
 		return nil, err
 	}
+
+	localClusterArtifactRepo := provisioningClusterArtifactRepo.New(db, artifactsRoot)
 
 	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
 	if err != nil {
