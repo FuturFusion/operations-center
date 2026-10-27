@@ -70,7 +70,9 @@ jobs:
             efitools \
             dosfstools \
             mtools \
-            systemd-repart
+            systemd-repart \
+            libcowsql-dev \
+            libuv1-dev
 
       - name: Download go dependencies
         run: |
@@ -78,6 +80,17 @@ jobs:
 
       - name: Run build
         run: |
+          make deps
+
+          raft_path="$(go env GOPATH)/deps/raft"
+          cowsql_path="$(go env GOPATH)/deps/cowsql"
+          {
+            echo "CGO_CFLAGS=-I${raft_path}/include/ -I${cowsql_path}/include/"
+            echo "CGO_LDFLAGS=-L${raft_path}/.libs -L${cowsql_path}/.libs/"
+            echo "LD_LIBRARY_PATH=${raft_path}/.libs/:${cowsql_path}/.libs/"
+            echo "CGO_LDFLAGS_ALLOW=(-Wl,-wrap,pthread_create)|(-Wl,-z,now)"
+          } >> "$GITHUB_ENV"
+
           make build
 
       - uses: opentofu/setup-opentofu@v2
@@ -95,3 +108,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make test
+
+      - name: Cluster tests
+        env:
+          # Required for github access with increased rate limiting during test
+          # of github repo to access GH releases.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPERATIONS_CENTER_CLUSTER_TEST=1 go test ./cluster_tests/ -v -count 1
