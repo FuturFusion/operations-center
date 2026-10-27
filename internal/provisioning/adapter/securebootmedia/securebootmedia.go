@@ -135,7 +135,7 @@ func (m *Media) CheckSupported(_ context.Context, imageType api.ImageType, archi
 
 	source := filepath.Join(m.bootLoaderDir, loader.binary)
 
-	_, err = os.Stat(source)
+	_, err = os.Stat(source) //nolint:forbidigo // Fixed system directory.
 	if err != nil {
 		if os.IsNotExist(err) {
 			return errBootLoaderNotInstalled(source)
@@ -336,13 +336,13 @@ func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) er
 
 // generate builds the image and stores it under the name it is addressed by.
 func (m *Media) generate(ctx context.Context, imageType api.ImageType, id string, loader bootLoader, certificates provisioning.SecureBootCertificates) (err error) {
-	workDir, err := os.MkdirTemp("", "operations-center-secure-boot-media-*")
+	workDir, err := os.MkdirTemp("", "operations-center-secure-boot-media-*") //nolint:forbidigo // The work dir is passed to external tools, which need absolute paths.
 	if err != nil {
 		return fmt.Errorf("Failed to create the working directory for the secure boot enrollment media: %w", err)
 	}
 
 	defer func() {
-		err = errors.Join(err, os.RemoveAll(workDir))
+		err = errors.Join(err, os.RemoveAll(workDir)) //nolint:forbidigo // The work dir is passed to external tools, which need absolute paths.
 	}()
 
 	espFile, err := m.buildESP(ctx, workDir, loader, certificates)
@@ -355,7 +355,7 @@ func (m *Media) generate(ctx context.Context, imageType api.ImageType, id string
 		return err
 	}
 
-	image, err := os.Open(imageFile)
+	image, err := os.Open(imageFile) //nolint:forbidigo // The work dir is passed to external tools, which need absolute paths.
 	if err != nil {
 		return fmt.Errorf("Failed to open the secure boot enrollment media: %w", err)
 	}

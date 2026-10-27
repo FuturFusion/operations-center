@@ -69,7 +69,7 @@ func init() {
 	}
 
 	for name, provider := range terraformProviders {
-		files, err := filepath.Glob(filepath.Join(provider.pluginDirectory, "*"))
+		files, err := filepath.Glob(filepath.Join(provider.pluginDirectory, "*")) //nolint:forbidigo // Fixed system directory.
 		if err != nil {
 			continue
 		}
