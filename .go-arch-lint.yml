@@ -133,8 +133,6 @@ deps:
     mayDependOn:
       - client
       - util
-      # TODO: Move these types to shared/api. Then drop these entries.
-      - service
       - domain
       - shared
 
