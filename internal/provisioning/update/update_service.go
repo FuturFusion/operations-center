@@ -478,14 +478,17 @@ func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uu
 	sort.Sort(updates)
 
 	foundCurrent := false
+	var currentVersion string
 	var priorUUID uuid.UUID
 	for _, update := range updates {
 		if update.UUID == currentUUID {
 			foundCurrent = true
+			currentVersion = update.Version
 			continue
 		}
 
-		if !foundCurrent {
+		// The sort order of updates with the same version is random.
+		if !foundCurrent || update.Version == currentVersion {
 			continue
 		}
 

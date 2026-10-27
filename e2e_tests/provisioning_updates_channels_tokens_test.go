@@ -70,7 +70,7 @@ func assertProvisioningUpdates(t *testing.T, ocAPI operationsCenterAPI) {
 	origin := mustRun(t, `../bin/operations-center.linux.%s provisioning update show %s -f json | jq -r -e '.origin'`, cpuArch, updateUUID).OutputTrimmed()
 
 	// The changelog compares with the next older update of the channel, no matter its status.
-	priorVersion := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.channels | index("stable")) | .version ] | sort | reverse | .[index("%s") + 1] // ""'`, cpuArch, version).OutputTrimmed()
+	priorVersion := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.channels | index("stable")) | .version ] | unique | reverse | .[index("%s") + 1] // ""'`, cpuArch, version).OutputTrimmed()
 
 	// Show
 	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update show %s`, cpuArch, updateUUID)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -164,6 +165,13 @@ func (s channelService) GetChangelogByName(ctx context.Context, name string, arc
 			WithDetail("channel", name)
 	}
 
+	sort.Sort(updates)
+
+	// Updates with the same version have the same changes. Keep one per version.
+	updates = slices.CompactFunc(updates, func(a provisioning.Update, b provisioning.Update) bool {
+		return a.Version == b.Version
+	})
+
 	if len(updates) == 1 {
 		changelog, err := s.updateSvc.GetChangelog(ctx, updates[0].UUID, uuid.Nil, architecture)
 		if err != nil {
@@ -172,8 +180,6 @@ func (s channelService) GetChangelogByName(ctx context.Context, name string, arc
 
 		return api.UpdateChangelogs{changelog}, nil
 	}
-
-	sort.Sort(updates)
 
 	channelChangelog := make(api.UpdateChangelogs, 0, len(updates)-1)
 	for i := range updates[:len(updates)-1] {
