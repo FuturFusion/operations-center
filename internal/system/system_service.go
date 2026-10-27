@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"sync"
 
@@ -35,12 +33,13 @@ type environment interface {
 }
 
 type systemService struct {
-	env          environment
-	serverSvc    ProvisioningServerService
-	clusterSvc   ProvisioningClusterService
-	cacheRepo    CacheRepo
-	databaseRepo DatabaseRepo
-	backupRepo   BackupRepo
+	env             environment
+	serverSvc       ProvisioningServerService
+	clusterSvc      ProvisioningClusterService
+	cacheRepo       CacheRepo
+	databaseRepo    DatabaseRepo
+	backupRepo      BackupRepo
+	certificateRepo CertificateRepo
 
 	// requestRestart asks the daemon to restart.
 	requestRestart func()
@@ -70,17 +69,19 @@ func NewSystemService(
 	cacheRepo CacheRepo,
 	databaseRepo DatabaseRepo,
 	backupRepo BackupRepo,
+	certificateRepo CertificateRepo,
 	requestRestart func(),
 	opts ...SystemServiceOption,
 ) *systemService {
 	systemSvc := &systemService{
-		env:            env,
-		serverSvc:      serverSvc,
-		clusterSvc:     clusterSvc,
-		cacheRepo:      cacheRepo,
-		databaseRepo:   databaseRepo,
-		backupRepo:     backupRepo,
-		requestRestart: requestRestart,
+		env:             env,
+		serverSvc:       serverSvc,
+		clusterSvc:      clusterSvc,
+		cacheRepo:       cacheRepo,
+		databaseRepo:    databaseRepo,
+		backupRepo:      backupRepo,
+		certificateRepo: certificateRepo,
+		requestRestart:  requestRestart,
 
 		acmeUpdateCertificateFunc: acme.UpdateCertificate,
 	}
@@ -92,12 +93,10 @@ func NewSystemService(
 	return systemSvc
 }
 
-func (s *systemService) GetCertificate(_ context.Context) (system.Certificate, error) {
-	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
-
-	certificatePEM, err := os.ReadFile(certificateFile)
+func (s *systemService) GetCertificate(ctx context.Context) (system.Certificate, error) {
+	certificatePEM, err := s.certificateRepo.GetServerCertificate(ctx)
 	if err != nil {
-		return system.Certificate{}, fmt.Errorf("Failed to read %q: %w", certificateFile, err)
+		return system.Certificate{}, fmt.Errorf("Failed to read the server certificate: %w", err)
 	}
 
 	return certificateFromPEM(string(certificatePEM))
@@ -139,17 +138,9 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return err
 	}
 
-	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
-	keyFile := filepath.Join(s.env.VarDir(), config.ServerKeyFilename)
-
-	currentServerCertificate, err := os.ReadFile(certificateFile)
+	currentServerCertificate, currentServerKey, err := s.certificateRepo.GetServerKeyPair(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to read %q: %w", certificateFile, err)
-	}
-
-	currentServerKey, err := os.ReadFile(keyFile)
-	if err != nil {
-		return fmt.Errorf("Failed to read %q: %w", keyFile, err)
+		return fmt.Errorf("Failed to read the server key pair: %w", err)
 	}
 
 	currentCertificate, err := tls.X509KeyPair(currentServerCertificate, currentServerKey)
@@ -165,28 +156,18 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	// Restore both files, even if only the first write succeeded, so the
-	// certificate and the key on disk always match.
+	// Restore the certificate and the key, even if the update wrote only one of
+	// them. This keeps the certificate and the key matching.
 	reverter.Add(func() {
-		revertErr := os.WriteFile(certificateFile, currentServerCertificate, 0o600)
+		revertErr := s.certificateRepo.UpdateServerKeyPair(ctx, currentServerCertificate, currentServerKey)
 		if revertErr != nil {
-			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", certificateFile, revertErr))
-		}
-
-		revertErr = os.WriteFile(keyFile, currentServerKey, 0o600)
-		if revertErr != nil {
-			err = errors.Join(err, fmt.Errorf("Failed to restore %q: %w", keyFile, revertErr))
+			err = errors.Join(err, fmt.Errorf("Failed to restore the server key pair: %w", revertErr))
 		}
 	})
 
-	err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
+	err = s.certificateRepo.UpdateServerKeyPair(ctx, []byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
-		return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
-	}
-
-	err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
-	if err != nil {
-		return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
+		return fmt.Errorf("Failed to persist the server key pair: %w", err)
 	}
 
 	// Restart openfga application, if it is present as secondary application

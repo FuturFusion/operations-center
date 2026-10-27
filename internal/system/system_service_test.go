@@ -6,8 +6,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,8 +49,9 @@ func TestSystemService_GetCertificate(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name              string
-		certificateFileIn []byte
+		name                        string
+		certificateFileIn           []byte
+		repoGetServerCertificateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -63,9 +62,10 @@ func TestSystemService_GetCertificate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - certificate file not found",
+			name:                        "error - certificateRepo.GetServerCertificate",
+			repoGetServerCertificateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:              "error - invalid certificate",
@@ -80,20 +80,13 @@ func TestSystemService_GetCertificate(t *testing.T) {
 			t.Parallel()
 
 			// Setup
-			tmpDir := t.TempDir()
-
-			if tc.certificateFileIn != nil {
-				err := os.WriteFile(filepath.Join(tmpDir, "server.crt"), tc.certificateFileIn, 0o600)
-				require.NoError(t, err)
-			}
-
-			env := &envMock.EnvironmentMock{
-				VarDirFunc: func() string {
-					return tmpDir
+			certificateRepo := &repoMock.CertificateRepoMock{
+				GetServerCertificateFunc: func(ctx context.Context) ([]byte, error) {
+					return tc.certificateFileIn, tc.repoGetServerCertificateErr
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, certificateRepo, nil)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -152,7 +145,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 	tests := []struct {
 		name                        string
-		setupEnv                    func(t *testing.T, targetDir string)
+		setupKeyPair                func(t *testing.T, keyPair *testKeyPair)
+		repoGetServerKeyPairErr     error
+		repoUpdateServerKeyPair     func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) error
 		certPEM                     string
 		keyPEM                      string
 		serverGetAllWithFilter      provisioning.Servers
@@ -167,18 +162,19 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		assertLog                       log.MatcherFunc
 		wantServerCertificateUpdateEmit []queue.Item[string]
 		wantProviderCertificate         string
-		wantCertificateFile             string
-		wantKeyFile                     string
+		wantCertificate                 string
+		wantKey                         string
 	}{
 		{
 			name: "success - no registered servers except for self-registered operations-center",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
-			serverGetAll:           provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
+			serverGetAll:            provisioning.Servers{operationsCenterServer},
 
 			assertErr: require.NoError,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
@@ -187,16 +183,17 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - self-registered operations-center with openfga",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
 					Name: "operations-center",
@@ -219,31 +216,33 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - no registered servers - same certificate",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: string(currentCertPEM),
-			keyPEM:  string(currentKeyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(currentCertPEM),
+			keyPEM:                  string(currentKeyPEM),
 
 			assertErr:                       require.NoError,
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "success - with registered servers",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -267,17 +266,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - with registered servers - provider config without config map",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -298,17 +298,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - with registered servers - unregistered server is skipped",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 			serverGetAll: provisioning.Servers{
 				{
 					Name:   "one",
@@ -324,24 +325,22 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - same leaf certificate with added intermediate",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 
-				err := os.WriteFile(filepath.Join(targetDir, "server.crt"), leafPEM, 0o600)
-				require.NoError(t, err)
-
-				err = os.WriteFile(filepath.Join(targetDir, "server.key"), leafKeyPEM, 0o600)
-				require.NoError(t, err)
+				keyPair.certificatePEM = leafPEM
+				keyPair.keyPEM = leafKeyPEM
 			},
-			certPEM:                chainPEM,
-			keyPEM:                 string(leafKeyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
-			serverGetAll:           provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 chainPEM,
+			keyPEM:                  string(leafKeyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
+			serverGetAll:            provisioning.Servers{operationsCenterServer},
 
 			assertErr: require.NoError,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
@@ -350,18 +349,19 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: leafFingerprint,
 				},
 			},
-			wantCertificateFile: chainPEM,
-			wantKeyFile:         string(leafKeyPEM),
+			wantCertificate: chainPEM,
+			wantKey:         string(leafKeyPEM),
 		},
 		{
 			name: "success - with registered servers - serverSvc.GetAll fails",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
-			serverGetAllErr:        boom.Error,
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
+			serverGetAllErr:         boom.Error,
 
 			assertErr: require.NoError,
 			assertLog: log.Contains("Failed to get servers for server certificate update, retry on next poll"),
@@ -370,17 +370,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - with registered servers - serverSvc.GetSystemProvider fails",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -400,17 +401,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "success - with registered servers - one of two servers fails, other one updated",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -443,16 +445,17 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
-			wantCertificateFile: string(certPEM),
-			wantKeyFile:         string(keyPEM),
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
 		},
 		{
 			name: "error - invalid certificate chain",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: string(leafPEM) + string(otherLeafPEM),
-			keyPEM:  string(leafKeyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(leafPEM) + string(otherLeafPEM),
+			keyPEM:                  string(leafKeyPEM),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var validationErr domain.ErrValidation
@@ -461,16 +464,17 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - duplicated issuer certificates",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: string(leafPEM) + string(intermediatePEM) + string(rootPEM) + string(intermediatePEM) + string(rootPEM),
-			keyPEM:  string(leafKeyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(leafPEM) + string(intermediatePEM) + string(rootPEM) + string(intermediatePEM) + string(rootPEM),
+			keyPEM:                  string(leafKeyPEM),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var validationErr domain.ErrValidation
@@ -479,86 +483,105 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - invalid certificate",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: "invalid-cert",
-			keyPEM:  "invalid-key",
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 "invalid-cert",
+			keyPEM:                  "invalid-key",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to validate key pair")
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - invalid current certificate",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 
-				err := os.WriteFile(filepath.Join(targetDir, "server.key"), keyPEM, 0o600)
-				require.NoError(t, err)
+				keyPair.keyPEM = keyPEM
 			},
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to validate current key pair")
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(keyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(keyPEM),
 		},
 		{
-			name: "error - unable to write certificate file",
-			setupEnv: func(t *testing.T, targetDir string) {
+			name: "error - certificateRepo.GetServerKeyPair",
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
-				err := os.Chmod(filepath.Join(targetDir, "server.crt"), 0o400)
-				require.NoError(t, err)
 			},
+			repoGetServerKeyPairErr: boom.Error,
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+
+			assertErr:                       boom.ErrorIs,
+			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
+		},
+		{
+			name: "error - certificateRepo.UpdateServerKeyPair - nothing written",
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
+				t.Helper()
+			},
+			repoUpdateServerKeyPair: failFirstUpdate(func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) {}),
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to persist the server key pair")
+				boom.ErrorIs(tt, err, a...)
+			},
+			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
+		},
+		{
+			name: "error - certificateRepo.UpdateServerKeyPair - only certificate written - certificate is restored",
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
+				t.Helper()
+			},
+			repoUpdateServerKeyPair: failFirstUpdate(func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) {
+				keyPair.certificatePEM = certificatePEM
+			}),
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "server.crt")
+				require.ErrorContains(tt, err, "Failed to persist the server key pair")
+				boom.ErrorIs(tt, err, a...)
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
-		},
-		{
-			name: "error - unable to write certificate key file - certificate file is restored",
-			setupEnv: func(t *testing.T, targetDir string) {
-				t.Helper()
-				err := os.Chmod(filepath.Join(targetDir, "server.key"), 0o400)
-				require.NoError(t, err)
-			},
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to persist")
-				require.ErrorContains(tt, err, "server.key")
-			},
-			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
-			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - serverSvc.GetAllWithFilter",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
+			repoUpdateServerKeyPair:   storeKeyPair,
 			certPEM:                   string(certPEM),
 			keyPEM:                    string(keyPEM),
 			serverGetAllWithFilterErr: boom.Error,
@@ -566,33 +589,35 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			assertErr:                       boom.ErrorIs,
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - serverSvc.GetAllWithFilter - no operations-center entry",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected 1 entry, got 0")
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - serverSvc.RestartApplication",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
 					Name: "operations-center",
@@ -611,17 +636,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			assertErr:                       boom.ErrorIs,
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
-			wantCertificateFile:             string(currentCertPEM),
-			wantKeyFile:                     string(currentKeyPEM),
+			wantCertificate:                 string(currentCertPEM),
+			wantKey:                         string(currentKeyPEM),
 		},
 		{
 			name: "error - ServerCertificateUpdateSignal",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
@@ -634,17 +660,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: currentCertFingerprint,
 				},
 			},
-			wantCertificateFile: string(currentCertPEM),
-			wantKeyFile:         string(currentKeyPEM),
+			wantCertificate: string(currentCertPEM),
+			wantKey:         string(currentKeyPEM),
 		},
 		{
 			name: "error - ServerCertificateUpdateSignal - revert error",
-			setupEnv: func(t *testing.T, targetDir string) {
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
-			certPEM:                string(certPEM),
-			keyPEM:                 string(keyPEM),
-			serverGetAllWithFilter: provisioning.Servers{operationsCenterServer},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter:  provisioning.Servers{operationsCenterServer},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
@@ -658,40 +685,39 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: currentCertFingerprint,
 				},
 			},
-			wantCertificateFile: string(currentCertPEM),
-			wantKeyFile:         string(currentKeyPEM),
+			wantCertificate: string(currentCertPEM),
+			wantKey:         string(currentKeyPEM),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if isRoot(t) {
-				t.Skip("Test is skipped, if executed as root user")
-			}
-
 			// Setup
 			logBuf := &bytes.Buffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
-			tmpDir := t.TempDir()
-
-			err = os.WriteFile(filepath.Join(tmpDir, "server.crt"), currentCertPEM, 0o600)
-			require.NoError(t, err)
-
-			err = os.WriteFile(filepath.Join(tmpDir, "server.key"), currentKeyPEM, 0o600)
-			require.NoError(t, err)
-
 			env := &envMock.EnvironmentMock{
-				VarDirFunc: func() string {
-					return tmpDir
-				},
 				IsIncusOSFunc: func() bool {
 					return true
 				},
 			}
 
-			tc.setupEnv(t, env.VarDir())
+			keyPair := testKeyPair{
+				certificatePEM: currentCertPEM,
+				keyPEM:         currentKeyPEM,
+			}
+
+			tc.setupKeyPair(t, &keyPair)
+
+			certificateRepo := &repoMock.CertificateRepoMock{
+				GetServerKeyPairFunc: func(ctx context.Context) ([]byte, []byte, error) {
+					return keyPair.certificatePEM, keyPair.keyPEM, tc.repoGetServerKeyPairErr
+				},
+				UpdateServerKeyPairFunc: func(ctx context.Context, certificatePEM []byte, keyPEM []byte) error {
+					return tc.repoUpdateServerKeyPair(&keyPair, certificatePEM, keyPEM)
+				},
+			}
 
 			wantProviderCertificate := tc.wantProviderCertificate
 			if wantProviderCertificate == "" {
@@ -731,7 +757,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, certificateRepo, nil)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -744,24 +770,41 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.Empty(t, tc.serverUpdateSystemProvider)
 			require.Empty(t, tc.wantServerCertificateUpdateEmit)
 
-			certificateFile, err := os.ReadFile(filepath.Join(tmpDir, "server.crt"))
-			require.NoError(t, err)
-			require.Equal(t, tc.wantCertificateFile, string(certificateFile), "Certificate file on disk")
-
-			keyFile, err := os.ReadFile(filepath.Join(tmpDir, "server.key"))
-			require.NoError(t, err)
-			require.Equal(t, tc.wantKeyFile, string(keyFile), "Key file on disk")
+			require.Equal(t, tc.wantCertificate, string(keyPair.certificatePEM), "Stored server certificate")
+			require.Equal(t, tc.wantKey, string(keyPair.keyPEM), "Stored server key")
 		})
 	}
 }
 
-func isRoot(t *testing.T) bool {
-	t.Helper()
+// testKeyPair holds the server certificate and key stored by the certificate repo mock.
+type testKeyPair struct {
+	certificatePEM []byte
+	keyPEM         []byte
+}
 
-	currentUser, err := user.Current()
-	require.NoError(t, err)
+// storeKeyPair stores the certificate and the key successfully.
+func storeKeyPair(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) error {
+	keyPair.certificatePEM = certificatePEM
+	keyPair.keyPEM = keyPEM
 
-	return currentUser.Username == "root"
+	return nil
+}
+
+// failFirstUpdate applies partialWrite in the first call and fails. All further
+// calls store the key pair, for example the revert.
+func failFirstUpdate(partialWrite func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte)) func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) error {
+	failed := false
+
+	return func(keyPair *testKeyPair, certificatePEM []byte, keyPEM []byte) error {
+		if failed {
+			return storeKeyPair(keyPair, certificatePEM, keyPEM)
+		}
+
+		failed = true
+		partialWrite(keyPair, certificatePEM, keyPEM)
+
+		return boom.Error
+	}
 }
 
 func TestSystemService_TriggerCertificateRenew(t *testing.T) {
@@ -830,23 +873,23 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			t.Parallel()
 
 			// Setup
-			tmpDir := t.TempDir()
-
-			err := os.WriteFile(filepath.Join(tmpDir, "server.crt"), currentCertPEM, 0o600)
-			require.NoError(t, err)
-
-			err = os.WriteFile(filepath.Join(tmpDir, "server.key"), currentKeyPEM, 0o600)
-			require.NoError(t, err)
-
 			env := &envMock.EnvironmentMock{
-				VarDirFunc: func() string {
-					return tmpDir
-				},
-				CacheDirFunc: func() string {
-					return tmpDir
-				},
 				IsIncusOSFunc: func() bool {
 					return true
+				},
+			}
+
+			keyPair := testKeyPair{
+				certificatePEM: currentCertPEM,
+				keyPEM:         currentKeyPEM,
+			}
+
+			certificateRepo := &repoMock.CertificateRepoMock{
+				GetServerKeyPairFunc: func(ctx context.Context) ([]byte, []byte, error) {
+					return keyPair.certificatePEM, keyPair.keyPEM, nil
+				},
+				UpdateServerKeyPairFunc: func(ctx context.Context, certificatePEM []byte, keyPEM []byte) error {
+					return storeKeyPair(&keyPair, certificatePEM, keyPEM)
 				},
 			}
 
@@ -871,6 +914,7 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				certificateRepo,
 				nil,
 				system.WithACMEUpdateCertificateFunc(
 					func(
@@ -1259,7 +1303,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.NetworkPut)
@@ -1303,7 +1347,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err := config.UpdateNetwork(t.Context(), networkConfig.NetworkPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1415,7 +1459,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1480,7 +1524,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SettingsPut)
@@ -1558,7 +1602,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1604,7 +1648,7 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())
@@ -1717,7 +1761,7 @@ func TestSystemService_Restore(t *testing.T) {
 
 			restartRequested := false
 
-			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, func() {
+			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, nil, func() {
 				restartRequested = true
 			})
 

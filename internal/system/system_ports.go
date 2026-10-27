@@ -31,6 +31,20 @@ type SystemService interface {
 	Restore(ctx context.Context, archive io.Reader) error
 }
 
+// CertificateRepo stores the server certificate and key.
+type CertificateRepo interface {
+	// GetServerCertificate returns the PEM encoded server certificate.
+	GetServerCertificate(ctx context.Context) (certificatePEM []byte, _ error)
+
+	// GetServerKeyPair returns the PEM encoded server certificate and key.
+	GetServerKeyPair(ctx context.Context) (certificatePEM []byte, keyPEM []byte, _ error)
+
+	// UpdateServerKeyPair persists the PEM encoded server certificate and key.
+	// It writes the certificate first. If it fails, only the certificate might
+	// be written.
+	UpdateServerKeyPair(ctx context.Context, certificatePEM []byte, keyPEM []byte) error
+}
+
 type CacheRepo interface {
 	CleanupAll(ctx context.Context) error
 }
