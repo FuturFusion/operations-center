@@ -771,6 +771,98 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 	}
 }
 
+func TestLocalfs_CreateFromArchive_pathTraversal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		header tar.Header
+		body   string
+	}{
+		{
+			name: "error - file in parent directory",
+			header: tar.Header{
+				Name:     "../escape.txt",
+				Typeflag: tar.TypeReg,
+				Size:     int64(len("escape")),
+			},
+			body: "escape",
+		},
+		{
+			name: "error - file two levels up",
+			header: tar.Header{
+				Name:     "../../escape.txt",
+				Typeflag: tar.TypeReg,
+				Size:     int64(len("escape")),
+			},
+			body: "escape",
+		},
+		{
+			name: "error - file with nested parent references",
+			header: tar.Header{
+				Name:     "subdir/../../../escape.txt",
+				Typeflag: tar.TypeReg,
+				Size:     int64(len("escape")),
+			},
+			body: "escape",
+		},
+		{
+			name: "error - file with absolute path",
+			header: tar.Header{
+				Name:     "/escape.txt",
+				Typeflag: tar.TypeReg,
+				Size:     int64(len("escape")),
+			},
+			body: "escape",
+		},
+		{
+			name: "error - directory in parent directory",
+			header: tar.Header{
+				Name:     "../../escape",
+				Typeflag: tar.TypeDir,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			parentDir := t.TempDir()
+			storageDir := filepath.Join(parentDir, "storage")
+
+			caCert, _, _ := signaturetest.GenerateCertChain(t)
+			lfs, err := New(storageDir, string(caCert))
+			require.NoError(t, err)
+
+			inMemoryTar := &bytes.Buffer{}
+			tw := tar.NewWriter(inMemoryTar)
+			err = tw.WriteHeader(&tc.header)
+			require.NoError(t, err)
+			_, err = tw.Write([]byte(tc.body))
+			require.NoError(t, err)
+			err = tw.Close()
+			require.NoError(t, err)
+
+			// Run test
+			_, err = lfs.CreateFromArchive(t.Context(), tar.NewReader(inMemoryTar))
+
+			// Assert
+			require.ErrorContains(t, err, "is not a relative path inside the archive")
+
+			parentEntries, err := os.ReadDir(parentDir)
+			require.NoError(t, err)
+			require.Len(t, parentEntries, 1, "parent directory must only contain the storage directory")
+			require.Equal(t, "storage", parentEntries[0].Name())
+
+			storageEntries, err := os.ReadDir(storageDir)
+			require.NoError(t, err)
+			require.Empty(t, storageEntries, "storage directory must be empty after a failed extraction")
+		})
+	}
+}
+
 func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive, cert []byte, key []byte) *tar.Reader {
 	t.Helper()
 

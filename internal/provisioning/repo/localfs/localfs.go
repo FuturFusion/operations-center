@@ -353,6 +353,13 @@ func uuidFromUpdate(u Update) uuid.UUID {
 }
 
 func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (extractedFiles map[string]struct{}, err error) {
+	destRoot, err := os.OpenRoot(destDir)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open target directory %q: %w", destDir, err)
+	}
+
+	defer destRoot.Close()
+
 	extractedFiles = make(map[string]struct{}, 20)
 	for {
 		var hdr *tar.Header
@@ -367,6 +374,10 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (ext
 		}
 
 		err = func() error {
+			if !filepath.IsLocal(hdr.Name) {
+				return fmt.Errorf("Invalid archive, file name %q is not a relative path inside the archive", hdr.Name)
+			}
+
 			sourceFile := filepath.Clean(hdr.Name)
 			targetFile := filepath.Join(destDir, sourceFile)
 
@@ -377,7 +388,7 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (ext
 			}
 
 			if hdr.Typeflag == tar.TypeDir {
-				err = os.MkdirAll(targetFile, 0o755)
+				err = destRoot.MkdirAll(sourceFile, 0o755)
 				if err != nil {
 					return fmt.Errorf("Failed to create target directory %q: %w", targetFile, err)
 				}
@@ -385,7 +396,7 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (ext
 				return nil
 			}
 
-			f, err := os.Create(targetFile)
+			f, err := destRoot.Create(sourceFile)
 			if err != nil {
 				return fmt.Errorf("Failed to create target file %q: %w", targetFile, err)
 			}
