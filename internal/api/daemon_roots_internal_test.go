@@ -145,3 +145,61 @@ func TestDaemon_loadClientCertificate(t *testing.T) {
 		})
 	}
 }
+
+func TestDaemon_openSubRoot(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		subRoot string
+
+		assertErr    require.ErrorAssertionFunc
+		wantSubRoots int
+	}{
+		{
+			name:    "success",
+			subRoot: "updates",
+
+			assertErr:    require.NoError,
+			wantSubRoots: 1,
+		},
+		{
+			name:    "error - path escapes the parent root",
+			subRoot: "../updates",
+
+			assertErr:    require.Error,
+			wantSubRoots: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tmpDir := t.TempDir()
+			d := &Daemon{
+				env: &mock.EnvironmentMock{
+					VarDirFunc: func() string {
+						return filepath.Join(tmpDir, "var")
+					},
+					CacheDirFunc: func() string {
+						return filepath.Join(tmpDir, "cache")
+					},
+				},
+			}
+
+			err := d.openRoots()
+			require.NoError(t, err)
+
+			// Run test
+			_, err = d.openSubRoot(d.varRoot, tc.subRoot, 0o700)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, d.subRoots, tc.wantSubRoots, "only opened sub roots are closed by closeRoots")
+			require.NoError(t, d.closeRoots())
+			require.NoDirExists(t, filepath.Join(tmpDir, "updates"), "nothing must be created outside of the var directory")
+		})
+	}
+}

@@ -129,6 +129,7 @@ type Daemon struct {
 
 	varRoot   *os.Root
 	cacheRoot *os.Root
+	subRoots  []*os.Root
 
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
@@ -583,11 +584,24 @@ func (d *Daemon) openRoots() error {
 	return nil
 }
 
-// closeRoots closes the roots opened by openRoots.
+// openSubRoot opens the directory name in parent as root. It creates the
+// directory, if it is missing. closeRoots closes the returned root.
+func (d *Daemon) openSubRoot(parent *os.Root, name string, perm os.FileMode) (*os.Root, error) {
+	root, err := file.MkdirAllOpenSubRoot(parent, name, perm)
+	if err != nil {
+		return nil, err
+	}
+
+	d.subRoots = append(d.subRoots, root)
+
+	return root, nil
+}
+
+// closeRoots closes all roots of the daemon.
 func (d *Daemon) closeRoots() error {
 	errs := []error{}
 
-	for _, root := range []*os.Root{d.varRoot, d.cacheRoot} {
+	for _, root := range append(d.subRoots, d.varRoot, d.cacheRoot) {
 		if root != nil {
 			errs = append(errs, root.Close())
 		}
@@ -803,13 +817,15 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
-	repoUpdateFiles, err := provisioningLocalfs.New(
-		filepath.Join(d.env.VarDir(), "updates"),
-		config.GetUpdates().SignatureVerificationRootCA,
-	)
+	updatesRoot, err := d.openSubRoot(d.varRoot, "updates", 0o700)
 	if err != nil {
 		return nil, err
 	}
+
+	repoUpdateFiles := provisioningLocalfs.New(
+		updatesRoot,
+		config.GetUpdates().SignatureVerificationRootCA,
+	)
 
 	// Make sure, the files repository learns about changes to the signature certificate.
 	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Updates) {
