@@ -1041,7 +1041,7 @@ func (d *Daemon) setupClusterService(
 
 	// Terraform runs as an external tool, which requires an absolute path. The
 	// directory is created in the temporary directory of the system.
-	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
+	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*") //nolint:forbidigo // External tool needs an absolute path.
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the temporary directory for terraform: %w", err)
 	}
@@ -1936,8 +1936,8 @@ func (d *Daemon) setupSocketListener(ctx context.Context) error {
 	// TODO: if the socket file already exists, make a connection attempt. If
 	// successful, another instance of operations-centerd is already running.
 	// If not successful, it is save to delete the socket file.
-	if file.PathExists(d.env.GetUnixSocket()) {
-		err := os.Remove(d.env.GetUnixSocket())
+	if file.PathExists(d.env.GetUnixSocket()) { //nolint:forbidigo // The unix socket is configured by an absolute path.
+		err := os.Remove(d.env.GetUnixSocket()) //nolint:forbidigo // The unix socket is configured by an absolute path.
 		if err != nil {
 			return err
 		}
