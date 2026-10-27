@@ -23,6 +23,11 @@ type e2eScenario struct {
 	// the members of the cluster incus-os-cluster.
 	cluster []string
 
+	// leavesDirty lists the servers, which the pool installs again after the
+	// scenario. Use it for changes, which the pool does not observe, e.g. the
+	// version of a server.
+	leavesDirty []string
+
 	run func(ctx context.Context, t *testing.T, tmpDir string)
 }
 
@@ -82,6 +87,10 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 			if len(scenario.servers()) > 0 {
 				pool.markDirty(scenario.servers())
 			}
+		}
+
+		if len(scenario.leavesDirty) > 0 {
+			pool.markDirty(scenario.leavesDirty)
 		}
 	}
 }

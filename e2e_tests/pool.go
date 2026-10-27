@@ -18,29 +18,34 @@ type serverPool struct {
 	suite *testing.T
 	names []string
 
+	// channel is the update channel of the cluster. It matches the channel of
+	// the token, which installs the servers.
+	channel string
+
 	// prepareISO returns the name of the ISO storage volume, which installs a
 	// server of the pool.
 	prepareISO func(ctx context.Context, t *testing.T, tmpDir string) string
 
 	// dirty holds the servers, which the pool installs again before their next
-	// use, since a failed scenario might have left them in a bad state.
+	// use. A failed scenario might have left them in a bad state.
 	dirty             map[string]bool
 	cleanupRegistered bool
 }
 
-func newServerPool(t *testing.T, names []string, prepareISO func(ctx context.Context, t *testing.T, tmpDir string) string) *serverPool {
+func newServerPool(t *testing.T, names []string, channel string, prepareISO func(ctx context.Context, t *testing.T, tmpDir string) string) *serverPool {
 	t.Helper()
 
 	return &serverPool{
 		suite:      t,
 		names:      names,
+		channel:    channel,
 		prepareISO: prepareISO,
 		dirty:      map[string]bool{},
 	}
 }
 
 // markDirty makes the pool install the given servers again before their next
-// use.
+// use. The pool does not keep this state across runs.
 func (p *serverPool) markDirty(names []string) {
 	for _, name := range names {
 		p.dirty[name] = true
@@ -93,7 +98,8 @@ func (p *serverPool) ensureStandalone(ctx context.Context, t *testing.T, tmpDir 
 }
 
 // ensureCluster brings the given servers into the state "members of the
-// cluster incus-os-cluster". The cluster has no other members.
+// cluster incus-os-cluster". The cluster has no other members and uses the
+// update channel of the pool.
 func (p *serverPool) ensureCluster(ctx context.Context, t *testing.T, tmpDir string, names []string) {
 	t.Helper()
 
@@ -108,7 +114,7 @@ func (p *serverPool) ensureCluster(ctx context.Context, t *testing.T, tmpDir str
 	if !clusterReady(incusOSClusterName, names, observed, p.dirty) {
 		p.ensureStandalone(ctx, t, tmpDir, names)
 
-		mustCreateCluster(t, tmpDir, "stable", names)
+		mustCreateCluster(t, tmpDir, p.channel, names)
 	}
 
 	mustAddIncusRemote(t, incusOSClusterName)

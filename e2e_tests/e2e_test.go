@@ -42,7 +42,7 @@ func TestE2E_StableServers(t *testing.T) {
 	// The members of the cluster after add_and_remove_server.
 	remainingNames := []string{"IncusOS01", "IncusOS02", "IncusOS04"}
 
-	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, prepareStableTokenISO)
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "stable", prepareStableTokenISO)
 
 	runE2ESuite(t, pool, []e2eScenario{
 		{
@@ -122,31 +122,34 @@ func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
 	)
 }
 
-func TestE2E_WithTokenAndUpdateChannel_CreateAndUpdateCluster(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - create cluster and perform a rolling update",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createClusterAndThenClusterUpdate,
-	)
-}
+// TestE2E_UpdateChannel installs the servers with the oldest update. Every
+// scenario updates its servers, so the pool installs them again before their
+// next use.
+func TestE2E_UpdateChannel(t *testing.T) {
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-func TestE2E_WithTokenAndUpdateChannel_UpdateServerApplication(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - update a single application of a server",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
-		updateServerApplication("IncusOS01"),
-	)
-}
+	pool := newServerPool(t, []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}, "prod", prepareProdChannelISO)
 
-func TestE2E_WithTokenAndUpdateChannel_UpdateServerOSOnly(t *testing.T) {
-	runE2ETest(
-		t,
-		"token with update channel - update only the OS of a server",
-		setupIncusOSWithTokenAndUpdateChannel([]string{"IncusOS01"}),
-		updateServerOSOnly("IncusOS01"),
-	)
+	runE2ESuite(t, pool, []e2eScenario{
+		{
+			name:        "update_server_application",
+			standalone:  []string{"IncusOS04"},
+			leavesDirty: []string{"IncusOS04"},
+			run:         updateServerApplication("IncusOS04"),
+		},
+		{
+			name:        "update_server_os_only",
+			standalone:  []string{"IncusOS04"},
+			leavesDirty: []string{"IncusOS04"},
+			run:         updateServerOSOnly("IncusOS04"),
+		},
+		{
+			name:        "cluster_rolling_update",
+			cluster:     names,
+			leavesDirty: names,
+			run:         clusterRollingUpdate,
+		},
+	})
 }
 
 func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
