@@ -28,7 +28,7 @@ func Ensure(ctx context.Context, db *sql.DB, dir string) (int, error) {
 		if !backupDone {
 			slog.InfoContext(ctx, `Updating the database schema. Backup made as "local.db.bak"`)
 			path := filepath.Join(dir, "local.db")
-			err := file.Copy(path, path+".bak")
+			err := file.Copy(path, path+".bak") //nolint:forbidigo // SQLite accesses the database files by path as well.
 			if err != nil {
 				return err
 			}

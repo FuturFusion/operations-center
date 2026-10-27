@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
 func TestLocalfs_UsageInformation(t *testing.T) {
@@ -26,8 +28,7 @@ func TestLocalfs_UsageInformation(t *testing.T) {
 
 			// Setup
 			tmpDir := t.TempDir()
-			lfs, err := New(tmpDir, "")
-			require.NoError(t, err)
+			lfs := New(fsroot.Open(t, tmpDir), "")
 
 			// Run test
 			gotUI, err := lfs.UsageInformation(context.Background())

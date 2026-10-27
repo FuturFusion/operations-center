@@ -15,6 +15,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -71,7 +73,7 @@ func TestTerraform_Init(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			tf, err := terraform.New(
-				tmpDir,
+				fsroot.Open(t, tmpDir),
 				"",
 				"",
 				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
@@ -299,7 +301,7 @@ func TestTerraform_Init_trustedClientCertificates(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	tf, err := terraform.New(
-		tmpDir,
+		fsroot.Open(t, tmpDir),
 		"",
 		"",
 		terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
@@ -366,7 +368,7 @@ func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			tf, err := terraform.New(
-				tmpDir,
+				fsroot.Open(t, tmpDir),
 				"",
 				"",
 				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
@@ -555,7 +557,7 @@ func TestTerraform_Apply(t *testing.T) {
 			tc.setup(t, filepath.Join(tmpDir, "cluster-configs", clusterName))
 
 			tf, err := terraform.New(
-				tmpDir,
+				fsroot.Open(t, tmpDir),
 				"",
 				"",
 				terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
@@ -575,6 +577,87 @@ func TestTerraform_Apply(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertPostProcessedFiles(t, tmpDir, clusterName)
+		})
+	}
+}
+
+func TestTerraform_invalidClusterName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T, tf provisioning.ClusterProvisioningPort) error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "Init - cluster name with path separator",
+			run: func(t *testing.T, tf provisioning.ClusterProvisioningPort) error {
+				t.Helper()
+				_, _, err := tf.Init(t.Context(), "../../escape", provisioning.ClusterProvisioningConfig{
+					ClusterEndpoint: provisioning.ClusterEndpoint{
+						provisioning.Server{
+							ConnectionURL:      "https://127.0.0.1:8443",
+							ClusterCertificate: new("cluster certificate"),
+						},
+					},
+				})
+				return err
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid cluster name "../../escape" for the server certificate`),
+		},
+		{
+			name: "SeedCertificate - cluster name with path separator",
+			run: func(t *testing.T, tf provisioning.ClusterProvisioningPort) error {
+				t.Helper()
+				return tf.SeedCertificate(t.Context(), "../../escape", "cluster certificate")
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid cluster name "../../escape" for the server certificate`),
+		},
+		{
+			name: "Apply - cluster name is parent directory",
+			run: func(t *testing.T, tf provisioning.ClusterProvisioningPort) error {
+				t.Helper()
+				return tf.Apply(t.Context(), provisioning.Cluster{Name: ".."})
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid cluster name ".." for the Terraform configuration`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			parentDir := t.TempDir()
+			tmpDir := filepath.Join(parentDir, "terraform")
+			require.NoError(t, os.Mkdir(tmpDir, 0o700))
+
+			tf, err := terraform.New(
+				fsroot.Open(t, tmpDir),
+				"",
+				"",
+				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+					return nil
+				}),
+				terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
+					return nil
+				}),
+			)
+			require.NoError(t, err)
+
+			// Run test
+			err = tc.run(t, tf)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			parentEntries, err := os.ReadDir(parentDir)
+			require.NoError(t, err)
+			require.Len(t, parentEntries, 1, "nothing must be created outside of the temporary directory")
 		})
 	}
 }

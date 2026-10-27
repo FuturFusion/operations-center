@@ -333,6 +333,45 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: errassert.ValidationErrorContains("Invalid incus image version"),
 		},
 		{
+			name: "error - version with path separator",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "10",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "20260515/../../escape"
+}
+`),
+
+			assertErr: errassert.ValidationErrorContains("Invalid incus image version"),
+		},
+		{
+			name: "error - release with path separator",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "../../../escape",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "20260515"
+}
+`),
+
+			assertErr: errassert.ValidationErrorContains(`Invalid metadata: Invalid incus image, "../../../escape" is not a valid file name`),
+		},
+		{
+			name: "error - operating system is parent directory",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "..",
+  "release": "10",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "20260515"
+}
+`),
+
+			assertErr: errassert.ValidationErrorContains(`Invalid metadata: Invalid incus image, ".." is not a valid file name`),
+		},
+		{
 			name:               "error - repo.GetByName",
 			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
@@ -1720,6 +1759,44 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assert:    assertZeroValues,
+		},
+		{
+			name:        "error - version not found",
+			argName:     "almalinux:10:amd64:cloud",
+			argVersion:  "20260520/../../../../escape",
+			argFilename: "somefile.txt",
+			repoGetByName: &image.IncusImage{
+				Name: "almalinux:10:amd64:cloud",
+				Versions: map[string]api.IncusImageVersion{
+					"20260520": {
+						Items: map[string]api.IncusImageVersionItem{
+							"somefile.txt": {},
+						},
+					},
+				},
+			},
+
+			assertErr: errassert.NotFoundErrorContains(`Incus image "almalinux:10:amd64:cloud" has no file "somefile.txt" in version "20260520/../../../../escape"`),
+			assert:    assertZeroValues,
+		},
+		{
+			name:        "error - file not found",
+			argName:     "almalinux:10:amd64:cloud",
+			argVersion:  "20260520",
+			argFilename: "../../../../escape",
+			repoGetByName: &image.IncusImage{
+				Name: "almalinux:10:amd64:cloud",
+				Versions: map[string]api.IncusImageVersion{
+					"20260520": {
+						Items: map[string]api.IncusImageVersionItem{
+							"somefile.txt": {},
+						},
+					},
+				},
+			},
+
+			assertErr: errassert.NotFoundErrorContains(`Incus image "almalinux:10:amd64:cloud" has no file "../../../../escape" in version "20260520"`),
 			assert:    assertZeroValues,
 		},
 		{

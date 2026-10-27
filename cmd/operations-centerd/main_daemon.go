@@ -63,14 +63,14 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure we have the data directory.
-	err := os.MkdirAll(c.env.VarDir(), 0o750)
+	err := os.MkdirAll(c.env.VarDir(), 0o750) //nolint:forbidigo // Creates the directory, which is opened as root afterwards.
 	if err != nil {
 		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
 	}
 
 	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
 
-	err = systemLocalfs.NewBackup(c.env.VarDir()).ApplyRestore()
+	err = applyRestore(c.env.VarDir())
 	if err != nil {
 		if !errors.Is(err, system.ErrRestoreRolledBack) {
 			return fmt.Errorf("Failed to prepare data directory %q: %w", c.env.VarDir(), err)
@@ -80,7 +80,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure we have the run directory.
-	err = os.MkdirAll(c.env.RunDir(), 0o750)
+	err = os.MkdirAll(c.env.RunDir(), 0o750) //nolint:forbidigo // The run dir holds the unix socket, which is accessed by path.
 	if err != nil {
 		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
 	}
@@ -184,4 +184,16 @@ func restartDaemon(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// applyRestore applies or rolls back a staged restore in varDir.
+func applyRestore(varDir string) error {
+	varRoot, err := os.OpenRoot(varDir)
+	if err != nil {
+		return err
+	}
+
+	defer varRoot.Close()
+
+	return systemLocalfs.NewBackup(varRoot).ApplyRestore()
 }

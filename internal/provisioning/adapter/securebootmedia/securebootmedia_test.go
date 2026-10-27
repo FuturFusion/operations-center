@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -49,7 +50,7 @@ func testCertificates(t *testing.T) provisioning.SecureBootCertificates {
 func skipWithoutTools(t *testing.T) {
 	t.Helper()
 
-	err := securebootmedia.New(t.TempDir()).CheckSupported(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86)
+	err := securebootmedia.New(fsroot.Open(t, t.TempDir())).CheckSupported(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86)
 	if err != nil {
 		t.Skipf("The secure boot enrollment media can not be generated here: %v", err)
 	}
@@ -157,7 +158,7 @@ func TestMediaCheckSupported(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			media := securebootmedia.New(t.TempDir(),
+			media := securebootmedia.New(fsroot.Open(t, t.TempDir()),
 				securebootmedia.WithBootLoaderDir(tc.bootLoaderDir),
 				securebootmedia.WithLookPath(tc.lookPath),
 			)
@@ -209,7 +210,7 @@ func TestMedia_GenerateBootsTheArchitectureOfTheServer(t *testing.T) {
 	certificates := testCertificates(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(dir)
+	media := securebootmedia.New(fsroot.Open(t, dir))
 
 	id, err := media.Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 	require.NoError(t, err)
@@ -225,7 +226,7 @@ func TestMedia_GenerateRejectsAnUnsupportedArchitecture(t *testing.T) {
 	certificates := testCertificates(t)
 
 	for _, architecture := range []images.UpdateFileArchitecture{images.UpdateFileArchitectureUndefined, images.UpdateFileArchitecture64BitARM} {
-		media := securebootmedia.New(t.TempDir())
+		media := securebootmedia.New(fsroot.Open(t, t.TempDir()))
 
 		_, err := media.Generate(t.Context(), api.ImageTypeISO, architecture, certificates)
 		require.ErrorIs(t, err, domain.ErrOperationNotPermitted, "An architecture without a boot loader must not be served the boot loader of another one")
@@ -263,7 +264,7 @@ func TestMedia_Generate(t *testing.T) {
 			t.Parallel()
 
 			dir := t.TempDir()
-			media := securebootmedia.New(dir)
+			media := securebootmedia.New(fsroot.Open(t, dir))
 
 			certificates := testCertificates(t)
 
@@ -295,7 +296,7 @@ func TestMedia_GenerateEnrollsThePlatformKeyUpdateAsItIs(t *testing.T) {
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(dir)
+	media := securebootmedia.New(fsroot.Open(t, dir))
 
 	certificates := testCertificates(t)
 	certificates.PKUpdate = []byte("a signed platform key update")
@@ -327,7 +328,7 @@ func TestMedia_GenerateIsReproducible(t *testing.T) {
 	generate := func() []byte {
 		dir := t.TempDir()
 
-		media := securebootmedia.New(dir, securebootmedia.WithSigningKey(key))
+		media := securebootmedia.New(fsroot.Open(t, dir), securebootmedia.WithSigningKey(key))
 
 		id, err := media.Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 		require.NoError(t, err)
@@ -350,7 +351,7 @@ func TestMedia_GenerateCaches(t *testing.T) {
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(dir)
+	media := securebootmedia.New(fsroot.Open(t, dir))
 
 	certificates := testCertificates(t)
 
@@ -436,7 +437,7 @@ func TestMedia_GenerateErrors(t *testing.T) {
 			t.Parallel()
 
 			dir := t.TempDir()
-			media := securebootmedia.New(dir, tc.opts...)
+			media := securebootmedia.New(fsroot.Open(t, dir), tc.opts...)
 
 			_, err := media.Generate(t.Context(), tc.imageType, images.UpdateFileArchitecture64BitX86, tc.certificates)
 			tc.assertErr(t, err)
@@ -451,7 +452,7 @@ func TestMedia_GenerateErrors(t *testing.T) {
 func TestMedia_Open(t *testing.T) {
 	t.Parallel()
 
-	media := securebootmedia.New(t.TempDir())
+	media := securebootmedia.New(fsroot.Open(t, t.TempDir()))
 
 	_, err := media.Open(t.Context(), api.ImageTypeISO, "not an ID")
 	require.ErrorIs(t, err, domain.ErrNotFound, "An ID, that can not address an image, has to be rejected")
@@ -467,7 +468,7 @@ func TestMedia_Prune(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	media := securebootmedia.New(dir)
+	media := securebootmedia.New(fsroot.Open(t, dir))
 
 	stale := writeInto(t, dir, "AAAAAAAAAAAA.iso", time.Now().Add(-2*time.Hour))
 	fresh := writeInto(t, dir, "BBBBBBBBBBBB.iso", time.Now())
@@ -501,7 +502,7 @@ func TestMedia_PruneKeepsWhatHasBeenReadAfterARestart(t *testing.T) {
 	dir := t.TempDir()
 	certificates := testCertificates(t)
 
-	id, err := securebootmedia.New(dir).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	id, err := securebootmedia.New(fsroot.Open(t, dir)).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 	require.NoError(t, err)
 
 	filename := filepath.Join(dir, id+".iso")
@@ -509,11 +510,11 @@ func TestMedia_PruneKeepsWhatHasBeenReadAfterARestart(t *testing.T) {
 	stale := time.Now().Add(-2 * time.Hour)
 	require.NoError(t, os.Chtimes(filename, stale, stale))
 
-	image, err := securebootmedia.New(dir).Open(t.Context(), api.ImageTypeISO, id)
+	image, err := securebootmedia.New(fsroot.Open(t, dir)).Open(t.Context(), api.ImageTypeISO, id)
 	require.NoError(t, err)
 	require.NoError(t, image.Content.Close())
 
-	err = securebootmedia.New(dir).Prune(t.Context(), time.Hour, nil)
+	err = securebootmedia.New(fsroot.Open(t, dir)).Prune(t.Context(), time.Hour, nil)
 	require.NoError(t, err)
 
 	require.FileExists(t, filename, "An image, that has been read, has to survive the prune of the generator, that has not generated it")
@@ -682,4 +683,31 @@ func writeInto(t *testing.T, dir string, name string, modTime time.Time) string 
 	require.NoError(t, err)
 
 	return filename
+}
+
+func TestMedia_Open_symlinkOutsideOfRoot(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	tmpDir := t.TempDir()
+	outsideFile := filepath.Join(tmpDir, "outside.iso")
+	err := os.WriteFile(outsideFile, []byte("outside"), 0o600)
+	require.NoError(t, err)
+
+	dir := filepath.Join(tmpDir, "media")
+	err = os.Mkdir(dir, 0o700)
+	require.NoError(t, err)
+
+	const id = "abcdefghijkl"
+	err = os.Symlink(outsideFile, filepath.Join(dir, id+api.ImageTypeISO.FileExt()))
+	require.NoError(t, err)
+
+	media := securebootmedia.New(fsroot.Open(t, dir))
+
+	// Run test
+	image, err := media.Open(t.Context(), api.ImageTypeISO, id)
+
+	// Assert
+	require.ErrorContains(t, err, "path escapes from parent", "a symlink must not be followed out of the root")
+	require.Nil(t, image)
 }

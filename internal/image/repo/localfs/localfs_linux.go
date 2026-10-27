@@ -9,5 +9,5 @@ import (
 )
 
 func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
-	return file.UsageInformationForPath(l.storageDir)
+	return file.UsageInformationForPath(l.root.Name())
 }

@@ -16,55 +16,12 @@ import (
 func WriteFileAtomic(filename string, contents []byte, perm os.FileMode) error {
 	dir := filepath.Dir(filename)
 
-	f, err := os.CreateTemp(dir, "."+filepath.Base(filename)+".*")
-	if err != nil {
-		return fmt.Errorf("Failed to create temporary file in %q: %w", dir, err)
-	}
-
-	tmpName := f.Name()
-
-	defer func() {
-		f.Close()
-		os.Remove(tmpName)
-	}()
-
-	err = f.Chmod(perm)
-	if err != nil {
-		return fmt.Errorf("Failed to set permissions on temporary file %q: %w", tmpName, err)
-	}
-
-	_, err = f.Write(contents)
-	if err != nil {
-		return fmt.Errorf("Failed to write temporary file %q: %w", tmpName, err)
-	}
-
-	err = f.Sync()
-	if err != nil {
-		return fmt.Errorf("Failed to sync temporary file %q: %w", tmpName, err)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Errorf("Failed to close temporary file %q: %w", tmpName, err)
-	}
-
-	err = os.Rename(tmpName, filename)
-	if err != nil {
-		return fmt.Errorf("Failed to move temporary file into place as %q: %w", filename, err)
-	}
-
-	// Sync the directory, so the rename survives a crash.
-	d, err := os.Open(dir)
+	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return fmt.Errorf("Failed to open %q: %w", dir, err)
 	}
 
-	defer d.Close()
+	defer root.Close()
 
-	err = d.Sync()
-	if err != nil {
-		return fmt.Errorf("Failed to sync %q: %w", dir, err)
-	}
-
-	return d.Close()
+	return WriteFileAtomicIn(root, filepath.Base(filename), contents, perm)
 }

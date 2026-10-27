@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
 // usageWithAvailable reports a file system of 1 GiB with the given space available.
@@ -54,11 +57,11 @@ func TestBackup_WriteAndExtract(t *testing.T) {
 	require.NoError(t, err)
 
 	buf := &bytes.Buffer{}
-	err = writeBackup(buf, varDir, snapshotDir, system.BackupOptions{})
+	err = writeBackup(buf, fsroot.Open(t, varDir), fsroot.Open(t, snapshotDir), system.BackupOptions{})
 	require.NoError(t, err)
 
 	extractDir := t.TempDir()
-	err = extractBackup(t.Context(), buf, extractDir, usageWithAvailable(1<<30))
+	err = extractBackup(t.Context(), buf, fsroot.Open(t, extractDir), usageWithAvailable(1<<30))
 	require.NoError(t, err)
 
 	require.FileExists(t, filepath.Join(extractDir, "artifacts", "a", "file"))
@@ -82,11 +85,11 @@ func TestBackup_WriteOptionalEntries(t *testing.T) {
 	writeStateFiles(t, varDir, "state")
 
 	buf := &bytes.Buffer{}
-	err := writeBackup(buf, varDir, varDir, system.BackupOptions{Images: true})
+	err := writeBackup(buf, fsroot.Open(t, varDir), fsroot.Open(t, varDir), system.BackupOptions{Images: true})
 	require.NoError(t, err)
 
 	extractDir := t.TempDir()
-	err = extractBackup(t.Context(), buf, extractDir, usageWithAvailable(1<<30))
+	err = extractBackup(t.Context(), buf, fsroot.Open(t, extractDir), usageWithAvailable(1<<30))
 	require.NoError(t, err)
 
 	require.FileExists(t, filepath.Join(extractDir, "images", "i", "file"))
@@ -116,7 +119,7 @@ func TestBackup_ExtractRejectsForeignEntries(t *testing.T) {
 			require.NoError(t, tw.Close())
 			require.NoError(t, gzw.Close())
 
-			err = extractBackup(t.Context(), buf, t.TempDir(), usageWithAvailable(1<<30))
+			err = extractBackup(t.Context(), buf, fsroot.Open(t, t.TempDir()), usageWithAvailable(1<<30))
 			require.Error(t, err)
 		})
 	}
@@ -165,7 +168,7 @@ func TestBackup_ExtractRejectsUnsupportedManifest(t *testing.T) {
 			require.NoError(t, gzw.Close())
 
 			extractDir := t.TempDir()
-			err = extractBackup(t.Context(), buf, extractDir, usageWithAvailable(1<<30))
+			err = extractBackup(t.Context(), buf, fsroot.Open(t, extractDir), usageWithAvailable(1<<30))
 			require.ErrorIs(t, err, domain.ErrInvalidArgument)
 
 			// Nothing is extracted from an unsupported backup.
@@ -181,14 +184,14 @@ func TestBackup_ExtractRejectsCorruptArchive(t *testing.T) {
 	writeStateFiles(t, varDir, "state")
 
 	buf := &bytes.Buffer{}
-	err := writeBackup(buf, varDir, varDir, system.BackupOptions{})
+	err := writeBackup(buf, fsroot.Open(t, varDir), fsroot.Open(t, varDir), system.BackupOptions{})
 	require.NoError(t, err)
 
 	// Corrupt the checksum in the gzip trailer.
 	archive := buf.Bytes()
 	archive[len(archive)-8] ^= 0xff
 
-	err = extractBackup(t.Context(), bytes.NewReader(archive), t.TempDir(), usageWithAvailable(1<<30))
+	err = extractBackup(t.Context(), bytes.NewReader(archive), fsroot.Open(t, t.TempDir()), usageWithAvailable(1<<30))
 	require.Error(t, err)
 }
 
@@ -199,11 +202,11 @@ func TestBackup_ExtractRejectsWithoutSpace(t *testing.T) {
 	writeStateFiles(t, varDir, "state")
 
 	buf := &bytes.Buffer{}
-	err := writeBackup(buf, varDir, varDir, system.BackupOptions{})
+	err := writeBackup(buf, fsroot.Open(t, varDir), fsroot.Open(t, varDir), system.BackupOptions{})
 	require.NoError(t, err)
 
 	// Less than 10% of the total space is available.
-	err = extractBackup(t.Context(), buf, t.TempDir(), usageWithAvailable(1<<20))
+	err = extractBackup(t.Context(), buf, fsroot.Open(t, t.TempDir()), usageWithAvailable(1<<20))
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }
 
@@ -228,10 +231,10 @@ func TestBackup_ApplyRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Apply the staged restore.
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 
-	require.True(t, NewBackup(varDir).IsRestoreApplied())
+	require.True(t, NewBackup(fsroot.Open(t, varDir)).IsRestoreApplied())
 	requireFileContent(t, filepath.Join(varDir, "config.yml"), "new")
 	require.NoFileExists(t, filepath.Join(varDir, "local.db-journal"))
 
@@ -242,14 +245,14 @@ func TestBackup_ApplyRestore(t *testing.T) {
 	require.NoDirExists(t, filepath.Join(varDir, "images"))
 
 	// A new restore is refused, it would remove the state needed to roll back.
-	_, err = NewBackup(varDir).Extract(t.Context(), strings.NewReader(""))
+	_, err = NewBackup(fsroot.Open(t, varDir)).Extract(t.Context(), strings.NewReader(""))
 	require.ErrorIs(t, err, domain.ErrOperationNotPermitted)
 
 	// The daemon did not start successfully, roll back.
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.ErrorIs(t, err, system.ErrRestoreRolledBack)
 
-	require.False(t, NewBackup(varDir).IsRestoreApplied())
+	require.False(t, NewBackup(fsroot.Open(t, varDir)).IsRestoreApplied())
 	requireFileContent(t, filepath.Join(varDir, "config.yml"), "old")
 	requireFileContent(t, filepath.Join(varDir, "local.db-journal"), "old")
 	requireFileContent(t, filepath.Join(varDir, "images", "i", "file"), "old")
@@ -257,7 +260,7 @@ func TestBackup_ApplyRestore(t *testing.T) {
 	require.NoDirExists(t, filepath.Join(varDir, restoreDirName))
 
 	// Nothing staged, nothing to do.
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 	requireFileContent(t, filepath.Join(varDir, "config.yml"), "old")
 }
@@ -274,7 +277,7 @@ func TestBackup_ApplyRestoreRollbackRetried(t *testing.T) {
 
 	writeStateFiles(t, stagedDir, "new")
 
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 
 	// A roll back, which has been interrupted after putting back the first entry.
@@ -284,7 +287,7 @@ func TestBackup_ApplyRestoreRollbackRetried(t *testing.T) {
 	err = os.Rename(filepath.Join(varDir, restoreDirName, "previous", "config.yml"), filepath.Join(varDir, "config.yml"))
 	require.NoError(t, err)
 
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.ErrorIs(t, err, system.ErrRestoreRolledBack)
 
 	requireFileContent(t, filepath.Join(varDir, "config.yml"), "old")
@@ -304,17 +307,17 @@ func TestBackup_CompleteRestore(t *testing.T) {
 
 	writeStateFiles(t, stagedDir, "new")
 
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 
-	err = NewBackup(varDir).CompleteRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).CompleteRestore()
 	require.NoError(t, err)
 
-	require.False(t, NewBackup(varDir).IsRestoreApplied())
+	require.False(t, NewBackup(fsroot.Open(t, varDir)).IsRestoreApplied())
 	require.NoDirExists(t, filepath.Join(varDir, restoreDirName))
 
 	// A restart after the completed restore keeps the restored state.
-	err = NewBackup(varDir).ApplyRestore()
+	err = NewBackup(fsroot.Open(t, varDir)).ApplyRestore()
 	require.NoError(t, err)
 	requireFileContent(t, filepath.Join(varDir, "config.yml"), "new")
 	requireFileContent(t, filepath.Join(varDir, "updates", "u", "file"), "new")
@@ -326,4 +329,130 @@ func requireFileContent(t *testing.T, filename string, want string) {
 	content, err := os.ReadFile(filename)
 	require.NoError(t, err)
 	require.Equal(t, want, string(content))
+}
+
+func TestBackup_CreateExtractStage(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	sourceDir := t.TempDir()
+	writeStateFiles(t, sourceDir, "source")
+	source := NewBackup(fsroot.Open(t, sourceDir))
+	source.usage = usageWithAvailable(1 << 30)
+
+	targetDir := t.TempDir()
+	writeStateFiles(t, targetDir, "target")
+	target := NewBackup(fsroot.Open(t, targetDir))
+	target.usage = usageWithAvailable(1 << 30)
+
+	snapshotDatabase := func(ctx context.Context, dir string) error {
+		require.True(t, filepath.IsAbs(dir), "sqlite requires an absolute path for the snapshot")
+		return os.WriteFile(filepath.Join(dir, databaseFilename), []byte("snapshot"), 0o600)
+	}
+
+	// Run test
+	rc, err := source.Create(t.Context(), system.BackupOptions{}, snapshotDatabase)
+	require.NoError(t, err)
+
+	archive, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	require.NoError(t, rc.Close())
+
+	pendingDir, err := target.Extract(t.Context(), bytes.NewReader(archive))
+	require.NoError(t, err)
+
+	err = target.Stage(t.Context())
+	require.NoError(t, err)
+
+	err = target.ApplyRestore()
+	require.NoError(t, err)
+
+	// Assert
+	backupEntries, err := os.ReadDir(filepath.Join(sourceDir, backupDirName))
+	require.NoError(t, err)
+	require.Empty(t, backupEntries, "the database snapshot is removed on close")
+
+	require.Equal(t, filepath.Join(targetDir, restoreDirName, "pending"), pendingDir, "the extracted backup is returned as absolute path")
+	require.True(t, target.IsRestoreApplied())
+	requireFileContent(t, filepath.Join(targetDir, "config.yml"), "source")
+	requireFileContent(t, filepath.Join(targetDir, databaseFilename), "snapshot")
+	requireFileContent(t, filepath.Join(targetDir, "artifacts", "a", "file"), "source")
+	requireFileContent(t, filepath.Join(targetDir, "updates", "u", "file"), "target")
+
+	err = target.CompleteRestore()
+	require.NoError(t, err)
+	require.NoDirExists(t, filepath.Join(targetDir, restoreDirName))
+}
+
+func TestBackup_Discard(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	varDir := t.TempDir()
+	err := os.MkdirAll(filepath.Join(varDir, restoreDirName, "pending"), 0o700)
+	require.NoError(t, err)
+
+	// Run test
+	err = NewBackup(fsroot.Open(t, varDir)).Discard(t.Context())
+
+	// Assert
+	require.NoError(t, err)
+	require.NoDirExists(t, filepath.Join(varDir, restoreDirName))
+}
+
+func TestBackup_ApplyRestoreRejectsUnexpectedMarkerEntries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		marker restoreMarker
+	}{
+		{
+			name:   "replaced entry outside of the var dir",
+			marker: restoreMarker{Replaced: []string{"../outside"}},
+		},
+		{
+			name:   "replaced entry not part of a backup",
+			marker: restoreMarker{Replaced: []string{"other"}},
+		},
+		{
+			name:   "previous entry not part of a backup",
+			marker: restoreMarker{Replaced: []string{"config.yml"}, Previous: []string{"other"}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			parentDir := t.TempDir()
+			requireWriteFile(t, filepath.Join(parentDir, "outside"), "outside")
+
+			varDir := filepath.Join(parentDir, "var")
+			require.NoError(t, os.Mkdir(varDir, 0o700))
+			writeStateFiles(t, varDir, "current")
+			requireWriteFile(t, filepath.Join(varDir, "other"), "other")
+
+			varRoot := fsroot.Open(t, varDir)
+			require.NoError(t, varRoot.MkdirAll(restoreDirName, 0o700))
+			require.NoError(t, writeRestoreMarker(varRoot, filepath.Join(restoreDirName, restoreAppliedMarker), tc.marker))
+
+			// Run test
+			err := NewBackup(varRoot).ApplyRestore()
+
+			// Assert
+			require.ErrorContains(t, err, "contains unexpected entry")
+			requireFileContent(t, filepath.Join(parentDir, "outside"), "outside")
+			requireFileContent(t, filepath.Join(varDir, "other"), "other")
+			requireFileContent(t, filepath.Join(varDir, "config.yml"), "current")
+		})
+	}
+}
+
+func requireWriteFile(t *testing.T, filename string, content string) {
+	t.Helper()
+
+	err := os.WriteFile(filename, []byte(content), 0o600)
+	require.NoError(t, err)
 }

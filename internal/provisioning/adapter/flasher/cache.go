@@ -43,7 +43,7 @@ var cacheIDRegexp = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // imageCache stores completely generated, decompressed seed images as files.
 type imageCache struct {
-	dir string
+	root *os.Root
 
 	// usage reports the space situation of the filesystem holding the cache.
 	usage func() (file.UsageInformation, error)
@@ -72,9 +72,9 @@ type cacheEntry struct {
 	lastAccess time.Time
 }
 
-func newImageCache(dir string) *imageCache {
+func newImageCache(root *os.Root) *imageCache {
 	cache := &imageCache{
-		dir:           dir,
+		root:          root,
 		entries:       map[string]*cacheEntry{},
 		generations:   map[string]uint64{},
 		beforeAcquire: func() {},
@@ -388,7 +388,7 @@ func (c *imageCache) generating(public bool, cacheID string, fingerprintID strin
 
 // open returns the cached image, or reports errCacheMiss, if it is not stored.
 func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
-	imageFile, err := os.Open(c.imageFilename(public, cacheID, fingerprintID))
+	imageFile, err := c.root.Open(c.imageFilename(public, cacheID, fingerprintID))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, provisioning.SeedImageInfo{}, errCacheMiss
@@ -414,17 +414,16 @@ func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ 
 func (c *imageCache) write(ctx context.Context, public bool, cacheID string, generation uint64, fingerprintID string, image io.Reader) (err error) {
 	dir := c.namespaceDir(public)
 
-	err = os.MkdirAll(dir, 0o700)
+	err = c.root.MkdirAll(dir, 0o700)
 	if err != nil {
 		return fmt.Errorf("Failed to create seed image cache directory %q: %w", dir, err)
 	}
 
-	partial, err := os.CreateTemp(dir, imageBasename(cacheID, fingerprintID)+".*"+cachePartialExt)
+	partial, partialName, err := file.CreateTempIn(c.root, dir, imageBasename(cacheID, fingerprintID)+".*"+cachePartialExt)
 	if err != nil {
 		return fmt.Errorf("Failed to create partial file for cached seed image %q: %w", fingerprintID, err)
 	}
 
-	partialName := partial.Name()
 	closePartial := sync.OnceValue(partial.Close)
 
 	defer func() {
@@ -435,7 +434,7 @@ func (c *imageCache) write(ctx context.Context, public bool, cacheID string, gen
 		err = errors.Join(err, closePartial())
 
 		if partialName != "" {
-			err = errors.Join(err, os.Remove(partialName))
+			err = errors.Join(err, c.root.Remove(partialName))
 		}
 	}()
 
@@ -473,7 +472,7 @@ func (c *imageCache) moveIntoPlace(partialName string, public bool, cacheID stri
 		return errSeedImageStale(fingerprintID)
 	}
 
-	err := os.Rename(partialName, c.imageFilename(public, cacheID, fingerprintID))
+	err := c.root.Rename(partialName, c.imageFilename(public, cacheID, fingerprintID))
 	if err != nil {
 		return fmt.Errorf("Failed to move cached seed image %q into place: %w", fingerprintID, err)
 	}
@@ -502,15 +501,13 @@ func (c *imageCache) removeByPrefix(prefix string) error {
 			delete(c.entries, key)
 		}
 
-		dir := filepath.Join(c.dir, namespace)
-
-		dirEntries, err := os.ReadDir(dir)
+		dirEntries, err := fs.ReadDir(c.root.FS(), namespace)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
 
-			errs = append(errs, fmt.Errorf("Failed to read seed image cache directory %q: %w", dir, err))
+			errs = append(errs, fmt.Errorf("Failed to read seed image cache directory %q: %w", namespace, err))
 			continue
 		}
 
@@ -521,7 +518,7 @@ func (c *imageCache) removeByPrefix(prefix string) error {
 				continue
 			}
 
-			err = os.Remove(filepath.Join(dir, filename))
+			err = c.root.Remove(filepath.Join(namespace, filename))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				errs = append(errs, fmt.Errorf("Failed to remove cached seed image %q: %w", filename, err))
 			}
@@ -547,15 +544,13 @@ func (c *imageCache) prune(ctx context.Context, ttl time.Duration) error {
 }
 
 func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl time.Duration) error {
-	dir := filepath.Join(c.dir, namespace)
-
-	dirEntries, err := os.ReadDir(dir)
+	dirEntries, err := fs.ReadDir(c.root.FS(), namespace)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 
-		return fmt.Errorf("Failed to read seed image cache directory %q: %w", dir, err)
+		return fmt.Errorf("Failed to read seed image cache directory %q: %w", namespace, err)
 	}
 
 	var errs []error
@@ -603,7 +598,7 @@ func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl t
 			continue
 		}
 
-		err = os.Remove(filepath.Join(dir, filename))
+		err = c.root.Remove(filepath.Join(namespace, filename))
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			errs = append(errs, err)
 		}
@@ -677,10 +672,12 @@ func cacheNamespace(public bool) string {
 	return cachePrivateDir
 }
 
+// namespaceDir returns the directory of the namespace relative to the root.
 func (c *imageCache) namespaceDir(public bool) string {
-	return filepath.Join(c.dir, cacheNamespace(public))
+	return cacheNamespace(public)
 }
 
+// imageFilename returns the name of the cached image relative to the root.
 func (c *imageCache) imageFilename(public bool, cacheID string, fingerprintID string) string {
 	return filepath.Join(c.namespaceDir(public), imageBasename(cacheID, fingerprintID)+cacheImageExt)
 }

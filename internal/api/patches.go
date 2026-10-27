@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"slices"
 	"strings"
 
@@ -39,7 +38,7 @@ var patches = []patch{
 	{name: "remove_var_lib_operations_center_terraform_dirs", stage: patchPreSecurityInfrastructure, run: patchRemoveVarLibOperationCenterTerraformDirs},
 }
 
-type patchRun func(ctx context.Context, name string) error
+type patchRun func(ctx context.Context, name string, d *Daemon) error
 
 type patch struct {
 	name  string
@@ -47,10 +46,10 @@ type patch struct {
 	run   patchRun
 }
 
-func (p *patch) apply(ctx context.Context, db dbdriver.DBTX) error {
+func (p *patch) apply(ctx context.Context, d *Daemon, db dbdriver.DBTX) error {
 	slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
 
-	err := p.run(ctx, p.name)
+	err := p.run(ctx, p.name, d)
 	if err != nil {
 		return fmt.Errorf("Failed applying patch %q: %w", p.name, err)
 	}
@@ -107,7 +106,7 @@ func patchesGetNames() []string {
 }
 
 // patchesApply applies the patches for the respective stage.
-func patchesApply(ctx context.Context, db dbdriver.DBTX, stage patchStage) error {
+func patchesApply(ctx context.Context, d *Daemon, db dbdriver.DBTX, stage patchStage) error {
 	appliedPatches, err := getAppliedPatches(ctx, db)
 	if err != nil {
 		return err
@@ -126,7 +125,7 @@ func patchesApply(ctx context.Context, db dbdriver.DBTX, stage patchStage) error
 			continue
 		}
 
-		err := patch.apply(ctx, db)
+		err := patch.apply(ctx, d, db)
 		if err != nil {
 			return err
 		}
@@ -135,18 +134,18 @@ func patchesApply(ctx context.Context, db dbdriver.DBTX, stage patchStage) error
 	return nil
 }
 
-func patchRenameChannelsToUpstreamChannels(ctx context.Context, name string) error {
+func patchRenameChannelsToUpstreamChannels(ctx context.Context, name string, d *Daemon) error {
 	updatesCfg := config.GetUpdates()
 
 	updatesCfg.FilterExpression = strings.ReplaceAll(updatesCfg.FilterExpression, "channels", "upstream_channels")
 	return config.UpdateUpdates(ctx, updatesCfg.UpdatesPut)
 }
 
-func patchRemoveVarLibOperationCenterTerraformDirs(ctx context.Context, name string) error {
-	err := os.RemoveAll("/var/lib/operations-center/servercerts")
+func patchRemoveVarLibOperationCenterTerraformDirs(ctx context.Context, name string, d *Daemon) error {
+	err := d.varRoot.RemoveAll("servercerts")
 	if err != nil {
 		return err
 	}
 
-	return os.RemoveAll("/var/lib/operations-center/terraform")
+	return d.varRoot.RemoveAll("terraform")
 }

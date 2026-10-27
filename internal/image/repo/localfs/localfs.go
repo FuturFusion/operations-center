@@ -3,7 +3,6 @@ package localfs
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -14,26 +13,39 @@ import (
 )
 
 type localfs struct {
-	storageDir string
+	root *os.Root
 }
 
 var _ image.ImageIncusFileRepo = localfs{}
 
-func New(storageDir string) (*localfs, error) {
-	err := os.MkdirAll(storageDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create directory for local update storage: %w", err)
+// New returns an incus image files repository, which stores the files in root.
+func New(root *os.Root) *localfs {
+	return &localfs{
+		root: root,
+	}
+}
+
+// imagePath returns the path of img, extended by elements, relative to the
+// root. Every path element must be a single file name. This keeps the path
+// inside the root.
+func imagePath(img *image.IncusImage, elements ...string) (string, error) {
+	for _, element := range append([]string{img.OperatingSystem, img.Release, img.Architecture, img.Variant}, elements...) {
+		err := image.ValidateIncusImageFilename(element)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	return &localfs{
-		storageDir: storageDir,
-	}, nil
+	return filepath.Join(append([]string{img.FilePath()}, elements...)...), nil
 }
 
 func (l localfs) Exists(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (bool, error) {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier, filename)
+	name, err := imagePath(img, versionIdentifier, filename)
+	if err != nil {
+		return false, err
+	}
 
-	_, err := os.Stat(fullFilename)
+	_, err = l.root.Stat(name)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return false, nil
@@ -46,15 +58,19 @@ func (l localfs) Exists(ctx context.Context, img *image.IncusImage, versionIdent
 }
 
 func (l localfs) Get(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (io.ReadCloser, int64, error) {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier, filename)
-
-	fi, err := os.Stat(fullFilename)
+	name, err := imagePath(img, versionIdentifier, filename)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	f, err := os.Open(fullFilename)
+	f, err := l.root.Open(name)
 	if err != nil {
+		return nil, 0, err
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		f.Close()
 		return nil, 0, err
 	}
 
@@ -62,8 +78,12 @@ func (l localfs) Get(ctx context.Context, img *image.IncusImage, versionIdentifi
 }
 
 func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier, filename)
-	temporaryFullFilename := fullFilename + ".partial"
+	name, err := imagePath(img, versionIdentifier, filename)
+	if err != nil {
+		return nil, content.Close, 0, err
+	}
+
+	temporaryName := name + ".partial"
 	var target *os.File
 	committed := false
 
@@ -82,19 +102,19 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 			targetCloseErr = target.Close()
 		}
 
-		if file.PathExists(temporaryFullFilename) {
-			temporaryFileRemoveErr = os.Remove(temporaryFullFilename)
+		if file.PathExistsIn(l.root, temporaryName) {
+			temporaryFileRemoveErr = l.root.Remove(temporaryName)
 		}
 
 		return errors.Join(contentCloseErr, targetCloseErr, temporaryFileRemoveErr)
 	}
 
-	err := os.MkdirAll(filepath.Dir(fullFilename), 0o700)
+	err = l.root.MkdirAll(filepath.Dir(name), 0o700)
 	if err != nil {
 		return nil, cancel, 0, err
 	}
 
-	target, err = os.OpenFile(temporaryFullFilename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
+	target, err = l.root.OpenFile(temporaryName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, cancel, 0, err
 	}
@@ -106,8 +126,8 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 
 	commit := func() (err error) {
 		defer func() {
-			if file.PathExists(temporaryFullFilename) {
-				removeErr := os.Remove(temporaryFullFilename)
+			if file.PathExistsIn(l.root, temporaryName) {
+				removeErr := l.root.Remove(temporaryName)
 				if removeErr != nil {
 					err = errors.Join(err, removeErr)
 				}
@@ -124,7 +144,7 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 			targetCloseErr = target.Close()
 		}
 
-		temporaryFileRenameErr = os.Rename(temporaryFullFilename, fullFilename)
+		temporaryFileRenameErr = l.root.Rename(temporaryName, name)
 
 		err = errors.Join(contentCloseErr, targetCloseErr, temporaryFileRenameErr)
 		if err != nil {
@@ -140,19 +160,22 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 }
 
 func (l localfs) Delete(ctx context.Context, img *image.IncusImage) error {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath())
-
-	return os.RemoveAll(fullFilename)
+	return l.removeAll(img)
 }
 
 func (l localfs) DeleteVersion(ctx context.Context, img *image.IncusImage, versionIdentifier string) error {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier)
-
-	return os.RemoveAll(fullFilename)
+	return l.removeAll(img, versionIdentifier)
 }
 
 func (l localfs) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) error {
-	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier, filename)
+	return l.removeAll(img, versionIdentifier, filename)
+}
 
-	return os.RemoveAll(fullFilename)
+func (l localfs) removeAll(img *image.IncusImage, elements ...string) error {
+	name, err := imagePath(img, elements...)
+	if err != nil {
+		return err
+	}
+
+	return l.root.RemoveAll(name)
 }

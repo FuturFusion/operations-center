@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -49,6 +50,11 @@ func (i IncusImage) Validate() error {
 
 	if i.Variant == "" {
 		return domain.NewValidationErrf("Invalid incus image, variant can not be empty")
+	}
+
+	err = validateFilePathElements(i.OperatingSystem, i.Release, i.Variant)
+	if err != nil {
+		return err
 	}
 
 	if i.Name != strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":") {
@@ -104,6 +110,28 @@ func fixArchitectureMapping(architecture string) string {
 	default:
 		return architecture
 	}
+}
+
+// ValidateIncusImageFilename checks that filename is a single, non-empty file
+// name. The name is used to store the file. So it must not contain path
+// separators and it must not be "." or "..".
+func ValidateIncusImageFilename(filename string) error {
+	if !file.IsPathElement(filename) {
+		return domain.NewValidationErrf("Invalid incus image, %q is not a valid file name", filename)
+	}
+
+	return nil
+}
+
+func validateFilePathElements(elements ...string) error {
+	for _, element := range elements {
+		err := ValidateIncusImageFilename(element)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (i IncusImage) Path() string {

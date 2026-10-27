@@ -127,6 +127,10 @@ type environment interface {
 type Daemon struct {
 	env environment
 
+	varRoot   *os.Root
+	cacheRoot *os.Root
+	subRoots  []*os.Root
+
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
 	configReloadMu *sync.Mutex
@@ -158,24 +162,10 @@ type Daemon struct {
 func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
 
-	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
-	clientCert, err := os.ReadFile(clientCertFilename)
-	if err != nil {
-		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
-	}
-
-	clientKeyFilename := filepath.Join(env.VarDir(), config.ClientKeyFilename)
-	clientKey, err := os.ReadFile(clientKeyFilename)
-	if err != nil {
-		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
-	}
-
 	d := &Daemon{
-		env:               env,
-		configReloadMu:    &sync.Mutex{},
-		clientCertificate: string(clientCert),
-		clientKey:         string(clientKey),
-		restartCh:         make(chan struct{}, 1),
+		env:            env,
+		configReloadMu: &sync.Mutex{},
+		restartCh:      make(chan struct{}, 1),
 
 		authenticator: &authn.Authenticator{},
 		oidcVerifier:  &authnoidc.Verifier{},
@@ -196,6 +186,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	slog.InfoContext(ctx, "Starting up", slog.String("version", version.Version))
 
+	err := d.openRoots()
+	if err != nil {
+		return err
+	}
+
+	d.loadClientCertificate(ctx)
+
 	dbWithTransaction, err := d.initDB(ctx)
 	if err != nil {
 		return err
@@ -203,7 +200,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Apply all patches that need to be run before daemon security infrastructure
 	// like certificates, authenticators and authorizers are initialized.
-	err = patchesApply(ctx, dbWithTransaction, patchPreSecurityInfrastructure)
+	err = patchesApply(ctx, d, dbWithTransaction, patchPreSecurityInfrastructure)
 	if err != nil {
 		return err
 	}
@@ -318,7 +315,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
-	tokenSvc, imageFlasher := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+	tokenSvc, imageFlasher, err := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+	if err != nil {
+		return err
+	}
 
 	seedImageProgress := provisioningAdapterMiddleware.NewSeedImageProgressPortWithSlog(
 		seedprogress.New(),
@@ -338,8 +338,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("Failed to load the secure boot certificate catalog: %w", err)
 	}
 
+	secureBootMediaRoot, err := d.openSubRoot(d.cacheRoot, "secure-boot-media")
+	if err != nil {
+		return err
+	}
+
 	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
-		securebootmedia.New(filepath.Join(d.env.CacheDir(), "secure-boot-media")),
+		securebootmedia.New(secureBootMediaRoot),
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
@@ -354,7 +359,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	backupRepo := systemLocalfs.NewBackup(d.env.VarDir())
+	backupRepo := systemLocalfs.NewBackup(d.varRoot)
 
 	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
 
@@ -367,7 +372,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(
+	serveMux, inventorySyncers, err := d.setupAPIRoutes(
 		ctx,
 		updateSvc,
 		tokenSvc,
@@ -383,6 +388,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		secureBootMedia,
 		dbWithTransaction,
 	)
+	if err != nil {
+		return err
+	}
+
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
@@ -570,9 +579,67 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	return dbWithTransaction, nil
 }
 
+// openRoots opens the var and cache directories as roots.
+func (d *Daemon) openRoots() error {
+	var err error
+
+	d.varRoot, err = file.MkdirAllOpenRoot(d.env.VarDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Failed to open var directory: %w", err)
+	}
+
+	d.cacheRoot, err = file.MkdirAllOpenRoot(d.env.CacheDir(), 0o700)
+	if err != nil {
+		return fmt.Errorf("Failed to open cache directory: %w", err)
+	}
+
+	return nil
+}
+
+// openSubRoot opens the directory name in parent as root. It creates the
+// directory if it is missing. closeRoots closes the returned root.
+func (d *Daemon) openSubRoot(parent *os.Root, name string) (*os.Root, error) {
+	root, err := file.MkdirAllOpenSubRoot(parent, name, 0o700)
+	if err != nil {
+		return nil, err
+	}
+
+	d.subRoots = append(d.subRoots, root)
+
+	return root, nil
+}
+
+// closeRoots closes all roots of the daemon.
+func (d *Daemon) closeRoots() error {
+	errs := []error{}
+
+	for _, root := range append(d.subRoots, d.varRoot, d.cacheRoot) {
+		if root != nil {
+			errs = append(errs, root.Close())
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (d *Daemon) loadClientCertificate(ctx context.Context) {
+	clientCert, err := d.varRoot.ReadFile(config.ClientCertificateFilename)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", config.ClientCertificateFilename), logger.Err(err))
+	}
+
+	clientKey, err := d.varRoot.ReadFile(config.ClientKeyFilename)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to read client key", slog.String("file", config.ClientKeyFilename), logger.Err(err))
+	}
+
+	d.clientCertificate = string(clientCert)
+	d.clientKey = string(clientKey)
+}
+
 func (d *Daemon) initAndLoadServerCert() error {
-	certFile := filepath.Join(d.env.VarDir(), config.ServerCertificateFilename)
-	keyFile := filepath.Join(d.env.VarDir(), config.ServerKeyFilename)
+	certFile := filepath.Join(d.varRoot.Name(), config.ServerCertificateFilename)
+	keyFile := filepath.Join(d.varRoot.Name(), config.ServerKeyFilename)
 
 	// Ensure that the certificate exists, or create a new one if it does not.
 	err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
@@ -580,12 +647,12 @@ func (d *Daemon) initAndLoadServerCert() error {
 		return err
 	}
 
-	serverCertificatePEM, err := os.ReadFile(certFile)
+	serverCertificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read server certificate from %q: %w", certFile, err)
 	}
 
-	serverKeyPEM, err := os.ReadFile(keyFile)
+	serverKeyPEM, err := d.varRoot.ReadFile(config.ServerKeyFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
 	}
@@ -716,10 +783,12 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 }
 
 func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusService, error) {
-	imageFilesRepo, err := imageLocalfs.New(filepath.Join(d.env.VarDir(), "images"))
+	imagesRoot, err := d.openSubRoot(d.varRoot, "images")
 	if err != nil {
 		return nil, err
 	}
+
+	imageFilesRepo := imageLocalfs.New(imagesRoot)
 
 	imageIncusSvc := imageServiceMiddleware.NewImageIncusServiceWithSlog(
 		image.NewIncusImage(
@@ -762,13 +831,15 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
-	repoUpdateFiles, err := provisioningLocalfs.New(
-		filepath.Join(d.env.VarDir(), "updates"),
-		config.GetUpdates().SignatureVerificationRootCA,
-	)
+	updatesRoot, err := d.openSubRoot(d.varRoot, "updates")
 	if err != nil {
 		return nil, err
 	}
+
+	repoUpdateFiles := provisioningLocalfs.New(
+		updatesRoot,
+		config.GetUpdates().SignatureVerificationRootCA,
+	)
 
 	// Make sure, the files repository learns about changes to the signature certificate.
 	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Updates) {
@@ -821,11 +892,16 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	), nil
 }
 
-func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher) {
+func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher, error) {
+	seedImageCacheRoot, err := d.openSubRoot(d.cacheRoot, seedImageCacheDir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
-		flasher.WithCacheDir(filepath.Join(d.env.CacheDir(), seedImageCacheDir)),
+		flasher.WithCacheRoot(seedImageCacheRoot),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
 	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -878,7 +954,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		}
 	})
 
-	return tokenSvc, imageFlasher
+	return tokenSvc, imageFlasher, nil
 }
 
 func (d *Daemon) setupServerService(
@@ -956,18 +1032,29 @@ func (d *Daemon) setupClusterService(
 	inventoryAggregateSvc inventory.InventoryAggregateService,
 	warningSvc provisioning.WarningServicePort,
 ) (provisioning.ClusterService, error) {
-	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
+	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
 	if err != nil {
 		return nil, err
 	}
 
-	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
+	localClusterArtifactRepo := provisioningClusterArtifactRepo.New(db, artifactsRoot)
+
+	// Terraform runs as an external tool, which requires an absolute path. The
+	// directory is created in the temporary directory of the system.
+	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*") //nolint:forbidigo // External tool needs an absolute path.
 	if err != nil {
-		tmpTerraformDir = os.TempDir()
+		return nil, fmt.Errorf("Failed to create the temporary directory for terraform: %w", err)
 	}
 
+	terraformRoot, err := os.OpenRoot(tmpTerraformDir)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open the temporary directory for terraform: %w", err)
+	}
+
+	d.subRoots = append(d.subRoots, terraformRoot)
+
 	terraformProvisioner, err := terraform.New(
-		tmpTerraformDir,
+		terraformRoot,
 		d.clientCertificate,
 		d.clientKey,
 	)
@@ -1025,12 +1112,14 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 		system.NewSystemService(
 			d.env, serverSvc, clusterSvc,
 			systemRepoMiddleware.NewCacheRepoWithSlog(
-				systemLocalfs.New(d.env.CacheDir(), seedImageCacheDir),
+				systemLocalfs.New(d.cacheRoot, seedImageCacheDir),
 			),
 			systemRepoMiddleware.NewDatabaseRepoWithSlog(
 				systemSqlite.NewDatabase(db),
 			),
 			systemRepoMiddleware.NewBackupRepoWithSlog(backupRepo),
+			// Do not wrap with slog. This repo handles the private key of the server.
+			systemLocalfs.NewCertificate(d.varRoot),
 			d.requestRestart,
 		),
 	)
@@ -1064,7 +1153,7 @@ func (d *Daemon) setupAPIRoutes(
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	db dbdriver.DBTX,
-) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
+) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
@@ -1081,7 +1170,19 @@ func (d *Daemon) setupAPIRoutes(
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
 
-	registerUIHandlers(ctx, router, ui.FS(), d.env.UsrShareDir())
+	embeddedUI := ui.FS()
+
+	var uiRoot *os.Root
+	if embeddedUI == nil {
+		var err error
+
+		uiRoot, err = d.openUIRoot(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	registerUIHandlers(ctx, router, embeddedUI, uiRoot)
 	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"
@@ -1200,7 +1301,7 @@ func (d *Daemon) setupAPIRoutes(
 
 	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter, inventoryInventoryAggregateSvc)
 
-	return serveMux, inventorySyncers
+	return serveMux, inventorySyncers, nil
 }
 
 func (d *Daemon) setupBackgroundTasks(
@@ -1835,8 +1936,8 @@ func (d *Daemon) setupSocketListener(ctx context.Context) error {
 	// TODO: if the socket file already exists, make a connection attempt. If
 	// successful, another instance of operations-centerd is already running.
 	// If not successful, it is save to delete the socket file.
-	if file.PathExists(d.env.GetUnixSocket()) {
-		err := os.Remove(d.env.GetUnixSocket())
+	if file.PathExists(d.env.GetUnixSocket()) { //nolint:forbidigo // The unix socket is configured by an absolute path.
+		err := os.Remove(d.env.GetUnixSocket()) //nolint:forbidigo // The unix socket is configured by an absolute path.
 		if err != nil {
 			return err
 		}
@@ -2089,6 +2190,10 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		errgroupWaitErr := d.errgroup.Wait()
 		errs = append(errs, errgroupWaitErr)
 	}
+
+	// Close the roots last. The shutdown functions and the background tasks
+	// might still access files.
+	errs = append(errs, d.closeRoots())
 
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()

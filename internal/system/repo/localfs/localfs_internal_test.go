@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
 func TestLocalfs_CleanupAll(t *testing.T) {
@@ -16,6 +19,7 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 		namespaces  []string
 		setupTmpDir func(t *testing.T, destDir string)
 
+		assertErr    require.ErrorAssertionFunc
 		assertTmpDir func(t *testing.T, destDir string)
 	}{
 		{
@@ -28,6 +32,7 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 				require.NoError(t, err)
 			},
 
+			assertErr: require.NoError,
 			assertTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 
@@ -41,6 +46,7 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 				t.Helper()
 			},
 
+			assertErr: require.NoError,
 			assertTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 
@@ -63,6 +69,7 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 				require.NoError(t, err)
 			},
 
+			assertErr: require.NoError,
 			assertTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 
@@ -93,12 +100,30 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 				require.NoError(t, err)
 			},
 
+			assertErr: require.NoError,
 			assertTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 
 				requireDirEmpty(t, filepath.Join(destDir, "seed-images"))
 				require.FileExists(t, filepath.Join(destDir, "acme", "accounts", "key.pem"))
 				require.FileExists(t, filepath.Join(destDir, "local.db"))
+			},
+		},
+		{
+			name:       "error - namespace outside of the cache directory",
+			namespaces: []string{"../var"},
+			setupTmpDir: func(t *testing.T, destDir string) {
+				t.Helper()
+
+				err := os.WriteFile(filepath.Join(destDir, "file1.txt"), []byte(`file1 body`), 0o600)
+				require.NoError(t, err)
+			},
+
+			assertErr: errassert.Contains(`Invalid cache namespace "../var"`),
+			assertTmpDir: func(t *testing.T, destDir string) {
+				t.Helper()
+
+				require.FileExists(t, filepath.Join(destDir, "file1.txt"))
 			},
 		},
 	}
@@ -110,13 +135,13 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs := New(tmpDir, tc.namespaces...)
+			lfs := New(fsroot.Open(t, tmpDir), tc.namespaces...)
 
 			// Run test
 			err := lfs.CleanupAll(t.Context())
 
 			// Assert
-			require.NoError(t, err)
+			tc.assertErr(t, err)
 			tc.assertTmpDir(t, tmpDir)
 		})
 	}

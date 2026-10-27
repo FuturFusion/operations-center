@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -34,7 +36,7 @@ var testContent = "incus-os-image"
 func testFlasher(t *testing.T) *Flasher {
 	t.Helper()
 
-	cache := newImageCache(t.TempDir())
+	cache := newImageCache(fsroot.Open(t, t.TempDir()))
 	cache.usage = func() (file.UsageInformation, error) {
 		return file.UsageInformation{
 			TotalSpaceBytes:     1 << 60,
@@ -46,6 +48,16 @@ func testFlasher(t *testing.T) *Flasher {
 		serverURL: "https://operations-center.local:7443",
 		cache:     cache,
 	}
+}
+
+// absNamespaceDir returns the absolute path of the namespace directory.
+func absNamespaceDir(c *imageCache, public bool) string {
+	return filepath.Join(c.root.Name(), c.namespaceDir(public))
+}
+
+// absImageFilename returns the absolute path of the cached image.
+func absImageFilename(c *imageCache, public bool, cacheID string, fingerprintID string) string {
+	return filepath.Join(c.root.Name(), c.imageFilename(public, cacheID, fingerprintID))
 }
 
 func gzipSource(t *testing.T, content string) io.ReadCloser {
@@ -74,7 +86,7 @@ func fingerprintID(t *testing.T, flasher *Flasher, fingerprint string) string {
 func requireNoLeftovers(t *testing.T, flasher *Flasher, public bool) {
 	t.Helper()
 
-	entries, err := os.ReadDir(flasher.cache.namespaceDir(public))
+	entries, err := os.ReadDir(absNamespaceDir(flasher.cache, public))
 	if errors.Is(err, fs.ErrNotExist) {
 		return
 	}
@@ -136,7 +148,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		require.False(t, info.ModTime.IsZero())
 		require.Equal(t, int64(1), source.closed.Load())
 
-		require.FileExists(t, flasher.cache.imageFilename(true, testCacheID, fingerprintID(t, flasher, "fingerprint")))
+		require.FileExists(t, absImageFilename(flasher.cache, true, testCacheID, fingerprintID(t, flasher, "fingerprint")))
 
 		// A second request is served from the file, the source is not consumed.
 		secondSource := &countingReadCloser{ReadCloser: gzipSource(t, "not used")}
@@ -331,7 +343,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		errassert.DomainError(domain.ErrConstraintViolation, api.ErrorReasonInsufficientStorage)(t, err)
 
 		require.Equal(t, int64(1), source.closed.Load())
-		require.NoFileExists(t, flasher.cache.imageFilename(true, testCacheID, fingerprintID(t, flasher, "fingerprint")))
+		require.NoFileExists(t, absImageFilename(flasher.cache, true, testCacheID, fingerprintID(t, flasher, "fingerprint")))
 
 		requireNoLeftovers(t, flasher, true)
 	})
@@ -527,7 +539,7 @@ func TestFlasher_PruneCache(t *testing.T) {
 		generate(t, flasher, "fingerprint", content)
 
 		id := fingerprintID(t, flasher, "fingerprint")
-		imageFile := flasher.cache.imageFilename(true, testCacheID, id)
+		imageFile := absImageFilename(flasher.cache, true, testCacheID, id)
 
 		require.NoError(t, flasher.PruneCache(ctx, time.Hour))
 		require.FileExists(t, imageFile)
@@ -553,7 +565,7 @@ func TestFlasher_PruneCache(t *testing.T) {
 		require.NoError(t, image.Close())
 
 		id := fingerprintID(t, flasher, "fingerprint")
-		imageFile := flasher.cache.imageFilename(false, testCacheID, id)
+		imageFile := absImageFilename(flasher.cache, false, testCacheID, id)
 		require.FileExists(t, imageFile)
 
 		flasher.cache.entries[cacheKey(false, testCacheID, id)].lastAccess = time.Now().Add(-2 * time.Hour)
@@ -570,7 +582,7 @@ func TestFlasher_PruneCache(t *testing.T) {
 
 		flasher := testFlasher(t)
 
-		dir := flasher.cache.namespaceDir(true)
+		dir := absNamespaceDir(flasher.cache, true)
 		require.NoError(t, os.MkdirAll(dir, 0o700))
 
 		partial := filepath.Join(dir, testCacheID+".123456"+cachePartialExt)
@@ -619,7 +631,7 @@ func TestFlasher_RemoveSeededImages(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 
-		return flasher.cache.imageFilename(public, cacheID, fingerprintID(t, flasher, "fingerprint"))
+		return absImageFilename(flasher.cache, public, cacheID, fingerprintID(t, flasher, "fingerprint"))
 	}
 
 	t.Run("removes all images of the prefix and keeps the others", func(t *testing.T) {
@@ -696,7 +708,7 @@ func TestFlasher_RemoveSeededImages(t *testing.T) {
 		_, _, err = flasher.GenerateSeededImage(ctx, cacheID, generation, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.ErrorIs(t, err, domain.ErrOperationNotPermitted)
 		require.Zero(t, source.reads.Load(), "Nothing is generated for a stale request.")
-		require.NoFileExists(t, flasher.cache.imageFilename(true, cacheID, fingerprintID(t, flasher, "fingerprint")))
+		require.NoFileExists(t, absImageFilename(flasher.cache, true, cacheID, fingerprintID(t, flasher, "fingerprint")))
 	})
 
 	t.Run("serves a request, which has read the generation after the removal", func(t *testing.T) {
@@ -711,7 +723,7 @@ func TestFlasher_RemoveSeededImages(t *testing.T) {
 		image, _, err := flasher.GenerateSeededImage(ctx, cacheID, generation, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
-		require.FileExists(t, flasher.cache.imageFilename(true, cacheID, fingerprintID(t, flasher, "fingerprint")))
+		require.FileExists(t, absImageFilename(flasher.cache, true, cacheID, fingerprintID(t, flasher, "fingerprint")))
 	})
 
 	t.Run("rejects a prefix, which is not usable as a filename", func(t *testing.T) {
@@ -741,7 +753,7 @@ func TestImageCache_open(t *testing.T) {
 	t.Run("reports a cache miss for an image, which is not stored", func(t *testing.T) {
 		t.Parallel()
 
-		cache := newImageCache(t.TempDir())
+		cache := newImageCache(fsroot.Open(t, t.TempDir()))
 
 		_, _, err := cache.open(true, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, errCacheMiss)
@@ -750,7 +762,7 @@ func TestImageCache_open(t *testing.T) {
 	t.Run("reports the size and the generation time of the stored image", func(t *testing.T) {
 		t.Parallel()
 
-		cache := newImageCache(t.TempDir())
+		cache := newImageCache(fsroot.Open(t, t.TempDir()))
 
 		before := time.Now().Add(-time.Second)
 
@@ -767,7 +779,7 @@ func TestImageCache_open(t *testing.T) {
 	t.Run("keeps the two namespaces apart", func(t *testing.T) {
 		t.Parallel()
 
-		cache := newImageCache(t.TempDir())
+		cache := newImageCache(fsroot.Open(t, t.TempDir()))
 
 		require.NoError(t, cache.write(ctx, false, testCacheID, 0, "0123456789ab", bytes.NewReader([]byte("private"))))
 
@@ -795,4 +807,73 @@ func (b *blockingReadCloser) Read(p []byte) (int, error) {
 	})
 
 	return b.ReadCloser.Read(p)
+}
+
+func TestImageCache_symlinkOutsideOfRoot(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T, cache *imageCache) error
+	}{
+		{
+			name: "write",
+			run: func(t *testing.T, cache *imageCache) error {
+				t.Helper()
+				return cache.write(t.Context(), true, testCacheID, cache.generation(testCacheID), "fingerprint", strings.NewReader(testContent))
+			},
+		},
+		{
+			name: "open",
+			run: func(t *testing.T, cache *imageCache) error {
+				t.Helper()
+				_, _, err := cache.open(true, testCacheID, "fingerprint")
+				return err
+			},
+		},
+		{
+			name: "removeByPrefix",
+			run: func(t *testing.T, cache *imageCache) error {
+				t.Helper()
+				return cache.removeByPrefix(testCacheID)
+			},
+		},
+		{
+			name: "prune",
+			run: func(t *testing.T, cache *imageCache) error {
+				t.Helper()
+				return cache.prune(t.Context(), 0)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tmpDir := t.TempDir()
+			outsideDir := filepath.Join(tmpDir, "outside")
+			require.NoError(t, os.Mkdir(outsideDir, 0o700))
+			outsideImage := filepath.Join(outsideDir, testCacheID+"-fingerprint"+cacheImageExt)
+			require.NoError(t, os.WriteFile(outsideImage, []byte("outside"), 0o600))
+
+			cacheDir := filepath.Join(tmpDir, "cache")
+			require.NoError(t, os.Mkdir(cacheDir, 0o700))
+			require.NoError(t, os.Symlink(outsideDir, filepath.Join(cacheDir, cachePublicDir)))
+
+			cache := newImageCache(fsroot.Open(t, cacheDir))
+
+			// Run test
+			err := tc.run(t, cache)
+
+			// Assert
+			require.ErrorContains(t, err, "path escapes from parent", "the symlink must not be followed out of the root")
+
+			entries, err := os.ReadDir(outsideDir)
+			require.NoError(t, err)
+			require.Len(t, entries, 1, "files outside of the root must not be created or removed")
+			require.Equal(t, filepath.Base(outsideImage), entries[0].Name())
+		})
+	}
 }

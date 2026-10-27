@@ -11,6 +11,8 @@ formatter-options:
     tab-indent: true
 include-auto-generated: true
 include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service)"
+# The certificate repo handles the private key of the server, which must not be logged.
+exclude-interface-regex: "CertificateRepo"
 dir: >-
   {{- $targetDir := "middleware" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}

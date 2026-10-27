@@ -3,7 +3,9 @@ package acme
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,6 +17,7 @@ import (
 	"github.com/lxc/incus/v7/shared/tls"
 	"github.com/lxc/incus/v7/shared/validate"
 
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -41,6 +44,18 @@ func ValidateACMEConfig(s system.SecurityACME) error {
 
 	if u.Hostname() == "" {
 		return fmt.Errorf("Failed to determine host for ACME CA URL %q", s.CAURL)
+	}
+
+	// The host and the email are used as directory names for the ACME account.
+	if !file.IsPathElement(u.Hostname()) {
+		return fmt.Errorf("ACME CA URL host %q is invalid", u.Hostname())
+	}
+
+	if s.Email != "" {
+		addr, err := mail.ParseAddress(s.Email)
+		if err != nil || addr.Address != s.Email || !file.IsPathElement(s.Email) {
+			return fmt.Errorf("ACME email %q is not a valid email address", s.Email)
+		}
 	}
 
 	if u.Port() != "" {
@@ -123,10 +138,12 @@ func UpdateCertificate(
 	}
 
 	dir := filepath.Join(fsEnv.CacheDir(), "acme")
-	err = os.MkdirAll(dir, 0o755)
+	root, err := file.MkdirAllOpenRoot(dir, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create acme account path %q: %w", dir, err)
 	}
+
+	defer root.Close()
 
 	caURL, err := url.ParseRequestURI(cfg.CAURL)
 	if err != nil {
@@ -134,26 +151,7 @@ func UpdateCertificate(
 	}
 
 	// Remove unrelated directories when done.
-	defer func() {
-		_ = os.RemoveAll(filepath.Join(dir, "certificates"))
-		accountPath := filepath.Join(dir, "accounts")
-
-		entries, _ := os.ReadDir(accountPath)
-		for _, e := range entries {
-			if e.Name() != caURL.Hostname() {
-				// Remove other CA URL paths if the config changed.
-				_ = os.RemoveAll(filepath.Join(accountPath, e.Name()))
-			} else {
-				entries, _ := os.ReadDir(filepath.Join(accountPath, caURL.Hostname()))
-				for _, e := range entries {
-					// Remove other email paths if the config changed.
-					if e.Name() != cfg.Email {
-						_ = os.RemoveAll(filepath.Join(accountPath, caURL.Hostname(), e.Name()))
-					}
-				}
-			}
-		}
-	}()
+	defer cleanupAccounts(root, caURL.Hostname(), cfg.Email)
 
 	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, dir, cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
 	if err != nil {
@@ -164,4 +162,29 @@ func UpdateCertificate(
 		Certificate: string(certBytes),
 		Key:         string(keyBytes),
 	}, nil
+}
+
+// cleanupAccounts removes the certificates directory from root. It also removes
+// the accounts of other CAs and other emails. It ignores errors. The next
+// renewal repeats the cleanup.
+func cleanupAccounts(root *os.Root, caHostname string, email string) {
+	_ = root.RemoveAll("certificates")
+	accountPath := "accounts"
+
+	entries, _ := fs.ReadDir(root.FS(), accountPath)
+	for _, e := range entries {
+		if e.Name() != caHostname {
+			// Remove other CA URL paths if the config changed.
+			_ = root.RemoveAll(filepath.Join(accountPath, e.Name()))
+			continue
+		}
+
+		entries, _ := fs.ReadDir(root.FS(), filepath.Join(accountPath, caHostname))
+		for _, e := range entries {
+			// Remove other email paths if the config changed.
+			if e.Name() != email {
+				_ = root.RemoveAll(filepath.Join(accountPath, caHostname, e.Name()))
+			}
+		}
+	}
 }

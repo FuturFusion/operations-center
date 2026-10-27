@@ -2444,7 +2444,12 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 		return domain.NewValidationErrf("New Cluster name cannot by empty")
 	}
 
-	err := s.repo.Rename(ctx, oldName, newName)
+	err := provisioning.ValidateClusterName(newName)
+	if err != nil {
+		return err
+	}
+
+	err = s.repo.Rename(ctx, oldName, newName)
 	if err != nil {
 		return err
 	}

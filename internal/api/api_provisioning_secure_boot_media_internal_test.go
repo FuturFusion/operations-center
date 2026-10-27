@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
+	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -24,7 +25,7 @@ func Test_secureBootMediaGet(t *testing.T) {
 		t.Run(imageType.String(), func(t *testing.T) {
 			t.Parallel()
 
-			err := securebootmedia.New(t.TempDir()).CheckSupported(t.Context(), imageType, images.UpdateFileArchitecture64BitX86)
+			err := securebootmedia.New(fsroot.Open(t, t.TempDir())).CheckSupported(t.Context(), imageType, images.UpdateFileArchitecture64BitX86)
 			if err != nil {
 				t.Skipf("The secure boot enrollment media can not be generated here: %v", err)
 			}
@@ -36,7 +37,8 @@ func Test_secureBootMediaGet(t *testing.T) {
 			require.Empty(t, unknown)
 
 			dir := filepath.Join(t.TempDir(), "secure-boot-media")
-			media := securebootmedia.New(dir)
+			require.NoError(t, os.Mkdir(dir, 0o700))
+			media := securebootmedia.New(fsroot.Open(t, dir))
 
 			id, err := media.Generate(t.Context(), imageType, images.UpdateFileArchitecture64BitX86, provisioning.SecureBootCertificates{
 				PK:  certificates[0],
