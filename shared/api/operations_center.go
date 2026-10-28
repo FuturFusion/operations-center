@@ -31,6 +31,11 @@ type ServerUntrusted struct {
 	// API extension: macaroon_authentication
 	AuthMethods []string `json:"auth_methods" yaml:"auth_methods"`
 
+	// The current API user identifier
+	// Read only: true
+	// Example: user@example.com
+	AuthUserName string `json:"auth_user_name" yaml:"auth_user_name"`
+
 	// Server version number
 	// Read only: true
 	// Example: 1.0.0
