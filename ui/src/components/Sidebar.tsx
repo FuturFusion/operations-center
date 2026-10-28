@@ -12,6 +12,7 @@ import {
   MdOutlineInventory2,
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
+  MdPersonOutline,
   MdWarningAmber,
 } from "react-icons/md";
 import {
@@ -387,6 +388,19 @@ const Sidebar = () => {
         <Nav className="flex-column w-100 flex-shrink-0 border-top border-secondary pt-2">
           {isAuthenticated && (
             <>
+              {settings?.auth === "oidc" && settings.auth_user_name && (
+                <li>
+                  <span
+                    className="nav-link d-flex align-items-center"
+                    title={settings.auth_user_name}
+                  >
+                    <MdPersonOutline className="flex-shrink-0" />
+                    <span className="text-truncate">
+                      {settings.auth_user_name}
+                    </span>
+                  </span>
+                </li>
+              )}
               {isRunningIncusOS && (
                 <NavItemLink
                   item={menuItems["os"]}
