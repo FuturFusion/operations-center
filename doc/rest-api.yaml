@@ -6224,6 +6224,12 @@ definitions:
                 readOnly: true
                 type: array
                 x-go-name: AuthMethods
+            auth_user_name:
+                description: The current API user identifier
+                example: user@example.com
+                readOnly: true
+                type: string
+                x-go-name: AuthUserName
             server_version:
                 description: Server version number
                 example: 1.0.0
