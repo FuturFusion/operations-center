@@ -232,52 +232,79 @@ set -euo pipefail
 BASE_URL="https://images.linuxcontainers.org/os"
 INDEX_URL="${BASE_URL}/index.json"
 
+# Upstream may list a new file in the index before the file server serves it.
+# Retry all errors, including 404.
+CURL_RETRY=(--retry 5 --retry-delay 10 --retry-all-errors)
+
+# download_update downloads all x86_64 files of the given update into DEST.
+# It runs in an "if" condition, where "set -e" has no effect. So every step
+# returns explicitly on failure.
+download_update() {
+  local update="$1"
+  local version url_path file dest_path
+  local -a files
+
+  version=$(echo "$update" | jq -r '.version') || return 1
+  url_path=$(echo "$update" | jq -r '.url') || return 1
+  echo "Using stable update ${version}"
+
+  # Keep the downloads per version, so files of different updates never mix.
+  DEST="tmp_manual_update/${version}"
+
+  mapfile -t files < <(
+    echo "$update" | jq -r '
+      .files[]
+      | select(.architecture == "x86_64" or .architecture == "")
+      | .filename
+    '
+  )
+  files+=("update.json" "update.sjson")
+
+  echo "Found ${#files[@]} files to download."
+
+  for file in "${files[@]}"; do
+    dest_path="${DEST}/${file}"
+
+    if [[ -f "$dest_path" ]]; then
+      echo "  Skipping ${file} (already exists)"
+      continue
+    fi
+
+    echo "  Downloading ${file}..."
+    # Download to a temporary file. An interrupted download must not match
+    # the "already exists" check of a later run.
+    curl -fsSL "${CURL_RETRY[@]}" --create-dirs -o "${dest_path}.part" "${BASE_URL}/${url_path}/${file}" || return 1
+    mv "${dest_path}.part" "$dest_path" || return 1
+  done
+}
+
 echo "Fetching index..."
-index=$(curl -fsSL "$INDEX_URL")
+index=$(curl -fsSL "${CURL_RETRY[@]}" "$INDEX_URL")
 
 # The index mixes all upstream channels, the other E2E tests use stable.
-update=$(echo "$index" | jq -c '[ .updates[] | select(.channels | index("stable")) ] | sort_by(.version) | last')
-if [[ "$update" == "null" ]]; then
+# Try older updates too, in case the newest one is not fully published yet.
+mapfile -t updates < <(
+  echo "$index" | jq -c '[ .updates[] | select(.channels | index("stable")) ] | sort_by(.version) | reverse | .[:3] | .[]'
+)
+if [[ ${#updates[@]} -eq 0 ]]; then
   echo "No update in the stable channel found in ${INDEX_URL}" >&2
   exit 1
 fi
 
-version=$(echo "$update" | jq -r '.version')
-echo "Using stable update ${version}"
-
-# Keep the downloads per version, so files of different updates never mix.
-DEST="tmp_manual_update/${version}"
-
-# Extract filenames for x86_64 from the selected update
-mapfile -t files < <(
-  echo "$update" | jq -r '
-    .files[]
-    | select(.architecture == "x86_64" or .architecture == "")
-    | .filename
-  '
-)
-
-update_index=(
-  "update.json"
-  "update.sjson"
-)
-files+=("${update_index[@]}")
-
-url_path=$(echo "$update" | jq -r '.url')
-
-echo "Found ${#files[@]} files to download."
-
-for file in "${files[@]}"; do
-  dest_path="${DEST}/${file}"
-  mkdir -p "$(dirname "$dest_path")"
-
-  if [[ -f "$dest_path" ]]; then
-    echo "  Skipping ${file} (already exists)"
-  else
-    echo "  Downloading ${file}..."
-    curl -fsSL --create-dirs -o "$dest_path" "${BASE_URL}/${url_path}/${file}"
+downloaded=false
+for update in "${updates[@]}"; do
+  if download_update "$update"; then
+    downloaded=true
+    break
   fi
+
+  echo "Failed to download update, trying the next older one." >&2
 done
+
+if [[ "$downloaded" != "true" ]]; then
+  echo "Failed to download any of the ${#updates[@]} newest stable updates." >&2
+  exit 1
+fi
 
 echo "Done. Files saved to ${DEST}/"
 
