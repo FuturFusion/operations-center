@@ -79,6 +79,7 @@ func oidcAuthentication(ctx context.Context, t *testing.T, tmpDir string) {
 	// Assertions
 	t.Log("Verify the authentication protocol and read access of the OIDC authenticated user")
 	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s query /1.0 | jq -r -e '.metadata.auth == "oidc"'`, time.Minute, confDir, cpuArch)
+	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s query /1.0 | jq -r -e '.metadata.auth_user_name == "%s"'`, time.Minute, confDir, cpuArch, oidcSubject)
 	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s query /1.0 | jq -r -e '.metadata.auth_methods | index("oidc") != null'`, time.Minute, confDir, cpuArch)
 	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%[1]s ../bin/operations-center.linux.%[2]s system security show -f json | jq -r -e '.oidc.issuer == "%[3]s"'`, time.Minute, confDir, cpuArch, provider.Issuer)
 	mustRunWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '. | length >= 1'`, time.Minute, confDir, cpuArch)
