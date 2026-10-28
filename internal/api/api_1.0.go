@@ -45,6 +45,11 @@ func api10Get(r *http.Request) response.Response {
 
 	if authenticatedOK && authenticated && protocolOK && protocol != "" {
 		srv.Auth = protocol
+
+		username, ok := ctx.Value(authn.CtxUsername).(string)
+		if ok {
+			srv.AuthUserName = username
+		}
 	}
 
 	return response.SyncResponseETag(true, srv, nil)
