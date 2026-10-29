@@ -80,9 +80,17 @@ type ServerDeploymentBMCRecording struct {
 type BMCRecordingRewrite struct {
 	Replacements []BMCRecordingReplacement
 
+	// GenericPatterns also replaces the MAC addresses, IPv4 addresses and UUIDs,
+	// that the explicit replacements leave. The same value always gets the same
+	// placeholder within one rewrite.
+	GenericPatterns bool
+
 	once         sync.Once
 	pattern      *regexp.Regexp
 	replacements []BMCRecordingReplacement
+
+	genericMu sync.Mutex
+	generic   bmcRecordingGenericMap
 }
 
 // BMCRecordingReplacement replaces one value in a recording.
@@ -90,10 +98,15 @@ type BMCRecordingReplacement struct {
 	Old             string
 	New             string
 	CaseInsensitive bool
+
+	// WholeWord skips a match, that is part of a longer word. This keeps a
+	// short value like a server name from changing unrelated text.
+	WholeWord bool
 }
 
 // Apply rewrites one line of text. Longer values are replaced first. Replaced
-// text is not rewritten again.
+// text is not rewritten again. The generic patterns run after the explicit
+// replacements.
 func (r *BMCRecordingRewrite) Apply(line string) string {
 	if r == nil {
 		return line
@@ -102,6 +115,16 @@ func (r *BMCRecordingRewrite) Apply(line string) string {
 	// Compile once, Apply runs for every line of a recording.
 	r.once.Do(r.compile)
 
+	line = r.applyReplacements(line)
+
+	if r.GenericPatterns {
+		line = r.applyGeneric(line)
+	}
+
+	return line
+}
+
+func (r *BMCRecordingRewrite) applyReplacements(line string) string {
 	if r.pattern == nil {
 		return line
 	}
@@ -116,10 +139,17 @@ func (r *BMCRecordingRewrite) Apply(line string) string {
 	for _, match := range matches {
 		b.WriteString(line[last:match[0]])
 		for i := range r.replacements {
-			if match[2*(i+1)] >= 0 {
-				b.WriteString(r.replacements[i].New)
+			if match[2*(i+1)] < 0 {
+				continue
+			}
+
+			if r.replacements[i].WholeWord && !isWholeWord(line, match[0], match[1]) {
+				b.WriteString(line[match[0]:match[1]])
 				break
 			}
+
+			b.WriteString(r.replacements[i].New)
+			break
 		}
 
 		last = match[1]
@@ -128,6 +158,14 @@ func (r *BMCRecordingRewrite) Apply(line string) string {
 	b.WriteString(line[last:])
 
 	return b.String()
+}
+
+func isWholeWord(line string, start int, end int) bool {
+	return (start == 0 || !isWordByte(line[start-1])) && (end == len(line) || !isWordByte(line[end]))
+}
+
+func isWordByte(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-'
 }
 
 func (r *BMCRecordingRewrite) compile() {
@@ -163,4 +201,10 @@ func (r *BMCRecordingRewrite) compile() {
 
 	r.pattern = regexp.MustCompile(strings.Join(alternatives, "|"))
 	r.replacements = replacements
+
+	// The same value in another spelling gets the same placeholder from the
+	// generic pass, and a placeholder is never replaced again.
+	for _, replacement := range replacements {
+		r.generic.register(replacement.Old, replacement.New)
+	}
 }
