@@ -107,7 +107,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
-          rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out
+          rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.zip
           go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
 
       - name: Compute artifact name
@@ -121,10 +121,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.name }}
-          # Only the logs, the tmp dir also holds the cached multi GiB ISO images.
+          # Only the logs and the BMC recordings, the tmp dir also holds the
+          # cached multi GiB ISO images.
           path: |
             ${{ github.workspace }}/tmp-e2e/*.log
             ${{ github.workspace }}/tmp-e2e/*.out
+            ${{ github.workspace }}/tmp-e2e/*.zip
           retention-days: 7
           if-no-files-found: ignore
 
