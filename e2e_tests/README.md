@@ -569,6 +569,13 @@ installation media a second time, the way such a BMC does: the start
 sequentially, then the end, then random portions (see
 `assertVirtualMediaRandomRead`).
 
+The deployment test records the BMC traffic of the deployment (see
+`assertBMCRecording`). It downloads the recording twice into the test
+directory: as recorded, as `<server>-bmc-recording-raw.zip`, and anonymized, as
+`<server>-bmc-recording.zip`. The test checks the content of the anonymized
+archive and that it holds none of the addresses of the proxy. The CI workflow
+keeps both archives with the logs.
+
 ### Incus images
 
 The scenario `images_remote_launch_instance` of the suite

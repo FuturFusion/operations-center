@@ -143,10 +143,11 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		// Run test
 		//
 		// The BIOS profile is only handed in with the deployment, it is not part
-		// of the profiles shipped with Operations Center.
+		// of the profiles shipped with Operations Center. The BMC traffic is
+		// recorded, so the recorder is covered against the Redfish proxy.
 		t.Log("Deploy the server")
 
-		resp := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
+		resp := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --record-bmc --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
 		if !resp.Success() {
 			fmt.Println("====[ Deployment status ]====")
 			fmt.Println(run(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f yaml`, cpuArch, name).Output())
@@ -158,6 +159,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 
 		// Assertions
 		assertServerDeployed(t, name)
+		assertBMCRecording(t, name, endpoint, tmpDir)
 		assertVirtualMediaRandomRead(t, name)
 
 		mustWaitIncusOSReady(ctx, t, []string{name})
