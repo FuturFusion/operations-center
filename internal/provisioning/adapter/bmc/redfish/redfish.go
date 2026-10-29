@@ -95,7 +95,14 @@ func (r redfish) getClientWithResponseHeaderTimeout(ctx context.Context, server 
 		slog.WarnContext(ctx, "Redfish API call inside of a transaction", logger.AddStacktrace())
 	}
 
-	httpClient, err := newBMCHTTPClient(server, r.retryDelay, headerTimeout)
+	var observe func(api.BMCRecordingExchange)
+
+	scope, ok := provisioning.BMCRecordingScopeFromContext(ctx)
+	if ok && scope.Recorder != nil {
+		observe = newExchangeObserver(ctx, scope)
+	}
+
+	httpClient, err := newBMCHTTPClient(server, r.retryDelay, headerTimeout, observe)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,8 +135,8 @@ func (r redfish) getClientWithResponseHeaderTimeout(ctx context.Context, server 
 }
 
 // newBMCHTTPClient returns the HTTP client the Redfish requests of a server are
-// issued with.
-func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, headerTimeout time.Duration) (*http.Client, error) {
+// issued with. A non nil observe receives every exchange with the BMC.
+func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, headerTimeout time.Duration, observe func(api.BMCRecordingExchange)) (*http.Client, error) {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   connectionTimeout,
@@ -146,8 +153,11 @@ func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, head
 		ForceAttemptHTTP2: true,
 	}
 
+	retry := newRetryTransport(transport, retryDelay)
+	retry.observe = observe
+
 	httpClient := &http.Client{
-		Transport: newRetryTransport(transport, retryDelay),
+		Transport: retry,
 	}
 
 	if server.BMCConfig.Certificate != "" {
