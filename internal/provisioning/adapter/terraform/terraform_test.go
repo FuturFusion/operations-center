@@ -8,8 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -404,6 +407,143 @@ func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
 			fileMatchGolden(t, filepath.Join(temporaryPath, "resources_certificates.tf"), filepath.Join("./testdata", tc.wantGoldenFile))
 		})
 	}
+}
+
+func TestTerraform_Init_meshTunnelEscaping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		serverName    string
+		interfaceName string
+	}{
+		{
+			name:          "plain names",
+			serverName:    "server-1",
+			interfaceName: "enp5s0",
+		},
+		{
+			name:          "quote in interface name",
+			serverName:    "server-1",
+			interfaceName: "enp5s0\"\n  }\n}\nresource \"null_resource\" \"injected\" {\n  provisioner \"local-exec\" {\n    command = \"id\"\n  }\n}\nlocals {\n  injected = {\n    \"a\" = \"b",
+		},
+		{
+			name:          "quote in server name",
+			serverName:    `server-1" = "enp5s0" } } resource "null_resource" "injected" {} locals { injected = { "a`,
+			interfaceName: "enp5s0",
+		},
+		{
+			name:          "template sequences",
+			serverName:    `${file("/etc/passwd")}`,
+			interfaceName: `%{ if true }x%{ endif }\`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tmpDir := t.TempDir()
+
+			tf, err := terraform.New(
+				fsroot.Open(t, tmpDir),
+				"",
+				"",
+				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+					return nil
+				}),
+			)
+			require.NoError(t, err)
+
+			// Run tests
+			temporaryPath, cleanup, err := tf.Init(t.Context(), "foobar", provisioning.ClusterProvisioningConfig{
+				Servers: []provisioning.Server{
+					{
+						Name: tc.serverName,
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										tc.interfaceName: {
+											Roles:     []string{"cluster"},
+											Addresses: []string{"1.2.3.4"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ClusterEndpoint: provisioning.ClusterEndpoint{
+					provisioning.Server{
+						ConnectionURL:      "https://127.0.0.1:8443",
+						Cluster:            new("cluster"),
+						ClusterCertificate: new("cluster certificate"),
+					},
+				},
+				Cluster: provisioning.Cluster{
+					ID: 1,
+				},
+			})
+			require.NoError(t, err)
+
+			defer func() {
+				err := cleanup()
+				require.NoError(t, err)
+			}()
+
+			// Assert
+			body, err := os.ReadFile(filepath.Join(temporaryPath, "resources_networks.tf"))
+			require.NoError(t, err)
+
+			file, diags := hclsyntax.ParseConfig(body, "resources_networks.tf", hcl.Pos{Line: 1, Column: 1})
+			require.False(t, diags.HasErrors(), "rendered configuration is not valid HCL: %s", diags.Error())
+
+			var gotBlocks []string
+			var locals *hclsyntax.Body
+			for _, block := range file.Body.(*hclsyntax.Body).Blocks {
+				gotBlocks = append(gotBlocks, strings.Join(append([]string{block.Type}, block.Labels...), "."))
+				if block.Type == "locals" {
+					locals = block.Body
+				}
+			}
+
+			require.Equal(t, []string{
+				"resource.incus_network.incusbr0_per_node",
+				"resource.incus_network.incusbr0",
+				"locals",
+				"resource.random_integer.meshbr0-subnet-segment-2",
+				"resource.random_integer.meshbr0-subnet-segment-3",
+				"resource.random_integer.meshbr0-subnet-segment-4",
+				"resource.incus_network.meshbr0_per_node",
+				"resource.incus_network.meshbr0",
+				"resource.null_resource.post_networks",
+			}, gotBlocks, "rendered configuration must not contain injected blocks")
+			require.NotNil(t, locals, "rendered configuration must contain a locals block")
+			require.Len(t, locals.Attributes, 2, "locals block must not contain injected attributes")
+
+			require.Equal(t, map[string]string{tc.serverName: tc.interfaceName}, evalStringMap(t, locals.Attributes["meshTunnelInterfaces"]), "mesh tunnel interfaces must hold the unmodified names")
+			require.Equal(t, map[string]string{tc.serverName: "1.2.3.4"}, evalStringMap(t, locals.Attributes["meshTunnelLocalAddresses"]), "mesh tunnel local addresses must hold the unmodified server name")
+		})
+	}
+}
+
+func evalStringMap(t *testing.T, attr *hclsyntax.Attribute) map[string]string {
+	t.Helper()
+
+	require.NotNil(t, attr)
+
+	value, diags := attr.Expr.Value(nil)
+	require.False(t, diags.HasErrors(), "failed to evaluate attribute %q: %s", attr.Name, diags.Error())
+
+	got := map[string]string{}
+	for key, element := range value.AsValueMap() {
+		require.Equal(t, cty.String, element.Type())
+		got[key] = element.AsString()
+	}
+
+	return got
 }
 
 func yamlBlock(indent int, s string) string {
