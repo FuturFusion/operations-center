@@ -297,7 +297,7 @@ linters:
       - linters:
           - forbidigo
         text: "Use os.Root for file system access"
-        path: '(_test\.go$|^e2e_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
+        path: '(_test\.go$|^e2e_tests/|^cmd/claude-security-baseline/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
       # The work dir of the secure boot media is passed to external tools, which need absolute paths.
       - linters:
           - forbidigo

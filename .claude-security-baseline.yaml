@@ -1,0 +1,14 @@
+# Triage decisions for Claude Security findings.
+#
+# Each entry marks one finding as "accepted" (a real issue that the team
+# accepts) or "false-positive" (not a real issue). The id is the
+# claudeSecurityPluginFindingId from the scan report. The other fields help
+# the reader. The filter also uses file and cwe to point out findings that
+# look like a baseline entry but have a new id.
+#
+# Add entries:
+#   go run ./cmd/claude-security-baseline add -status accepted -reason "..." <report dir> F3 F7
+#
+# Filter a report:
+#   make claude-security-filter REPORT=<report dir>
+findings: []

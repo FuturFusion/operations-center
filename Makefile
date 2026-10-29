@@ -132,6 +132,17 @@ ifeq ($(shell command -v govulncheck),)
 endif
 	$(GO) run golang.org/x/vuln/cmd/govulncheck ./...
 
+# Filter a Claude Security scan report against .claude-security-baseline.yaml.
+# REPORT defaults to the newest CLAUDE-SECURITY-<timestamp> directory.
+REPORT ?= $(lastword $(sort $(wildcard CLAUDE-SECURITY-*/)))
+
+.PHONY: claude-security-filter
+claude-security-filter:
+ifeq ($(REPORT),)
+	$(error No CLAUDE-SECURITY-<timestamp> directory found. Set REPORT=<report dir>)
+endif
+	$(GO) run ./cmd/claude-security-baseline filter $(REPORT)
+
 .PHONY: clean
 clean:
 	rm -rf coverage.out covdata-coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
