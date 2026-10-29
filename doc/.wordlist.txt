@@ -13,6 +13,7 @@ CAs
 changelog
 CLI
 config
+CWE
 dbx
 DCO
 DHCP
@@ -40,6 +41,7 @@ InitLocalPreseed
 IPv
 iSCSI
 JSON
+JSONL
 KEK
 Keychain
 keypair
@@ -78,6 +80,7 @@ Resync
 retryable
 rollout
 ROMs
+SARIF
 scriptlet
 SHA
 snapshotted
