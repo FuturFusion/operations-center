@@ -20,8 +20,9 @@ import (
 // assertBMCRecording verifies, that the deployment of the server has been
 // recorded and that the anonymized export holds none of the identifying values
 // of the server and of the Redfish proxy. Both exports are kept in the test
-// directory, so they are available after the run.
-func assertBMCRecording(t *testing.T, name string, endpoint string, tmpDir string) {
+// directory, so they are available after the run. The file names contain the
+// profile of the Redfish proxy, so the exports of the profiles do not collide.
+func assertBMCRecording(t *testing.T, name string, profile string, endpoint string, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -48,8 +49,8 @@ func assertBMCRecording(t *testing.T, name string, endpoint string, tmpDir strin
 	require.Equal(t, api.ServerDeploymentStateCompleted, listed.FinalState, "expect the recording to be finalized with the outcome of the deployment")
 	require.Positive(t, listed.Exchanges, "expect BMC exchanges to be recorded")
 
-	anonymizedFilename := filepath.Join(tmpDir, name+"-bmc-recording.zip")
-	rawFilename := filepath.Join(tmpDir, name+"-bmc-recording-raw.zip")
+	anonymizedFilename := filepath.Join(tmpDir, name+"-"+profile+"-bmc-recording.zip")
+	rawFilename := filepath.Join(tmpDir, name+"-"+profile+"-bmc-recording-raw.zip")
 
 	// The test directory is kept between runs, so an export of an earlier run is replaced.
 	mustRun(t, `../bin/operations-center.linux.%s admin bmc-recording download %s %s --anonymize --force --quiet --output %s`, cpuArch, name, listed.RecordingID, anonymizedFilename)
