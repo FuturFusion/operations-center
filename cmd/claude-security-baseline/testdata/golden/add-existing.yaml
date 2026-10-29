@@ -1,0 +1,22 @@
+# Test baseline.
+findings:
+  - id: v3:bbb
+    status: false-positive
+    reason: Only admins | see it.
+    title: Password returned to viewers
+    file: internal/api.go
+    cwe: CWE-522
+  - id: v3:old
+    status: accepted
+    reason: Old anchor of the TLS issue.
+    title: TLS chain
+    file: internal/tls.go
+    cwe: CWE-295
+  - id: v3:aaa
+    status: false-positive
+    reason: Not reachable.
+    title: TLS chain is not verified
+    file: internal/tls.go
+    cwe: CWE-295
+    severity: HIGH
+    date: "2026-10-29"
