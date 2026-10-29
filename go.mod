@@ -86,6 +86,7 @@ require (
 	github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
+	github.com/hanwen/go-fuse/v2 v2.12.1 // indirect
 	github.com/huandu/xstrings v1.6.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.8.3 // indirect
@@ -166,7 +167,7 @@ require (
 	github.com/tidwall/pretty v1.2.2 // indirect
 	github.com/urfave/cli v1.22.17 // indirect
 	github.com/vbatts/go-mtree v0.7.0 // indirect
-	github.com/vektra/mockery/v3 v3.7.4 // indirect
+	github.com/vektra/mockery/v3 v3.8.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -211,7 +212,7 @@ require (
 )
 
 require (
-	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261007090843-7a843647cb5c
+	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261029190606-96eda2b76544
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/brianvoe/gofakeit/v7 v7.18.0
