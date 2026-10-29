@@ -33,15 +33,17 @@ func (t TLS) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, usernam
 		return false, "", "", errors.New("Bad/missing TLS on network query")
 	}
 
-	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := checkTrustState(r.Context(), *cert, t.trustedTLSClientCertFingerprints)
-		if trusted {
-			return true, username, api.AuthenticationMethodTLS, nil
-		}
+	if len(r.TLS.PeerCertificates) == 0 {
+		return false, "", "", nil
 	}
 
-	// Reject unauthorized.
-	return false, "", "", nil
+	// Only check the leaf certificate.
+	trusted, username = checkTrustState(r.Context(), *r.TLS.PeerCertificates[0], t.trustedTLSClientCertFingerprints)
+	if !trusted {
+		return false, "", "", nil
+	}
+
+	return true, username, api.AuthenticationMethodTLS, nil
 }
 
 // checkTrustState checks whether the given client certificate is trusted
