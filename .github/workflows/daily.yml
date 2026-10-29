@@ -11,3 +11,14 @@ jobs:
   e2e:
     name: E2E
     uses: ./.github/workflows/e2e.yml
+
+  # Every profile adds a deployment of 20 to 30 minutes, so only the daily run
+  # covers all the profiles of the Redfish proxy. The jobs share the runner and
+  # run one after the other.
+  e2e-redfish-profiles:
+    name: E2E Redfish profiles
+    uses: ./.github/workflows/e2e.yml
+    with:
+      go-test-run: ^TestE2E_WithTokenSeed_DeployServer$
+      redfish-profiles: generic,deferred-bios,no-secure-boot-write,oem-media,stream-media
+      artifact-suffix: redfish-profiles
