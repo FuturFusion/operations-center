@@ -575,6 +575,14 @@ type ExprServerDeployment struct {
 	LastAttemptAt                   time.Time                         `json:"last_attempt_at" expr:"last_attempt_at"`
 	FinishedAt                      time.Time                         `json:"finished_at" expr:"finished_at"`
 	History                         []ExprApiServerDeploymentStep     `json:"history" expr:"history"`
+	BMCRecording                    *ExprServerDeploymentBMCRecording `json:"bmc_recording,omitempty" expr:"bmc_recording"`
+}
+
+type ExprServerDeploymentBMCRecording struct {
+	ID                 string `json:"id" expr:"id"`
+	Exchanges          int64  `json:"exchanges" expr:"exchanges"`
+	Bytes              int64  `json:"bytes" expr:"bytes"`
+	TruncatedExchanges int64  `json:"truncated_exchanges" expr:"truncated_exchanges"`
 }
 
 type ExprServerDeploymentBMCSnapshot struct {
@@ -593,6 +601,7 @@ type ExprServerDeploymentRequest struct {
 	Force                      bool                          `json:"force" expr:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates" expr:"skip_secure_boot_certificates"`
 	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media" expr:"secure_boot_enrollment_media"`
+	RecordBMC                  bool                          `json:"record_bmc,omitempty" expr:"record_bmc"`
 	BIOSProfiles               BIOSProfiles                  `json:"-" expr:"-"`
 	SecureBootCertificates     []string                      `json:"-" expr:"-"`
 }
@@ -1291,6 +1300,16 @@ func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
 		LastAttemptAt:                   s.LastAttemptAt,
 		FinishedAt:                      s.FinishedAt,
 		History:                         sliceConvert(s.History, ToExprApiServerDeploymentStep),
+		BMCRecording:                    toPtr(ToExprServerDeploymentBMCRecording(fromPtr(s.BMCRecording))),
+	}
+}
+
+func ToExprServerDeploymentBMCRecording(s ServerDeploymentBMCRecording) ExprServerDeploymentBMCRecording {
+	return ExprServerDeploymentBMCRecording{
+		ID:                 s.ID,
+		Exchanges:          s.Exchanges,
+		Bytes:              s.Bytes,
+		TruncatedExchanges: s.TruncatedExchanges,
 	}
 }
 
@@ -1313,6 +1332,7 @@ func ToExprServerDeploymentRequest(s ServerDeploymentRequest) ExprServerDeployme
 		Force:                      s.Force,
 		SkipSecureBootCertificates: s.SkipSecureBootCertificates,
 		SecureBootEnrollmentMedia:  s.SecureBootEnrollmentMedia,
+		RecordBMC:                  s.RecordBMC,
 		BIOSProfiles:               s.BIOSProfiles,
 		SecureBootCertificates:     s.SecureBootCertificates,
 	}

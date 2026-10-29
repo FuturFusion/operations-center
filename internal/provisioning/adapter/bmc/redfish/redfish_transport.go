@@ -12,6 +12,7 @@ import (
 	"time"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const retryDrainLimit = 64 * 1024
@@ -37,6 +38,11 @@ type retryTransport struct {
 	// request of the connection.
 	budget atomic.Int64
 
+	// observe receives every attempt, including the ones the retry throws away.
+	// Nil means off.
+	observe   func(api.BMCRecordingExchange)
+	bodyLimit int
+
 	sleep func(ctx context.Context, d time.Duration) error
 	now   func() time.Time
 }
@@ -57,8 +63,11 @@ func newRetryTransport(next http.RoundTripper, delay time.Duration) *retryTransp
 		attempts: config.BMCRequestRetries,
 		delay:    delay,
 		delayMax: time.Duration(float64(config.BMCRequestRetryDelayMax) * scale),
-		sleep:    sleepUntilDone,
-		now:      time.Now,
+
+		bodyLimit: config.BMCRecordingBodyLimit,
+
+		sleep: sleepUntilDone,
+		now:   time.Now,
 	}
 
 	t.budget.Store(int64(float64(config.BMCRequestRetryBudget) * scale))
@@ -81,7 +90,7 @@ func sleepUntilDone(ctx context.Context, d time.Duration) error {
 
 func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if !isReplaySafe(req) {
-		return t.next.RoundTrip(req)
+		return t.attempt(req, 0)
 	}
 
 	delay := t.delay
@@ -93,7 +102,7 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	for attempt := 0; ; attempt++ {
 		start := t.now()
 
-		resp, err = t.next.RoundTrip(req)
+		resp, err = t.attempt(req, attempt)
 
 		if attempt >= t.attempts || !t.isWorthRetrying(req, resp, err) {
 			return resp, err
@@ -128,6 +137,55 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		delay *= 2
 	}
+}
+
+// attempt issues the request once and hands the exchange to the observer.
+func (t *retryTransport) attempt(req *http.Request, attempt int) (*http.Response, error) {
+	if t.observe == nil {
+		return t.next.RoundTrip(req)
+	}
+
+	start := t.now()
+
+	sent, requestBody := captureRequest(req, t.bodyLimit)
+
+	exchange := api.BMCRecordingExchange{
+		Timestamp:        start,
+		Attempt:          attempt,
+		Method:           req.Method,
+		URL:              req.URL.String(),
+		RequestHeaders:   recordedHeaders(req.Header),
+		RequestSize:      requestBody.size,
+		RequestTruncated: requestBody.truncated(),
+	}
+
+	exchange.RequestBody, exchange.RequestBodyEncoding = recordedBody(redactJSONKeys(requestBody.data, redactedJSONKeys...), exchange.RequestTruncated)
+
+	resp, err := t.next.RoundTrip(sent)
+	if err != nil {
+		exchange.Duration = t.now().Sub(start)
+		exchange.TransportError = err.Error()
+		t.observe(exchange)
+
+		return resp, err
+	}
+
+	exchange.Status = resp.StatusCode
+	exchange.ResponseHeaders = recordedHeaders(resp.Header)
+
+	resp.Body = &recordedBodyReader{
+		body:    resp.Body,
+		capture: &bodyCapture{limit: t.bodyLimit},
+		emit: func(capture *bodyCapture, complete bool) {
+			exchange.Duration = t.now().Sub(start)
+			exchange.ResponseSize = capture.size
+			exchange.ResponseTruncated = capture.truncated() || !complete
+			exchange.ResponseBody, exchange.ResponseBodyEncoding = recordedBody(redactJSONKeys(capture.data, redactedJSONKeys...), exchange.ResponseTruncated)
+			t.observe(exchange)
+		},
+	}
+
+	return resp, nil
 }
 
 // isReplaySafe reports, whether a request can be issued again.

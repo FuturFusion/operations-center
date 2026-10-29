@@ -624,4 +624,111 @@ control loop and runs on `ServerDeploymentControlLoopInterval`.
   and on `BMCVirtualMediaSignal`, so attaching and detaching the installation
   media resolves promptly.
 
+## Recording the BMC traffic of a deployment
+
+Operations Center can record every HTTP exchange with the BMC of a server during
+a deployment. A recording is evidence of how a firmware behaves. It is the base
+for the profiles of
+[`incus-redfish-proxy`](https://github.com/FuturFusion/incus-redfish-proxy), and it
+shows the behavior of a firmware before an update. Recording is a development
+feature. It is not part of the documented API.
+
+### Starting a recording
+
+Pass the hidden flag `--record-bmc` to `provisioning server deploy`, or add
+`record_bmc=true` to the query of `POST /1.0/provisioning/servers/{name}/:deploy`.
+Only the BMC calls of the deployment steps are recorded. The background resync
+of the BMC data and the manual BMC commands are not recorded.
+
+### Storage
+
+A recording is stored in `<var dir>/bmc-recordings/<server>/<id>/`. The ID is
+the start of the deployment in UTC, for example `20261027T081500Z`. The
+directory holds two files:
+
+* `manifest.json` describes the deployment and the outcome.
+* `exchanges.jsonl` holds one exchange per line, in the order of the requests.
+
+Operations Center keeps the five newest recordings per server and removes the
+older ones, when a new one is started. The recordings are removed with the
+server. A renamed server keeps its recordings under the old name, until they are
+deleted by hand.
+
+### Format
+
+The format has a version, `format_version` in the manifest. The fields of an
+exchange:
+
+| Field                                  | Content                                                  |
+|----------------------------------------|----------------------------------------------------------|
+| `sequence`                             | Position of the exchange in the recording, starting at 1 |
+| `timestamp`, `duration`                | Start and duration of the attempt                        |
+| `deployment_state`, `step_retries`     | Deployment step, that issued the request                 |
+| `attempt`                              | Attempt within the retries of a single request           |
+| `method`, `url`                        | The request                                              |
+| `request_headers`, `request_body`      | Headers and body of the request                          |
+| `status`, `response_headers`           | Status code and headers of the response                  |
+| `response_body`                        | Body of the response                                     |
+| `*_body_encoding`                      | `base64` for a body, that is not valid `UTF-8`           |
+| `*_size`, `*_truncated`                | Real size of a body and if it exceeds the limit          |
+| `transport_error`                      | Error of a request, that got no response                 |
+
+The fields of the manifest:
+
+| Field                                     | Content                                         |
+|-------------------------------------------|-------------------------------------------------|
+| `server`, `recording_id`                  | Identity of the recording                       |
+| `operations_center_version`               | Version, that made the recording                |
+| `started_at`, `finished_at`               | Start and end of the deployment                 |
+| `final_state`, `history`                  | Outcome and steps of the deployment             |
+| `request`                                 | Deployment request                              |
+| `bmc_data`, `bmc_endpoint`, `media_urls`  | BMC data at the start, BMC and media addresses  |
+| `exchanges`, `bytes`, `truncated_exchanges` | Counts of the recording                       |
+
+The credentials are redacted when an exchange is recorded. This covers the
+`Authorization`, `X-Auth-Token`, `Cookie` and `Set-Cookie` headers, and the
+values of the `Password` and `Token` keys of a JSON body.
+
+### Commands
+
+The `admin bmc-recording` commands manage the recordings:
+
+```sh
+operations-center admin bmc-recording list server01
+operations-center admin bmc-recording show server01 20261027T081500Z
+operations-center admin bmc-recording download server01 20261027T081500Z --anonymize
+operations-center admin bmc-recording delete server01 20261027T081500Z
+```
+
+`download` writes a zip with the two files. With `--anonymize`, Operations
+Center replaces the identifying values with placeholders: the server name, the
+host names of the BMC, the server and Operations Center, the BMC username, the
+serial number, the asset tag, the service tag, the system UUID and the MAC
+addresses. A generic pass then replaces every remaining MAC address, UUID and
+IPv4 address. The same value always gets the same placeholder within one
+archive. Check the archive before it is published.
+
+The commands use these internal routes. They can change at any time:
+
+| Route                                                    | Purpose                                         |
+|----------------------------------------------------------|-------------------------------------------------|
+| `GET /internal/bmc-recordings/{server}`                  | List of the manifests                           |
+| `GET /internal/bmc-recordings/{server}/{id}`             | Manifest, the zip with `archive=zip`            |
+| `GET /internal/bmc-recordings/{server}/{id}/{filename}`  | One of the two files                            |
+| `DELETE /internal/bmc-recordings/{server}/{id}`          | Delete the recording                            |
+
+The archive takes `anonymize=true`. All of the routes require the admin
+permission.
+
+### Caveats
+
+* A body is kept up to 1 MiB. A longer body is truncated and the exchange is
+  marked.
+* A restart of the daemon appends to the open recording. An incomplete last line
+  is removed when the recording is opened again.
+* A failure of the recorder is only logged. It never fails or delays a
+  deployment.
+* If the daemon stops right after the deployment has ended, the manifest of the
+  recording has no end and no outcome.
+
 see also [Status values](/reference/server)

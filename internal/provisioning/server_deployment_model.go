@@ -36,6 +36,7 @@ type ServerDeploymentRequest struct {
 	Force                      bool                          `json:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates"`
 	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media"`
+	RecordBMC                  bool                          `json:"record_bmc,omitempty"`
 	BIOSProfiles               BIOSProfiles                  `json:"-"`
 	SecureBootCertificates     []string                      `json:"-"`
 }
@@ -365,6 +366,9 @@ type ServerDeployment struct {
 	FinishedAt     time.Time `json:"finished_at"`
 
 	History []api.ServerDeploymentStep `json:"history"`
+
+	// BMCRecording is set, if the BMC exchanges of the deployment are recorded.
+	BMCRecording *ServerDeploymentBMCRecording `json:"bmc_recording,omitempty"`
 }
 
 // IsActive reports, if the deployment still has steps left to perform.

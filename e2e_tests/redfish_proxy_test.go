@@ -3,11 +3,13 @@ package e2e
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -16,10 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// startRedfishProxy serves an in-process Redfish proxy for the given Incus
-// instance on an ephemeral host port and returns the endpoint URL, at which the
-// proxy is reachable from inside the OperationsCenter VM.
-func startRedfishProxy(t *testing.T, instanceName string) string {
+// startRedfishProxy serves an in-process Redfish proxy with the given profile
+// for the given Incus instance on an ephemeral host port and returns the
+// endpoint URL, at which the proxy is reachable from inside the
+// OperationsCenter VM. A profile, that streams the media, mounts it below
+// mediaDir.
+func startRedfishProxy(t *testing.T, instanceName string, profile string, mediaDir string) string {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -40,7 +44,9 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec // self signed certificate of the Operations Center under test.
 			},
 		},
-		Context: t.Context(),
+		Context:  t.Context(),
+		Profile:  profile,
+		MediaDir: mediaDir,
 	})
 	require.NoErrorf(t, err, "Failed to create Redfish proxy handler for %q", instanceName)
 
@@ -95,9 +101,9 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 	err = waitForTCPPort(ctx, t, net.JoinHostPort("127.0.0.1", port), 100*time.Millisecond)
 	require.NoErrorf(t, err, "Redfish proxy for %q did not come up", instanceName)
 
-	mustAssertRedfishProxyReachable(t, endpoint, instanceName)
+	mustAssertRedfishProxyReachable(t, endpoint, instanceName, profile)
 
-	t.Logf("Redfish proxy for %q is listening on %s", instanceName, endpoint)
+	t.Logf("Redfish proxy for %q with profile %q is listening on %s", instanceName, profile, endpoint)
 
 	return endpoint
 }
@@ -106,8 +112,10 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 // service root, which is the first resource requested by a Redfish client, and
 // the computer system of the instance, which is the first resource requiring
 // the proxy to talk to Incus. This distinguishes a broken proxy from a proxy,
-// which is not reachable from inside the OperationsCenter VM.
-func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName string) {
+// which is not reachable from inside the OperationsCenter VM. The model of the
+// computer system names the profile, so a proxy without support for the
+// profile is reported before the deployment starts.
+func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName string, profile string) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(10*time.Second))
@@ -120,26 +128,38 @@ func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName
 		},
 	}
 
-	resources := []string{
-		"/redfish/v1/",
-		fmt.Sprintf("/redfish/v1/Systems/%s", instanceName),
+	mustGetRedfishResource(ctx, t, client, endpoint, "/redfish/v1/")
+
+	body := mustGetRedfishResource(ctx, t, client, endpoint, fmt.Sprintf("/redfish/v1/Systems/%s", instanceName))
+
+	var system struct {
+		Model string
 	}
 
-	for _, resource := range resources {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+resource, nil)
-		require.NoError(t, err)
+	err := json.Unmarshal(body, &system)
+	require.NoError(t, err, "expect the computer system to be valid JSON")
+	require.Equal(t, redfishProxyModel(profile), system.Model, "expect the Redfish proxy to run with profile %q", profile)
+}
 
-		resp, err := client.Do(req)
-		require.NoErrorf(t, err, "Redfish proxy for %q is not answering", instanceName)
+// mustGetRedfishResource returns the body of a Redfish resource served by the proxy.
+func mustGetRedfishResource(ctx context.Context, t *testing.T, client *http.Client, endpoint string, resource string) []byte {
+	t.Helper()
 
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+resource, nil)
+	require.NoError(t, err)
 
-		err = resp.Body.Close()
-		require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoErrorf(t, err, "Redfish proxy at %q is not answering", endpoint)
 
-		require.Equalf(t, http.StatusOK, resp.StatusCode, "expect the Redfish proxy to serve %q, got: %s", resource, body)
-	}
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = resp.Body.Close()
+	require.NoError(t, err)
+
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "expect the Redfish proxy to serve %q, got: %s", resource, body)
+
+	return body
 }
 
 // redfishProxyHostAddress returns the address of the e2e host, at which the
@@ -152,4 +172,10 @@ func redfishProxyHostAddress(t *testing.T) string {
 	}
 
 	return e2eHostAddress(t)
+}
+
+// redfishProxyMediaDir returns the directory, below which the Redfish proxy
+// mounts streamed media. The default of the proxy is only writable by root.
+func redfishProxyMediaDir(tmpDir string) string {
+	return filepath.Join(tmpDir, "redfish-proxy-media")
 }

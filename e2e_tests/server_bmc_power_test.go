@@ -19,7 +19,7 @@ func serverBMCPowerOffAndOn(serverName string) func(ctx context.Context, t *test
 		defer stop()
 
 		// The Redfish proxy acts as the BMC of the IncusOS instance.
-		endpoint := startRedfishProxy(t, serverName)
+		endpoint := startRedfishProxy(t, serverName, "generic", redfishProxyMediaDir(tmpDir))
 
 		// Register cleanup
 		t.Cleanup(serverPowerStateCleanup(t, serverName))
