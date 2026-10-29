@@ -2790,8 +2790,10 @@ func TestServerService_DeleteByName(t *testing.T) {
 		repoGetByNameServer *provisioning.Server
 		repoGetByNameErr    error
 		repoDeleteByNameErr error
+		bmcRecordingErr     error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr              require.ErrorAssertionFunc
+		wantBMCRecordingDelete []string
 	}{
 		{
 			name:    "success",
@@ -2800,7 +2802,19 @@ func TestServerService_DeleteByName(t *testing.T) {
 				Cluster: nil,
 			},
 
-			assertErr: require.NoError,
+			assertErr:              require.NoError,
+			wantBMCRecordingDelete: []string{"one"},
+		},
+		{
+			name:    "success - deleting the BMC recordings fails",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Cluster: nil,
+			},
+			bmcRecordingErr: boom.Error,
+
+			assertErr:              require.NoError,
+			wantBMCRecordingDelete: []string{"one"},
 		},
 		{
 			name:    "error - name empty",
@@ -2852,13 +2866,28 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+			bmcRecording := &repoMock.BMCRecordingRepoMock{
+				DeleteAllFunc: func(ctx context.Context, serverName string) error {
+					return tc.bmcRecordingErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithBMCRecordingRepo(bmcRecording),
+			)
 
 			// Run test
 			err := serverSvc.DeleteByName(t.Context(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
+
+			var deleted []string
+			for _, call := range bmcRecording.DeleteAllCalls() {
+				deleted = append(deleted, call.ServerName)
+			}
+
+			require.Equal(t, tc.wantBMCRecordingDelete, deleted, "the BMC recordings are only deleted with the server")
 		})
 	}
 }
