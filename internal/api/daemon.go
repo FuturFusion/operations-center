@@ -1208,6 +1208,7 @@ func (d *Daemon) setupAPIRoutes(
 		d.authenticator.Middleware(),
 	)
 	registerInternalHandler(internalRouter, d.authorizer, db)
+	registerInternalBMCRecordingHandler(internalRouter, d.authorizer, serverSvc)
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
