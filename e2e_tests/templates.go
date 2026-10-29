@@ -3,22 +3,53 @@ package e2e
 import (
 	"bytes"
 	"fmt"
+	"maps"
+	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 )
 
-// redfishProxyBIOSProfileYAML renders redfishProxyBIOSProfileYAMLTemplate.
-// Operations Center enforces these timeouts during the deployment, so they
-// are stretched like the timeouts of the tests.
-func redfishProxyBIOSProfileYAML() []byte {
+// redfishProxyBIOSProfileYAML renders redfishProxyBIOSProfileYAMLTemplate for
+// the given profile of the Redfish proxy. The profile only matches the model
+// the proxy reports for this profile, so a proxy with another profile is not
+// deployed by accident. Operations Center enforces the timeouts during the
+// deployment, so they are stretched like the timeouts of the tests.
+func redfishProxyBIOSProfileYAML(profile redfishProfile) []byte {
 	return fmt.Appendf(nil, string(redfishProxyBIOSProfileYAMLTemplate),
 		strechedTimeout(5*time.Minute),
 		strechedTimeout(config.ServerDeploymentStepCallTimeout),
 		strechedTimeout(config.ServerDeploymentStepTimeout),
 		strechedTimeout(config.ServerDeploymentMediaIdlePeriod),
 		strechedTimeout(config.ServerDeploymentRebootTimeout),
+		regexp.QuoteMeta(redfishProxyModel(profile.name)),
+		biosAttributesYAML(profile.biosAttributes),
+		biosDeferredAttributesYAML(profile.biosDeferredAttributes),
 	)
+}
+
+// biosAttributesYAML renders the attributes as the entries of a YAML mapping,
+// sorted by name.
+func biosAttributesYAML(attributes map[string]string) string {
+	var b strings.Builder
+
+	for _, name := range slices.Sorted(maps.Keys(attributes)) {
+		fmt.Fprintf(&b, "  %s: %q\n", name, attributes[name])
+	}
+
+	return b.String()
+}
+
+// biosDeferredAttributesYAML renders the deferred attributes. Without any, the
+// key is left out.
+func biosDeferredAttributesYAML(attributes map[string]string) string {
+	if len(attributes) == 0 {
+		return ""
+	}
+
+	return "deferred_attributes:\n" + biosAttributesYAML(attributes)
 }
 
 var (
@@ -160,11 +191,11 @@ name: incus-redfish-proxy
 description: Incus instance exposed by incus-redfish-proxy
 match:
   - manufacturer: "linuxcontainers\\.org"
-    model: "Incus"
+    model: '%[6]s'
 priority: 1000
 attributes:
   incus.config.user.e2e.bios-profile: "applied"
-deployment:
+%[7]s%[8]sdeployment:
   attach_media_call_timeout: %[1]s
   call_timeout: %[2]s
   step_timeout: %[3]s

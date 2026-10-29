@@ -33,6 +33,7 @@ var (
 	listOnly             = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_LIST", false)
 	bmcProxyAddress      = envOrDefault("OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS", "")
 	hostAddress          = envOrDefault("OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS", "")
+	redfishProfileNames  = envOrDefault("OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES", "generic")
 
 	goCoverDir      = ""
 	ocE2EGoCoverDir = ""

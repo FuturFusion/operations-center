@@ -35,6 +35,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES`: Comma separated list of the profiles of the Redfish proxy, for which `TestE2E_WithTokenSeed_DeployServer` deploys a server. Every profile adds a deployment of 20 to 30 minutes. An unknown profile fails the test. See [Fake BMC](#fake-bmc) (default: "generic")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
 
 ## Test structure
@@ -571,10 +572,33 @@ sequentially, then the end, then random portions (see
 
 The deployment test records the BMC traffic of the deployment (see
 `assertBMCRecording`). It downloads the recording twice into the test
-directory: as recorded, as `<server>-bmc-recording-raw.zip`, and anonymized, as
-`<server>-bmc-recording.zip`. The test checks the content of the anonymized
-archive and that it holds none of the addresses of the proxy. The CI workflow
-keeps both archives with the logs.
+directory: as recorded, as `<server>-<profile>-bmc-recording-raw.zip`, and
+anonymized, as `<server>-<profile>-bmc-recording.zip`. The test checks the
+content of the anonymized archive and that it holds none of the addresses of the
+proxy. The CI workflow keeps both archives with the logs.
+
+The deployment test runs once for every profile of the proxy named in
+`OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES`. A profile changes how the proxy
+behaves, for example how it applies BIOS attributes or how it inserts the
+media. The profiles run one after the other on the same instance. Each profile
+has its own subtest, for example `TestE2E_WithTokenSeed_DeployServer/generic`.
+`redfishProfileDefinitions` lists the profiles the test knows. For each profile,
+it defines the BIOS profile, the additional flags of the deployment and the
+deployment states, that must or must not appear in the history of the
+deployment. The BIOS profile only matches the model, that the proxy reports
+for the profile, for example `Incus (generic)`. The test checks this model
+before the deployment starts. A proxy without support for the profile fails
+fast this way.
+
+The profile `stream-media` mounts the media through FUSE. The proxy reads the
+media from Operations Center with range requests, while the server reads it.
+The end 2 end test host needs `/dev/fuse` and the `fuse3` package. Since
+`incusd` reads the mounted media, `/etc/fuse.conf` must contain
+`user_allow_other`, if the tests do not run as root. The proxy mounts the media
+below `redfish-proxy-media` in `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`.
+
+The CI workflow runs the profile `generic` only. The daily workflow runs the
+deployment test a second time with all the profiles.
 
 ### Incus images
 
