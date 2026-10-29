@@ -43,6 +43,7 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 		args     []string
 
 		assertErr require.ErrorAssertionFunc
+		wantQuery string
 		want      string
 	}{
 		{
@@ -50,6 +51,15 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			args: []string{"one", "20261027T081500Z"},
 
 			assertErr: require.NoError,
+			wantQuery: "anonymize=false&archive=zip",
+			want:      "zip content",
+		},
+		{
+			name: "success - anonymized",
+			args: []string{"one", "20261027T081500Z", "--anonymize"},
+
+			assertErr: require.NoError,
+			wantQuery: "anonymize=true&archive=zip",
 			want:      "zip content",
 		},
 		{
@@ -58,6 +68,7 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			args:     []string{"one", "20261027T081500Z"},
 
 			assertErr: require.Error,
+			wantQuery: "anonymize=false&archive=zip",
 			want:      "old",
 		},
 		{
@@ -66,6 +77,7 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			args:     []string{"one", "20261027T081500Z", "--force"},
 
 			assertErr: require.NoError,
+			wantQuery: "anonymize=false&archive=zip",
 			want:      "zip content",
 		},
 	}
@@ -75,7 +87,10 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			t.Parallel()
 
 			// Setup
+			var gotQuery string
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotQuery = r.URL.RawQuery
 				_, _ = w.Write([]byte("zip content"))
 			}))
 			t.Cleanup(server.Close)
@@ -98,6 +113,7 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantQuery, gotQuery)
 
 			got, err := os.ReadFile(target)
 			require.NoError(t, err)
@@ -205,6 +221,44 @@ func TestAdminBMCRecordingSubcommands(t *testing.T) {
 			for _, want := range tc.wantOutput {
 				require.Contains(t, output.String(), want)
 			}
+		})
+	}
+}
+
+func TestAdminBMCRecordingDownloadDefaultFilename(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		anonymize bool
+
+		want string
+	}{
+		{
+			name: "as recorded",
+
+			want: "one-20261027T081500Z.zip",
+		},
+		{
+			name:      "anonymized",
+			anonymize: true,
+
+			want: "one-20261027T081500Z-anonymized.zip",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			download := cmdAdminBMCRecordingDownload{flagAnonymize: tc.anonymize}
+
+			// Run test
+			got := download.targetFilename("one", "20261027T081500Z")
+
+			// Assert
+			require.Equal(t, tc.want, got, "a raw and an anonymized export do not collide")
 		})
 	}
 }

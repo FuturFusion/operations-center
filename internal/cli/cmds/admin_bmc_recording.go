@@ -190,11 +190,18 @@ func (c *cmdAdminBMCRecordingDownload) Command() *cobra.Command {
   Download a BMC recording as zip archive.
 
   The archive is written to "<server>-<id>.zip" in the working directory,
-  unless --output is given. An existing file is only replaced with --force.
+  unless --output is given. With --anonymize, the default is
+  "<server>-<id>-anonymized.zip". An existing file is only replaced with
+  --force.
+
+  With --anonymize, Operations Center replaces the identifying values of the
+  server, the BMC and Operations Center itself with placeholders. This
+  includes the serial number, the system UUID, the host names, the MAC
+  addresses and the IPv4 addresses. Check the archive before it is published.
 `
 
 	cmd.Flags().StringVarP(&c.flagOutput, "output", "o", "", "Target file of the zip archive")
-	cmd.Flags().BoolVar(&c.flagAnonymize, "anonymize", false, "Replace identifying values in the recording")
+	cmd.Flags().BoolVar(&c.flagAnonymize, "anonymize", false, "Replace the identifying values in the recording with placeholders")
 	cmd.Flags().BoolVar(&c.flagForce, "force", false, "Replace an existing target file")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -217,10 +224,7 @@ func (c *cmdAdminBMCRecordingDownload) run(cmd *cobra.Command, args []string) er
 	name := args[0]
 	id := args[1]
 
-	targetFilename := c.flagOutput
-	if targetFilename == "" {
-		targetFilename = fmt.Sprintf("%s-%s.zip", name, id)
-	}
+	targetFilename := c.targetFilename(name, id)
 
 	archiveReader, err := c.ocClient.GetServerBMCRecordingArchive(cmd.Context(), name, id, c.flagAnonymize)
 	if err != nil {
@@ -258,6 +262,19 @@ func (c *cmdAdminBMCRecordingDownload) run(cmd *cobra.Command, args []string) er
 	progress.Done(fmt.Sprintf("Successfully written %s to %q", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
+}
+
+func (c *cmdAdminBMCRecordingDownload) targetFilename(name string, id string) string {
+	if c.flagOutput != "" {
+		return c.flagOutput
+	}
+
+	// A raw and an anonymized export of the same recording must not collide.
+	if c.flagAnonymize {
+		return fmt.Sprintf("%s-%s-anonymized.zip", name, id)
+	}
+
+	return fmt.Sprintf("%s-%s.zip", name, id)
 }
 
 type cmdAdminBMCRecordingDelete struct {
