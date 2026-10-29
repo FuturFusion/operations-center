@@ -107,7 +107,7 @@ func Test_internalBMCRecordingHandler(t *testing.T) {
 			wantStatus:             http.StatusOK,
 			wantBody:               "zip content",
 			wantContentType:        "application/zip",
-			wantContentDisposition: `attachment; filename="one-` + id + `.zip"`,
+			wantContentDisposition: `attachment; filename="server01-` + id + `.zip"`,
 			wantArchiveAnonymize:   []bool{true},
 		},
 		{
