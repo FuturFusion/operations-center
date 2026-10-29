@@ -25,6 +25,8 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 
 // Middleware returns a http handler middleware, which will try to authenticate
 // a request by probing all provided authers in sequence.
+// Cross-origin browser requests with an unsafe method are rejected before
+// authentication.
 // When successful, the authenticated username and the protocol of the
 // authentication is stored in the request context.
 // For requests, which are not authenticated, only the authentication status is
@@ -38,6 +40,10 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 		opt(cfg)
 	}
 
+	// Browsers also send TLS client certificates with cross-site requests.
+	// Reject these requests to prevent cross-site request forgery.
+	crossOriginProtection := http.NewCrossOriginProtection()
+
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			var username, protocol string
@@ -50,6 +56,18 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			// context handed to the next handler keeps the component of the
 			// caller, so the whole request is not attributed to authn.
 			logCtx := logger.ContextWithComponent(ctx, componentAuthn)
+
+			err = crossOriginProtection.Check(r)
+			if err != nil {
+				slog.WarnContext(logCtx, "Rejecting cross-origin request", logger.Err(err), slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+
+				err = response.Forbidden(err).Render(w)
+				if err != nil {
+					slog.WarnContext(logCtx, "Render forbidden response failed", logger.Err(err))
+				}
+
+				return
+			}
 
 			// Authentication
 			for _, auther := range a.authers {
