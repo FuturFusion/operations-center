@@ -32,6 +32,10 @@ var bmcRecordingMethods = map[string]bmcRecordingMethod{
 		return svc.GetBMCRecording(ctx, name, id)
 	},
 	"GetBMCRecordingArchive": func(ctx context.Context, svc provisioning.ServerService, name string, id string) (any, error) {
+		rc, size, err := svc.GetBMCRecordingArchive(ctx, name, id, false)
+		return readBMCRecordingBody(rc, int64(size), err)
+	},
+	"GetBMCRecordingArchiveAnonymized": func(ctx context.Context, svc provisioning.ServerService, name string, id string) (any, error) {
 		rc, size, err := svc.GetBMCRecordingArchive(ctx, name, id, true)
 		return readBMCRecordingBody(rc, int64(size), err)
 	},
@@ -90,9 +94,10 @@ func TestServerService_BMCRecording(t *testing.T) {
 		repoGetByNameErr error
 		recordingErr     error
 
-		assertErr require.ErrorAssertionFunc
-		want      any
-		wantCalls int
+		assertErr   require.ErrorAssertionFunc
+		want        any
+		wantCalls   int
+		wantRewrite []*provisioning.BMCRecordingRewrite
 	}{
 		{
 			name:    "success - GetBMCRecordings",
@@ -119,9 +124,44 @@ func TestServerService_BMCRecording(t *testing.T) {
 			nameArg: "one",
 			idArg:   testBMCRecordingID,
 
+			assertErr:   require.NoError,
+			want:        map[string]any{"body": "zip", "size": int64(3)},
+			wantCalls:   1,
+			wantRewrite: []*provisioning.BMCRecordingRewrite{nil},
+		},
+		{
+			name:    "success - GetBMCRecordingArchive anonymized",
+			method:  "GetBMCRecordingArchiveAnonymized",
+			nameArg: "one",
+			idArg:   testBMCRecordingID,
+
 			assertErr: require.NoError,
 			want:      map[string]any{"body": "zip", "size": int64(3)},
+			wantCalls: 2,
+			wantRewrite: []*provisioning.BMCRecordingRewrite{
+				provisioning.NewBMCRecordingRewrite(
+					provisioning.Server{Name: "one"},
+					api.BMCRecordingManifest{Server: "one", RecordingID: testBMCRecordingID},
+				),
+			},
+		},
+		{
+			name:         "error - GetBMCRecordingArchive anonymized without manifest",
+			method:       "GetBMCRecordingArchiveAnonymized",
+			nameArg:      "one",
+			idArg:        testBMCRecordingID,
+			recordingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 			wantCalls: 1,
+		},
+		{
+			name:    "error - GetBMCRecordingArchive invalid ID",
+			method:  "GetBMCRecordingArchive",
+			nameArg: "one",
+			idArg:   "..",
+
+			assertErr: errassert.ValidationError,
 		},
 		{
 			name:    "success - GetBMCRecordingFile",
@@ -174,8 +214,9 @@ func TestServerService_BMCRecording(t *testing.T) {
 			idArg:        testBMCRecordingID,
 			recordingErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			wantCalls: 1,
+			assertErr:   boom.ErrorIs,
+			wantCalls:   1,
+			wantRewrite: []*provisioning.BMCRecordingRewrite{nil},
 		},
 	}
 
@@ -206,9 +247,12 @@ func TestServerService_BMCRecording(t *testing.T) {
 			calls := len(recordings.GetAllCalls()) + len(recordings.GetByIDCalls()) + len(recordings.GetArchiveCalls()) + len(recordings.GetFileCalls()) + len(recordings.DeleteByIDCalls())
 			require.Equal(t, tc.wantCalls, calls, "the call is only forwarded after the checks")
 
+			var rewrites []*provisioning.BMCRecordingRewrite
 			for _, call := range recordings.GetArchiveCalls() {
-				require.Nil(t, call.Rewrite, "anonymize is not implemented yet")
+				rewrites = append(rewrites, call.Rewrite)
 			}
+
+			require.Equal(t, tc.wantRewrite, rewrites, "only an anonymized archive is rewritten, from the server and the manifest")
 		})
 	}
 }
