@@ -383,23 +383,9 @@ func getOperationsCenterIncusOSISO(ctx context.Context, t *testing.T, tmpDir str
 		},
 	)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, incusOSCustomizerURL+"/1.0/images", bytes.NewBuffer(operationsCenterSeed))
-	require.NoError(t, err)
+	imagesData := mustPostIncusOSCustomizerImages(ctx, t, operationsCenterSeed)
 
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	imagesData, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	err = resp.Body.Close()
-	require.NoError(t, err)
-
-	require.Equalf(t, http.StatusOK, resp.StatusCode, "The IncusOS customizer rejected the image request: %s", tail(string(imagesData), 20))
-
-	imageDownloadURL := gjson.GetBytes(imagesData, "metadata.image").String()
-
-	require.NotEmptyf(t, imageDownloadURL, "The IncusOS customizer returned no image path: %s", tail(string(imagesData), 20))
-
-	mustRunWithTimeout(t, `curl -fsSL -o %s --compressed --retry 3 --retry-connrefused --retry-delay 5 %s%s`, 5*time.Minute, isoPath, incusOSCustomizerURL, imageDownloadURL)
+	mustDownloadIncusOSCustomizerFile(t, imagesData, "metadata.image", isoPath)
 
 	err = errNotAnIncusOSImage(isoPath)
 	if err != nil {
@@ -411,6 +397,38 @@ func getOperationsCenterIncusOSISO(ctx context.Context, t *testing.T, tmpDir str
 	}
 
 	return true
+}
+
+// mustPostIncusOSCustomizerImages sends the image request body to the IncusOS
+// customizer and returns its response.
+func mustPostIncusOSCustomizerImages(ctx context.Context, t *testing.T, body []byte) []byte {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, incusOSCustomizerURL+"/1.0/images", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	imagesData, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "The IncusOS customizer rejected the image request: %s", tail(string(imagesData), 20))
+
+	return imagesData
+}
+
+// mustDownloadIncusOSCustomizerFile downloads the file, which the field of the
+// customizer response imagesData points to, to dest.
+func mustDownloadIncusOSCustomizerFile(t *testing.T, imagesData []byte, field string, dest string) {
+	t.Helper()
+
+	downloadPath := gjson.GetBytes(imagesData, field).String()
+
+	require.NotEmptyf(t, downloadPath, "The IncusOS customizer returned no path in %q: %s", field, tail(string(imagesData), 20))
+
+	mustRunWithTimeout(t, `curl -fsSL -o %s --compressed --retry 3 --retry-connrefused --retry-delay 5 %s%s`, 5*time.Minute, dest, incusOSCustomizerURL, downloadPath)
 }
 
 // importOperationsCenterIncusOSISOStorageVolume imports the IncusOS image of the
@@ -524,10 +542,8 @@ func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir st
 	stop := timeTrack(t)
 	defer stop()
 
-	mustRun(t, `incus exec OperationsCenter -- bash -c "mkdir -p /root/dev/ && mount -t tmpfs tmpfs /root/dev/"`)
-	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
-	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`)
-	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/dev/operations-centerd`)
+	stageLocalOperationsCenterExecutable(t, "OperationsCenter")
+
 	if testing.CoverMode() != "" {
 		err := os.WriteFile(filepath.Join(tmpDir, "environment"), []byte(`GOCOVERDIR=/tmp/coverdata
 `), 0o700)
@@ -544,7 +560,27 @@ func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir st
 		})
 	}
 
-	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
+	startLocalOperationsCenterExecutable(t, "OperationsCenter")
+}
+
+// stageLocalOperationsCenterExecutable stops the daemon in the VM name and
+// copies the local build to a tmpfs. Nothing is persisted, so a reboot of the
+// VM restores the daemon shipped with IncusOS.
+func stageLocalOperationsCenterExecutable(t *testing.T, name string) {
+	t.Helper()
+
+	mustRun(t, `incus exec %s -- bash -c "mkdir -p /root/dev/ && mount -t tmpfs tmpfs /root/dev/"`, name)
+	mustRun(t, `incus exec %s -- bash -c "systemctl stop operations-center || true"`, name)
+	mustRun(t, `incus exec %s -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`, name)
+	mustRun(t, `incus file push ../bin/operations-centerd %s/root/dev/operations-centerd`, name)
+}
+
+// startLocalOperationsCenterExecutable bind mounts the staged local build over
+// the daemon in the VM name and starts it.
+func startLocalOperationsCenterExecutable(t *testing.T, name string) {
+	t.Helper()
+
+	mustRun(t, `incus exec %s -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`, name)
 }
 
 // restartOperationsCenter restarts the Operations Center daemon and waits for

@@ -1072,7 +1072,14 @@ func operationsCenterIPAddress(t *testing.T) string {
 func operationsCenterIPAddressWithContext(ctx context.Context, t *testing.T) (string, error) {
 	t.Helper()
 
-	resp := runWithContext(ctx, t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address ] | first'`)
+	return instanceIPAddressWithContext(ctx, t, "OperationsCenter")
+}
+
+// instanceIPAddressWithContext returns the global IPv4 address of the VM name.
+func instanceIPAddressWithContext(ctx context.Context, t *testing.T, name string) (string, error) {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `incus list -f json | jq -r -e '[ .[] | select(.name == "%s") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address ] | first'`, name)
 
 	err := fmtRunErr(resp)
 	if err != nil {
@@ -1081,7 +1088,7 @@ func operationsCenterIPAddressWithContext(ctx context.Context, t *testing.T) (st
 
 	address := resp.OutputTrimmed()
 	if net.ParseIP(address) == nil {
-		return "", fmt.Errorf("Failed to determine the address of the OperationsCenter VM, got %q", address)
+		return "", fmt.Errorf("Failed to determine the address of the %s VM, got %q", name, address)
 	}
 
 	return address, nil
