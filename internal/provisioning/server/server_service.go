@@ -83,12 +83,73 @@ type serverService struct {
 	rebootStatusUpdateGracePeriod time.Duration
 	rollingUpdateStepRetryBackoff time.Duration
 
-	backgroundTasks sync.WaitGroup
+	background *BackgroundTasks
 }
 
 var _ provisioning.ServerService = &serverService{}
 
+// BackgroundTasks are the tasks a server service runs in the background, its owner stops them on shutdown.
+type BackgroundTasks struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	mu      sync.Mutex
+	stopped bool
+	running sync.WaitGroup
+}
+
+// NewBackgroundTasks returns background tasks, which run until Stop is called.
+func NewBackgroundTasks() *BackgroundTasks {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &BackgroundTasks{ctx: ctx, cancel: cancel}
+}
+
+// start registers a task, false once Stop was called.
+func (b *BackgroundTasks) start() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.stopped {
+		return false
+	}
+
+	b.running.Add(1)
+
+	return true
+}
+
+// Stop cancels the running tasks and waits for them to end, at most until ctx is done. No new tasks are started.
+func (b *BackgroundTasks) Stop(ctx context.Context) error {
+	b.mu.Lock()
+	b.stopped = true
+	b.mu.Unlock()
+
+	b.cancel()
+
+	done := make(chan struct{})
+	go func() {
+		b.running.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+
+	case <-ctx.Done():
+		return fmt.Errorf("Failed to wait for the background tasks of the server service: %w", ctx.Err())
+	}
+}
+
 type Option func(s *serverService)
+
+// WithBackgroundTasks lets the tasks of the service run in background, so its owner can stop them.
+func WithBackgroundTasks(background *BackgroundTasks) Option {
+	return func(s *serverService) {
+		s.background = background
+	}
+}
 
 func WithNow(nowFunc func() time.Time) Option {
 	return func(s *serverService) {
@@ -230,6 +291,7 @@ func New(
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
+		background:             NewBackgroundTasks(),
 
 		selfUpdateSignal: signals.New[provisioning.Server](),
 
@@ -258,18 +320,25 @@ func waitForBMCTask(ctx context.Context, client provisioning.BMCServerClientPort
 	return client.WaitForTask(ctx, server, taskMonitor)
 }
 
-// runInBackground runs fn in a new goroutine, tracked by s.backgroundTasks.
-// fn gets a context without the cancellation and the DB transaction of ctx.
+// runInBackground runs fn in a new goroutine, tracked by s.background.
+// fn gets a context without the cancellation and the DB transaction of ctx,
+// which is cancelled once the background tasks are stopped.
 // Only the logging related values of ctx are kept.
 func (s *serverService) runInBackground(ctx context.Context, fn func(ctx context.Context)) {
-	s.backgroundTasks.Add(1)
+	if !s.background.start() {
+		return
+	}
 
-	detached := logger.DetachedContext(ctx)
+	// The task ends with the background tasks of the service.
+	taskCtx, cancel := context.WithCancel(logger.DetachedContext(ctx))
+	stop := context.AfterFunc(s.background.ctx, cancel)
 
 	go func() {
-		defer s.backgroundTasks.Done()
+		defer s.background.running.Done()
+		defer cancel()
+		defer stop()
 
-		fn(detached)
+		fn(taskCtx)
 	}()
 }
 
@@ -402,7 +471,12 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 		log := slog.With(slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 
 		for i := range 10 {
-			time.Sleep(s.initialConnectionDelay)
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-time.After(s.initialConnectionDelay):
+			}
 
 			err = s.PollServer(ctx, newServer, true)
 			if err == nil {
@@ -1066,7 +1140,12 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 			for i := range 10 {
-				time.Sleep(s.initialConnectionDelay)
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-time.After(s.initialConnectionDelay):
+				}
 
 				err = s.PollServer(ctx, *server, true)
 				if err == nil {

@@ -153,6 +153,9 @@ type Daemon struct {
 	// replaceableAuthorizer is the authorizer, its implementation is replaced on a security config change.
 	replaceableAuthorizer *authz.Replaceable
 
+	// serverBackgroundTasks are the background tasks of the server service, stopped with the daemon.
+	serverBackgroundTasks *provisioningServer.BackgroundTasks
+
 	// securityRetryCancel stops the background connection retries of the
 	// security infrastructure from the previous configuration.
 	securityRetryCancel context.CancelFunc
@@ -233,6 +236,7 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		oidcVerifier:          &authnoidc.Verifier{},
 		authorizer:            &authorizer,
 		replaceableAuthorizer: replaceableAuthorizer,
+		serverBackgroundTasks: provisioningServer.NewBackgroundTasks(),
 	}
 
 	// Until the security configuration is loaded, only the unix socket is trusted.
@@ -480,6 +484,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	d.shutdownFuncs = append(d.shutdownFuncs, d.server.Shutdown)
+
+	// Once no request is served anymore, the background tasks the requests started are stopped.
+	d.shutdownFuncs = append(d.shutdownFuncs, d.serverBackgroundTasks.Stop)
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
@@ -1081,6 +1088,7 @@ func (d *Daemon) setupServerService(
 		updateSvc,
 		d.apiCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
+		provisioningServer.WithBackgroundTasks(d.serverBackgroundTasks),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
