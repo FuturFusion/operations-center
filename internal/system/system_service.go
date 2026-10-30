@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
-	"sync"
 
 	"github.com/lxc/incus/v7/shared/revert"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -35,17 +34,8 @@ type environment interface {
 type systemService struct {
 	env             environment
 	serverSvc       ProvisioningServerService
-	clusterSvc      ProvisioningClusterService
 	cacheRepo       CacheRepo
-	databaseRepo    DatabaseRepo
-	backupRepo      BackupRepo
 	certificateRepo CertificateRepo
-
-	// requestRestart asks the daemon to restart.
-	requestRestart func()
-
-	// restoreMu is held by a restore and never released after a successful one.
-	restoreMu sync.Mutex
 
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
@@ -65,23 +55,15 @@ type SystemServiceOption func(s *systemService)
 func NewSystemService(
 	env environment,
 	serverSvc ProvisioningServerService,
-	clusterSvc ProvisioningClusterService,
 	cacheRepo CacheRepo,
-	databaseRepo DatabaseRepo,
-	backupRepo BackupRepo,
 	certificateRepo CertificateRepo,
-	requestRestart func(),
 	opts ...SystemServiceOption,
 ) *systemService {
 	systemSvc := &systemService{
 		env:             env,
 		serverSvc:       serverSvc,
-		clusterSvc:      clusterSvc,
 		cacheRepo:       cacheRepo,
-		databaseRepo:    databaseRepo,
-		backupRepo:      backupRepo,
 		certificateRepo: certificateRepo,
-		requestRestart:  requestRestart,
 
 		acmeUpdateCertificateFunc: acme.UpdateCertificate,
 	}

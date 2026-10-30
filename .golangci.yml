@@ -286,10 +286,6 @@ linters:
         text: "Pure packages must"
       - linters:
           - forbidigo
-        path: '^internal/system/system_service_backup\.go$'
-        text: "Pure packages must"
-      - linters:
-          - forbidigo
         path: '^internal/provisioning/server/server_service\.go$'
         text: "Pure packages must"
       # File system access through os.Root. Tests, tools, the command line
