@@ -52,10 +52,10 @@ func TestSchemaEnsure(t *testing.T) {
 			db, err := sqlite.Open(tmpDir)
 			require.NoError(t, err)
 
-			err = tc.prepare(db)
+			err = tc.prepare(db.DB)
 			require.NoError(t, err)
 
-			schemaVersion, err := dbschema.Ensure(context.Background(), db, tmpDir)
+			schemaVersion, err := dbschema.Ensure(context.Background(), db.DB, tmpDir)
 			require.NoError(t, err)
 			require.Equal(t, tc.wantSchemaVersion, schemaVersion)
 		})
@@ -69,7 +69,7 @@ func TestSchemaEnsure_normalizeServerIdentifiers(t *testing.T) {
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)
 
-	err = dbschema.SetupVersion(db, 41)
+	err = dbschema.SetupVersion(db.DB, 41)
 	require.NoError(t, err)
 
 	_, err = db.Exec(`
@@ -80,7 +80,7 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 `)
 	require.NoError(t, err)
 
-	_, err = dbschema.Ensure(context.Background(), db, tmpDir)
+	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
 	require.NoError(t, err)
 
 	rows, err := db.Query(`SELECT id, system_uuid, machine_id FROM servers ORDER BY id`)
@@ -118,13 +118,13 @@ func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)
 
-	err = dbschema.SetupVersion(db, 42)
+	err = dbschema.SetupVersion(db.DB, 42)
 	require.NoError(t, err)
 
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.Error(t, err, "the resources view has no uuid column before v43")
 
-	_, err = dbschema.Ensure(context.Background(), db, tmpDir)
+	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
 	require.NoError(t, err)
 
 	_, err = db.Exec(`SELECT uuid FROM resources`)

@@ -138,11 +138,11 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 			require.NoError(t, err)
 		})
 
-		_, err = dbschema.Ensure(ctx, db, tmpDir)
+		_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 		require.NoError(t, err)
 
 		tx := transaction.Enable(db)
-		entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+		entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 		require.NoError(t, err)
 
 		clusterDB := sqlite.NewCluster(tx)
@@ -421,11 +421,11 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err = dbschema.Ensure(ctx, db, tmpDir)
+		_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 		require.NoError(t, err)
 
 		tx := transaction.Enable(db)
-		entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+		entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 		require.NoError(t, err)
 
 		clusterDB := sqlite.NewCluster(tx)

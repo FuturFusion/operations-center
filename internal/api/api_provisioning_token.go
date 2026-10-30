@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -283,39 +284,33 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to decode token: %w", err))
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentToken, err := t.service.GetByUUID(ctx, UUID)
+		if err != nil {
+			return fmt.Errorf("Failed to get token %q: %w", UUID.String(), err)
 		}
-	}()
 
-	currentToken, err := t.service.GetByUUID(ctx, UUID)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get token %q: %w", UUID.String(), err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentToken)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentToken)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		err = t.service.Update(ctx, provisioning.Token{
+			UUID:          currentToken.UUID,
+			UsesRemaining: token.UsesRemaining,
+			ExpireAt:      token.ExpireAt,
+			Description:   token.Description,
+			Channel:       token.Channel,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed updating token %q: %w", UUID.String(), err)
+		}
 
-	err = t.service.Update(ctx, provisioning.Token{
-		UUID:          currentToken.UUID,
-		UsesRemaining: token.UsesRemaining,
-		ExpireAt:      token.ExpireAt,
-		Description:   token.Description,
-		Channel:       token.Channel,
+		return nil
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating token %q: %w", UUID.String(), err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)
@@ -1134,46 +1129,40 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to decode token seed: %w", err))
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentTokenSeed, err := t.service.GetTokenSeedByName(ctx, UUID, name)
+		if err != nil {
+			return fmt.Errorf(`Failed to get token seed config "%s/%s": %w`, UUID.String(), name, err)
 		}
-	}()
 
-	currentTokenSeed, err := t.service.GetTokenSeedByName(ctx, UUID, name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf(`Failed to get token seed config "%s/%s": %w`, UUID.String(), name, err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentTokenSeed)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentTokenSeed)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		err = t.service.UpdateTokenSeed(ctx, provisioning.TokenSeed{
+			ID:          currentTokenSeed.ID,
+			Token:       currentTokenSeed.Token,
+			Name:        currentTokenSeed.Name,
+			Description: tokenSeed.Description,
+			Public:      tokenSeed.Public,
+			Seeds: provisioning.TokenImageSeedConfigs{
+				Applications:     tokenSeed.Seeds.Applications,
+				Install:          tokenSeed.Seeds.Install,
+				MigrationManager: tokenSeed.Seeds.MigrationManager,
+				Network:          tokenSeed.Seeds.Network,
+				OperationsCenter: tokenSeed.Seeds.OperationsCenter,
+			},
+		}, force)
+		if err != nil {
+			return fmt.Errorf(`Failed updating token seed config "%s/%s": %w`, UUID.String(), name, err)
+		}
 
-	err = t.service.UpdateTokenSeed(ctx, provisioning.TokenSeed{
-		ID:          currentTokenSeed.ID,
-		Token:       currentTokenSeed.Token,
-		Name:        currentTokenSeed.Name,
-		Description: tokenSeed.Description,
-		Public:      tokenSeed.Public,
-		Seeds: provisioning.TokenImageSeedConfigs{
-			Applications:     tokenSeed.Seeds.Applications,
-			Install:          tokenSeed.Seeds.Install,
-			MigrationManager: tokenSeed.Seeds.MigrationManager,
-			Network:          tokenSeed.Seeds.Network,
-			OperationsCenter: tokenSeed.Seeds.OperationsCenter,
-		},
-	}, force)
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf(`Failed updating token seed config "%s/%s": %w`, UUID.String(), name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)
@@ -1248,33 +1237,27 @@ func (t *tokenHandler) tokenSeedPost(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to decode token seed: %w", err))
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentTokenSeed, err := t.service.GetTokenSeedByName(ctx, UUID, name)
+		if err != nil {
+			return fmt.Errorf(`Failed to get token seed config "%s/%s": %w`, UUID.String(), name, err)
 		}
-	}()
 
-	currentTokenSeed, err := t.service.GetTokenSeedByName(ctx, UUID, name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf(`Failed to get token seed config "%s/%s": %w`, UUID.String(), name, err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentTokenSeed)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentTokenSeed)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		err = t.service.RenameTokenSeed(ctx, UUID, name, tokenSeed.Name, force)
+		if err != nil {
+			return fmt.Errorf(`Failed renaming token seed config "%s/%s": %w`, UUID.String(), name, err)
+		}
 
-	err = t.service.RenameTokenSeed(ctx, UUID, name, tokenSeed.Name, force)
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf(`Failed renaming token seed config "%s/%s": %w`, UUID.String(), name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/seeds/"+tokenSeed.Name)

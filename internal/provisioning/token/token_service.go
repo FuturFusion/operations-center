@@ -382,7 +382,7 @@ func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, 
 // removeSeededImagesAfterCommit removes the cached images of a token seed as
 // soon as the change of the token seed is committed.
 func (s *tokenService) removeSeededImagesAfterCommit(ctx context.Context, id uuid.UUID, name string) error {
-	return transaction.AfterCommit(ctx, func() error {
+	return transaction.AfterCommit(ctx, func(ctx context.Context) error {
 		err := s.flasher.RemoveSeededImages(ctx, provisioning.SeedImageCachePrefix(id, name))
 		if err != nil {
 			return fmt.Errorf("Failed to remove cached images of token seed %q: %w", name, err)
