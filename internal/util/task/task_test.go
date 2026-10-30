@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/task"
 )
@@ -167,4 +168,30 @@ func startTask(t *testing.T, f task.Func, schedule task.Schedule) func() {
 	return func() {
 		assert.NoError(t, stop(time.Second))
 	}
+}
+
+// A task is started again, while an iteration of its previous start is still running after the stop.
+func TestNew_restartWhileStopping(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var calls atomic.Int32
+		release := make(chan struct{})
+		f := func(ctx context.Context) {
+			if calls.Add(1) == 1 {
+				<-release
+			}
+		}
+
+		start := task.New(f, task.Every(time.Hour), time.Second)
+
+		stop := start(t.Context())
+		synctest.Wait()
+		require.Error(t, stop(t.Context()), "the first iteration overruns the stop deadline")
+
+		stop = start(t.Context())
+		synctest.Wait()
+		assert.Equal(t, int32(2), calls.Load())
+
+		close(release)
+		assert.NoError(t, stop(t.Context()))
+	})
 }

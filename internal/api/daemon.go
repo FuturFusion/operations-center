@@ -297,6 +297,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// On update of ACME configuration, perform renewal of the server certificate.
 	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa apisystem.SecurityACME) {
+		// Only the leader renews and distributes the shared certificate.
+		isLeader, err := d.membershipSvc.Gateway().IsLeader(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to check for cluster leadership before ACME renewal", logger.Err(err))
+			return
+		}
+
+		if !isLeader {
+			return
+		}
+
 		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
 
 		go func() {
@@ -410,8 +421,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	d.systemSvc = d.setupSystemService(serverSvc)
 
+	// Background tasks
+	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
+	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
+
 	// Setup API routes
-	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, nil)
+	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks)
 	if err != nil {
 		return err
 	}
@@ -496,10 +511,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
-	err = updateSvc.Prune(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
-	}
+	membershipSvc.StartLeaderTasks()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
@@ -522,15 +534,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Stop the membership after the heartbeats, which need the database.
 	d.shutdownFuncs = append(d.shutdownFuncs, membershipSvc.Stop)
-
-	// Start cluster lifecycle events monitor.
-	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -1393,6 +1396,24 @@ func (d *Daemon) setupAPIRoutes(
 	return serveMux, inventorySyncers, nil
 }
 
+// lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
+func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {
+	return func(ctx context.Context) func(context.Context) error {
+		ctx, cancel := context.WithCancel(ctx)
+
+		err := clusterSvc.StartLifecycleEventsMonitor(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to start cluster lifecycle events monitor", logger.Err(err))
+		}
+
+		return func(context.Context) error {
+			cancel()
+
+			return nil
+		}
+	}
+}
+
 func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.MembershipService) func(time.Duration) error {
 	clusterTask := func(ctx context.Context) {
 		if membershipSvc.Gateway().HeartbeatCancelFunc() == nil {
@@ -1413,8 +1434,40 @@ func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.Membe
 	return clusterTaskStop
 }
 
-func (d *Daemon) setupBackgroundTasks(
-	ctx context.Context,
+// firstRunDelay runs prepare and waits for delay on the first call, false if the context ends while waiting.
+func firstRunDelay(prepare func(context.Context), delay time.Duration) func(context.Context) bool {
+	var mu sync.Mutex
+	prepared := false
+	waited := delay == 0
+
+	return func(ctx context.Context) bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		if !prepared && prepare != nil {
+			prepare(ctx)
+		}
+
+		prepared = true
+
+		if waited {
+			return true
+		}
+
+		select {
+		case <-ctx.Done():
+			return false
+
+		case <-time.After(delay):
+		}
+
+		waited = true
+
+		return true
+	}
+}
+
+func (d *Daemon) backgroundTasks(
 	updateSvc provisioning.UpdateService,
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
@@ -1422,24 +1475,34 @@ func (d *Daemon) setupBackgroundTasks(
 	imageFlasher *flasher.Flasher,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
-) {
+) []task.TaskFunc {
 	if config.IsBackgroundTasksDisabled() {
-		return
+		return []task.TaskFunc{}
+	}
+
+	pruneUpdates := func(ctx context.Context) {
+		err := updateSvc.Prune(ctx)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
+		}
 	}
 
 	// Give IncusOS some time to apply seed data before actually starting to
 	// perform the refresh of the updates.
-	delayFirstUpdates := sync.OnceFunc(func() {})
+	delayFirstUpdates := firstRunDelay(pruneUpdates, 0)
 	if d.env.IsIncusOS() {
-		delayFirstUpdates = sync.OnceFunc(func() {
+		delayFirstUpdates = firstRunDelay(func(ctx context.Context) {
+			pruneUpdates(ctx)
 			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
-			time.Sleep(30 * time.Second)
-		})
+		}, 30*time.Second)
 	}
 
 	// Start background task to refresh updates from the sources.
-	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
-		delayFirstUpdates()
+	refreshUpdatesFromSourcesTask := componentTask(componentTaskRefreshUpdates, func(ctx context.Context) {
+		if !delayFirstUpdates(ctx) {
+			return
+		}
+
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		scope := api.WarningScope{
@@ -1464,35 +1527,30 @@ func (d *Daemon) setupBackgroundTasks(
 		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh updates completed")
-	}
+	})
 
 	var updateSourceOptions []task.EveryOption
 	if config.SourcePollSkipFirst() {
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 
-	updateSourceTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshUpdates, refreshUpdatesFromSourcesTask), task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
-	})
-
 	// Give IncusOS some time to download update before starting to refresh
 	// image sources.
-	delayFirstImageSourcesRefresh := delayFirstCall(0)
+	delayFirstImageSourcesRefresh := firstRunDelay(nil, 0)
 	if d.env.IsIncusOS() {
-		slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
-		delayFirstImageSourcesRefresh = delayFirstCall(10 * time.Minute)
+		delayFirstImageSourcesRefresh = firstRunDelay(func(ctx context.Context) {
+			slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
+		}, 10*time.Minute)
 	}
 
 	// Start background task to refresh images from the sources.
-	refreshImageSourcesTask := func(ctx context.Context) {
-		err := delayFirstImageSourcesRefresh(ctx)
-		if err != nil {
+	refreshImageSourcesTask := componentTask(componentTaskRefreshImageSources, func(ctx context.Context) {
+		if !delayFirstImageSourcesRefresh(ctx) {
 			return
 		}
 
 		slog.InfoContext(ctx, "Refresh image sources triggered")
-		err = imageSourceSvc.RefreshAll(ctx)
+		err := imageSourceSvc.RefreshAll(ctx)
 		scope := api.WarningScope{
 			Scope:      "refresh",
 			EntityType: "image_sources",
@@ -1515,15 +1573,10 @@ func (d *Daemon) setupBackgroundTasks(
 		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh image sources completed")
-	}
-
-	imageSourceRefreshTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshImageSources, refreshImageSourcesTask), task.Every(config.ImageSourcePollInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return imageSourceRefreshTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
 	// Start background task for cluster update control loop.
-	clusterUpdateControlLoop := func(ctx context.Context) {
+	clusterUpdateControlLoop := componentTask(componentTaskClusterUpdate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Cluster update control loop triggered")
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, nil)
 		if err != nil {
@@ -1538,11 +1591,6 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Cluster update control loop completed")
-	}
-
-	clusterUpdateControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskClusterUpdate, clusterUpdateControlLoop), task.Every(config.PendingServerPollInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return clusterUpdateControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
 
 	// runServerDeploymentControlLoop advances the automated deployments. A name
@@ -1566,18 +1614,32 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.DebugContext(ctx, "Server deployment control loop completed", slog.String("trigger", trigger), slog.String("server", ptr.From(name)))
 	}
 
-	// Start background task for the automated server deployment control loop.
-	serverDeploymentControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskServerDeployment, func(ctx context.Context) {
+	serverDeploymentControlLoopTask := componentTask(componentTaskServerDeployment, func(ctx context.Context) {
 		runServerDeploymentControlLoop(ctx, "tick", nil)
-	}), task.Every(config.ServerDeploymentControlLoopInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return serverDeploymentControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
+
+	checkClusterLeader := func(ctx context.Context, leaderLog *slog.Logger) bool {
+		leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+		defer cancel()
+
+		isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
+		if err != nil {
+			leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership background task signal", logger.Err(err))
+			return false
+		}
+
+		return isLeader
+	}
 
 	// Trigger the server deployment control loop from the virtual media events,
 	// so attaching and detaching the installation media resolves promptly.
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
 		if msg.Operation == lifecycle.BMCVirtualMediaOperationPreAttach {
+			return
+		}
+
+		isLeader := checkClusterLeader(ctx, slog.Default())
+		if !isLeader {
 			return
 		}
 
@@ -1592,6 +1654,12 @@ func (d *Daemon) setupBackgroundTasks(
 
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
 	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
+		log := slog.With(slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+		isLeader := checkClusterLeader(ctx, log)
+		if !isLeader {
+			return
+		}
+
 		slog.InfoContext(ctx, "Server lifecycle event triggered", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 
 		// A server, that just registered itself, ends the installation it was
@@ -1616,105 +1684,8 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Server lifecycle event completed", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 	})
 
-	// Start background task to poll servers in pending state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollPendingServers,
-		"pending",
-		provisioning.ServerFilter{
-			Status: new(api.ServerStatusPending),
-		},
-		true,
-		config.PendingServerPollInterval,
-	)
-
-	// Start background task to poll servers in updating state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUpdatingServers,
-		"updating",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
-		},
-		true,
-		config.UpdatingServerPollInterval,
-	)
-
-	// Start background task to poll servers updating an application to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUpdatingAppServers,
-		"updating application",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
-		},
-		true,
-		config.UpdatingServerPollInterval,
-	)
-
-	// Start background task to poll servers in evacuating state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollEvacuatingServers,
-		"evacuating",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyEvacuating),
-		},
-		false,
-		config.EvacuatingServerPollInterval,
-	)
-
-	// Start background task to poll servers in restoring state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollRestoringServers,
-		"restoring",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyRestoring),
-		},
-		false,
-		config.RestoringServerPollInterval,
-	)
-
-	// Start background task to poll servers in rebooting state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollRebootingServers,
-		"rebooting",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusOffline),
-			StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
-		},
-		true,
-		config.RebootingServerPollInterval,
-	)
-
-	// Start background task to poll servers in unresponsive state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUnresponsiveServers,
-		"unresponsive",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusOffline),
-			StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
-		},
-		true,
-		config.UnresponsiveServerPollInterval,
-	)
-
 	// Start background task to test connectivity and update configuration with servers in ready state.
-	pollReadyServersTask := func(ctx context.Context) {
+	pollReadyServersTask := componentTask(componentTaskPollReadyServers, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Connectivity test for ready servers triggered")
 
 		// Within the first connectivityInterval of the hour, we also update the configuration.
@@ -1734,15 +1705,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Connectivity test for ready servers completed")
-	}
-
-	pollReadyServersTaskStop, _ := task.Start(ctx, componentTask(componentTaskPollReadyServers, pollReadyServersTask), task.Every(config.ConnectivityCheckInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 
 	// Start background task to refresh inventory through polling.
-	refreshInventoryTask := func(ctx context.Context) {
+	refreshInventoryTask := componentTask(componentTaskRefreshInventory, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Inventory update triggered")
 		err := clusterSvc.ResyncInventory(ctx)
 		if err != nil {
@@ -1757,15 +1723,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Inventory update completed")
-	}
-
-	refreshInventoryTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshInventory, refreshInventoryTask), task.Every(config.InventoryUpdateInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to refresh BMC data.
-	refreshBMCDataTask := func(ctx context.Context) {
+	refreshBMCDataTask := componentTask(componentTaskRefreshBMCData, func(ctx context.Context) {
 		slog.InfoContext(ctx, "BMC data resync triggered")
 		err := serverSvc.ResyncBMCData(ctx)
 		if err != nil {
@@ -1780,15 +1741,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "BMC data resync completed")
-	}
-
-	refreshBMCDataTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshBMCData, refreshBMCDataTask), task.Every(config.BMCDataResyncInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return refreshBMCDataTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to prune the cache of generated seed images.
-	pruneSeedImageCacheTask := func(ctx context.Context) {
+	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Seed image cache prune triggered")
 
 		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
@@ -1799,11 +1755,6 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Seed image cache prune completed")
-	}
-
-	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, componentTask(componentTaskPruneSeedImageCache, pruneSeedImageCacheTask), task.Every(config.SeedImageCachePruneInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to prune the generated secure boot enrollment media.
@@ -1830,13 +1781,8 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
 	}
 
-	pruneSecureBootMediaTaskStop, _ := task.Start(ctx, pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pruneSecureBootMediaTaskStop(deadlineFrom(ctx, 10*time.Second))
-	})
-
 	// Start background task to renew ACME server certificate.
-	renewACMEServerCertificateTask := func(ctx context.Context) {
+	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
 
 		scope := api.WarningScope{
@@ -1867,15 +1813,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "ACME server certificate renewal completed")
-	}
-
-	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, componentTask(componentTaskRenewACMECertificate, renewACMEServerCertificateTask), task.Every(config.ACMEServerCertificateRenewInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to check certificate validity of server and cluster certificates.
-	certificatesValidityCheckTask := func(ctx context.Context) {
+	certificatesValidityCheckTask := componentTask(componentTaskCertificatesValidityCheck, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Certificates validity check triggered")
 
 		clusters, err := clusterSvc.GetAll(ctx)
@@ -1956,29 +1897,110 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Certificates validity check completed")
-	}
-
-	certificatesValidityCheckTaskStop, _ := task.Start(ctx, componentTask(componentTaskCertificatesValidityCheck, certificatesValidityCheckTask), task.Every(config.CertificatesValidityCheckInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
-}
 
-// delayFirstCall returns a function, which waits for delay on its first call
-// only. The wait ends early, if ctx is done, so the delay does not block the
-// shutdown of the daemon. The function returns the error of ctx.
-func delayFirstCall(delay time.Duration) func(ctx context.Context) error {
-	var once sync.Once
+	return []task.TaskFunc{
+		task.New(refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second),
+		task.New(refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
+		task.New(clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
+		task.New(serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
+		task.New(pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
+		task.New(refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
+		task.New(refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
+		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
+		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
+		task.New(renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
+		task.New(certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
 
-	return func(ctx context.Context) error {
-		once.Do(func() {
-			select {
-			case <-ctx.Done():
-			case <-time.After(delay):
-			}
-		})
+		// Start background task to poll servers in pending state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollPendingServers,
+			serverSvc,
+			"pending",
+			provisioning.ServerFilter{
+				Status: new(api.ServerStatusPending),
+			},
+			true,
+			config.PendingServerPollInterval,
+		),
 
-		return ctx.Err()
+		// Start background task to poll servers in updating state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUpdatingServers,
+			serverSvc,
+			"updating",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
+			},
+			true,
+			config.UpdatingServerPollInterval,
+		),
+
+		// Start background task to poll servers updating an application to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUpdatingAppServers,
+			serverSvc,
+			"updating application",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
+			},
+			true,
+			config.UpdatingServerPollInterval,
+		),
+
+		// Start background task to poll servers in evacuating state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollEvacuatingServers,
+			serverSvc,
+			"evacuating",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyEvacuating),
+			},
+			false,
+			config.EvacuatingServerPollInterval,
+		),
+
+		// Start background task to poll servers in restoring state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollRestoringServers,
+			serverSvc,
+			"restoring",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyRestoring),
+			},
+			false,
+			config.RestoringServerPollInterval,
+		),
+
+		// Start background task to poll servers in rebooting state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollRebootingServers,
+			serverSvc,
+			"rebooting",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusOffline),
+				StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
+			},
+			true,
+			config.RebootingServerPollInterval,
+		),
+
+		// Start background task to poll servers in unresponsive state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUnresponsiveServers,
+			serverSvc,
+			"unresponsive",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusOffline),
+				StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
+			},
+			true,
+			config.UnresponsiveServerPollInterval,
+		),
 	}
 }
 
@@ -2009,16 +2031,15 @@ func attachedSecureBootMediaIDs(ctx context.Context, serverSvc provisioning.Serv
 	return ids, nil
 }
 
-func (d *Daemon) startBackgroundPollingTask(
-	ctx context.Context,
-	serverSvc provisioning.ServerService,
+func (d *Daemon) backgroundPollingTask(
 	component logger.Component,
+	serverSvc provisioning.ServerService,
 	stateDescription string,
 	serverFilter provisioning.ServerFilter,
 	updateServerConfiguration bool,
 	interval time.Duration,
-) {
-	pollServersTask := func(ctx context.Context) {
+) task.TaskFunc {
+	backgroundTask := componentTask(component, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
 		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
 		if err != nil {
@@ -2033,12 +2054,9 @@ func (d *Daemon) startBackgroundPollingTask(
 		}
 
 		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
-	}
-
-	pollServersTaskStop, _ := task.Start(ctx, componentTask(component, pollServersTask), task.Every(interval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
+
+	return task.New(backgroundTask, task.Every(interval), time.Second)
 }
 
 func (d *Daemon) setupSocketListener(ctx context.Context) error {
