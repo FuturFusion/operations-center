@@ -67,6 +67,8 @@ jobs:
         run: |
           sudo apt install -y linux-headers-$(uname -r)
           sudo --preserve-env=DEBIAN_FRONTEND apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
+          # Build dependencies of raft and cowsql.
+          sudo --preserve-env=DEBIAN_FRONTEND apt install -y autoconf automake libtool pkg-config libuv1-dev liblz4-dev libsqlite3-dev
 
           sudo systemctl enable systemd-timesyncd
           sudo systemctl restart systemd-timesyncd
@@ -95,9 +97,24 @@ jobs:
       - name: Build binaries
         run: |
           go version
-          mkdir -p ./bin
-          CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
-          go build -o ./bin/operations-centerd ./cmd/operations-centerd
+          make deps
+
+          raft_path="$(go env GOPATH)/deps/raft"
+          cowsql_path="$(go env GOPATH)/deps/cowsql"
+          export CGO_CFLAGS="-I${raft_path}/include/ -I${cowsql_path}/include/"
+          export CGO_LDFLAGS="-L${raft_path}/.libs -L${cowsql_path}/.libs/"
+          export LD_LIBRARY_PATH="${raft_path}/.libs/:${cowsql_path}/.libs/"
+          export CGO_LDFLAGS_ALLOW="(-Wl,-wrap,pthread_create)|(-Wl,-z,now)"
+
+          # The E2E tests sideload the libraries of operations-centerd, so they need them too.
+          {
+            echo "CGO_CFLAGS=${CGO_CFLAGS}"
+            echo "CGO_LDFLAGS=${CGO_LDFLAGS}"
+            echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
+            echo "CGO_LDFLAGS_ALLOW=${CGO_LDFLAGS_ALLOW}"
+          } >> "$GITHUB_ENV"
+
+          make bld UI=0
 
       - name: Run End-to-End Tests
         env:
