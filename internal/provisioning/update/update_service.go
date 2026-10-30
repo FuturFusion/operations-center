@@ -592,6 +592,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 	toDownloadUpdates := make([]provisioning.Update, 0, len(originUpdates))
 	var toRefreshUpdates []provisioning.Update
+	var deleteUpdates []provisioning.Update
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.serverSvc.GetAll(ctx)
 		if err != nil {
@@ -611,26 +612,16 @@ func (s updateService) Refresh(ctx context.Context) error {
 		var toDeleteUpdates []provisioning.Update
 		toDeleteUpdates, toRefreshUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates, updateVersionsInUse)
 
-		// Remove updates marked for removal.
+		// Remove updates marked for removal, their files are removed after the transaction.
+		deleteUpdates = toDeleteUpdates
 		for _, update := range toDeleteUpdates {
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
-			}
-
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
 				return fmt.Errorf("Failed to remove update %s from repository: %w", update.UUID, err)
 			}
 		}
 
-		// Prune obsolete files from existing updates.
 		for _, update := range toRefreshUpdates {
-			err = s.filesRepo.PruneFiles(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to prune obsolete files for update %s: %w", update.UUID, err)
-			}
-
 			err = s.repo.Upsert(ctx, update)
 			if err != nil {
 				return fmt.Errorf("Failed to update update record %s in repository: %w", update.UUID, err)
@@ -643,7 +634,20 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return fmt.Errorf("Unable to refresh updates from source: %w", err)
 	}
 
+	for _, update := range deleteUpdates {
+		err = s.filesRepo.Delete(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
+		}
+	}
+
 	for _, update := range toRefreshUpdates {
+		// Prune obsolete files from existing updates.
+		err = s.filesRepo.PruneFiles(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to prune obsolete files for update %s: %w", update.UUID, err)
+		}
+
 		// Make sure, we do have enough space left in the files repository before downloading the files.
 		refreshUpdate := provisioning.Update{
 			Version: update.Version,
