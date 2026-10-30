@@ -163,10 +163,7 @@ func TestStartAndStop(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			d := restapi.NewDaemon(
-				ctx,
-				env,
-			)
+			d := restapi.NewDaemon(ctx, env)
 
 			err = d.Start(ctx)
 			tc.assertStartErr(t, err)

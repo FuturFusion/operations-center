@@ -12,8 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -77,17 +76,13 @@ func TestTokenDatabaseActions(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a new temporary database.
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err = db.Close()
 		require.NoError(t, err)
 	})
-
-	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
-	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
 	stmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)

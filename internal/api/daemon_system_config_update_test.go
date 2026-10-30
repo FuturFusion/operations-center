@@ -80,10 +80,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		SourcePollSkipFirst:       true,
 	})
 
-	d := restapi.NewDaemon(
-		ctx,
-		env,
-	)
+	d := restapi.NewDaemon(ctx, env)
 	err = d.Start(ctx)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
@@ -127,8 +124,8 @@ func TestSystemConfigUpdate(t *testing.T) {
 
 		t.Log(`2. Update network configuration, listen on the current port`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
-  "address": "https://127.0.0.1:%[2]s",
-  "rest_server_address": "%[1]s:%[2]s"
+  "rest_server_address": "%[1]s:%[2]s",
+  "address": "https://127.0.0.1:%[2]s"
 }
 `, testingnet.LocalhostIP(t), port)))
 		require.NoError(t, err)

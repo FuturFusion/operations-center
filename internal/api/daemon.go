@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/cowsql/go-cowsql/cluster/db/transaction"
+	cowsqlheartbeat "github.com/cowsql/go-cowsql/cluster/heartbeat"
+	cowsqlmembership "github.com/cowsql/go-cowsql/cluster/membership"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
@@ -31,6 +33,8 @@ import (
 
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
+	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
@@ -86,7 +90,7 @@ import (
 	authztls "github.com/FuturFusion/operations-center/internal/security/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql"
 	"github.com/FuturFusion/operations-center/internal/sql/patches"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	internalTx "github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -153,7 +157,10 @@ type Daemon struct {
 	server    *http.Server
 	listeners *listener.ListenerSet
 
-	systemSvc system.SystemService
+	globalRepo clusteringSvc.GlobalRaftRepo
+
+	systemSvc     system.SystemService
+	membershipSvc clusteringSvc.MembershipService
 
 	// apiCertificate is the certificate presented to API clients.
 	apiCertificate tls.Certificate
@@ -245,6 +252,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	d.loadClientCertificate(ctx)
+
+	localDB, err := clusteringSvc.OpenLocalDB(ctx, d.varRoot)
+	if err != nil {
+		return err
+	}
 
 	err = d.initAndLoadServerCert()
 	if err != nil {
@@ -399,6 +411,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Setup API routes
+	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, nil)
+	if err != nil {
+		return err
+	}
+
+	d.membershipSvc = membershipSvc
+
 	serveMux, inventorySyncers, err := d.setupAPIRoutes(
 		ctx,
 		updateSvc,
@@ -464,19 +483,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	db, err := d.initDB(ctx)
+	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "")
 	if err != nil {
 		return err
 	}
 
-	// Apply all patches that need to be run before daemon security infrastructure
-	// like certificates, authenticators and authorizers are initialized.
-	err = patches.Apply(ctx, db, d.varRoot, patches.PreSecurityInfrastructure)
-	if err != nil {
-		return err
-	}
-
-	dbWithTransaction.Register(db)
+	dbWithTransaction.Register(globalDBTX)
 
 	// Load the security configuration, once the database is available.
 	err = d.securityConfigReload(ctx, config.GetSecurity())
@@ -503,6 +515,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
 	}
 
+	clusterTaskStop := clusterHeartbeatTask(ctx, membershipSvc)
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return clusterTaskStop(deadlineFrom(ctx, time.Second*3))
+	})
+
+	// Stop the membership after the heartbeats, which need the database.
+	d.shutdownFuncs = append(d.shutdownFuncs, membershipSvc.Stop)
+
 	// Start cluster lifecycle events monitor.
 	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
 	if err != nil {
@@ -527,21 +547,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
-	db, err := dbdriver.Open(d.env.VarDir())
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open sqlite database: %w", err)
-	}
-
-	_, err = dbschema.EnsureLocal(ctx, db.DB, d.env.VarDir(), dbschema.Updates(), dbschema.FreshSchema())
-	if err != nil {
-		return nil, err
-	}
-
-	dbWithTransaction, ok := internalTx.Enable(db).(internalTx.Preparer)
+func prepare(db clusteringSvc.GlobalRaftRepo) (transaction.DBTX, error) {
+	internalTx.Register(db)
+	dbWithTransaction, ok := db.DBTX().(transaction.Preparer)
 	if !ok {
-		return nil, fmt.Errorf("Unexpected transaction container %T", db)
+		return nil, fmt.Errorf("Unexpected transaction container %T", db.DBTX())
 	}
+
+	var err error
 
 	imageEntities.PreparedStmts, err = imageEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
@@ -627,6 +640,87 @@ func (d *Daemon) loadClientCertificate(ctx context.Context) {
 
 	d.clientCertificate = string(clientCert)
 	d.clientKey = string(clientKey)
+}
+
+func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []task.TaskFunc) (clusteringSvc.MembershipService, bool, error) {
+	// go-cowsql opens the raft database by path.
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"))
+	isClustered, err := cowsqlmembership.Enabled(localRepo)
+	if err != nil {
+		return nil, false, err
+	}
+
+	localCert, err := clusteringSvc.FindOrGenCertInfo(d.varRoot, config.ServerCertificateFilename, config.ServerKeyFilename)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// A standalone member uses the server certificate as the cluster certificate.
+	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.varRoot, d.listeners, localRepo, localCert, localCert, tasks)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return svc, isClustered, nil
+}
+
+func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string) (dbdriver.DBTX, error) {
+	globalRepo, err := openCowsqlGlobalDB(ctx, isClustered, membership, clusterAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	d.globalRepo = globalRepo
+
+	dbtx, err := prepare(globalRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.InfoContext(ctx, "Cluster database startup completed")
+
+	err = membership.Enable(ctx, clusterAddress, globalRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply all patches that need to be run before daemon security infrastructure
+	// like certificates, authenticators and authorizers are initialized.
+	err = patches.Apply(ctx, dbtx, d.varRoot, patches.PreSecurityInfrastructure)
+	if err != nil {
+		return nil, err
+	}
+
+	return dbtx, nil
+}
+
+// openCowsqlGlobalDB opens the global db with cowsql backend.
+func openCowsqlGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string) (clusteringSvc.GlobalRaftRepo, error) {
+	var globalRepo clusteringSvc.GlobalRaftRepo
+	for {
+		globalDB, err := clusteringSvc.OpenGlobalDB(ctx, membership, isClustered, clusterAddress)
+		if err != nil && !errors.Is(err, cowsql.ErrSomeNodesAreBehind) {
+			return nil, err
+		}
+
+		globalRepo = clusterRepo.NewGlobalRaftRepo(globalDB)
+		if err != nil {
+			membership.SetGlobalDB(globalRepo)
+
+			clusterTaskStop := clusterHeartbeatTask(ctx, membership)
+			membership.Gateway().WaitUpgradeNotification()
+			_ = clusterTaskStop(time.Second)
+
+			membership.SetGlobalDB(nil)
+			_ = globalDB.Close()
+
+			continue
+		}
+
+		break
+	}
+
+	return globalRepo, nil
 }
 
 func (d *Daemon) initAndLoadServerCert() error {
@@ -1297,6 +1391,26 @@ func (d *Daemon) setupAPIRoutes(
 	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter, inventoryInventoryAggregateSvc)
 
 	return serveMux, inventorySyncers, nil
+}
+
+func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.MembershipService) func(time.Duration) error {
+	clusterTask := func(ctx context.Context) {
+		if membershipSvc.Gateway().HeartbeatCancelFunc() == nil {
+			ch := make(chan struct{})
+			go func() {
+				membershipSvc.Gateway().Heartbeat(ctx, cowsqlheartbeat.HeartbeatNormal)
+				close(ch)
+			}()
+			select {
+			case <-ch:
+			case <-ctx.Done():
+			}
+		}
+	}
+
+	clusterTaskStop, _ := task.Start(ctx, clusterTask, task.Every(membershipSvc.Gateway().HeartbeatInterval()))
+
+	return clusterTaskStop
 }
 
 func (d *Daemon) setupBackgroundTasks(
