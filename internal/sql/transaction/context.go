@@ -45,3 +45,18 @@ type afterCommit struct {
 	funcs []func(ctx context.Context) error
 	lock  sync.Mutex
 }
+
+// DoAndReturn runs f like Do and returns the value returned by f.
+func DoAndReturn[T any](ctx context.Context, f func(ctx context.Context) (T, error)) (T, error) {
+	var value T
+
+	err := Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		value, err = f(ctx)
+
+		return err
+	})
+
+	return value, err
+}

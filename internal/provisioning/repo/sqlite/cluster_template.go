@@ -24,32 +24,42 @@ func NewClusterTemplate(db sqlite.DBTX) *clusterTemplate {
 }
 
 func (c clusterTemplate) Create(ctx context.Context, in provisioning.ClusterTemplate) (int64, error) {
-	return entities.CreateClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), in)
+	})
 }
 
 func (c clusterTemplate) GetAll(ctx context.Context) (provisioning.ClusterTemplates, error) {
-	return entities.GetClusterTemplates(ctx, transaction.GetDBTX(ctx, c.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.ClusterTemplates, error) {
+		return entities.GetClusterTemplates(ctx, transaction.GetDBTX(ctx, c.db))
+	})
 }
 
 func (c clusterTemplate) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetClusterTemplateNames(ctx, transaction.GetDBTX(ctx, c.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetClusterTemplateNames(ctx, transaction.GetDBTX(ctx, c.db))
+	})
 }
 
 func (c clusterTemplate) GetByName(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {
-	return entities.GetClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.ClusterTemplate, error) {
+		return entities.GetClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
+	})
 }
 
 func (c clusterTemplate) ExistsByName(ctx context.Context, name string) (bool, error) {
-	_, err := entities.GetClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
-	if errors.Is(err, domain.ErrNotFound) {
-		return false, nil
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (bool, error) {
+		_, err := entities.GetClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
+		if errors.Is(err, domain.ErrNotFound) {
+			return false, nil
+		}
 
-	if err != nil {
-		return false, err
-	}
+		if err != nil {
+			return false, err
+		}
 
-	return true, nil
+		return true, nil
+	})
 }
 
 func (c clusterTemplate) Update(ctx context.Context, in provisioning.ClusterTemplate) error {
@@ -59,9 +69,13 @@ func (c clusterTemplate) Update(ctx context.Context, in provisioning.ClusterTemp
 }
 
 func (c clusterTemplate) Rename(ctx context.Context, oldName string, newName string) error {
-	return entities.RenameClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), oldName, newName)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.RenameClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), oldName, newName)
+	})
 }
 
 func (c clusterTemplate) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteClusterTemplate(ctx, transaction.GetDBTX(ctx, c.db), name)
+	})
 }

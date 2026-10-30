@@ -196,7 +196,9 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		}
 	}
 
-	id, err := entities.CreateClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), in)
+	id, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), in)
+	})
 	if err != nil {
 		return 0, fmt.Errorf("Failed to create cluster artifact entry: %w", err)
 	}
@@ -281,49 +283,55 @@ func (c clusterArtifact) openFunc(clusterName string, artifactName string, filen
 }
 
 func (c clusterArtifact) GetClusterArtifactAll(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
-	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
-		Cluster: &clusterName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range artifacts {
-		for j := range artifacts[i].Files {
-			artifacts[i].Files[j].Open = c.openFunc(artifacts[i].Cluster, artifacts[i].Name, artifacts[i].Files[j].Name)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.ClusterArtifacts, error) {
+		artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
+			Cluster: &clusterName,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	return artifacts, nil
+		for i := range artifacts {
+			for j := range artifacts[i].Files {
+				artifacts[i].Files[j].Open = c.openFunc(artifacts[i].Cluster, artifacts[i].Name, artifacts[i].Files[j].Name)
+			}
+		}
+
+		return artifacts, nil
+	})
 }
 
 func (c clusterArtifact) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
-	artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
-		Cluster: &clusterName,
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		artifacts, err := entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db), entities.ClusterArtifactFilter{
+			Cluster: &clusterName,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		names := make([]string, 0, len(artifacts))
+		for _, artifact := range artifacts {
+			names = append(names, artifact.Name)
+		}
+
+		return names, nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	names := make([]string, 0, len(artifacts))
-	for _, artifact := range artifacts {
-		names = append(names, artifact.Name)
-	}
-
-	return names, nil
 }
 
 func (c clusterArtifact) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
-	artifact, err := entities.GetClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), clusterName, artifactName)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.ClusterArtifact, error) {
+		artifact, err := entities.GetClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), clusterName, artifactName)
+		if err != nil {
+			return nil, err
+		}
 
-	for i := range artifact.Files {
-		artifact.Files[i].Open = c.openFunc(artifact.Cluster, artifact.Name, artifact.Files[i].Name)
-	}
+		for i := range artifact.Files {
+			artifact.Files[i].Open = c.openFunc(artifact.Cluster, artifact.Name, artifact.Files[i].Name)
+		}
 
-	return artifact, nil
+		return artifact, nil
+	})
 }
 
 func (c clusterArtifact) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {

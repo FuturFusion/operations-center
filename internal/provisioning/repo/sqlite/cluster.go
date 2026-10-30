@@ -26,7 +26,9 @@ func NewCluster(db sqlite.DBTX) *cluster {
 }
 
 func (c cluster) Create(ctx context.Context, in provisioning.Cluster) (int64, error) {
-	return entities.CreateCluster(ctx, transaction.GetDBTX(ctx, c.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateCluster(ctx, transaction.GetDBTX(ctx, c.db), in)
+	})
 }
 
 func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
@@ -38,67 +40,75 @@ func (c cluster) GetAllWithFilter(ctx context.Context, filter provisioning.Clust
 }
 
 func (c cluster) getAllWithFilter(ctx context.Context, filter *provisioning.ClusterFilter) (provisioning.Clusters, error) {
-	var clusters provisioning.Clusters
-	var err error
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.Clusters, error) {
+		var clusters provisioning.Clusters
+		var err error
 
-	if filter == nil {
-		clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
-	} else {
-		clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db), *filter)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var errs []error
-	for i := range clusters {
-		if clusters[i].Certificate == nil {
-			continue
+		if filter == nil {
+			clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
+		} else {
+			clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db), *filter)
 		}
 
-		clusters[i].Fingerprint, err = incustls.CertFingerprintStr(*clusters[i].Certificate)
 		if err != nil {
-			errs = append(errs, err)
+			return nil, err
 		}
-	}
 
-	return clusters, errors.Join(errs...)
+		var errs []error
+		for i := range clusters {
+			if clusters[i].Certificate == nil {
+				continue
+			}
+
+			clusters[i].Fingerprint, err = incustls.CertFingerprintStr(*clusters[i].Certificate)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		return clusters, errors.Join(errs...)
+	})
 }
 
 func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetClusterNames(ctx, transaction.GetDBTX(ctx, c.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetClusterNames(ctx, transaction.GetDBTX(ctx, c.db))
+	})
 }
 
 func (c cluster) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
-	cluster, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.Cluster, error) {
+		cluster, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+		if err != nil {
+			return nil, err
+		}
 
-	if cluster.Certificate == nil {
+		if cluster.Certificate == nil {
+			return cluster, nil
+		}
+
+		cluster.Fingerprint, err = incustls.CertFingerprintStr(*cluster.Certificate)
+		if err != nil {
+			return nil, err
+		}
+
 		return cluster, nil
-	}
-
-	cluster.Fingerprint, err = incustls.CertFingerprintStr(*cluster.Certificate)
-	if err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
+	})
 }
 
 func (c cluster) ExistsByName(ctx context.Context, name string) (bool, error) {
-	_, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
-	if errors.Is(err, domain.ErrNotFound) {
-		return false, nil
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (bool, error) {
+		_, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+		if errors.Is(err, domain.ErrNotFound) {
+			return false, nil
+		}
 
-	if err != nil {
-		return false, err
-	}
+		if err != nil {
+			return false, err
+		}
 
-	return true, nil
+		return true, nil
+	})
 }
 
 func (c cluster) Update(ctx context.Context, in provisioning.Cluster) error {
@@ -108,9 +118,13 @@ func (c cluster) Update(ctx context.Context, in provisioning.Cluster) error {
 }
 
 func (c cluster) Rename(ctx context.Context, oldName string, newName string) error {
-	return entities.RenameCluster(ctx, transaction.GetDBTX(ctx, c.db), oldName, newName)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.RenameCluster(ctx, transaction.GetDBTX(ctx, c.db), oldName, newName)
+	})
 }
 
 func (c cluster) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+	})
 }
