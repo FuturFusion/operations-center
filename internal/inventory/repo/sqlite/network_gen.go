@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -33,10 +32,10 @@ func (r network) Create(ctx context.Context, in inventory.Network) (inventory.Ne
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Network, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
 	INSERT INTO networks (uuid, cluster_id, project_name, name, object, last_updated)
-	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), ?3, ?4, ?5, ?6)
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Network)
@@ -45,12 +44,12 @@ func (r network) Create(ctx context.Context, in inventory.Network) (inventory.Ne
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.Network{}, sqlite.MapErr(err)
@@ -77,18 +76,18 @@ func (r network) GetAllWithFilter(ctx context.Context, filter inventory.NetworkF
 		var args []any
 
 		if filter.Cluster != nil {
-			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-			args = append(args, sql.Named("cluster_name", filter.Cluster))
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
 		}
 
 		if filter.ProjectName != nil {
-			whereClause = append(whereClause, ` AND networks.project_name = :project`)
-			args = append(args, sql.Named("project", filter.ProjectName))
+			whereClause = append(whereClause, ` AND networks.project_name = ?`)
+			args = append(args, filter.ProjectName)
 		}
 
 		if filter.Name != nil {
-			whereClause = append(whereClause, ` AND networks.name = :name`)
-			args = append(args, sql.Named("name", filter.Name))
+			whereClause = append(whereClause, ` AND networks.name = ?`)
+			args = append(args, filter.Name)
 		}
 
 		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -132,18 +131,18 @@ ORDER BY networks.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND networks.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND networks.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND networks.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND networks.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
@@ -187,10 +186,10 @@ func (r network) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Network
 	FROM
 	  networks
 	  INNER JOIN clusters ON networks.cluster_id = clusters.id
-	WHERE networks.uuid=:uuid;
+	WHERE networks.uuid=?1;
 	`
 
-		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
 		if row.Err() != nil {
 			return inventory.Network{}, sqlite.MapErr(row.Err())
 		}
@@ -201,9 +200,9 @@ func (r network) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Network
 
 func (r network) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		const sqlStmt = `DELETE FROM networks WHERE uuid=:uuid;`
+		const sqlStmt = `DELETE FROM networks WHERE uuid=?1;`
 
-		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
 		if err != nil {
 			return sqlite.MapErr(err)
 		}
@@ -253,10 +252,10 @@ func (r network) UpdateByUUID(ctx context.Context, in inventory.Network) (invent
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Network, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	UPDATE networks SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-	WHERE uuid=:uuid
+	UPDATE networks SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), project_name=?3, name=?4, object=?5, last_updated=?6
+	WHERE uuid=?1
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Network)
@@ -265,12 +264,12 @@ func (r network) UpdateByUUID(ctx context.Context, in inventory.Network) (invent
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.Network{}, sqlite.MapErr(err)

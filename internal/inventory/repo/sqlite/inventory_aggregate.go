@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -81,9 +80,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 
 		if filter.Kinds != nil {
 			kinds := make([]string, 0, len(filter.Kinds))
-			for i, kind := range filter.Kinds {
-				kinds = append(kinds, fmt.Sprintf(":kind_%d", i))
-				args = append(args, sql.Named(fmt.Sprintf("kind_%d", i), kind))
+			for _, kind := range filter.Kinds {
+				kinds = append(kinds, "?")
+				args = append(args, kind)
 			}
 
 			whereClause = append(whereClause, fmt.Sprintf(` AND kind IN (%s)`, strings.Join(kinds, ", ")))
@@ -91,9 +90,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 
 		if len(filter.Clusters) > 0 {
 			clusters := make([]string, 0, len(filter.Clusters))
-			for i, cluster := range filter.Clusters {
-				clusters = append(clusters, fmt.Sprintf(`:cluster_name_%d`, i))
-				args = append(args, sql.Named(fmt.Sprintf("cluster_name_%d", i), cluster))
+			for _, cluster := range filter.Clusters {
+				clusters = append(clusters, "?")
+				args = append(args, cluster)
 			}
 
 			whereClause = append(whereClause, fmt.Sprintf(` AND cluster_name IN (%s)`, strings.Join(clusters, ", ")))
@@ -101,9 +100,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 
 		if len(filter.Servers) > 0 {
 			servers := make([]string, 0, len(filter.Servers))
-			for i, server := range filter.Servers {
-				servers = append(servers, fmt.Sprintf(`:server_name_%d`, i))
-				args = append(args, sql.Named(fmt.Sprintf("server_name_%d", i), server))
+			for _, server := range filter.Servers {
+				servers = append(servers, "?")
+				args = append(args, server)
 			}
 
 			serverIsNil := ``
@@ -116,9 +115,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 
 		if len(filter.Projects) > 0 {
 			projects := make([]string, 0, len(filter.Projects))
-			for i, project := range filter.Projects {
-				projects = append(projects, fmt.Sprintf(`:project_name_%d`, i))
-				args = append(args, sql.Named(fmt.Sprintf("project_name_%d", i), project))
+			for _, project := range filter.Projects {
+				projects = append(projects, "?")
+				args = append(args, project)
 			}
 
 			projectIsNil := ``
@@ -131,9 +130,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 
 		if len(filter.Parents) > 0 {
 			parents := make([]string, 0, len(filter.Parents))
-			for i, parent := range filter.Parents {
-				parents = append(parents, fmt.Sprintf(`:parent_name_%d`, i))
-				args = append(args, sql.Named(fmt.Sprintf("parent_name_%d", i), parent))
+			for _, parent := range filter.Parents {
+				parents = append(parents, "?")
+				args = append(args, parent)
 			}
 
 			parentIsNil := ``
