@@ -293,7 +293,7 @@ linters:
       - linters:
           - forbidigo
         text: "Use os.Root for file system access"
-        path: '(_test\.go$|^e2e_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/sql/cowsql/cowsqltest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
+        path: '(_test\.go$|^e2e_tests/|^cluster_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/sql/cowsql/cowsqltest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
       # The database directories are opened by path by SQLite and cowsql, so they are copied by path as well.
       - linters:
           - forbidigo
