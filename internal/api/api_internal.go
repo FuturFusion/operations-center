@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
+	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/dump"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -45,13 +46,13 @@ func (i *internalHandler) sqlGet(r *http.Request) response.Response {
 
 		switch dumpOption {
 		case dump.OptionDefault:
-			dumpResult, err = dumpSchema(ctx, i.db, false)
+			dumpResult, err = dbschema.DumpSchema(ctx, i.db, false)
 
 		case dump.OptionSchema:
-			dumpResult, err = dumpSchema(ctx, i.db, true)
+			dumpResult, err = dbschema.DumpSchema(ctx, i.db, true)
 
 		case dump.OptionTables:
-			dumpResult, err = dumpTables(ctx, i.db)
+			dumpResult, err = dbschema.DumpTables(ctx, i.db)
 
 		default:
 			return domain.NewValidationErrf("Invalid value %q for form parameter %q", dumpFormValue, "dump")

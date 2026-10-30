@@ -395,7 +395,7 @@ func newPollTestServerRepo(t *testing.T) provisioning.ServerRepo {
 		require.NoError(t, db.Close())
 	})
 
-	_, err = dbschema.Ensure(t.Context(), db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)

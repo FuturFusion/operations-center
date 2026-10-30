@@ -42,7 +42,7 @@ func TestImageSourceDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)

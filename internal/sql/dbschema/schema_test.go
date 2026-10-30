@@ -1,8 +1,9 @@
 package dbschema_test
 
 import (
-	"context"
 	"database/sql"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,13 +19,13 @@ func TestSchemaEnsure(t *testing.T) {
 		name    string
 		prepare func(*sql.DB) error
 
-		wantSchemaVersion int
+		wantInitialVersion int
 	}{
 		{
 			name:    "ensure from fresh",
 			prepare: func(_ *sql.DB) error { return nil },
 
-			wantSchemaVersion: 0,
+			wantInitialVersion: 0,
 		},
 		{
 			name: "update v1 to latest",
@@ -32,7 +33,7 @@ func TestSchemaEnsure(t *testing.T) {
 				return dbschema.SetupVersion(db, 1)
 			},
 
-			wantSchemaVersion: 1,
+			wantInitialVersion: 1,
 		},
 		{
 			name: "update latest to latest",
@@ -40,7 +41,7 @@ func TestSchemaEnsure(t *testing.T) {
 				return dbschema.SetupVersion(db, dbschema.MaxVersion())
 			},
 
-			wantSchemaVersion: dbschema.MaxVersion(),
+			wantInitialVersion: dbschema.MaxVersion(),
 		},
 	}
 
@@ -48,24 +49,41 @@ func TestSchemaEnsure(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tmpDir := t.TempDir()
+			tmpDir := databaseDir(t)
 			db, err := sqlite.Open(tmpDir)
 			require.NoError(t, err)
 
 			err = tc.prepare(db.DB)
 			require.NoError(t, err)
 
-			schemaVersion, err := dbschema.Ensure(context.Background(), db.DB, tmpDir)
+			require.Equal(t, tc.wantInitialVersion, schemaVersion(t, db.DB))
+
+			ok, version, err := dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
 			require.NoError(t, err)
-			require.Equal(t, tc.wantSchemaVersion, schemaVersion)
+			require.True(t, ok)
+			require.Equal(t, dbschema.MaxVersion(), version)
+			require.Equal(t, dbschema.MaxVersion(), schemaVersion(t, db.DB))
 		})
 	}
+}
+
+// schemaVersion returns the schema version of db, 0 without a schema.
+func schemaVersion(t *testing.T, db *sql.DB) int {
+	t.Helper()
+
+	var version sql.NullInt64
+	err := db.QueryRowContext(t.Context(), `SELECT MAX(version) FROM schema`).Scan(&version)
+	if err != nil {
+		return 0
+	}
+
+	return int(version.Int64)
 }
 
 func TestSchemaEnsure_normalizeServerIdentifiers(t *testing.T) {
 	t.Parallel()
 
-	tmpDir := t.TempDir()
+	tmpDir := databaseDir(t)
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)
 
@@ -80,7 +98,7 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 `)
 	require.NoError(t, err)
 
-	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
 	require.NoError(t, err)
 
 	rows, err := db.Query(`SELECT id, system_uuid, machine_id FROM servers ORDER BY id`)
@@ -114,7 +132,7 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	t.Parallel()
 
-	tmpDir := t.TempDir()
+	tmpDir := databaseDir(t)
 	db, err := sqlite.Open(tmpDir)
 	require.NoError(t, err)
 
@@ -124,9 +142,139 @@ func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.Error(t, err, "the resources view has no uuid column before v43")
 
-	_, err = dbschema.Ensure(context.Background(), db.DB, tmpDir)
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
 	require.NoError(t, err)
 
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.NoError(t, err, "the resources view has the uuid column from v43 onwards")
+}
+
+func TestSchemaEnsure_patchFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := databaseDir(t)
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
+	require.NoError(t, err)
+
+	patchFile := filepath.Join(tmpDir, "patch.global.sql")
+
+	// A failing patch is kept, so it is applied again on the next start.
+	err = os.WriteFile(patchFile, []byte("INSERT INTO channels (name, description) VALUES ('patched', '');\nINSERT INTO missing VALUES (1);\n"), 0o600)
+	require.NoError(t, err)
+
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
+	require.Error(t, err)
+	require.FileExists(t, patchFile)
+
+	// A committed patch is removed.
+	err = os.WriteFile(patchFile, []byte("INSERT INTO channels (name, description) VALUES ('patched', '');\n"), 0o600)
+	require.NoError(t, err)
+
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", tmpDir)
+	require.NoError(t, err)
+	require.NoFileExists(t, patchFile)
+
+	var count int
+	err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM channels WHERE name = 'patched'`).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func TestEnsureGlobal_migrateFromStandalone(t *testing.T) {
+	t.Parallel()
+
+	varDir := t.TempDir()
+
+	standalone, err := sqlite.Open(varDir)
+	require.NoError(t, err)
+
+	// The schema version of Operations Center v0.10.1, before the clustering.
+	err = dbschema.SetupVersion(standalone.DB, 43)
+	require.NoError(t, err)
+
+	_, err = standalone.Exec(`
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files) VALUES
+  ('b32d0079-c48b-4957-b1cb-bef54125c861', 'origin', '1', '2025-03-12 10:57:43+00:00', 'none', '', '');
+`)
+	require.NoError(t, err)
+	require.NoError(t, standalone.Close())
+
+	// The global database of each start is new, in the database directory of the var dir.
+	countUpdates := func(address string) int {
+		dir := filepath.Join(varDir, "database")
+		require.NoError(t, os.RemoveAll(dir))
+		require.NoError(t, os.Mkdir(dir, 0o700))
+
+		db, err := sqlite.Open(dir)
+		require.NoError(t, err)
+
+		_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, address, dir)
+		require.NoError(t, err)
+
+		// The standalone member exists from the start, so the files stored by it reference it.
+		var member string
+		err = db.QueryRowContext(t.Context(), `SELECT name || '@' || address FROM cluster_members WHERE id = 1`).Scan(&member)
+		require.NoError(t, err)
+		require.Equal(t, "none@0.0.0.0", member)
+
+		var violations int
+		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM pragma_foreign_key_check`).Scan(&violations)
+		require.NoError(t, err)
+		require.Zero(t, violations, "the migrated rows reference the standalone member")
+
+		var count int
+		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM updates`).Scan(&count)
+		require.NoError(t, err)
+
+		return count
+	}
+
+	// The standalone database is imported once and kept renamed.
+	require.Equal(t, 1, countUpdates(""))
+	require.NoFileExists(t, filepath.Join(varDir, "local.db"))
+	require.FileExists(t, filepath.Join(varDir, "local.db.migrated"))
+
+	// The global database of a member removed from the cluster starts empty.
+	require.Equal(t, 0, countUpdates("10.0.0.1:8443"))
+}
+
+func TestEnsureGlobal_removedFirstMember(t *testing.T) {
+	t.Parallel()
+
+	dir := databaseDir(t)
+	db, err := sqlite.Open(dir)
+	require.NoError(t, err)
+
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "", dir)
+	require.NoError(t, err)
+
+	// The first member bootstraps the cluster, a second one joins and the first one is removed.
+	_, err = db.ExecContext(t.Context(), `
+UPDATE cluster_members SET name = 'm1', address = '10.0.0.1:8443' WHERE id = 1;
+INSERT INTO cluster_members (name, address, schema, api_extensions, description, architecture)
+  SELECT 'm2', '10.0.0.2:8443', schema, api_extensions, '', architecture FROM cluster_members WHERE id = 1;
+DELETE FROM cluster_members WHERE id = 1;
+`)
+	require.NoError(t, err)
+
+	_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, "10.0.0.2:8443", dir)
+	require.NoError(t, err)
+
+	var names string
+	err = db.QueryRowContext(t.Context(), `SELECT group_concat(name) FROM cluster_members`).Scan(&names)
+	require.NoError(t, err)
+	require.Equal(t, "m2", names)
+}
+
+// databaseDir returns a new database directory inside a var dir without a database of an older release.
+func databaseDir(t *testing.T) string {
+	t.Helper()
+
+	dir := filepath.Join(t.TempDir(), "database")
+	require.NoError(t, os.Mkdir(dir, 0o700))
+
+	return dir
 }

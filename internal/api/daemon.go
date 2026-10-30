@@ -84,6 +84,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/patches"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
@@ -199,7 +200,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Apply all patches that need to be run before daemon security infrastructure
 	// like certificates, authenticators and authorizers are initialized.
-	err = patchesApply(ctx, d, dbWithTransaction, patchPreSecurityInfrastructure)
+	err = patches.Apply(ctx, dbWithTransaction, d.varRoot, patches.PreSecurityInfrastructure)
 	if err != nil {
 		return err
 	}
@@ -470,8 +471,7 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 		return nil, fmt.Errorf("Failed to open sqlite database: %w", err)
 	}
 
-	// TODO: should Ensure take the provided context? If not, document the reason.
-	current, err := dbschema.Ensure(context.TODO(), db.DB, d.env.VarDir())
+	_, err = dbschema.EnsureLocal(ctx, db.DB, d.env.VarDir(), dbschema.Updates(), dbschema.FreshSchema())
 	if err != nil {
 		return nil, err
 	}
@@ -489,16 +489,6 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	provisioningEntities.PreparedStmts, err = provisioningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
-	}
-
-	// If we start from scratch, mark all patches as applied.
-	if current == 0 {
-		for _, patchName := range patchesGetNames() {
-			err := markPatchAsApplied(ctx, db.DB, patchName)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	inventoryEntities.PreparedStmts, err = inventoryEntities.PrepareStmts(dbWithTransaction, false)

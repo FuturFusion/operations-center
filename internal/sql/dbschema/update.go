@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"maps"
+
+	"github.com/lxc/incus/v7/shared/osarch"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -26,6 +29,65 @@ var freshSchema string
 
    Only append to the updates list, never remove entries and never re-order them.
 */
+
+// SchemaVersion is the current version of the cluster database schema.
+var SchemaVersion = len(updates)
+
+func Updates() map[int]update {
+	mapCopy := make(map[int]update, len(updates))
+	maps.Copy(mapCopy, updates)
+
+	return mapCopy
+}
+
+func FreshSchema() string {
+	return freshSchema
+}
+
+func createMembershipTables(ctx context.Context, tx *sql.Tx, version int) error {
+	stmt := `
+CREATE TABLE IF NOT EXISTS cluster_members (
+     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+     name TEXT NOT NULL,
+     description TEXT NOT NULL,
+     address TEXT NOT NULL,
+     schema INTEGER NOT NULL,
+     api_extensions INTEGER NOT NULL,
+     heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
+     state INTEGER NOT NULL DEFAULT 0,
+     failure_domain TEXT NOT NULL DEFAULT "{}",
+     config TEXT NOT NULL DEFAULT "{}",
+     roles TEXT NOT NULL DEFAULT "[]",
+     architecture INTEGER NOT NULL DEFAULT 0 CHECK (architecture > 0),
+     certificate TEXT,
+     UNIQUE (name),
+     UNIQUE (address)
+);
+`
+	_, err := tx.ExecContext(ctx, stmt)
+	if err != nil {
+		return MapDBError(err)
+	}
+
+	// Only an empty database gets the standalone member, so a removed first member stays removed.
+	var members int
+	err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM cluster_members`).Scan(&members)
+	if err != nil {
+		return MapDBError(err)
+	}
+
+	if members > 0 {
+		return nil
+	}
+
+	arch, err := osarch.ArchitectureGetLocalID()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `INSERT INTO cluster_members (id, name, address, schema, api_extensions, description, architecture, failure_domain, config) VALUES (1, 'none', '0.0.0.0', ?, 0, '', ?, '{}', '{}')`, version, arch)
+	return MapDBError(err)
+}
 
 var updates = map[int]update{
 	1:  updateFromV0,
@@ -71,6 +133,12 @@ var updates = map[int]update{
 	41: updateFromV40,
 	42: updateFromV41,
 	43: updateFromV42,
+	44: updateFromV43,
+}
+
+func updateFromV43(ctx context.Context, tx *sql.Tx) error {
+	// v43..v44 add the member table of the database.
+	return createMembershipTables(ctx, tx, 44)
 }
 
 func updateFromV42(ctx context.Context, tx *sql.Tx) error {
@@ -151,6 +219,7 @@ INSERT INTO servers_new
 DROP TABLE servers;
 ALTER TABLE servers_new RENAME TO servers;
 `)
+
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
