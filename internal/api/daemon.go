@@ -150,6 +150,9 @@ type Daemon struct {
 	oidcVerifier  *authnoidc.Verifier
 	authorizer    *authz.Authorizer
 
+	// replaceableAuthorizer is the authorizer, its implementation is replaced on a security config change.
+	replaceableAuthorizer *authz.Replaceable
+
 	// securityRetryCancel stops the background connection retries of the
 	// security infrastructure from the previous configuration.
 	securityRetryCancel context.CancelFunc
@@ -217,7 +220,9 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
 
 	// Until the security configuration is loaded, requests reaching an authorization check are asked to retry.
-	var authorizer authz.Authorizer = startingAuthorizer{}
+	replaceableAuthorizer := authz.NewReplaceable(startingAuthorizer{})
+
+	var authorizer authz.Authorizer = replaceableAuthorizer
 
 	d := &Daemon{
 		env:            env,
@@ -225,8 +230,9 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		restartCh:      make(chan struct{}, 1),
 		listeners:      &listener.ListenerSet{},
 
-		oidcVerifier: &authnoidc.Verifier{},
-		authorizer:   &authorizer,
+		oidcVerifier:          &authnoidc.Verifier{},
+		authorizer:            &authorizer,
+		replaceableAuthorizer: replaceableAuthorizer,
 	}
 
 	// Until the security configuration is loaded, only the unix socket is trusted.
@@ -828,7 +834,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		),
 	)
 
-	*d.authenticator = authn.New(authers)
+	d.authenticator.Replace(authn.New(authers))
 
 	authorizers := []authz.Authorizer{
 		authzmiddleware.NewAuthorizerWithSlog(
@@ -866,10 +872,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		)
 	}
 
-	*d.authorizer = authzmiddleware.NewAuthorizerWithSlog(
+	d.replaceableAuthorizer.Replace(authzmiddleware.NewAuthorizerWithSlog(
 		authzchain.New(authorizers...),
 		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-	)
+	))
 
 	return errors.Join(errs...)
 }

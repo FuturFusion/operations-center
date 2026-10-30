@@ -164,3 +164,33 @@ func TestAuthenticator_Middleware_starting(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthenticator_Replace_concurrent(t *testing.T) {
+	authenticator := authn.New([]authn.Auther{headerAuther{}}, authn.WithStarting())
+	handler := authenticator.Middleware()(func(w http.ResponseWriter, r *http.Request) {})
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		for range 100 {
+			authenticator.Replace(authn.New([]authn.Auther{headerAuther{}}))
+		}
+	}()
+
+	for range 100 {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set("X-Trusted", "1")
+
+		w := httptest.NewRecorder()
+		handler(w, r)
+		require.Equal(t, http.StatusOK, w.Code)
+	}
+
+	<-done
+
+	// After the replacement, the authenticator is no longer starting.
+	w := httptest.NewRecorder()
+	handler(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+}
