@@ -57,6 +57,20 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 
 			wantContains: `INSERT INTO reals VALUES(1.5);`,
 		},
+		{
+			name: "blob with a quote",
+			setup: func(t *testing.T, db dbdriver.DBTX) {
+				t.Helper()
+
+				_, err := db.ExecContext(t.Context(), `CREATE TABLE blobs (value BLOB NOT NULL)`)
+				require.NoError(t, err)
+
+				_, err = db.ExecContext(t.Context(), `INSERT INTO blobs VALUES (?)`, []byte(`{"description":"it's"}`))
+				require.NoError(t, err)
+			},
+
+			wantContains: `INSERT INTO blobs VALUES(X'7b226465736372697074696f6e223a2269742773227d');`,
+		},
 	}
 
 	for _, tc := range tests {

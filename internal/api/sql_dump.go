@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -173,7 +174,8 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 				values[j] = v
 
 			case []byte:
-				values[j] = fmt.Sprintf("'%s'", string(v))
+				// Like sqlite3's dump, blobs are written as hex literals, which keep them blobs and need no escaping.
+				values[j] = "X'" + hex.EncodeToString(v) + "'"
 
 			case time.Time:
 				// Try and match the sqlite3 .dump output format.
