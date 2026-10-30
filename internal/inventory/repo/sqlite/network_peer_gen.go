@@ -37,7 +37,6 @@ func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inve
 	)
 	INSERT INTO network_peers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkPeer)
@@ -45,7 +44,7 @@ func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inve
 			return inventory.NetworkPeer{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -54,11 +53,12 @@ func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inve
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkPeer{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkPeer{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkPeer(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -268,7 +268,6 @@ func (r networkPeer) UpdateByUUID(ctx context.Context, in inventory.NetworkPeer)
 	)
 	UPDATE network_peers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkPeer)
@@ -276,7 +275,7 @@ func (r networkPeer) UpdateByUUID(ctx context.Context, in inventory.NetworkPeer)
 			return inventory.NetworkPeer{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -285,11 +284,12 @@ func (r networkPeer) UpdateByUUID(ctx context.Context, in inventory.NetworkPeer)
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkPeer{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkPeer{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkPeer(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
