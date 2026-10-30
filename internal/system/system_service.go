@@ -276,43 +276,80 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 }
 
 func (s *systemService) GetNetworkConfig(_ context.Context) system.Network {
-	return config.GetNetwork()
+	return system.Network{
+		NetworkLocal:  config.GetLocalNetwork(),
+		NetworkGlobal: config.GetNetwork(),
+	}
 }
 
 func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig system.NetworkPut) error {
 	// Make sure the new config is valid.
-	newConfig, err := config.NetworkSetDefaults(newConfig)
+	newLocalCfg, err := config.NetworkSetDefaults(newConfig.NetworkLocalPut)
 	if err != nil {
 		return err
 	}
 
-	err = config.ValidateNetworkConfig(system.Network{
-		NetworkPut: newConfig,
-	})
+	localCfg := system.NetworkLocal{NetworkLocalPut: newLocalCfg}
+	err = config.ValidateNetworkConfig(localCfg)
 	if err != nil {
 		return err
 	}
+
+	sharedCfg := system.NetworkGlobal{NetworkGlobalPut: newConfig.NetworkGlobalPut}
+	err = config.ValidateSharedNetworkConfig(localCfg, sharedCfg)
+	if err != nil {
+		return err
+	}
+
+	// The whole change is reverted if a part of it fails.
+	reverter := revert.New()
+	defer reverter.Fail()
 
 	if newConfig.OperationsCenterAddress != config.GetNetwork().OperationsCenterAddress {
-		err = s.updateProviderConfigAll(ctx, map[string]string{"server_url": newConfig.OperationsCenterAddress})
+		revertProviderConfig, err := s.updateProviderConfigAll(ctx, map[string]string{"server_url": newConfig.OperationsCenterAddress})
 		if err != nil {
 			return err
 		}
+
+		reverter.Add(revertProviderConfig)
 	}
 
-	err = config.UpdateNetwork(ctx, newConfig)
+	oldLocalCfg := config.GetLocalNetwork()
+	err = config.UpdateLocalNetwork(ctx, newLocalCfg)
 	if err != nil {
-		return fmt.Errorf("Failed to update network configuration: %w", err)
+		return fmt.Errorf("Failed to update local network configuration: %w", err)
 	}
+
+	reverter.Add(func() {
+		err := config.UpdateLocalNetwork(context.WithoutCancel(ctx), oldLocalCfg.NetworkLocalPut)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to revert the local network configuration", logger.Err(err))
+		}
+	})
+
+	err = config.UpdateNetwork(ctx, newConfig.NetworkGlobalPut)
+	if err != nil {
+		return fmt.Errorf("Failed to update shared network configuration: %w", err)
+	}
+
+	reverter.Success()
 
 	return nil
 }
 
-func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[string]string) (deferErr error) {
+// updateProviderConfigAll merges cfg into the provider config of all servers and returns a function restoring their previous provider config.
+func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[string]string) (_ func(), deferErr error) {
 	servers, err := s.serverSvc.GetAll(ctx)
 	if err != nil {
-		return fmt.Errorf("Update provider config, failed to get all servers: %w", err)
+		return nil, fmt.Errorf("Update provider config, failed to get all servers: %w", err)
 	}
+
+	var revertErrs []error
+	defer func() {
+		if deferErr != nil {
+			deferErr = errors.Join(append([]error{deferErr}, revertErrs...)...)
+		}
+	}()
 
 	reverter := revert.New()
 	defer reverter.Fail()
@@ -330,7 +367,7 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 
 		oldProviderConfig, err := s.serverSvc.GetSystemProvider(ctx, server.Name)
 		if err != nil {
-			return fmt.Errorf("Failed to get system provider for %q: %w", server.Name, err)
+			return nil, fmt.Errorf("Failed to get system provider for %q: %w", server.Name, err)
 		}
 
 		providerConfig := oldProviderConfig
@@ -343,20 +380,27 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 
 		err = s.serverSvc.UpdateSystemProvider(ctx, server.Name, providerConfig)
 		if err != nil {
-			return fmt.Errorf("Failed to update provider config of %q: %w", server.Name, err)
+			return nil, fmt.Errorf("Failed to update provider config of %q: %w", server.Name, err)
 		}
 
 		reverter.Add(func() {
-			err := s.serverSvc.UpdateSystemProvider(ctx, server.Name, oldProviderConfig)
+			err := s.serverSvc.UpdateSystemProvider(context.WithoutCancel(ctx), server.Name, oldProviderConfig)
 			if err != nil {
-				deferErr = errors.Join(deferErr, fmt.Errorf("Failed to revert provider config of %q: %w", server.Name, err))
+				revertErrs = append(revertErrs, fmt.Errorf("Failed to revert provider config of %q: %w", server.Name, err))
 			}
 		})
 	}
 
+	revertAll := reverter.Clone().Fail
 	reverter.Success()
 
-	return nil
+	return func() {
+		revertAll()
+
+		for _, err := range revertErrs {
+			slog.ErrorContext(ctx, "Failed to revert the provider config of a server", logger.Err(err))
+		}
+	}, nil
 }
 
 func (s *systemService) GetSecurityConfig(_ context.Context) system.Security {
@@ -373,13 +417,28 @@ func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig syst
 }
 
 func (s *systemService) GetSettingsConfig(_ context.Context) system.Settings {
-	return config.GetSettings()
+	return system.Settings{
+		SettingsLocal:  config.GetLocalSettings(),
+		SettingsGlobal: config.GetSettings(),
+	}
 }
 
 func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig system.SettingsPut) error {
-	err := config.UpdateSettings(ctx, newConfig)
+	oldLocalCfg := config.GetLocalSettings()
+	err := config.UpdateLocalSettings(ctx, newConfig.SettingsLocalPut)
 	if err != nil {
-		return fmt.Errorf("Failed to update security configuration: %w", err)
+		return fmt.Errorf("Failed to update local settings configuration: %w", err)
+	}
+
+	err = config.UpdateSettings(ctx, newConfig.SettingsGlobalPut)
+	if err != nil {
+		// The whole change is reverted if the shared part fails.
+		revertErr := config.UpdateLocalSettings(context.WithoutCancel(ctx), oldLocalCfg.SettingsLocalPut)
+		if revertErr != nil {
+			slog.ErrorContext(ctx, "Failed to revert the local settings configuration", logger.Err(revertErr))
+		}
+
+		return fmt.Errorf("Failed to update shared settings configuration: %w", err)
 	}
 
 	return nil

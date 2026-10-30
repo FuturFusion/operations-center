@@ -415,6 +415,17 @@ CREATE TABLE IF NOT EXISTS cluster_members (
   UNIQUE (address)
 );
 
+CREATE TABLE IF NOT EXISTS config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    node_id INTEGER,
+    data TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (node_id) REFERENCES cluster_members(id) ON DELETE CASCADE,
+    UNIQUE (node_id)
+);
+
+-- UNIQUE (node_id) doesn't cover NULL, the shared config row.
+CREATE UNIQUE INDEX IF NOT EXISTS config_shared ON config ((node_id IS NULL)) WHERE node_id IS NULL;
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, images.uuid, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images

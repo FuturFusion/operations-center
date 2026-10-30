@@ -71,9 +71,16 @@ func Test_persist_symlinkOutsideOfVarDir(t *testing.T) {
 		run  func(env enver) error
 	}{
 		{
-			name: "loadConfig",
+			name: "loadLocalConfig",
 			run: func(env enver) error {
-				_, _, err := loadConfig(env)
+				_, _, err := loadLocalConfig(env)
+				return err
+			},
+		},
+		{
+			name: "loadProvisionalShared",
+			run: func(env enver) error {
+				_, err := loadProvisionalShared(env)
 				return err
 			},
 		},
@@ -134,7 +141,7 @@ func Test_saveToDisk_replacesSymlinkOutsideOfVarDir(t *testing.T) {
 	}
 
 	// Run test
-	err = saveToDisk(env, config{})
+	err = saveToDisk(env, localConfig{})
 
 	// Assert
 	require.NoError(t, err)

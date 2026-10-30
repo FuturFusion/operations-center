@@ -11,12 +11,14 @@ import (
 	"time"
 
 	cowsqlcluster "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db/transaction"
 	cowsqlgateway "github.com/cowsql/go-cowsql/cluster/gateway"
 	cowsqloptions "github.com/cowsql/go-cowsql/cluster/options"
 	cowsqltls "github.com/cowsql/go-cowsql/cluster/tls"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/api/listener"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
@@ -30,8 +32,9 @@ type membership struct {
 	stopOnce sync.Once
 	stopErr  error
 
-	// The repository of the global database is set once it is open, while requests already read it.
+	// The repositories of the global database are set once it is open, while requests already read them.
 	globalRepo atomic.Pointer[GlobalRaftRepo]
+	configRepo atomic.Pointer[ConfigRepo]
 
 	// ctx is the lifetime of the service.
 	ctx    context.Context
@@ -88,6 +91,16 @@ func (m *membership) global() GlobalRaftRepo {
 	return *repo
 }
 
+// sharedConfig returns the repository of the shared config, nil until the global database is open.
+func (m *membership) sharedConfig() ConfigRepo {
+	repo := m.configRepo.Load()
+	if repo == nil {
+		return nil
+	}
+
+	return *repo
+}
+
 func (m *membership) Gateway() cowsqlcluster.Gateway {
 	return m.gateway
 }
@@ -119,9 +132,10 @@ func (m *membership) stop(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (m *membership) Enable(ctx context.Context, clusterAddress string, globalRepo GlobalRaftRepo) error {
+func (m *membership) Enable(ctx context.Context, clusterAddress string, configRepo ConfigRepo, globalRepo GlobalRaftRepo) error {
 	m.globalRepo.Store(&globalRepo)
 	m.gateway.SetClusterDB(globalRepo)
+	m.configRepo.Store(&configRepo)
 
 	return m.DetermineNodeID(ctx, clusterAddress)
 }
@@ -216,4 +230,25 @@ func (m *membership) SetGlobalDB(globalDB GlobalRaftRepo) {
 
 func (m *membership) DetermineNodeID(ctx context.Context, address string) error {
 	return m.global().DetermineNodeID(ctx, address)
+}
+
+// PersistSharedConfig stores the section changed by change in the global database.
+// The other sections are kept as stored.
+func (m *membership) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+	var merged config.SharedConfig
+	err := transaction.ForceTx(ctx, m.global(), func(ctx context.Context, _ transaction.TX) error {
+		stored, err := m.sharedConfig().GetSharedConfig(ctx)
+		if err != nil {
+			return err
+		}
+
+		merged = change.Apply(*stored)
+
+		return m.sharedConfig().UpdateSharedConfig(ctx, merged)
+	})
+	if err != nil {
+		return config.SharedConfig{}, err
+	}
+
+	return merged, nil
 }

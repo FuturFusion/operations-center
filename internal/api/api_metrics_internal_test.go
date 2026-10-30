@@ -140,7 +140,7 @@ func Test_metricsGet(t *testing.T) {
 					return false
 				},
 			}, nil)
-			err := config.UpdateSettings(t.Context(), apisystem.SettingsPut{
+			err := config.UpdateLocalSettings(t.Context(), apisystem.SettingsLocalPut{
 				LogLevel:          "WARN",
 				MetricsEnabled:    tc.metricsEnabled,
 				MetricsComponents: tc.metricsComponents,

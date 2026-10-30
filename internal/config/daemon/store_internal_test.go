@@ -55,9 +55,8 @@ func Test_store_update_concurrent(t *testing.T) {
 		defer wg.Done()
 
 		for range rounds {
-			collect(UpdateNetwork(t.Context(), system.NetworkPut{
-				RestServerAddress:       "127.0.0.1:7443",
-				OperationsCenterAddress: "https://localhost:7443",
+			collect(UpdateLocalNetwork(t.Context(), system.NetworkLocalPut{
+				RestServerAddress: "127.0.0.1:7443",
 			}))
 		}
 	}()
@@ -76,6 +75,6 @@ func Test_store_update_concurrent(t *testing.T) {
 
 	require.NoError(t, firstErr)
 
-	require.Equal(t, "127.0.0.1:7443", GetNetwork().RestServerAddress)
+	require.Equal(t, "127.0.0.1:7443", GetLocalNetwork().RestServerAddress)
 	require.Equal(t, []string{"fingerprint"}, GetSecurity().TrustedTLSClientCertFingerprints)
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
+	clusterEntities "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
@@ -492,7 +493,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.errgroup = group
 
 	// If the network configuration changes, we need to reload the API server on TCP.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.NetworkLocal) {
 		err := d.setupTCPListener(ctx, sn)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
@@ -506,7 +507,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// API server on TCP
-	err = d.setupTCPListener(ctx, config.GetNetwork())
+	err = d.setupTCPListener(ctx, config.GetLocalNetwork())
 	if err != nil {
 		return err
 	}
@@ -518,7 +519,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	dbWithTransaction.Register(globalDBTX)
 
-	// Load the security configuration, once the database is available.
+	// Load the shared security configuration from the database.
 	err = d.securityConfigReload(ctx, config.GetSecurity())
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
@@ -571,6 +572,11 @@ func prepare(db clusteringSvc.GlobalRaftRepo) (transaction.DBTX, error) {
 	}
 
 	var err error
+
+	clusterEntities.PreparedStmts, err = clusterEntities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
 
 	imageEntities.PreparedStmts, err = imageEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
@@ -695,7 +701,18 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 
 	slog.InfoContext(ctx, "Cluster database startup completed")
 
-	err = membership.Enable(ctx, clusterAddress, globalRepo)
+	configRepo := clusterRepo.NewConfigRepo(globalRepo)
+	err = membership.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	sharedCfg, err := configRepo.GetSharedConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read shared config: %w", err)
+	}
+
+	err = config.LoadShared(ctx, *sharedCfg, membership.PersistSharedConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -1008,7 +1025,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		imageFlasher.UpdateCertificate(cert)
 	})
 	// Image flasher needs to learn about updates the public Operations Center address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
+	lifecycle.SharedNetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.NetworkGlobal) {
 		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
@@ -1107,7 +1124,7 @@ func (d *Daemon) setupServerService(
 
 	// Server service needs to learn about updates of the public Operations Center
 	// address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.NetworkLocal) {
 		// Update operations center server record with updated network config.
 		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
@@ -2106,7 +2123,7 @@ func (d *Daemon) setupSocketListener(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) error {
+func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLocal) error {
 	errCh := make(chan error)
 
 	d.errgroup.Go(func() error {

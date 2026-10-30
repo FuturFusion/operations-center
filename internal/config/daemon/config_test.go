@@ -13,25 +13,23 @@ import (
 func TestUpdateNetwork(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  system.NetworkPut
+		cfg  system.NetworkLocalPut
 
 		assertErr require.ErrorAssertionFunc
 		want      string
 	}{
 		{
 			name: "empty",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "",
-				OperationsCenterAddress: "",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "",
 			},
 
 			assertErr: require.NoError,
 		},
 		{
 			name: ":",
-			cfg: system.NetworkPut{
-				RestServerAddress:       ":",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: ":",
 			},
 
 			assertErr: require.NoError,
@@ -39,9 +37,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: ":1234",
-			cfg: system.NetworkPut{
-				RestServerAddress:       ":1234",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: ":1234",
 			},
 
 			assertErr: require.NoError,
@@ -49,9 +46,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv4 - 0.0.0.0",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "0.0.0.0",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "0.0.0.0",
 			},
 
 			assertErr: require.NoError,
@@ -59,9 +55,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv4 - 0.0.0.0:",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "0.0.0.0:",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "0.0.0.0:",
 			},
 
 			assertErr: require.NoError,
@@ -69,9 +64,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - ::",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "::",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "::",
 			},
 
 			assertErr: require.NoError,
@@ -79,9 +73,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - [::]",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "[::]",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "[::]",
 			},
 
 			assertErr: require.NoError,
@@ -89,9 +82,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - [::]:",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "[::]:",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "[::]:",
 			},
 
 			assertErr: require.NoError,
@@ -99,9 +91,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - abcd::0",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "abcd::0",
-				OperationsCenterAddress: "https://localhost:7443",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "abcd::0",
 			},
 
 			assertErr: require.NoError,
@@ -110,20 +101,9 @@ func TestUpdateNetwork(t *testing.T) {
 
 		// Errors
 		{
-			name: "error - OperationsCenterAddress not set",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "127.0.0.1:7443",
-				OperationsCenterAddress: "",
-			},
-
-			assertErr: require.Error,
-			want:      "",
-		},
-		{
 			name: "error - :0",
-			cfg: system.NetworkPut{
-				RestServerAddress:       ":0",
-				OperationsCenterAddress: "",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: ":0",
 			},
 
 			assertErr: require.Error,
@@ -131,9 +111,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "error - no ip",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "a.b.c.d",
-				OperationsCenterAddress: "",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "a.b.c.d",
 			},
 
 			assertErr: require.Error,
@@ -141,9 +120,8 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "error - no ip with port",
-			cfg: system.NetworkPut{
-				RestServerAddress:       "a.b.c.d:7443",
-				OperationsCenterAddress: "",
+			cfg: system.NetworkLocalPut{
+				RestServerAddress: "a.b.c.d:7443",
 			},
 
 			assertErr: require.Error,
@@ -159,11 +137,11 @@ func TestUpdateNetwork(t *testing.T) {
 				},
 			}, nil)
 
-			err := config.UpdateNetwork(t.Context(), tc.cfg)
+			err := config.UpdateLocalNetwork(t.Context(), tc.cfg)
 
 			tc.assertErr(t, err)
 
-			require.Equal(t, tc.want, config.GetNetwork().RestServerAddress)
+			require.Equal(t, tc.want, config.GetLocalNetwork().RestServerAddress)
 		})
 	}
 }

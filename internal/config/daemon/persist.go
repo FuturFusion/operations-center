@@ -12,17 +12,21 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
+func normalize(cfg localConfig) (localConfig, error) {
+	var err error
+
+	cfg.Network.NetworkLocalPut, err = NetworkSetDefaults(cfg.Network.NetworkLocalPut)
+	if err != nil {
+		return localConfig{}, fmt.Errorf("Invalid network config: %w", err)
+	}
+
+	return cfg, nil
+}
+
 // normalize fills in the values the daemon derives from what the user provided.
 // It runs before every validation, so validation and persistence always see the
 // same configuration.
-func normalize(cfg config) (config, error) {
-	var err error
-
-	cfg.Network.NetworkPut, err = NetworkSetDefaults(cfg.Network.NetworkPut)
-	if err != nil {
-		return config{}, fmt.Errorf("Invalid network config: %w", err)
-	}
-
+func normalizeShared(cfg SharedConfig) (SharedConfig, error) {
 	// Only apply ACME defaults if the mandatory settings are provided.
 	if cfg.Security.ACME.Domain != "" && cfg.Security.ACME.Email != "" && cfg.Security.ACME.AgreeTOS {
 		if cfg.Security.ACME.Challenge == "" {
@@ -51,15 +55,15 @@ func normalize(cfg config) (config, error) {
 	return cfg, nil
 }
 
-// loadConfig reads the built in defaults and overlays them with the config file,
+// loadLocalConfig reads the built in defaults and overlays them with the config file,
 // if there is one. It returns the raw file contents alongside, so the caller can
 // tell whether persisting the normalized result would change anything.
-func loadConfig(env enver) (config, []byte, error) {
-	cfg := config{}
+func loadLocalConfig(env enver) (localConfig, []byte, error) {
+	cfg := localConfig{}
 
 	err := yaml.Unmarshal(defaultConfig, &cfg)
 	if err != nil {
-		return config{}, nil, fmt.Errorf("Failed to unmarshal built in default config: %w", err)
+		return localConfig{}, nil, fmt.Errorf("Failed to unmarshal built in default config: %w", err)
 	}
 
 	filename := filepath.Join(env.VarDir(), ConfigFilename)
@@ -70,12 +74,12 @@ func loadConfig(env enver) (config, []byte, error) {
 			return cfg, nil, nil
 		}
 
-		return config{}, nil, err
+		return localConfig{}, nil, err
 	}
 
 	err = yaml.Unmarshal(contents, &cfg)
 	if err != nil {
-		return config{}, nil, fmt.Errorf("Failed to unmarshal config %q: %w", filename, err)
+		return localConfig{}, nil, fmt.Errorf("Failed to unmarshal config %q: %w", filename, err)
 	}
 
 	return cfg, contents, nil
@@ -98,7 +102,7 @@ func readConfigFile(env enver) ([]byte, error) {
 	return root.ReadFile(ConfigFilename)
 }
 
-func marshalConfig(cfg config) ([]byte, error) {
+func marshalConfig[T any](cfg T) ([]byte, error) {
 	buf := &bytes.Buffer{}
 
 	enc := yaml.NewEncoder(buf)
@@ -154,7 +158,7 @@ func ensureConfigFileMode(env enver) error {
 // the new contents are written to a temporary file in the same directory, which
 // then replaces the config file, so a failure can never leave a truncated config
 // behind. It has no effect on the in memory configuration.
-func saveToDisk(env enver, cfg config) error {
+func saveToDisk(env enver, cfg localConfig) error {
 	contents, err := marshalConfig(cfg)
 	if err != nil {
 		return err

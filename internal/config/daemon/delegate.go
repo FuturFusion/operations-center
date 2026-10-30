@@ -13,13 +13,13 @@ import (
 // It runs with updateMu held, but no lock guards the committed configuration,
 // so a listener is free to read it. Listeners must not write it, see the note
 // on store.
-func validateDelegated(ctx context.Context, oldCfg, newCfg config) error {
+func validateDelegated(ctx context.Context, oldCfg, newCfg SharedConfig) error {
 	err := lifecycle.UpdatesValidateSignal.TryEmit(ctx, newCfg.Updates)
 	if err != nil {
 		return err
 	}
 
-	err = lifecycle.SettingsValidateSignal.TryEmit(ctx, newCfg.Settings)
+	err = lifecycle.SharedSettingsValidateSignal.TryEmit(ctx, newCfg.Settings)
 	if err != nil {
 		return err
 	}
@@ -34,4 +34,9 @@ func validateDelegated(ctx context.Context, oldCfg, newCfg config) error {
 	}
 
 	return nil
+}
+
+// validateLocalDelegated asks the subsystems owning a local setting to validate it, see validateDelegated.
+func validateLocalDelegated(ctx context.Context, newCfg localConfig) error {
+	return lifecycle.SettingsValidateSignal.TryEmit(ctx, newCfg.Settings)
 }

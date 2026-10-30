@@ -1,0 +1,55 @@
+{
+  "network": {
+    "address": "x-.Network.NetworkGlobalPut.OperationsCenterAddress"
+  },
+  "security": {
+    "oidc": {
+      "issuer": "x-.Security.SecurityPut.OIDC.Issuer",
+      "client_id": "x-.Security.SecurityPut.OIDC.ClientID",
+      "scopes": "x-.Security.SecurityPut.OIDC.Scope",
+      "audience": "x-.Security.SecurityPut.OIDC.Audience",
+      "claim": "x-.Security.SecurityPut.OIDC.Claim"
+    },
+    "openfga": {
+      "api_token": "x-.Security.SecurityPut.OpenFGA.APIToken",
+      "api_url": "x-.Security.SecurityPut.OpenFGA.APIURL",
+      "store_id": "x-.Security.SecurityPut.OpenFGA.StoreID"
+    },
+    "acme": {
+      "agree_tos": true,
+      "ca_url": "x-.Security.SecurityPut.ACME.CAURL",
+      "challenge": "x-.Security.SecurityPut.ACME.Challenge",
+      "domain": "x-.Security.SecurityPut.ACME.Domain",
+      "email": "x-.Security.SecurityPut.ACME.Email",
+      "http_challenge_address": "x-.Security.SecurityPut.ACME.Address",
+      "provider": "x-.Security.SecurityPut.ACME.Provider",
+      "provider_environment": [
+        "x-.Security.SecurityPut.ACME.ProviderEnvironment[]"
+      ],
+      "provider_resolvers": [
+        "x-.Security.SecurityPut.ACME.ProviderResolvers[]"
+      ]
+    },
+    "trusted_tls_client_cert_fingerprints": [
+      "x-.Security.SecurityPut.TrustedTLSClientCertFingerprints[]"
+    ],
+    "trusted_tls_client_certificates": [
+      "x-.Security.SecurityPut.TrustedTLSClientCertificates[]"
+    ],
+    "trusted_https_proxies": [
+      "x-.Security.SecurityPut.TrustedHTTPSProxies[]"
+    ]
+  },
+  "settings": {
+    "server_registration_scriptlet": "x-.Settings.SettingsGlobalPut.ServerRegistrationScriptlet"
+  },
+  "updates": {
+    "source": "x-.Updates.UpdatesPut.Source",
+    "signature_verification_root_ca": "x-.Updates.UpdatesPut.SignatureVerificationRootCA",
+    "filter_expression": "x-.Updates.UpdatesPut.FilterExpression",
+    "file_filter_expression": "x-.Updates.UpdatesPut.FileFilterExpression",
+    "updates_default_channel": "x-.Updates.UpdatesPut.UpdatesDefaultChannel",
+    "server_default_channel": "x-.Updates.UpdatesPut.ServerDefaultChannel",
+    "image_server_authentication_by_query_param": true
+  }
+}

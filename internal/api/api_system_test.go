@@ -57,16 +57,17 @@ func TestSystemCertificate(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err := config.UpdateNetwork(ctx, system.NetworkPut{
-		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
+	err := config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 
-	d := api.NewDaemon(
-		ctx,
-		env,
-	)
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
+		OperationsCenterAddress: "https://127.0.0.1:" + port,
+	})
+	require.NoError(t, err)
+
+	d := api.NewDaemon(ctx, env)
 
 	err = d.Start(ctx)
 	t.Cleanup(func() {
@@ -206,16 +207,17 @@ func TestSystemCleanCachePost(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err := config.UpdateNetwork(ctx, system.NetworkPut{
-		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
+	err := config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 
-	d := api.NewDaemon(
-		ctx,
-		env,
-	)
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
+		OperationsCenterAddress: "https://127.0.0.1:" + port,
+	})
+	require.NoError(t, err)
+
+	d := api.NewDaemon(ctx, env)
 
 	err = d.Start(ctx)
 	t.Cleanup(func() {

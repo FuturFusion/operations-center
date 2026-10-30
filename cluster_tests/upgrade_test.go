@@ -140,6 +140,7 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	}
 
 	_, imageContent := m.request(t, http.MethodGet, apiPath, nil, "")
+	configSum := checksum(t, m, "config.yml")
 	databaseSum := checksum(t, m, "local.db")
 
 	status, body := m.httpsRequest(t, &trusted, http.MethodGet, "/1.0/images/incus", nil, nil)
@@ -171,9 +172,9 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	status, body = m.httpsRequest(t, &trusted, http.MethodGet, "/1.0/images/incus", nil, nil)
 	require.Equal(t, http.StatusOK, status, body)
 
-	// The old database is kept unchanged next to the new one, the config stays in place.
+	// The old database and config are kept unchanged next to the new ones.
 	require.Equal(t, databaseSum, checksum(t, m, "local.db.migrated"))
-	require.True(t, m.hasFile("config.yml"))
+	require.Equal(t, configSum, checksum(t, m, "migrated_config.yml"))
 	require.False(t, m.hasFile("local.db"))
 	require.True(t, m.hasFile("database/global"))
 }

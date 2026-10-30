@@ -47,14 +47,14 @@ func TestComponentDaemonTask(t *testing.T) {
 }
 
 func TestValidateComponentLevels(t *testing.T) {
-	require.NoError(t, validateComponentLevels(t.Context(), apisystem.Settings{
-		SettingsPut: apisystem.SettingsPut{
+	require.NoError(t, validateComponentLevels(t.Context(), apisystem.SettingsLocal{
+		SettingsLocalPut: apisystem.SettingsLocalPut{
 			LogLevels: map[string]string{"daemon.task": "DEBUG"},
 		},
 	}), "a parent of a registered component is accepted")
 
-	err := validateComponentLevels(t.Context(), apisystem.Settings{
-		SettingsPut: apisystem.SettingsPut{
+	err := validateComponentLevels(t.Context(), apisystem.SettingsLocal{
+		SettingsLocalPut: apisystem.SettingsLocalPut{
 			LogLevels: map[string]string{"daemon.tsak": "DEBUG"},
 		},
 	})
@@ -100,8 +100,8 @@ func TestValidateMetricsComponents(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			settings := apisystem.Settings{
-				SettingsPut: apisystem.SettingsPut{
+			settings := apisystem.SettingsLocal{
+				SettingsLocalPut: apisystem.SettingsLocalPut{
 					MetricsComponents: tc.components,
 				},
 			}
@@ -118,13 +118,13 @@ func TestValidateMetricsComponents(t *testing.T) {
 func TestRegisterComponentsValidation(t *testing.T) {
 	tests := []struct {
 		name     string
-		settings apisystem.SettingsPut
+		settings apisystem.SettingsLocalPut
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "known components",
-			settings: apisystem.SettingsPut{
+			settings: apisystem.SettingsLocalPut{
 				LogLevel:          "WARN",
 				LogLevels:         map[string]string{"daemon.task": "DEBUG"},
 				MetricsEnabled:    true,
@@ -135,7 +135,7 @@ func TestRegisterComponentsValidation(t *testing.T) {
 		},
 		{
 			name: "unknown log component",
-			settings: apisystem.SettingsPut{
+			settings: apisystem.SettingsLocalPut{
 				LogLevel:  "WARN",
 				LogLevels: map[string]string{"daemon.tsak": "DEBUG"},
 			},
@@ -144,7 +144,7 @@ func TestRegisterComponentsValidation(t *testing.T) {
 		},
 		{
 			name: "unknown metrics component",
-			settings: apisystem.SettingsPut{
+			settings: apisystem.SettingsLocalPut{
 				LogLevel:          "WARN",
 				MetricsEnabled:    true,
 				MetricsComponents: []string{"runtmie"},
@@ -163,7 +163,7 @@ func TestRegisterComponentsValidation(t *testing.T) {
 			registerComponentsValidation()
 
 			// Run test
-			err := config.UpdateSettings(t.Context(), tc.settings)
+			err := config.UpdateLocalSettings(t.Context(), tc.settings)
 
 			// Assert
 			tc.assertErr(t, err, "the settings update runs the registered component checks")

@@ -1093,9 +1093,13 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 		IsIncusOSFunc: func() bool { return false },
 	}, nil)
 
-	err := config.UpdateNetwork(ctx, system.NetworkPut{
+	err := config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: "[::]:8443",
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: deploymentTestOperationsCenterAddress,
-		RestServerAddress:       "[::]:8443",
 	})
 	require.NoError(t, err)
 

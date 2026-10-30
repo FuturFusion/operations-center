@@ -63,6 +63,17 @@ CREATE TABLE IF NOT EXISTS cluster_members (
      UNIQUE (name),
      UNIQUE (address)
 );
+
+CREATE TABLE IF NOT EXISTS config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    node_id INTEGER,
+    data TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (node_id) REFERENCES cluster_members(id) ON DELETE CASCADE,
+    UNIQUE (node_id)
+);
+
+-- UNIQUE (node_id) doesn't cover NULL, the shared config row.
+CREATE UNIQUE INDEX IF NOT EXISTS config_shared ON config ((node_id IS NULL)) WHERE node_id IS NULL;
 `
 	_, err := tx.ExecContext(ctx, stmt)
 	if err != nil {
@@ -137,7 +148,7 @@ var updates = map[int]update{
 }
 
 func updateFromV43(ctx context.Context, tx *sql.Tx) error {
-	// v43..v44 add the member table of the database.
+	// v43..v44 add the member table of the database and the shared config.
 	return createMembershipTables(ctx, tx, 44)
 }
 
