@@ -2,6 +2,7 @@ package patches
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -15,9 +16,11 @@ type patchRun func(ctx context.Context, name string, varRoot *os.Root) error
 type patch struct {
 	name  string
 	stage patchStage
+	scope patchScope
 	run   patchRun
 }
 
+// apply runs a member patch and records it in the local database of this member.
 func (p *patch) apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) error {
 	slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
 
@@ -34,6 +37,35 @@ func (p *patch) apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) e
 	return nil
 }
 
+// applyOnce runs a cluster patch, unless another cluster member claimed it in the global database first.
+func (p *patch) applyOnce(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) error {
+	result, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO patches (name, applied_at) VALUES (?, strftime("%s"))`, p.name)
+	if err != nil {
+		return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
+	}
+
+	claimed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
+	}
+
+	if claimed == 0 {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
+
+	err = p.run(ctx, p.name, varRoot)
+	if err != nil {
+		// The next start runs the patch again.
+		_, releaseErr := db.ExecContext(ctx, `DELETE FROM patches WHERE name = ?`, p.name)
+
+		return errors.Join(fmt.Errorf("Failed applying patch %q: %w", p.name, err), releaseErr)
+	}
+
+	return nil
+}
+
 // getAppliedPatches returns the names of all patches currently applied on this system.
 func getAppliedPatches(ctx context.Context, db dbdriver.DBTX) ([]string, error) {
 	var response []string
@@ -43,6 +75,8 @@ func getAppliedPatches(ctx context.Context, db dbdriver.DBTX) ([]string, error) 
 		return []string{}, fmt.Errorf("Failed to get applied patches: %w", err)
 	}
 
+	defer func() { _ = rows.Close() }()
+
 	for rows.Next() {
 		var name string
 		err = rows.Scan(&name)
@@ -51,6 +85,11 @@ func getAppliedPatches(ctx context.Context, db dbdriver.DBTX) ([]string, error) 
 		}
 
 		response = append(response, name)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return []string{}, fmt.Errorf("Failed to read applied patches: %w", err)
 	}
 
 	return response, nil
@@ -77,9 +116,14 @@ func GetNames() []string {
 	return names
 }
 
-// Apply applies the patches for the respective stage, which access the var dir through varRoot.
-func Apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root, stage patchStage) error {
+// Apply applies the patches for the respective stage, which access the var dir through varRoot. Cluster patches are recorded in the global database db, member patches in the local database localDB.
+func Apply(ctx context.Context, db dbdriver.DBTX, localDB dbdriver.DBTX, varRoot *os.Root, stage patchStage) error {
 	appliedPatches, err := getAppliedPatches(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	appliedMemberPatches, err := getAppliedPatches(ctx, localDB)
 	if err != nil {
 		return err
 	}
@@ -93,11 +137,24 @@ func Apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root, stage patchS
 			continue
 		}
 
+		if patch.scope == scopeMember {
+			if slices.Contains(appliedMemberPatches, patch.name) {
+				continue
+			}
+
+			err := patch.apply(ctx, localDB, varRoot)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		if slices.Contains(appliedPatches, patch.name) {
 			continue
 		}
 
-		err := patch.apply(ctx, db, varRoot)
+		err := patch.applyOnce(ctx, db, varRoot)
 		if err != nil {
 			return err
 		}
