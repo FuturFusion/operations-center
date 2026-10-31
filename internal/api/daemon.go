@@ -23,7 +23,7 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
-	incusTLS "github.com/lxc/incus/v7/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
@@ -151,7 +151,8 @@ type Daemon struct {
 
 	systemSvc system.SystemService
 
-	serverCertificate tls.Certificate
+	// apiCertificate is the certificate presented to API clients.
+	apiCertificate tls.Certificate
 
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
@@ -572,24 +573,27 @@ func (d *Daemon) initAndLoadServerCert() error {
 	keyFile := filepath.Join(d.varRoot.Name(), config.ServerKeyFilename)
 
 	// Ensure that the certificate exists, or create a new one if it does not.
-	err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+	err := incustls.FindOrGenCert(certFile, keyFile, false, true)
 	if err != nil {
 		return err
 	}
 
-	serverCertificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
+	certificateFilename := config.ServerCertificateFilename
+	keyFilename := config.ServerKeyFilename
+
+	certificatePEM, err := d.varRoot.ReadFile(certificateFilename)
 	if err != nil {
-		return fmt.Errorf("Failed to read server certificate from %q: %w", certFile, err)
+		return fmt.Errorf("Failed to read certificate from %q: %w", certificateFilename, err)
 	}
 
-	serverKeyPEM, err := d.varRoot.ReadFile(config.ServerKeyFilename)
+	keyPEM, err := d.varRoot.ReadFile(keyFilename)
 	if err != nil {
-		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
+		return fmt.Errorf("Failed to read key from %q: %w", keyFilename, err)
 	}
 
-	d.serverCertificate, err = tls.X509KeyPair(serverCertificatePEM, serverKeyPEM)
+	d.apiCertificate, err = tls.X509KeyPair(certificatePEM, keyPEM)
 	if err != nil {
-		return fmt.Errorf("Failed to validate server certificate key pair: %w", err)
+		return fmt.Errorf("Failed to validate certificate key pair: %w", err)
 	}
 
 	return nil
@@ -641,7 +645,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	// Always trust our own client certificate if present.
 	// This required to self connect if Operations Center is self-registered.
-	clientCertFingerprint, err := incusTLS.CertFingerprintStr(d.clientCertificate)
+	clientCertFingerprint, err := incustls.CertFingerprintStr(d.clientCertificate)
 	if err == nil {
 		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
 	}
@@ -830,7 +834,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
-		d.serverCertificate,
+		d.apiCertificate,
 		flasher.WithCacheRoot(seedImageCacheRoot),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
@@ -916,7 +920,7 @@ func (d *Daemon) setupServerService(
 		clusterSvc,
 		channelSvc,
 		updateSvc,
-		d.serverCertificate,
+		d.apiCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
@@ -1924,7 +1928,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) er
 		}
 
 		d.configReloadMu.Lock()
-		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCertificate)
+		d.listener = listener.NewFancyTLSListener(tcpListener, d.apiCertificate)
 		d.configReloadMu.Unlock()
 
 		err = d.listener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
@@ -1936,7 +1940,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) er
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
-			d.serverCertificate = cert
+			d.apiCertificate = cert
 			d.listener.Config(cert)
 		}, "fancyListener")
 
