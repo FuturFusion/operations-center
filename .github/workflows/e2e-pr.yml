@@ -16,4 +16,5 @@ jobs:
     name: E2E
     if: github.event.label.name == 'run-e2e'
     # Load the workflow from main. A PR can not change the authorization check.
-    uses: FuturFusion/operations-center/.github/workflows/e2e.yml@main
+    # DON'T MERGE: Testing sideload of cowsql libs
+    uses: ./.github/workflows/e2e.yml
