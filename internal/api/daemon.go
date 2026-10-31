@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/cowsql/go-cowsql/cluster/db/transaction"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
@@ -86,7 +89,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/patches"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
-	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	internalTx "github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
@@ -97,6 +100,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/internal/warning"
@@ -160,8 +164,53 @@ type Daemon struct {
 	restartCh chan struct{}
 }
 
+// dbtxWrapper is the global database of the services. It is registered once the database is open, while requests already check for it.
+type dbtxWrapper struct {
+	current atomic.Pointer[transaction.DBTX]
+}
+
+func (d *dbtxWrapper) Register(dbtx transaction.DBTX) {
+	d.current.Store(&dbtx)
+}
+
+// get returns the global database, nil until it is registered.
+func (d *dbtxWrapper) get() transaction.DBTX {
+	dbtx := d.current.Load()
+	if dbtx == nil {
+		return nil
+	}
+
+	return *dbtx
+}
+
+func (d *dbtxWrapper) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return d.get().ExecContext(ctx, query, args...)
+}
+
+func (d *dbtxWrapper) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return d.get().PrepareContext(ctx, query)
+}
+
+func (d *dbtxWrapper) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return d.get().QueryContext(ctx, query, args...)
+}
+
+func (d *dbtxWrapper) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return d.get().QueryRowContext(ctx, query, args...)
+}
+
+// startingAuthorizer answers like the routes waiting for the database, until the security configuration is loaded.
+type startingAuthorizer struct{}
+
+func (startingAuthorizer) CheckPermission(context.Context, *authz.RequestDetails, authz.Object, authz.Entitlement) error {
+	return api.StatusErrorf(http.StatusTooEarly, "Daemon is still starting")
+}
+
 func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
+
+	// Until the security configuration is loaded, requests reaching an authorization check are asked to retry.
+	var authorizer authz.Authorizer = startingAuthorizer{}
 
 	d := &Daemon{
 		env:            env,
@@ -169,16 +218,18 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		restartCh:      make(chan struct{}, 1),
 		listeners:      &listener.ListenerSet{},
 
-		authenticator: &authn.Authenticator{},
-		oidcVerifier:  &authnoidc.Verifier{},
-		authorizer: func() *authz.Authorizer {
-			var authorizer authz.Authorizer = authzmiddleware.NewAuthorizerWithSlog(
-				authzchain.New(),
-				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-			)
-			return &authorizer
-		}(),
+		oidcVerifier: &authnoidc.Verifier{},
+		authorizer:   &authorizer,
 	}
+
+	// Until the security configuration is loaded, only the unix socket is trusted.
+	startingAuthenticator := authn.New([]authn.Auther{
+		authnmiddleware.NewAutherWithSlog(
+			authnunixsocket.UnixSocket{},
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnUnixSocket),
+		),
+	}, authn.WithStarting())
+	d.authenticator = &startingAuthenticator
 
 	return d
 }
@@ -195,28 +246,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	d.loadClientCertificate(ctx)
 
-	dbWithTransaction, err := d.initDB(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Apply all patches that need to be run before daemon security infrastructure
-	// like certificates, authenticators and authorizers are initialized.
-	err = patches.Apply(ctx, dbWithTransaction, d.varRoot, patches.PreSecurityInfrastructure)
-	if err != nil {
-		return err
-	}
-
 	err = d.initAndLoadServerCert()
 	if err != nil {
 		return err
-	}
-
-	// Initialize security related infrastructure like authenticators and
-	// authorizers on the daemon.
-	err = d.securityConfigReload(ctx, config.GetSecurity())
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
 	// On update of the OIDC or OpenFGA configuration, verify the configured
@@ -286,6 +318,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// API starts before DB in restricted mode.
+	dbWithTransaction := &dbtxWrapper{}
+
 	// Setup Services
 	incusImageSvc, err := d.setupIncusImageService(dbWithTransaction)
 	if err != nil {
@@ -310,7 +345,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		),
 	)
 
-	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
+	updateSvc, err := d.setupUpdatesService(dbWithTransaction)
 	if err != nil {
 		return err
 	}
@@ -429,6 +464,31 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	db, err := d.initDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Apply all patches that need to be run before daemon security infrastructure
+	// like certificates, authenticators and authorizers are initialized.
+	err = patches.Apply(ctx, db, d.varRoot, patches.PreSecurityInfrastructure)
+	if err != nil {
+		return err
+	}
+
+	dbWithTransaction.Register(db)
+
+	// Load the security configuration, once the database is available.
+	err = d.securityConfigReload(ctx, config.GetSecurity())
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
+	}
+
+	err = updateSvc.Prune(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
 	cancel()
@@ -478,7 +538,7 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 		return nil, err
 	}
 
-	dbWithTransaction, ok := transaction.Enable(db).(transaction.Preparer)
+	dbWithTransaction, ok := internalTx.Enable(db).(internalTx.Preparer)
 	if !ok {
 		return nil, fmt.Errorf("Unexpected transaction container %T", db)
 	}
@@ -663,6 +723,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	}
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
+
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
 			authntls.New(trustedFingerprints),
@@ -670,7 +731,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		),
 	)
 
-	// Create authenticator
 	*d.authenticator = authn.New(authers)
 
 	authorizers := []authz.Authorizer{
@@ -765,7 +825,7 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 	return warningSvc
 }
 
-func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
+func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateService, error) {
 	updatesRoot, err := d.openSubRoot(d.varRoot, "updates")
 	if err != nil {
 		return nil, err
@@ -816,11 +876,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		nil,
 		updateServiceOptions...,
 	)
-
-	err = updateSvcBase.Prune(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
-	}
 
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
@@ -1074,7 +1129,7 @@ func (d *Daemon) setupAPIRoutes(
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
-	db dbdriver.DBTX,
+	db *dbtxWrapper,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
@@ -1113,11 +1168,26 @@ func (d *Daemon) setupAPIRoutes(
 	)
 	registerOSProxy(osRouter, osRouterPrefix, d.authorizer, d.env)
 
+	requireDatabase := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if db.get() == nil {
+				err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Database is still initializing")).Render(w)
+				if err != nil {
+					slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
+				}
+
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
 	// The internal API is not versioned. It can change at any time.
 	internalRouter := router.SubGroup("/internal").AddMiddlewares(
 		d.authenticator.Middleware(),
 	)
-	registerInternalHandler(internalRouter, d.authorizer, db)
+	registerInternalHandler(internalRouter.SubGroup("").AddMiddlewares(requireDatabase), d.authorizer, db)
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
@@ -1167,10 +1237,13 @@ func (d *Daemon) setupAPIRoutes(
 		AllowCredentials: false,
 	}))
 
-	api10router := router.SubGroup("/1.0").AddMiddlewares(
-		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
-	)
-	registerAPI10Handler(api10router)
+	authenticatorMiddleware := d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired))
+
+	api10PreInit := router.SubGroup("/1.0")
+	api10PreInitAuth := api10PreInit.SubGroup("").AddMiddlewares(authenticatorMiddleware)
+	registerAPI10Handler(api10PreInitAuth)
+
+	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase)
 
 	imageRouter := api10router.SubGroup("/images")
 	imageSourceRouter := imageRouter.SubGroup("/sources")
@@ -2023,8 +2096,8 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return err
 	}
 
-	response := api.Response{}
-	err = json.Unmarshal(body, &response)
+	apiResponse := api.Response{}
+	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Failed to fetch %s: %s: %s", resp.Request.URL.String(), resp.Status, string(body))
@@ -2033,8 +2106,8 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return err
 	}
 
-	if response.Type == api.ErrorResponse {
-		return api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	if apiResponse.Type == api.ErrorResponse {
+		return api.StatusErrorf(resp.StatusCode, "%v", apiResponse.Error)
 	}
 
 	return nil
