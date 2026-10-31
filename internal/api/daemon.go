@@ -146,8 +146,8 @@ type Daemon struct {
 	// security infrastructure from the previous configuration.
 	securityRetryCancel context.CancelFunc
 
-	server   *http.Server
-	listener *listener.FancyTLSListener
+	server    *http.Server
+	listeners *listener.ListenerSet
 
 	systemSvc system.SystemService
 
@@ -167,6 +167,7 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		env:            env,
 		configReloadMu: &sync.Mutex{},
 		restartCh:      make(chan struct{}, 1),
+		listeners:      &listener.ListenerSet{},
 
 		authenticator: &authn.Authenticator{},
 		oidcVerifier:  &authnoidc.Verifier{},
@@ -1888,14 +1889,13 @@ func (d *Daemon) setupSocketListener(ctx context.Context) error {
 
 func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) error {
 	errCh := make(chan error)
-	d.errgroup.Go(func() error {
-		d.configReloadMu.Lock()
-		oldListener := d.listener
-		d.configReloadMu.Unlock()
 
-		if oldListener != nil {
-			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldListener.Addr().String()))
-			err := oldListener.Close()
+	d.errgroup.Go(func() error {
+		oldServerListener, _ := d.listeners.Listeners()
+
+		if oldServerListener != nil {
+			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldServerListener.Addr().String()))
+			err := oldServerListener.Close()
 			if err != nil {
 				errCh <- err
 				return err
@@ -1905,35 +1905,37 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) er
 		lifecycle.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
+		listenerCert := d.apiCertificate
+
 		if cfg.RestServerAddress == "" {
+			d.listeners.SetServerListener(nil)
+		} else {
 			d.configReloadMu.Lock()
-			d.listener = nil
+			d.server.Addr = cfg.RestServerAddress
 			d.configReloadMu.Unlock()
 
+			slog.InfoContext(ctx, "Start https listener", slog.Any("addr", cfg.RestServerAddress))
+			tcpListener, err := net.Listen("tcp", cfg.RestServerAddress)
+			if err != nil {
+				errCh <- err
+				return err
+			}
+
+			serverListener := listener.NewFancyTLSListener(tcpListener, listenerCert)
+
+			err = serverListener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
+			}
+
+			d.listeners.SetServerListener(serverListener)
+		}
+
+		if !d.listeners.Active() {
 			// Unblock the channel here, since we do not start a server.
 			errCh <- nil
 
 			return nil
-		}
-
-		d.configReloadMu.Lock()
-		d.server.Addr = cfg.RestServerAddress
-		d.configReloadMu.Unlock()
-
-		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", cfg.RestServerAddress))
-		tcpListener, err := net.Listen("tcp", cfg.RestServerAddress)
-		if err != nil {
-			errCh <- err
-			return err
-		}
-
-		d.configReloadMu.Lock()
-		d.listener = listener.NewFancyTLSListener(tcpListener, d.apiCertificate)
-		d.configReloadMu.Unlock()
-
-		err = d.listener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
-		if err != nil {
-			slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
 		}
 
 		lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -1941,36 +1943,21 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) er
 			defer d.configReloadMu.Unlock()
 
 			d.apiCertificate = cert
-			d.listener.Config(cert)
+			d.listeners.UpdateCertificate(cert)
 		}, "fancyListener")
 
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.AddListener(func(_ context.Context, trustedHTTPSProxies []string) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
-			err = d.listener.TrustedProxy(trustedHTTPSProxies)
-			if err != nil {
-				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies", logger.Err(err))
-			}
+			d.listeners.UpdateTrustedProxies(ctx, trustedHTTPSProxies)
 		}, "fancyListener")
 
 		// Unblock the channel here before we block for the server.
 		errCh <- nil
 
 		if d.server != nil {
-			err = d.server.Serve(d.listener)
-			if errors.Is(err, http.ErrServerClosed) {
-				// Ignore error from graceful shutdown.
-				return nil
-			}
-
-			if errors.Is(err, net.ErrClosed) {
-				// Ignore error of used closed connection, it is likely caused after a
-				// change of the network configuration.
-				return nil
-			}
-
-			return err
+			return d.listeners.Serve(d.server)
 		}
 
 		return nil
