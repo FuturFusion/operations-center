@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,8 +17,6 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/internal/system"
-	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
 )
@@ -70,15 +67,6 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	logCtx := logger.ContextWithComponent(cmd.Context(), componentDaemon)
 
-	err = applyRestore(c.env.VarDir())
-	if err != nil {
-		if !errors.Is(err, system.ErrRestoreRolledBack) {
-			return fmt.Errorf("Failed to prepare data directory %q: %w", c.env.VarDir(), err)
-		}
-
-		slog.ErrorContext(logCtx, "Failed to restore from backup", logger.Err(err))
-	}
-
 	// Ensure we have the run directory.
 	err = os.MkdirAll(c.env.RunDir(), 0o750) //nolint:forbidigo // The run dir holds the unix socket, which is accessed by path.
 	if err != nil {
@@ -91,18 +79,18 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if !cmd.Flag("verbose").Changed && !cmd.Flag("debug").Changed {
-		err = logger.SetLogLevel(logger.ParseLevel(config.GetSettings().LogLevel))
+		err = logger.SetLogLevel(logger.ParseLevel(config.GetLocalSettings().LogLevel))
 		if err != nil {
-			return fmt.Errorf("Failed to set log level to %q from config: %w", config.GetSettings().LogLevel, err)
+			return fmt.Errorf("Failed to set log level to %q from config: %w", config.GetLocalSettings().LogLevel, err)
 		}
 	}
 
-	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetSettings().LogLevels))
+	err = logger.SetComponentLevels(logger.ParseComponentLevels(config.GetLocalSettings().LogLevels))
 	if err != nil {
 		return fmt.Errorf("Failed to set per component log levels from config: %w", err)
 	}
 
-	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
+	metrics.Apply(config.GetLocalSettings().MetricsEnabled, config.GetLocalSettings().MetricsComponents)
 
 	rootCtx, stop := signal.NotifyContext(
 		context.Background(),
@@ -184,16 +172,4 @@ func restartDaemon(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// applyRestore applies or rolls back a staged restore in varDir.
-func applyRestore(varDir string) error {
-	varRoot, err := os.OpenRoot(varDir)
-	if err != nil {
-		return err
-	}
-
-	defer varRoot.Close()
-
-	return systemLocalfs.NewBackup(varRoot).ApplyRestore()
 }

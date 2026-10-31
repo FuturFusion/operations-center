@@ -28,8 +28,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -192,8 +191,7 @@ func setupControlLoopEnv(t *testing.T, ctx context.Context, servers ...provision
 	err = logger.InitLogger(logSink, "", false, true, true)
 	require.NoError(t, err)
 
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -201,11 +199,8 @@ func setupControlLoopEnv(t *testing.T, ctx context.Context, servers ...provision
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
-	require.NoError(t, err)
-
 	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	clusterDB := sqlite.NewCluster(tx)

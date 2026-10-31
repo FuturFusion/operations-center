@@ -41,7 +41,8 @@ type syncResponse struct {
 }
 
 // EmptySyncResponse represents an empty syncResponse.
-var EmptySyncResponse = &syncResponse{success: true, metadata: make(map[string]any)}
+// It is shared by concurrent requests, so its code is set and Render never writes to it.
+var EmptySyncResponse = &syncResponse{success: true, code: http.StatusOK, metadata: make(map[string]any)}
 
 // SyncResponse returns a new syncResponse with the success and metadata fields
 // set to the provided values.

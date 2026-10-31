@@ -31,6 +31,8 @@ Run both with `make lint`.
 * **Adapters and `repo` packages** do the I/O. They implement the ports that the
   services declare.
 * **API** exposes the services over REST.
+* **`internal/cluster` package** wraps the go-cowsql gateway and manages components
+  that depend on cluster roles (e.g. daemon background tasks).
 * **Client and CLI** use the REST API. They use types from `shared/api`.
 
 ## Architecture graphs

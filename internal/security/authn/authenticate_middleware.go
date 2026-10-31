@@ -7,6 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/response"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var componentAuthn = logger.RegisterComponent("security.authn")
@@ -46,6 +47,9 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// The whole request uses one configuration, also if it is replaced meanwhile.
+			current := a.current.Load()
+
 			var username, protocol string
 			var trusted bool
 			var err error
@@ -70,7 +74,7 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			}
 
 			// Authentication
-			for _, auther := range a.authers {
+			for _, auther := range current.authers {
 				trusted, username, protocol, err = auther.Auth(w, r)
 				if err != nil {
 					slog.WarnContext(logCtx, "Authentication failed", logger.Err(err), slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
@@ -86,6 +90,11 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				if trusted {
 					break
 				}
+			}
+
+			if cfg.isAuthenticationRequired(r) && !trusted && current.starting {
+				renderStarting(logCtx, w, r)
+				return
 			}
 
 			if cfg.isAuthenticationRequired(r) && !trusted {
@@ -112,5 +121,15 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			// Call next handler
 			next(w, r)
 		}
+	}
+}
+
+// renderStarting answers a request that can not be authenticated before the security configuration is loaded.
+func renderStarting(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	slog.DebugContext(ctx, "Rejecting request while starting", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+
+	err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Operations Center is still starting")).Render(w)
+	if err != nil {
+		slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
 	}
 }

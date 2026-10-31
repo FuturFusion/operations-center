@@ -936,8 +936,6 @@ func TestAuthentication(t *testing.T) {
 		{method: http.MethodGet, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPut, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodPost, path: "/1.0/system/:clean-cache", wantAdminStatusCode: http.StatusOK},
-		{method: http.MethodPost, path: "/1.0/system/:backup", wantAdminStatusCode: http.StatusNotFound},
-		{method: http.MethodPost, path: "/1.0/system/:restore", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodGet, path: "/internal/sql", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPost, path: "/internal/sql", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodGet, path: "/os/1.0", wantAdminStatusCode: http.StatusBadRequest},
@@ -1011,9 +1009,13 @@ func TestAuthentication(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err = config.UpdateNetwork(ctx, system.NetworkPut{
+	err = config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 	err = config.UpdateSecurity(ctx, system.SecurityPut{
@@ -1032,13 +1034,10 @@ func TestAuthentication(t *testing.T) {
 	require.NoError(t, err)
 
 	// The daemon command applies the metrics settings at startup.
-	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
+	metrics.Apply(config.GetLocalSettings().MetricsEnabled, config.GetLocalSettings().MetricsComponents)
 	t.Cleanup(func() { metrics.Apply(false, nil) })
 
-	d := restapi.NewDaemon(
-		ctx,
-		env,
-	)
+	d := restapi.NewDaemon(ctx, env)
 
 	err = d.Start(ctx)
 	t.Cleanup(func() {

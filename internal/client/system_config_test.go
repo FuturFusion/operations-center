@@ -1,23 +1,16 @@
 package client_test
 
 import (
-	"bytes"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
-	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
-	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -53,7 +46,7 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			networkConfig: currentConfig.NetworkPut,
+			networkConfig: system.NetworkPut{NetworkLocalPut: currentConfig.NetworkLocalPut, NetworkGlobalPut: currentConfig.NetworkGlobalPut},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -64,8 +57,10 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			client: d.socketClient,
 
 			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-address",
+				NetworkLocalPut: system.NetworkLocalPut{
+					RestServerAddress: "not-an-address",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -77,8 +72,10 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			client: d.socketClient,
 
 			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-ip:8443",
+				NetworkLocalPut: system.NetworkLocalPut{
+					RestServerAddress: "not-an-ip:8443",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -154,7 +151,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 		name   string
 		client client.OperationsCenterClient
 
-		settingsConfig system.SettingsPut
+		settingsConfig system.SettingsLocalPut
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T)
@@ -163,9 +160,8 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "success",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
-				LogLevel:                    "DEBUG",
-				ServerRegistrationScriptlet: "",
+			settingsConfig: system.SettingsLocalPut{
+				LogLevel: "DEBUG",
 			},
 
 			assertErr: require.NoError,
@@ -181,7 +177,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevel: "INFO",
 			},
 
@@ -194,7 +190,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "success - log levels per component",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				// A level less verbose than the default keeps the rest of the
 				// test suite quiet.
 				LogLevels: map[string]string{"provisioning": "ERROR"},
@@ -215,7 +211,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, invalid log level",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevel: "not-a-log-level",
 			},
 
@@ -228,7 +224,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, invalid component name",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevels: map[string]string{"Provisioning": "DEBUG"},
 			},
 
@@ -241,7 +237,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, unknown component",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevels: map[string]string{"provisionning": "DEBUG"},
 			},
 
@@ -254,7 +250,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemSettingsConfig(t.Context(), tc.settingsConfig)
+			err := tc.client.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{SettingsLocalPut: tc.settingsConfig})
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -469,36 +465,5 @@ func Test_CleanSystemCache(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 
 	err = d.socketClient.CleanSystemCache(t.Context())
-	require.NoError(t, err)
-}
-
-func Test_SystemBackupRestore(t *testing.T) {
-	d := daemonSetup(t)
-
-	err := os.WriteFile(filepath.Join(d.varDir, config.ConfigFilename), nil, 0o600)
-	require.NoError(t, err)
-
-	err = incustls.FindOrGenCert(filepath.Join(d.varDir, config.ClientCertificateFilename), filepath.Join(d.varDir, config.ClientKeyFilename), true, false)
-	require.NoError(t, err)
-
-	_, err = d.unauthorizedHTTPClient.GetSystemBackup(t.Context(), system.BackupPost{})
-	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
-
-	rc, err := d.socketClient.GetSystemBackup(t.Context(), system.BackupPost{})
-	require.NoError(t, err)
-
-	backup, err := io.ReadAll(rc)
-	require.NoError(t, err)
-	require.NoError(t, rc.Close())
-
-	err = d.unauthorizedHTTPClient.RestoreSystemBackup(t.Context(), bytes.NewReader(backup))
-	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
-
-	err = d.socketClient.RestoreSystemBackup(t.Context(), bytes.NewBufferString("not a backup"))
-	var serverErr *client.ServerError
-	require.ErrorAs(t, err, &serverErr)
-	require.Equal(t, api.ErrorReasonInvalidArgument, serverErr.Reason)
-
-	err = d.socketClient.RestoreSystemBackup(t.Context(), bytes.NewReader(backup))
 	require.NoError(t, err)
 }

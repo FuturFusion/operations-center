@@ -3,8 +3,11 @@ package transaction_test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
+	clusterTx "github.com/cowsql/go-cowsql/cluster/db/transaction"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
@@ -25,7 +28,7 @@ func TestForceTx_inStartedTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -84,7 +87,7 @@ func TestForceTx_firstInTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -143,7 +146,7 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	setupDB(t, db)
+	setupDB(t, db.DB)
 
 	// DB Connection with transaction support.
 	dbWithTransaction := transaction.Enable(db)
@@ -189,7 +192,7 @@ func TestAfterCommit(t *testing.T) {
 			run: func(t *testing.T, calls *[]string) error {
 				t.Helper()
 
-				err := transaction.AfterCommit(t.Context(), func() error {
+				err := transaction.AfterCommit(t.Context(), func(context.Context) error {
 					*calls = append(*calls, "after commit")
 					return nil
 				})
@@ -209,7 +212,7 @@ func TestAfterCommit(t *testing.T) {
 
 				return transaction.Do(t.Context(), func(ctx context.Context) error {
 					err := transaction.Do(ctx, func(ctx context.Context) error {
-						return transaction.AfterCommit(ctx, func() error {
+						return transaction.AfterCommit(ctx, func(context.Context) error {
 							*calls = append(*calls, "after commit")
 							return nil
 						})
@@ -230,7 +233,7 @@ func TestAfterCommit(t *testing.T) {
 				t.Helper()
 
 				return transaction.Do(t.Context(), func(ctx context.Context) error {
-					err := transaction.AfterCommit(ctx, func() error {
+					err := transaction.AfterCommit(ctx, func(context.Context) error {
 						*calls = append(*calls, "after commit")
 						return nil
 					})
@@ -251,13 +254,13 @@ func TestAfterCommit(t *testing.T) {
 				t.Helper()
 
 				return transaction.Do(t.Context(), func(ctx context.Context) error {
-					err := transaction.AfterCommit(ctx, func() error {
+					err := transaction.AfterCommit(ctx, func(context.Context) error {
 						*calls = append(*calls, "first")
 						return errBoom
 					})
 					require.NoError(t, err)
 
-					return transaction.AfterCommit(ctx, func() error {
+					return transaction.AfterCommit(ctx, func(context.Context) error {
 						*calls = append(*calls, "second")
 						return nil
 					})
@@ -281,6 +284,122 @@ func TestAfterCommit(t *testing.T) {
 			require.Equal(t, tc.wantCalls, calls)
 		})
 	}
+}
+
+// retryingTransactor retries transactions like the transactor of the cluster database.
+type retryingTransactor struct {
+	db clusterTx.DBTX
+}
+
+func (r retryingTransactor) DBTX() clusterTx.DBTX     { return r.db }
+func (r retryingTransactor) MaxRetries() int          { return 3 }
+func (r retryingTransactor) OnTxStart(bool) func()    { return nil }
+func (r retryingTransactor) TxTimeout() time.Duration { return 0 }
+func (r retryingTransactor) EnterExclusive() error    { return nil }
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestAfterCommit_retry(t *testing.T) {
+	db, err := sqlite.Open(t.TempDir())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		transaction.Register(nil)
+
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	transaction.Register(retryingTransactor{db: clusterTx.Enable(db)})
+
+	var calls []string
+	attempt := 0
+
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		attempt++
+
+		err := transaction.AfterCommit(ctx, func(context.Context) error {
+			calls = append(calls, "attempt "+strconv.Itoa(attempt))
+			return nil
+		})
+		require.NoError(t, err)
+
+		if attempt == 1 {
+			return errors.New("database is locked")
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 2, attempt)
+	require.Equal(t, []string{"attempt 2"}, calls)
+}
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestAfterCommit_withoutTransaction(t *testing.T) {
+	db, err := sqlite.Open(t.TempDir())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		transaction.Register(nil)
+
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	transaction.Register(retryingTransactor{db: clusterTx.Enable(db)})
+
+	var active bool
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		_, err := transaction.GetDBTX(ctx, db).ExecContext(ctx, "SELECT 1")
+		require.NoError(t, err)
+
+		return transaction.AfterCommit(ctx, func(ctx context.Context) error {
+			active = transaction.IsActive(ctx)
+
+			// A database call doesn't run on the committed transaction.
+			_, err := transaction.GetDBTX(ctx, db).ExecContext(ctx, "SELECT 1")
+
+			return err
+		})
+	})
+	require.NoError(t, err)
+	require.False(t, active, "the function runs outside of the committed transaction")
+}
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestRegister_concurrent(t *testing.T) {
+	db, err := sqlite.Open(t.TempDir())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		transaction.Register(nil)
+
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	transactor := retryingTransactor{db: clusterTx.Enable(db)}
+	transaction.Register(transactor)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		// The daemon registers the global database while other goroutines already run transactions.
+		for range 100 {
+			transaction.Register(transactor)
+		}
+	}()
+
+	for range 100 {
+		err := transaction.Do(t.Context(), func(ctx context.Context) error {
+			return nil
+		})
+		require.NoError(t, err)
+	}
+
+	<-done
 }
 
 func TestIsActive(t *testing.T) {

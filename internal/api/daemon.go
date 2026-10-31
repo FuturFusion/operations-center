@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,16 +19,23 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/cowsql/go-cowsql/cluster/db/transaction"
+	cowsqlheartbeat "github.com/cowsql/go-cowsql/cluster/heartbeat"
+	cowsqlmembership "github.com/cowsql/go-cowsql/cluster/membership"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
-	incusTLS "github.com/lxc/incus/v7/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
+	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
+	clusterEntities "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
@@ -83,20 +91,21 @@ import (
 	authztls "github.com/FuturFusion/operations-center/internal/security/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql"
+	"github.com/FuturFusion/operations-center/internal/sql/patches"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
-	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	internalTx "github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
-	systemSqlite "github.com/FuturFusion/operations-center/internal/system/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/metrics"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/internal/warning"
@@ -142,16 +151,26 @@ type Daemon struct {
 	oidcVerifier  *authnoidc.Verifier
 	authorizer    *authz.Authorizer
 
+	// replaceableAuthorizer is the authorizer, its implementation is replaced on a security config change.
+	replaceableAuthorizer *authz.Replaceable
+
+	// serverBackgroundTasks are the background tasks of the server service, stopped with the daemon.
+	serverBackgroundTasks *provisioningServer.BackgroundTasks
+
 	// securityRetryCancel stops the background connection retries of the
 	// security infrastructure from the previous configuration.
 	securityRetryCancel context.CancelFunc
 
-	server   *http.Server
-	listener *listener.FancyTLSListener
+	server    *http.Server
+	listeners *listener.ListenerSet
 
-	systemSvc system.SystemService
+	globalRepo clusteringSvc.GlobalRaftRepo
 
-	serverCertificate tls.Certificate
+	systemSvc     system.SystemService
+	membershipSvc clusteringSvc.MembershipService
+
+	// apiCertificate is the certificate presented to API clients.
+	apiCertificate tls.Certificate
 
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
@@ -159,24 +178,76 @@ type Daemon struct {
 	restartCh chan struct{}
 }
 
+// dbtxWrapper is the global database of the services. It is registered once the database is open, while requests already check for it.
+type dbtxWrapper struct {
+	current atomic.Pointer[transaction.DBTX]
+}
+
+func (d *dbtxWrapper) Register(dbtx transaction.DBTX) {
+	d.current.Store(&dbtx)
+}
+
+// get returns the global database, nil until it is registered.
+func (d *dbtxWrapper) get() transaction.DBTX {
+	dbtx := d.current.Load()
+	if dbtx == nil {
+		return nil
+	}
+
+	return *dbtx
+}
+
+func (d *dbtxWrapper) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return d.get().ExecContext(ctx, query, args...)
+}
+
+func (d *dbtxWrapper) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return d.get().PrepareContext(ctx, query)
+}
+
+func (d *dbtxWrapper) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return d.get().QueryContext(ctx, query, args...)
+}
+
+func (d *dbtxWrapper) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return d.get().QueryRowContext(ctx, query, args...)
+}
+
+// startingAuthorizer answers like the routes waiting for the database, until the security configuration is loaded.
+type startingAuthorizer struct{}
+
+func (startingAuthorizer) CheckPermission(context.Context, *authz.RequestDetails, authz.Object, authz.Entitlement) error {
+	return api.StatusErrorf(http.StatusTooEarly, "Daemon is still starting")
+}
+
 func NewDaemon(ctx context.Context, env environment) *Daemon {
 	registerComponentsValidation()
+
+	// Until the security configuration is loaded, requests reaching an authorization check are asked to retry.
+	replaceableAuthorizer := authz.NewReplaceable(startingAuthorizer{})
+
+	var authorizer authz.Authorizer = replaceableAuthorizer
 
 	d := &Daemon{
 		env:            env,
 		configReloadMu: &sync.Mutex{},
 		restartCh:      make(chan struct{}, 1),
+		listeners:      &listener.ListenerSet{},
 
-		authenticator: &authn.Authenticator{},
-		oidcVerifier:  &authnoidc.Verifier{},
-		authorizer: func() *authz.Authorizer {
-			var authorizer authz.Authorizer = authzmiddleware.NewAuthorizerWithSlog(
-				authzchain.New(),
-				authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-			)
-			return &authorizer
-		}(),
+		oidcVerifier:          &authnoidc.Verifier{},
+		authorizer:            &authorizer,
+		replaceableAuthorizer: replaceableAuthorizer,
+		serverBackgroundTasks: provisioningServer.NewBackgroundTasks(),
 	}
+
+	// Until the security configuration is loaded, only the unix socket is trusted.
+	startingAuthenticator := authn.New([]authn.Auther{
+		authnmiddleware.NewAutherWithSlog(
+			authnunixsocket.UnixSocket{},
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnUnixSocket),
+		),
+	}, authn.WithStarting())
+	d.authenticator = &startingAuthenticator
 
 	return d
 }
@@ -193,14 +264,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	d.loadClientCertificate(ctx)
 
-	dbWithTransaction, err := d.initDB(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Apply all patches that need to be run before daemon security infrastructure
-	// like certificates, authenticators and authorizers are initialized.
-	err = patchesApply(ctx, d, dbWithTransaction, patchPreSecurityInfrastructure)
+	localDB, err := clusteringSvc.OpenLocalDB(ctx, d.varRoot)
 	if err != nil {
 		return err
 	}
@@ -208,13 +272,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	err = d.initAndLoadServerCert()
 	if err != nil {
 		return err
-	}
-
-	// Initialize security related infrastructure like authenticators and
-	// authorizers on the daemon.
-	err = d.securityConfigReload(ctx, config.GetSecurity())
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
 	// On update of the OIDC or OpenFGA configuration, verify the configured
@@ -251,6 +308,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// On update of ACME configuration, perform renewal of the server certificate.
 	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa apisystem.SecurityACME) {
+		// Only the leader renews and distributes the shared certificate.
+		isLeader, err := d.membershipSvc.Gateway().IsLeader(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to check for cluster leadership before ACME renewal", logger.Err(err))
+			return
+		}
+
+		if !isLeader {
+			return
+		}
+
 		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
 
 		go func() {
@@ -284,6 +352,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// API starts before DB in restricted mode.
+	dbWithTransaction := &dbtxWrapper{}
+
 	// Setup Services
 	incusImageSvc, err := d.setupIncusImageService(dbWithTransaction)
 	if err != nil {
@@ -308,7 +379,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		),
 	)
 
-	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
+	updateSvc, err := d.setupUpdatesService(dbWithTransaction)
 	if err != nil {
 		return err
 	}
@@ -359,19 +430,20 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	backupRepo := systemLocalfs.NewBackup(d.varRoot)
+	d.systemSvc = d.setupSystemService(serverSvc)
 
-	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
-
-	restored := backupRepo.IsRestoreApplied()
-	if restored {
-		err = d.abortRestoredOperations(ctx, serverSvc, clusterSvc)
-		if err != nil {
-			return err
-		}
-	}
+	// Background tasks
+	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
+	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
 
 	// Setup API routes
+	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks)
+	if err != nil {
+		return err
+	}
+
+	d.membershipSvc = membershipSvc
+
 	serveMux, inventorySyncers, err := d.setupAPIRoutes(
 		ctx,
 		updateSvc,
@@ -414,11 +486,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	d.shutdownFuncs = append(d.shutdownFuncs, d.server.Shutdown)
 
+	// Once no request is served anymore, the background tasks the requests started are stopped.
+	d.shutdownFuncs = append(d.shutdownFuncs, d.serverBackgroundTasks.Stop)
+
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
 
 	// If the network configuration changes, we need to reload the API server on TCP.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.NetworkLocal) {
 		err := d.setupTCPListener(ctx, sn)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
@@ -432,10 +507,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// API server on TCP
-	err = d.setupTCPListener(ctx, config.GetNetwork())
+	err = d.setupTCPListener(ctx, config.GetLocalNetwork())
 	if err != nil {
 		return err
 	}
+
+	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "", localDB)
+	if err != nil {
+		return err
+	}
+
+	dbWithTransaction.Register(globalDBTX)
+
+	// Load the shared security configuration from the database.
+	err = d.securityConfigReload(ctx, config.GetSecurity())
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
+	}
+
+	membershipSvc.StartLeaderTasks()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
@@ -451,11 +541,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
 	}
 
-	// Start cluster lifecycle events monitor.
-	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
-	if err != nil {
-		return err
-	}
+	clusterTaskStop := clusterHeartbeatTask(ctx, membershipSvc)
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return clusterTaskStop(deadlineFrom(ctx, time.Second*3))
+	})
+
+	// Stop the membership after the heartbeats, which need the database.
+	d.shutdownFuncs = append(d.shutdownFuncs, membershipSvc.Stop)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -469,77 +561,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 		// Grace period we wait for potential immediate errors from serving the http server.
 	}
 
-	if restored {
-		err = backupRepo.CompleteRestore()
-		if err != nil {
-			return fmt.Errorf("Failed to complete restore: %w", err)
-		}
-
-		slog.InfoContext(ctx, "Restore from backup completed")
-	}
-
-	// Background tasks, started last to not act on a restore, which might be rolled back.
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)
-
 	return nil
 }
 
-// abortRestoredOperations aborts the operations in progress at backup time.
-func (d *Daemon) abortRestoredOperations(ctx context.Context, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService) error {
-	clusters, err := clusterSvc.GetAll(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to get clusters after restore: %w", err)
+func prepare(db clusteringSvc.GlobalRaftRepo) (transaction.DBTX, error) {
+	internalTx.Register(db)
+	dbWithTransaction, ok := db.DBTX().(transaction.Preparer)
+	if !ok {
+		return nil, fmt.Errorf("Unexpected transaction container %T", db.DBTX())
 	}
 
-	for _, cluster := range clusters {
-		inProgress := cluster.UpdateStatus.InProgressStatus.InProgress
-		if inProgress == api.ClusterUpdateInProgressInactive || inProgress == api.ClusterUpdateInProgressError {
-			continue
-		}
+	var err error
 
-		slog.InfoContext(ctx, "Aborting cluster operation after restore", slog.String("cluster", cluster.Name), slog.String("operation", string(inProgress)))
-
-		err = clusterSvc.AbortClusterOperation(ctx, cluster.Name)
-		if err != nil {
-			return fmt.Errorf("Failed to abort operation of cluster %q after restore: %w", cluster.Name, err)
-		}
-	}
-
-	servers, err := serverSvc.GetAll(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to get servers after restore: %w", err)
-	}
-
-	for _, server := range servers {
-		if !server.StatusInternal.Deployment.IsActive() {
-			continue
-		}
-
-		slog.InfoContext(ctx, "Cancelling server deployment after restore", slog.String("server", server.Name))
-
-		// Skip the cleanup, the server might have been deployed since.
-		err = serverSvc.CancelDeploymentByName(ctx, server.Name, true)
-		if err != nil {
-			return fmt.Errorf("Failed to cancel deployment of server %q after restore: %w", server.Name, err)
-		}
-	}
-
-	return nil
-}
-
-func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
-	db, err := dbdriver.Open(d.env.VarDir())
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open sqlite database: %w", err)
-	}
-
-	// TODO: should Ensure take the provided context? If not, document the reason.
-	current, err := dbschema.Ensure(context.TODO(), db, d.env.VarDir())
+	clusterEntities.PreparedStmts, err = clusterEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
 	}
-
-	dbWithTransaction := transaction.Enable(db)
 
 	imageEntities.PreparedStmts, err = imageEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
@@ -549,16 +586,6 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	provisioningEntities.PreparedStmts, err = provisioningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
-	}
-
-	// If we start from scratch, mark all patches as applied.
-	if current == 0 {
-		for _, patchName := range patchesGetNames() {
-			err := markPatchAsApplied(ctx, db, patchName)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	inventoryEntities.PreparedStmts, err = inventoryEntities.PrepareStmts(dbWithTransaction, false)
@@ -637,29 +664,124 @@ func (d *Daemon) loadClientCertificate(ctx context.Context) {
 	d.clientKey = string(clientKey)
 }
 
+func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []task.TaskFunc) (clusteringSvc.MembershipService, bool, error) {
+	// go-cowsql opens the raft database by path.
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"))
+	isClustered, err := cowsqlmembership.Enabled(localRepo)
+	if err != nil {
+		return nil, false, err
+	}
+
+	localCert, err := clusteringSvc.FindOrGenCertInfo(d.varRoot, config.ServerCertificateFilename, config.ServerKeyFilename)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// A standalone member uses the server certificate as the cluster certificate.
+	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.varRoot, d.listeners, localRepo, localCert, localCert, tasks)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return svc, isClustered, nil
+}
+
+func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string, localDB *clusterRepo.LocalDB) (dbdriver.DBTX, error) {
+	globalRepo, err := openCowsqlGlobalDB(ctx, isClustered, membership, clusterAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	d.globalRepo = globalRepo
+
+	dbtx, err := prepare(globalRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.InfoContext(ctx, "Cluster database startup completed")
+
+	configRepo := clusterRepo.NewConfigRepo(globalRepo)
+	err = membership.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	sharedCfg, err := configRepo.GetSharedConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read shared config: %w", err)
+	}
+
+	err = config.LoadShared(ctx, *sharedCfg, membership.PersistSharedConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply all patches that need to be run before daemon security infrastructure
+	// like certificates, authenticators and authorizers are initialized.
+	err = patches.Apply(ctx, dbtx, localDB, d.varRoot, patches.PreSecurityInfrastructure)
+	if err != nil {
+		return nil, err
+	}
+
+	return dbtx, nil
+}
+
+// openCowsqlGlobalDB opens the global db with cowsql backend.
+func openCowsqlGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string) (clusteringSvc.GlobalRaftRepo, error) {
+	var globalRepo clusteringSvc.GlobalRaftRepo
+	for {
+		globalDB, err := clusteringSvc.OpenGlobalDB(ctx, membership, isClustered, clusterAddress)
+		if err != nil && !errors.Is(err, cowsql.ErrSomeNodesAreBehind) {
+			return nil, err
+		}
+
+		globalRepo = clusterRepo.NewGlobalRaftRepo(globalDB)
+		if err != nil {
+			membership.SetGlobalDB(globalRepo)
+
+			clusterTaskStop := clusterHeartbeatTask(ctx, membership)
+			membership.Gateway().WaitUpgradeNotification()
+			_ = clusterTaskStop(time.Second)
+
+			membership.SetGlobalDB(nil)
+			_ = globalDB.Close()
+
+			continue
+		}
+
+		break
+	}
+
+	return globalRepo, nil
+}
+
 func (d *Daemon) initAndLoadServerCert() error {
 	certFile := filepath.Join(d.varRoot.Name(), config.ServerCertificateFilename)
 	keyFile := filepath.Join(d.varRoot.Name(), config.ServerKeyFilename)
 
 	// Ensure that the certificate exists, or create a new one if it does not.
-	err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+	err := incustls.FindOrGenCert(certFile, keyFile, false, true)
 	if err != nil {
 		return err
 	}
 
-	serverCertificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
+	certificateFilename := config.ServerCertificateFilename
+	keyFilename := config.ServerKeyFilename
+
+	certificatePEM, err := d.varRoot.ReadFile(certificateFilename)
 	if err != nil {
-		return fmt.Errorf("Failed to read server certificate from %q: %w", certFile, err)
+		return fmt.Errorf("Failed to read certificate from %q: %w", certificateFilename, err)
 	}
 
-	serverKeyPEM, err := d.varRoot.ReadFile(config.ServerKeyFilename)
+	keyPEM, err := d.varRoot.ReadFile(keyFilename)
 	if err != nil {
-		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
+		return fmt.Errorf("Failed to read key from %q: %w", keyFilename, err)
 	}
 
-	d.serverCertificate, err = tls.X509KeyPair(serverCertificatePEM, serverKeyPEM)
+	d.apiCertificate, err = tls.X509KeyPair(certificatePEM, keyPEM)
 	if err != nil {
-		return fmt.Errorf("Failed to validate server certificate key pair: %w", err)
+		return fmt.Errorf("Failed to validate certificate key pair: %w", err)
 	}
 
 	return nil
@@ -711,7 +833,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	// Always trust our own client certificate if present.
 	// This required to self connect if Operations Center is self-registered.
-	clientCertFingerprint, err := incusTLS.CertFingerprintStr(d.clientCertificate)
+	clientCertFingerprint, err := incustls.CertFingerprintStr(d.clientCertificate)
 	if err == nil {
 		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
 	}
@@ -728,6 +850,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	}
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
+
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
 			authntls.New(trustedFingerprints),
@@ -735,8 +858,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		),
 	)
 
-	// Create authenticator
-	*d.authenticator = authn.New(authers)
+	d.authenticator.Replace(authn.New(authers))
 
 	authorizers := []authz.Authorizer{
 		authzmiddleware.NewAuthorizerWithSlog(
@@ -774,10 +896,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		)
 	}
 
-	*d.authorizer = authzmiddleware.NewAuthorizerWithSlog(
+	d.replaceableAuthorizer.Replace(authzmiddleware.NewAuthorizerWithSlog(
 		authzchain.New(authorizers...),
 		authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzChain),
-	)
+	))
 
 	return errors.Join(errs...)
 }
@@ -830,7 +952,7 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 	return warningSvc
 }
 
-func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
+func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateService, error) {
 	updatesRoot, err := d.openSubRoot(d.varRoot, "updates")
 	if err != nil {
 		return nil, err
@@ -882,11 +1004,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		updateServiceOptions...,
 	)
 
-	err = updateSvcBase.Prune(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
-	}
-
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
 	), nil
@@ -900,7 +1017,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
-		d.serverCertificate,
+		d.apiCertificate,
 		flasher.WithCacheRoot(seedImageCacheRoot),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
@@ -908,7 +1025,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		imageFlasher.UpdateCertificate(cert)
 	})
 	// Image flasher needs to learn about updates the public Operations Center address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
+	lifecycle.SharedNetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.NetworkGlobal) {
 		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
@@ -986,8 +1103,9 @@ func (d *Daemon) setupServerService(
 		clusterSvc,
 		channelSvc,
 		updateSvc,
-		d.serverCertificate,
+		d.apiCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
+		provisioningServer.WithBackgroundTasks(d.serverBackgroundTasks),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
@@ -1006,7 +1124,7 @@ func (d *Daemon) setupServerService(
 
 	// Server service needs to learn about updates of the public Operations Center
 	// address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.NetworkLocal) {
 		// Update operations center server record with updated network config.
 		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
@@ -1107,30 +1225,17 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) system.SystemService {
+func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
-			d.env, serverSvc, clusterSvc,
+			d.env, serverSvc,
 			systemRepoMiddleware.NewCacheRepoWithSlog(
 				systemLocalfs.New(d.cacheRoot, seedImageCacheDir),
 			),
-			systemRepoMiddleware.NewDatabaseRepoWithSlog(
-				systemSqlite.NewDatabase(db),
-			),
-			systemRepoMiddleware.NewBackupRepoWithSlog(backupRepo),
 			// Do not wrap with slog. This repo handles the private key of the server.
 			systemLocalfs.NewCertificate(d.varRoot),
-			d.requestRestart,
 		),
 	)
-}
-
-// requestRestart asks the daemon to restart. It does not block.
-func (d *Daemon) requestRestart() {
-	select {
-	case d.restartCh <- struct{}{}:
-	default:
-	}
 }
 
 // RestartRequested is signaled, once the daemon asks to be restarted.
@@ -1152,7 +1257,7 @@ func (d *Daemon) setupAPIRoutes(
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
-	db dbdriver.DBTX,
+	db *dbtxWrapper,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
@@ -1191,11 +1296,26 @@ func (d *Daemon) setupAPIRoutes(
 	)
 	registerOSProxy(osRouter, osRouterPrefix, d.authorizer, d.env)
 
+	requireDatabase := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if db.get() == nil {
+				err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Database is still initializing")).Render(w)
+				if err != nil {
+					slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
+				}
+
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
 	// The internal API is not versioned. It can change at any time.
 	internalRouter := router.SubGroup("/internal").AddMiddlewares(
 		d.authenticator.Middleware(),
 	)
-	registerInternalHandler(internalRouter, d.authorizer, db)
+	registerInternalHandler(internalRouter.SubGroup("").AddMiddlewares(requireDatabase), d.authorizer, db)
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
@@ -1245,10 +1365,13 @@ func (d *Daemon) setupAPIRoutes(
 		AllowCredentials: false,
 	}))
 
-	api10router := router.SubGroup("/1.0").AddMiddlewares(
-		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
-	)
-	registerAPI10Handler(api10router)
+	authenticatorMiddleware := d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired))
+
+	api10PreInit := router.SubGroup("/1.0")
+	api10PreInitAuth := api10PreInit.SubGroup("").AddMiddlewares(authenticatorMiddleware)
+	registerAPI10Handler(api10PreInitAuth)
+
+	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase)
 
 	imageRouter := api10router.SubGroup("/images")
 	imageSourceRouter := imageRouter.SubGroup("/sources")
@@ -1304,8 +1427,78 @@ func (d *Daemon) setupAPIRoutes(
 	return serveMux, inventorySyncers, nil
 }
 
-func (d *Daemon) setupBackgroundTasks(
-	ctx context.Context,
+// lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
+func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {
+	return func(ctx context.Context) func(context.Context) error {
+		ctx, cancel := context.WithCancel(ctx)
+
+		err := clusterSvc.StartLifecycleEventsMonitor(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to start cluster lifecycle events monitor", logger.Err(err))
+		}
+
+		return func(context.Context) error {
+			cancel()
+
+			return nil
+		}
+	}
+}
+
+func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.MembershipService) func(time.Duration) error {
+	clusterTask := func(ctx context.Context) {
+		if membershipSvc.Gateway().HeartbeatCancelFunc() == nil {
+			ch := make(chan struct{})
+			go func() {
+				membershipSvc.Gateway().Heartbeat(ctx, cowsqlheartbeat.HeartbeatNormal)
+				close(ch)
+			}()
+			select {
+			case <-ch:
+			case <-ctx.Done():
+			}
+		}
+	}
+
+	clusterTaskStop, _ := task.Start(ctx, clusterTask, task.Every(membershipSvc.Gateway().HeartbeatInterval()))
+
+	return clusterTaskStop
+}
+
+// firstRunDelay runs prepare and waits for delay on the first call, false if the context ends while waiting.
+func firstRunDelay(prepare func(context.Context), delay time.Duration) func(context.Context) bool {
+	var mu sync.Mutex
+	prepared := false
+	waited := delay == 0
+
+	return func(ctx context.Context) bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		if !prepared && prepare != nil {
+			prepare(ctx)
+		}
+
+		prepared = true
+
+		if waited {
+			return true
+		}
+
+		select {
+		case <-ctx.Done():
+			return false
+
+		case <-time.After(delay):
+		}
+
+		waited = true
+
+		return true
+	}
+}
+
+func (d *Daemon) backgroundTasks(
 	updateSvc provisioning.UpdateService,
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
@@ -1313,24 +1506,34 @@ func (d *Daemon) setupBackgroundTasks(
 	imageFlasher *flasher.Flasher,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
-) {
+) []task.TaskFunc {
 	if config.IsBackgroundTasksDisabled() {
-		return
+		return []task.TaskFunc{}
+	}
+
+	pruneUpdates := func(ctx context.Context) {
+		err := updateSvc.Prune(ctx)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
+		}
 	}
 
 	// Give IncusOS some time to apply seed data before actually starting to
 	// perform the refresh of the updates.
-	delayFirstUpdates := sync.OnceFunc(func() {})
+	delayFirstUpdates := firstRunDelay(pruneUpdates, 0)
 	if d.env.IsIncusOS() {
-		delayFirstUpdates = sync.OnceFunc(func() {
+		delayFirstUpdates = firstRunDelay(func(ctx context.Context) {
+			pruneUpdates(ctx)
 			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
-			time.Sleep(30 * time.Second)
-		})
+		}, 30*time.Second)
 	}
 
 	// Start background task to refresh updates from the sources.
-	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
-		delayFirstUpdates()
+	refreshUpdatesFromSourcesTask := componentTask(componentTaskRefreshUpdates, func(ctx context.Context) {
+		if !delayFirstUpdates(ctx) {
+			return
+		}
+
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		scope := api.WarningScope{
@@ -1355,35 +1558,30 @@ func (d *Daemon) setupBackgroundTasks(
 		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh updates completed")
-	}
+	})
 
 	var updateSourceOptions []task.EveryOption
 	if config.SourcePollSkipFirst() {
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 
-	updateSourceTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshUpdates, refreshUpdatesFromSourcesTask), task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
-	})
-
 	// Give IncusOS some time to download update before starting to refresh
 	// image sources.
-	delayFirstImageSourcesRefresh := delayFirstCall(0)
+	delayFirstImageSourcesRefresh := firstRunDelay(nil, 0)
 	if d.env.IsIncusOS() {
-		slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
-		delayFirstImageSourcesRefresh = delayFirstCall(10 * time.Minute)
+		delayFirstImageSourcesRefresh = firstRunDelay(func(ctx context.Context) {
+			slog.InfoContext(ctx, "Refresh image sources delayed for 10m on IncusOS")
+		}, 10*time.Minute)
 	}
 
 	// Start background task to refresh images from the sources.
-	refreshImageSourcesTask := func(ctx context.Context) {
-		err := delayFirstImageSourcesRefresh(ctx)
-		if err != nil {
+	refreshImageSourcesTask := componentTask(componentTaskRefreshImageSources, func(ctx context.Context) {
+		if !delayFirstImageSourcesRefresh(ctx) {
 			return
 		}
 
 		slog.InfoContext(ctx, "Refresh image sources triggered")
-		err = imageSourceSvc.RefreshAll(ctx)
+		err := imageSourceSvc.RefreshAll(ctx)
 		scope := api.WarningScope{
 			Scope:      "refresh",
 			EntityType: "image_sources",
@@ -1406,15 +1604,10 @@ func (d *Daemon) setupBackgroundTasks(
 		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh image sources completed")
-	}
-
-	imageSourceRefreshTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshImageSources, refreshImageSourcesTask), task.Every(config.ImageSourcePollInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return imageSourceRefreshTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
 	// Start background task for cluster update control loop.
-	clusterUpdateControlLoop := func(ctx context.Context) {
+	clusterUpdateControlLoop := componentTask(componentTaskClusterUpdate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Cluster update control loop triggered")
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, nil)
 		if err != nil {
@@ -1429,11 +1622,6 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Cluster update control loop completed")
-	}
-
-	clusterUpdateControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskClusterUpdate, clusterUpdateControlLoop), task.Every(config.PendingServerPollInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return clusterUpdateControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
 
 	// runServerDeploymentControlLoop advances the automated deployments. A name
@@ -1457,18 +1645,32 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.DebugContext(ctx, "Server deployment control loop completed", slog.String("trigger", trigger), slog.String("server", ptr.From(name)))
 	}
 
-	// Start background task for the automated server deployment control loop.
-	serverDeploymentControlLoopStop, _ := task.Start(ctx, componentTask(componentTaskServerDeployment, func(ctx context.Context) {
+	serverDeploymentControlLoopTask := componentTask(componentTaskServerDeployment, func(ctx context.Context) {
 		runServerDeploymentControlLoop(ctx, "tick", nil)
-	}), task.Every(config.ServerDeploymentControlLoopInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return serverDeploymentControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
+
+	checkClusterLeader := func(ctx context.Context, leaderLog *slog.Logger) bool {
+		leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+		defer cancel()
+
+		isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
+		if err != nil {
+			leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership background task signal", logger.Err(err))
+			return false
+		}
+
+		return isLeader
+	}
 
 	// Trigger the server deployment control loop from the virtual media events,
 	// so attaching and detaching the installation media resolves promptly.
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
 		if msg.Operation == lifecycle.BMCVirtualMediaOperationPreAttach {
+			return
+		}
+
+		isLeader := checkClusterLeader(ctx, slog.Default())
+		if !isLeader {
 			return
 		}
 
@@ -1483,6 +1685,12 @@ func (d *Daemon) setupBackgroundTasks(
 
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
 	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
+		log := slog.With(slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+		isLeader := checkClusterLeader(ctx, log)
+		if !isLeader {
+			return
+		}
+
 		slog.InfoContext(ctx, "Server lifecycle event triggered", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 
 		// A server, that just registered itself, ends the installation it was
@@ -1507,105 +1715,8 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Server lifecycle event completed", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 	})
 
-	// Start background task to poll servers in pending state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollPendingServers,
-		"pending",
-		provisioning.ServerFilter{
-			Status: new(api.ServerStatusPending),
-		},
-		true,
-		config.PendingServerPollInterval,
-	)
-
-	// Start background task to poll servers in updating state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUpdatingServers,
-		"updating",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
-		},
-		true,
-		config.UpdatingServerPollInterval,
-	)
-
-	// Start background task to poll servers updating an application to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUpdatingAppServers,
-		"updating application",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
-		},
-		true,
-		config.UpdatingServerPollInterval,
-	)
-
-	// Start background task to poll servers in evacuating state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollEvacuatingServers,
-		"evacuating",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyEvacuating),
-		},
-		false,
-		config.EvacuatingServerPollInterval,
-	)
-
-	// Start background task to poll servers in restoring state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollRestoringServers,
-		"restoring",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusReady),
-			StatusDetail: new(api.ServerStatusDetailReadyRestoring),
-		},
-		false,
-		config.RestoringServerPollInterval,
-	)
-
-	// Start background task to poll servers in rebooting state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollRebootingServers,
-		"rebooting",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusOffline),
-			StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
-		},
-		true,
-		config.RebootingServerPollInterval,
-	)
-
-	// Start background task to poll servers in unresponsive state to become available.
-	d.startBackgroundPollingTask(
-		ctx,
-		serverSvc,
-		componentTaskPollUnresponsiveServers,
-		"unresponsive",
-		provisioning.ServerFilter{
-			Status:       new(api.ServerStatusOffline),
-			StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
-		},
-		true,
-		config.UnresponsiveServerPollInterval,
-	)
-
 	// Start background task to test connectivity and update configuration with servers in ready state.
-	pollReadyServersTask := func(ctx context.Context) {
+	pollReadyServersTask := componentTask(componentTaskPollReadyServers, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Connectivity test for ready servers triggered")
 
 		// Within the first connectivityInterval of the hour, we also update the configuration.
@@ -1625,15 +1736,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Connectivity test for ready servers completed")
-	}
-
-	pollReadyServersTaskStop, _ := task.Start(ctx, componentTask(componentTaskPollReadyServers, pollReadyServersTask), task.Every(config.ConnectivityCheckInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 
 	// Start background task to refresh inventory through polling.
-	refreshInventoryTask := func(ctx context.Context) {
+	refreshInventoryTask := componentTask(componentTaskRefreshInventory, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Inventory update triggered")
 		err := clusterSvc.ResyncInventory(ctx)
 		if err != nil {
@@ -1648,15 +1754,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Inventory update completed")
-	}
-
-	refreshInventoryTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshInventory, refreshInventoryTask), task.Every(config.InventoryUpdateInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to refresh BMC data.
-	refreshBMCDataTask := func(ctx context.Context) {
+	refreshBMCDataTask := componentTask(componentTaskRefreshBMCData, func(ctx context.Context) {
 		slog.InfoContext(ctx, "BMC data resync triggered")
 		err := serverSvc.ResyncBMCData(ctx)
 		if err != nil {
@@ -1671,15 +1772,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "BMC data resync completed")
-	}
-
-	refreshBMCDataTaskStop, _ := task.Start(ctx, componentTask(componentTaskRefreshBMCData, refreshBMCDataTask), task.Every(config.BMCDataResyncInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return refreshBMCDataTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to prune the cache of generated seed images.
-	pruneSeedImageCacheTask := func(ctx context.Context) {
+	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Seed image cache prune triggered")
 
 		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
@@ -1690,11 +1786,6 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Seed image cache prune completed")
-	}
-
-	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, componentTask(componentTaskPruneSeedImageCache, pruneSeedImageCacheTask), task.Every(config.SeedImageCachePruneInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to prune the generated secure boot enrollment media.
@@ -1721,13 +1812,8 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
 	}
 
-	pruneSecureBootMediaTaskStop, _ := task.Start(ctx, pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pruneSecureBootMediaTaskStop(deadlineFrom(ctx, 10*time.Second))
-	})
-
 	// Start background task to renew ACME server certificate.
-	renewACMEServerCertificateTask := func(ctx context.Context) {
+	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
 
 		scope := api.WarningScope{
@@ -1758,15 +1844,10 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "ACME server certificate renewal completed")
-	}
-
-	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, componentTask(componentTaskRenewACMECertificate, renewACMEServerCertificateTask), task.Every(config.ACMEServerCertificateRenewInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to check certificate validity of server and cluster certificates.
-	certificatesValidityCheckTask := func(ctx context.Context) {
+	certificatesValidityCheckTask := componentTask(componentTaskCertificatesValidityCheck, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Certificates validity check triggered")
 
 		clusters, err := clusterSvc.GetAll(ctx)
@@ -1847,29 +1928,110 @@ func (d *Daemon) setupBackgroundTasks(
 		}
 
 		slog.InfoContext(ctx, "Certificates validity check completed")
-	}
-
-	certificatesValidityCheckTaskStop, _ := task.Start(ctx, componentTask(componentTaskCertificatesValidityCheck, certificatesValidityCheckTask), task.Every(config.CertificatesValidityCheckInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
-}
 
-// delayFirstCall returns a function, which waits for delay on its first call
-// only. The wait ends early, if ctx is done, so the delay does not block the
-// shutdown of the daemon. The function returns the error of ctx.
-func delayFirstCall(delay time.Duration) func(ctx context.Context) error {
-	var once sync.Once
+	return []task.TaskFunc{
+		task.New(refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second),
+		task.New(refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
+		task.New(clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
+		task.New(serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
+		task.New(pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
+		task.New(refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
+		task.New(refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
+		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
+		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
+		task.New(renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
+		task.New(certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
 
-	return func(ctx context.Context) error {
-		once.Do(func() {
-			select {
-			case <-ctx.Done():
-			case <-time.After(delay):
-			}
-		})
+		// Start background task to poll servers in pending state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollPendingServers,
+			serverSvc,
+			"pending",
+			provisioning.ServerFilter{
+				Status: new(api.ServerStatusPending),
+			},
+			true,
+			config.PendingServerPollInterval,
+		),
 
-		return ctx.Err()
+		// Start background task to poll servers in updating state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUpdatingServers,
+			serverSvc,
+			"updating",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
+			},
+			true,
+			config.UpdatingServerPollInterval,
+		),
+
+		// Start background task to poll servers updating an application to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUpdatingAppServers,
+			serverSvc,
+			"updating application",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyUpdatingApplication),
+			},
+			true,
+			config.UpdatingServerPollInterval,
+		),
+
+		// Start background task to poll servers in evacuating state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollEvacuatingServers,
+			serverSvc,
+			"evacuating",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyEvacuating),
+			},
+			false,
+			config.EvacuatingServerPollInterval,
+		),
+
+		// Start background task to poll servers in restoring state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollRestoringServers,
+			serverSvc,
+			"restoring",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusReady),
+				StatusDetail: new(api.ServerStatusDetailReadyRestoring),
+			},
+			false,
+			config.RestoringServerPollInterval,
+		),
+
+		// Start background task to poll servers in rebooting state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollRebootingServers,
+			serverSvc,
+			"rebooting",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusOffline),
+				StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
+			},
+			true,
+			config.RebootingServerPollInterval,
+		),
+
+		// Start background task to poll servers in unresponsive state to become available.
+		d.backgroundPollingTask(
+			componentTaskPollUnresponsiveServers,
+			serverSvc,
+			"unresponsive",
+			provisioning.ServerFilter{
+				Status:       new(api.ServerStatusOffline),
+				StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
+			},
+			true,
+			config.UnresponsiveServerPollInterval,
+		),
 	}
 }
 
@@ -1900,16 +2062,15 @@ func attachedSecureBootMediaIDs(ctx context.Context, serverSvc provisioning.Serv
 	return ids, nil
 }
 
-func (d *Daemon) startBackgroundPollingTask(
-	ctx context.Context,
-	serverSvc provisioning.ServerService,
+func (d *Daemon) backgroundPollingTask(
 	component logger.Component,
+	serverSvc provisioning.ServerService,
 	stateDescription string,
 	serverFilter provisioning.ServerFilter,
 	updateServerConfiguration bool,
 	interval time.Duration,
-) {
-	pollServersTask := func(ctx context.Context) {
+) task.TaskFunc {
+	backgroundTask := componentTask(component, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
 		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
 		if err != nil {
@@ -1924,12 +2085,9 @@ func (d *Daemon) startBackgroundPollingTask(
 		}
 
 		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
-	}
-
-	pollServersTaskStop, _ := task.Start(ctx, componentTask(component, pollServersTask), task.Every(interval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
+
+	return task.New(backgroundTask, task.Every(interval), time.Second)
 }
 
 func (d *Daemon) setupSocketListener(ctx context.Context) error {
@@ -1965,16 +2123,15 @@ func (d *Daemon) setupSocketListener(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) error {
+func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLocal) error {
 	errCh := make(chan error)
-	d.errgroup.Go(func() error {
-		d.configReloadMu.Lock()
-		oldListener := d.listener
-		d.configReloadMu.Unlock()
 
-		if oldListener != nil {
-			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldListener.Addr().String()))
-			err := oldListener.Close()
+	d.errgroup.Go(func() error {
+		oldServerListener, _ := d.listeners.Listeners()
+
+		if oldServerListener != nil {
+			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldServerListener.Addr().String()))
+			err := oldServerListener.Close()
 			if err != nil {
 				errCh <- err
 				return err
@@ -1984,72 +2141,59 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) er
 		lifecycle.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
+		listenerCert := d.apiCertificate
+
 		if cfg.RestServerAddress == "" {
+			d.listeners.SetServerListener(nil)
+		} else {
 			d.configReloadMu.Lock()
-			d.listener = nil
+			d.server.Addr = cfg.RestServerAddress
 			d.configReloadMu.Unlock()
 
+			slog.InfoContext(ctx, "Start https listener", slog.Any("addr", cfg.RestServerAddress))
+			tcpListener, err := net.Listen("tcp", cfg.RestServerAddress)
+			if err != nil {
+				errCh <- err
+				return err
+			}
+
+			serverListener := listener.NewFancyTLSListener(tcpListener, listenerCert)
+
+			err = serverListener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
+			}
+
+			d.listeners.SetServerListener(serverListener)
+		}
+
+		if !d.listeners.Active() {
 			// Unblock the channel here, since we do not start a server.
 			errCh <- nil
 
 			return nil
 		}
 
-		d.configReloadMu.Lock()
-		d.server.Addr = cfg.RestServerAddress
-		d.configReloadMu.Unlock()
-
-		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", cfg.RestServerAddress))
-		tcpListener, err := net.Listen("tcp", cfg.RestServerAddress)
-		if err != nil {
-			errCh <- err
-			return err
-		}
-
-		d.configReloadMu.Lock()
-		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCertificate)
-		d.configReloadMu.Unlock()
-
-		err = d.listener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
-		if err != nil {
-			slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
-		}
-
 		lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
-			d.serverCertificate = cert
-			d.listener.Config(cert)
+			d.apiCertificate = cert
+			d.listeners.UpdateCertificate(cert)
 		}, "fancyListener")
 
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.AddListener(func(_ context.Context, trustedHTTPSProxies []string) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
-			err = d.listener.TrustedProxy(trustedHTTPSProxies)
-			if err != nil {
-				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies", logger.Err(err))
-			}
+			d.listeners.UpdateTrustedProxies(ctx, trustedHTTPSProxies)
 		}, "fancyListener")
 
 		// Unblock the channel here before we block for the server.
 		errCh <- nil
 
 		if d.server != nil {
-			err = d.server.Serve(d.listener)
-			if errors.Is(err, http.ErrServerClosed) {
-				// Ignore error from graceful shutdown.
-				return nil
-			}
-
-			if errors.Is(err, net.ErrClosed) {
-				// Ignore error of used closed connection, it is likely caused after a
-				// change of the network configuration.
-				return nil
-			}
-
-			return err
+			return d.listeners.Serve(d.server)
 		}
 
 		return nil
@@ -2115,8 +2259,8 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return err
 	}
 
-	response := api.Response{}
-	err = json.Unmarshal(body, &response)
+	apiResponse := api.Response{}
+	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Failed to fetch %s: %s: %s", resp.Request.URL.String(), resp.Status, string(body))
@@ -2125,8 +2269,8 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return err
 	}
 
-	if response.Type == api.ErrorResponse {
-		return api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	if apiResponse.Type == api.ErrorResponse {
+		return api.StatusErrorf(resp.StatusCode, "%v", apiResponse.Error)
 	}
 
 	return nil

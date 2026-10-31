@@ -36,7 +36,7 @@ func registerDebugHandler(router Router, authorizer *authz.Authorizer) {
 
 func assertPprofEnabled(next response.HandlerFunc) response.HandlerFunc {
 	return func(r *http.Request) response.Response {
-		if !config.GetSettings().PprofEnabled {
+		if !config.GetLocalSettings().PprofEnabled {
 			return response.SmartError(domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The pprof debug endpoints are disabled").
 				WithHintf(`Enable them with the "pprof_enabled" system setting.`))
 		}

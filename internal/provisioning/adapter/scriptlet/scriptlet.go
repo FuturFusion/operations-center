@@ -36,7 +36,7 @@ func New(loader *scriptlet.Loader, client ScriptletClientPort) (Runner, error) {
 		return Runner{}, fmt.Errorf("Failed to load server registration scriptlet: %w", err)
 	}
 
-	lifecycle.SettingsValidateSignal.AddListenerWithErr(func(ctx context.Context, settings system.Settings) error {
+	lifecycle.SharedSettingsValidateSignal.AddListenerWithErr(func(ctx context.Context, settings system.SettingsGlobal) error {
 		err := serverRegistrationValidate(settings.ServerRegistrationScriptlet)
 		if err != nil {
 			return fmt.Errorf("Failed to validate server registration scriptlet: %w", err)
@@ -45,7 +45,7 @@ func New(loader *scriptlet.Loader, client ScriptletClientPort) (Runner, error) {
 		return nil
 	})
 
-	lifecycle.SettingsUpdateSignal.AddListenerWithErr(func(ctx context.Context, settings system.Settings) error {
+	lifecycle.SharedSettingsUpdateSignal.AddListenerWithErr(func(ctx context.Context, settings system.SettingsGlobal) error {
 		err := loader.Set(serverRegistrationCompile, serverRegistration, settings.ServerRegistrationScriptlet)
 		if err != nil {
 			return fmt.Errorf("Failed to compile and cache server registration scriptlet: %w", err)

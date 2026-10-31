@@ -29,6 +29,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -514,12 +515,15 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 			return fmt.Errorf("Failed to delete incus image %q: %w", name, err)
 		}
 
-		err = s.filesRepo.Delete(ctx, img)
-		if err != nil {
-			return fmt.Errorf("Failed to delete incus image %q: %w", name, err)
-		}
+		// The files are only deleted once the deletion of the image is committed.
+		return transaction.AfterCommit(ctx, func(ctx context.Context) error {
+			err := s.filesRepo.Delete(logger.DetachedContext(ctx), img)
+			if err != nil {
+				return fmt.Errorf("Failed to delete incus image %q: %w", name, err)
+			}
 
-		return nil
+			return nil
+		})
 	})
 	if err != nil {
 		return err
@@ -542,7 +546,10 @@ func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName strin
 		}
 
 		for _, img := range images {
-			err := s.filesRepo.Delete(ctx, &img)
+			// The files are only deleted once the deletion of the image is committed.
+			err := transaction.AfterCommit(ctx, func(ctx context.Context) error {
+				return s.filesRepo.Delete(logger.DetachedContext(ctx), &img)
+			})
 			if err != nil {
 				return fmt.Errorf("Failed to remove files for image %q from source %q: %w", img.Name, sourceName, err)
 			}
@@ -592,12 +599,15 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 			return fmt.Errorf("Failed to delete version %q from incus image %q: %w", versionIdentifier, name, err)
 		}
 
-		err = s.filesRepo.DeleteVersion(ctx, img, versionIdentifier)
-		if err != nil {
-			return fmt.Errorf("Failed to delete version %q from incus image %q: %w", versionIdentifier, name, err)
-		}
+		// The files are only deleted once the deletion of the version is committed.
+		return transaction.AfterCommit(ctx, func(ctx context.Context) error {
+			err := s.filesRepo.DeleteVersion(logger.DetachedContext(ctx), img, versionIdentifier)
+			if err != nil {
+				return fmt.Errorf("Failed to delete version %q from incus image %q: %w", versionIdentifier, name, err)
+			}
 
-		return nil
+			return nil
+		})
 	})
 	if err != nil {
 		return err

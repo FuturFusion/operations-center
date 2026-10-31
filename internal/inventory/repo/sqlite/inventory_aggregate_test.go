@@ -10,9 +10,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
@@ -22,8 +21,7 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a new temporary database.
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -31,16 +29,13 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
-	require.NoError(t, err)
-
 	tx := transaction.Enable(db)
-	stmts, err := entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	ctx = entities.WithPreparedStmts(ctx, stmts)
 
-	err = seed.DB(ctx, db, seed.Config{})
+	err = seed.DB(ctx, db.DB, seed.Config{})
 	require.NoError(t, err)
 
 	aggregateRepo := inventorySqlite.NewInventoryAggregate(db)

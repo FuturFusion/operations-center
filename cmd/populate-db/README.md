@@ -14,3 +14,12 @@ Generate Test DB for a somewhat realistic, larger customer
 ```shell
 go run ./cmd/populate-db --clusters 75 --images-min 5 --images-max 30 --instances-min 1200 --instances-max 2000 --network-acls-min 10000 --network-acls-max 25000 --network-forwards-min 0 --network-forwards-max 0 --network-integrations-min 4 --network-integrations-max 6 --network-load-balancers-min 0 --network-load-balancers-max 0 --network-peers-min 2500 --network-peers-max 5000 --network-zones-min 0 --network-zones-max 0 --networks-min 500 --networks-max 500 --profiles-min 75 --profiles-max 150 --projects-min 15 --projects-max 25 --servers-min 30 --servers-max 35 --storage-buckets-min 0 --storage-buckets-max 0 --storage-pools-min 4 --storage-pools-max 6 --storage-volumes-min 200 --storage-volumes-max 300
 ```
+
+The database is stored in the `database` directory of the var dir given with
+`--db-dir`, the same way the daemon stores it, so the daemon started on that var
+dir uses it:
+
+```shell
+go run ./cmd/populate-db --db-dir /tmp/oc --clusters 2
+OPERATIONS_CENTER_DIR=/tmp/oc operations-centerd
+```

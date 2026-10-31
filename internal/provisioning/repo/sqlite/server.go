@@ -30,7 +30,9 @@ func NewServer(db sqlite.DBTX) *server {
 }
 
 func (s server) Create(ctx context.Context, in provisioning.Server) (int64, error) {
-	return entities.CreateServer(ctx, transaction.GetDBTX(ctx, s.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateServer(ctx, transaction.GetDBTX(ctx, s.db), in)
+	})
 }
 
 func (s server) GetAll(ctx context.Context) (provisioning.Servers, error) {
@@ -42,40 +44,46 @@ func (s server) GetAllWithFilter(ctx context.Context, filter provisioning.Server
 }
 
 func (s server) getAllWithFilter(ctx context.Context, filter *provisioning.ServerFilter) (provisioning.Servers, error) {
-	var servers provisioning.Servers
-	var err error
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.Servers, error) {
+		var servers provisioning.Servers
+		var err error
 
-	if filter == nil {
-		servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db))
-	} else {
-		servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), *filter)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var errs []error
-	for i := range servers {
-		if servers[i].Certificate == nil {
-			continue
+		if filter == nil {
+			servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db))
+		} else {
+			servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), *filter)
 		}
 
-		servers[i].Fingerprint, err = incustls.CertFingerprintStr(*servers[i].Certificate)
 		if err != nil {
-			errs = append(errs, err)
+			return nil, err
 		}
-	}
 
-	return servers, errors.Join(errs...)
+		var errs []error
+		for i := range servers {
+			if servers[i].Certificate == nil {
+				continue
+			}
+
+			servers[i].Fingerprint, err = incustls.CertFingerprintStr(*servers[i].Certificate)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		return servers, errors.Join(errs...)
+	})
 }
 
 func (s server) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db))
+	})
 }
 
 func (s server) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
-	return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db), filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db), filter)
+	})
 }
 
 // serverNamesWithActiveDeploymentStmt selects the servers, that still have an
@@ -113,59 +121,63 @@ func (s server) GetAllNamesWithActiveDeploymentByTokenSeed(ctx context.Context, 
 // queryServerNamesWithActiveDeployment runs stmt with the terminal deployment
 // states as the first arguments, followed by extraArgs.
 func (s server) queryServerNamesWithActiveDeployment(ctx context.Context, stmt string, extraArgs ...any) ([]string, error) {
-	terminalStates := api.ServerDeploymentTerminalStates()
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		terminalStates := api.ServerDeploymentTerminalStates()
 
-	args := make([]any, 0, len(terminalStates)+len(extraArgs))
-	for _, state := range terminalStates {
-		args = append(args, state.String())
-	}
+		args := make([]any, 0, len(terminalStates)+len(extraArgs))
+		for _, state := range terminalStates {
+			args = append(args, state.String())
+		}
 
-	args = append(args, extraArgs...)
+		args = append(args, extraArgs...)
 
-	rows, err := transaction.GetDBTX(ctx, s.db).QueryContext(ctx, stmt, args...)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var names []string
-
-	for rows.Next() {
-		var name string
-
-		err = rows.Scan(&name)
+		rows, err := transaction.GetDBTX(ctx, s.db).QueryContext(ctx, stmt, args...)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
 		}
 
-		names = append(names, name)
-	}
+		defer func() { _ = rows.Close() }()
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
-	}
+		var names []string
 
-	return names, nil
+		for rows.Next() {
+			var name string
+
+			err = rows.Scan(&name)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
+			}
+
+			names = append(names, name)
+		}
+
+		err = rows.Err()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get the names of the servers with an active deployment: %w", err)
+		}
+
+		return names, nil
+	})
 }
 
 func (s server) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
-	server, err := entities.GetServer(ctx, transaction.GetDBTX(ctx, s.db), name)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.Server, error) {
+		server, err := entities.GetServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+		if err != nil {
+			return nil, err
+		}
 
-	if server.Certificate == nil {
+		if server.Certificate == nil {
+			return server, nil
+		}
+
+		server.Fingerprint, err = incustls.CertFingerprintStr(*server.Certificate)
+		if err != nil {
+			return nil, err
+		}
+
 		return server, nil
-	}
-
-	server.Fingerprint, err = incustls.CertFingerprintStr(*server.Certificate)
-	if err != nil {
-		return nil, err
-	}
-
-	return server, nil
+	})
 }
 
 func (s server) GetByCertificate(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
@@ -236,9 +248,13 @@ func (s server) Update(ctx context.Context, in provisioning.Server) error {
 }
 
 func (s server) Rename(ctx context.Context, oldName string, newName string) error {
-	return entities.RenameServer(ctx, transaction.GetDBTX(ctx, s.db), oldName, newName)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.RenameServer(ctx, transaction.GetDBTX(ctx, s.db), oldName, newName)
+	})
 }
 
 func (s server) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+	})
 }

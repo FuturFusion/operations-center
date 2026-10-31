@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 
 func init() {
@@ -25,9 +26,9 @@ func clusterMapErr(err error, entity string) error {
 		return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s already exists", entityName).WithCause(err)
 	}
 
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint {
-		switch sqliteErr.ExtendedCode {
+	code, ok := sqlite.ConstraintErr(err)
+	if ok {
+		switch code {
 		case sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey:
 			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s already exists", entityName).WithCause(err)
 

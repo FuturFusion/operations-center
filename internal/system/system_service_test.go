@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"io"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -27,7 +25,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
-	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -86,7 +83,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, certificateRepo, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, certificateRepo)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -757,7 +754,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, certificateRepo, nil)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -885,6 +882,9 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			}
 
 			certificateRepo := &repoMock.CertificateRepoMock{
+				GetServerCertificateFunc: func(ctx context.Context) ([]byte, error) {
+					return keyPair.certificatePEM, nil
+				},
 				GetServerKeyPairFunc: func(ctx context.Context) ([]byte, []byte, error) {
 					return keyPair.certificatePEM, keyPair.keyPEM, nil
 				},
@@ -911,19 +911,15 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				env,
 				serverSvc,
 				nil,
-				nil,
-				nil,
-				nil,
 				certificateRepo,
-				nil,
 				system.WithACMEUpdateCertificateFunc(
 					func(
 						ctx context.Context,
 						fsEnv interface {
-							VarDir() string
 							CacheDir() string
 						},
 						cfg systemapi.SecurityACME,
+						current *x509.Certificate,
 						force bool,
 					) (*systemapi.CertificatePost, error) {
 						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
@@ -944,7 +940,7 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 	tests := []struct {
 		name                       string
-		networkConfig              systemapi.Network
+		networkConfig              systemapi.NetworkPut
 		serverGetAll               provisioning.Servers
 		serverGetAllErr            error
 		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
@@ -955,22 +951,20 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		wantNetworkConfig systemapi.Network
 	}{
 		{
-			name: "success - empty",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			name:          "success - empty",
+			networkConfig: systemapi.NetworkPut{},
 
-			assertErr: require.NoError,
-			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			assertErr:         require.NoError,
+			wantNetworkConfig: systemapi.Network{},
 		},
 		{
 			name: "success - OperationsCenterAddress change",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1000,18 +994,26 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+				NetworkLocal: systemapi.NetworkLocal{
+					NetworkLocalPut: systemapi.NetworkLocalPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "success - OperationsCenterAddress change - system provider config not initialized",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1031,18 +1033,26 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+				NetworkLocal: systemapi.NetworkLocal{
+					NetworkLocalPut: systemapi.NetworkLocalPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "success - OperationsCenterAddress change - unregistered server skipped",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1073,16 +1083,22 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantNetworkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
+				NetworkLocal: systemapi.NetworkLocal{
+					NetworkLocalPut: systemapi.NetworkLocalPut{
+						RestServerAddress: "192.168.1.200:8443",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://new:8443/",
+					},
 				},
 			},
 		},
 		{
 			name: "error - NetworkSetDefaults",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
 					RestServerAddress: ":::", // invalid
 				},
 			},
@@ -1091,8 +1107,8 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - validation",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: ":|\\", // invalid
 				},
 			},
@@ -1100,20 +1116,20 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - config.UpdateNetwork",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{},
-			},
+			name:          "error - config.UpdateNetwork",
+			networkConfig: systemapi.NetworkPut{},
 			configSaveErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - OperationsCenterAddress change - repo.GetAll",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAllErr: boom.Error,
@@ -1122,10 +1138,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.GetSystemProvider",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1144,10 +1162,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider first",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1177,10 +1197,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert ok",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1225,10 +1247,12 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		},
 		{
 			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert error",
-			networkConfig: systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
+			networkConfig: systemapi.NetworkPut{
+				NetworkLocalPut: systemapi.NetworkLocalPut{
+					RestServerAddress: "192.168.1.200:8443",
+				},
+				NetworkGlobalPut: systemapi.NetworkGlobalPut{
 					OperationsCenterAddress: "https://new:8443/",
-					RestServerAddress:       "192.168.1.200:8443",
 				},
 			},
 			serverGetAll: provisioning.Servers{
@@ -1303,10 +1327,10 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil)
 
 			// Run test
-			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.NetworkPut)
+			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig)
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
 
 			// Assert
@@ -1331,9 +1355,15 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			networkConfig := systemapi.Network{
-				NetworkPut: systemapi.NetworkPut{
-					OperationsCenterAddress: "https://someaddress:1234",
-					RestServerAddress:       testingnet.LocalhostIP(t) + ":1234",
+				NetworkLocal: systemapi.NetworkLocal{
+					NetworkLocalPut: systemapi.NetworkLocalPut{
+						RestServerAddress: testingnet.LocalhostIP(t) + ":1234",
+					},
+				},
+				NetworkGlobal: systemapi.NetworkGlobal{
+					NetworkGlobalPut: systemapi.NetworkGlobalPut{
+						OperationsCenterAddress: "https://someaddress:1234",
+					},
 				},
 			}
 
@@ -1344,10 +1374,13 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			err := config.UpdateNetwork(t.Context(), networkConfig.NetworkPut)
+			err := config.UpdateLocalNetwork(t.Context(), networkConfig.NetworkLocalPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			err = config.UpdateNetwork(t.Context(), networkConfig.NetworkGlobalPut)
+			require.NoError(t, err)
+
+			systemSvc := system.NewSystemService(nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1459,7 +1492,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1475,40 +1508,44 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 	tests := []struct {
 		name           string
-		securityConfig systemapi.Settings
+		securityConfig systemapi.SettingsPut
 
 		assertErr          require.ErrorAssertionFunc
 		wantSettingsConfig systemapi.Settings
 	}{
 		{
 			name: "success",
-			securityConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
+			securityConfig: systemapi.SettingsPut{
+				SettingsLocalPut: systemapi.SettingsLocalPut{
 					LogLevel: "INFO",
 				},
 			},
 
 			assertErr: require.NoError,
 			wantSettingsConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
-					LogLevel: "INFO",
+				SettingsLocal: systemapi.SettingsLocal{
+					SettingsLocalPut: systemapi.SettingsLocalPut{
+						LogLevel: "INFO",
+					},
 				},
 			},
 		},
 		{
 			name: "error",
-			securityConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
+			securityConfig: systemapi.SettingsPut{
+				SettingsLocalPut: systemapi.SettingsLocalPut{
 					LogLevel: "invalid", // invalid log level
 				},
 			},
 
 			assertErr: require.Error,
 			wantSettingsConfig: systemapi.Settings{
-				SettingsPut: systemapi.SettingsPut{
-					LogLevel:          "",
-					MetricsEnabled:    true,
-					MetricsComponents: []string{"runtime"},
+				SettingsLocal: systemapi.SettingsLocal{
+					SettingsLocalPut: systemapi.SettingsLocalPut{
+						LogLevel:          "",
+						MetricsEnabled:    true,
+						MetricsComponents: []string{"runtime"},
+					},
 				},
 			},
 		},
@@ -1524,10 +1561,10 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil)
 
 			// Run test
-			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SettingsPut)
+			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig)
 			gotSettingsConfig := systemSvc.GetSettingsConfig(t.Context())
 
 			// Assert
@@ -1535,6 +1572,30 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			require.Equal(t, tc.wantSettingsConfig, gotSettingsConfig)
 		})
 	}
+}
+
+func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
+	env := &envMock.EnvironmentMock{
+		IsIncusOSFunc: func() bool { return false },
+	}
+
+	config.InitTest(t, env, nil)
+	err := config.LoadShared(t.Context(), config.ProvisionalShared(), func(context.Context, config.SharedChange) (config.SharedConfig, error) {
+		return config.SharedConfig{}, boom.Error
+	})
+	require.NoError(t, err)
+
+	systemSvc := system.NewSystemService(nil, nil, nil, nil)
+	before := systemSvc.GetSettingsConfig(t.Context())
+
+	err = systemSvc.UpdateSettingsConfig(t.Context(), systemapi.SettingsPut{
+		SettingsLocalPut:  systemapi.SettingsLocalPut{LogLevel: "INFO"},
+		SettingsGlobalPut: systemapi.SettingsGlobalPut{ServerRegistrationScriptlet: "def server_registration(candidate): pass"},
+	})
+	boom.ErrorIs(t, err)
+
+	// The local part is reverted as well.
+	require.Equal(t, before, systemSvc.GetSettingsConfig(t.Context()))
 }
 
 func TestSystemService_UpdateUpdatesConfig(t *testing.T) {
@@ -1602,7 +1663,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1648,131 +1709,13 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, cacheRepo, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
-		})
-	}
-}
-
-func TestSystemService_Restore(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name               string
-		servers            provisioning.Servers
-		validBackup        bool
-		backupRepoExtract  error
-		wantDiscardCalls   int
-		wantStageCalls     int
-		wantRestartRequest bool
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:               "success",
-			validBackup:        true,
-			wantStageCalls:     1,
-			wantRestartRequest: true,
-
-			assertErr: require.NoError,
-		},
-		{
-			name: "error - server operation in progress",
-			servers: provisioning.Servers{
-				{
-					Name:         "one",
-					StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
-				},
-			},
-
-			assertErr: errassert.OperationNotPermittedError,
-		},
-		{
-			name:              "error - backupRepo.Extract",
-			backupRepoExtract: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:             "error - invalid backup is discarded",
-			wantDiscardCalls: 1,
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrInvalidArgument, a...)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			// Setup
-			dir := t.TempDir()
-
-			if tc.validBackup {
-				err := incustls.FindOrGenCert(filepath.Join(dir, config.ServerCertificateFilename), filepath.Join(dir, config.ServerKeyFilename), false, false)
-				require.NoError(t, err)
-
-				err = incustls.FindOrGenCert(filepath.Join(dir, config.ClientCertificateFilename), filepath.Join(dir, config.ClientKeyFilename), true, false)
-				require.NoError(t, err)
-			}
-
-			env := &envMock.EnvironmentMock{
-				IsIncusOSFunc: func() bool {
-					return false
-				},
-			}
-
-			serverSvc := &mock.ProvisioningServerServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
-					return tc.servers, nil
-				},
-			}
-
-			clusterSvc := &mock.ProvisioningClusterServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return nil, nil
-				},
-			}
-
-			databaseRepo := &repoMock.DatabaseRepoMock{
-				SchemaVersionFunc: func(ctx context.Context, dir string) (int, int, error) {
-					return 1, 1, nil
-				},
-			}
-
-			backupRepo := &repoMock.BackupRepoMock{
-				ExtractFunc: func(ctx context.Context, archive io.Reader) (string, error) {
-					return dir, tc.backupRepoExtract
-				},
-				StageFunc: func(ctx context.Context) error {
-					return nil
-				},
-				DiscardFunc: func(ctx context.Context) error {
-					return nil
-				},
-			}
-
-			restartRequested := false
-
-			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, nil, func() {
-				restartRequested = true
-			})
-
-			// Run test
-			err := systemSvc.Restore(t.Context(), strings.NewReader("archive"))
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Len(t, backupRepo.DiscardCalls(), tc.wantDiscardCalls)
-			require.Len(t, backupRepo.StageCalls(), tc.wantStageCalls)
-			require.Equal(t, tc.wantRestartRequest, restartRequested)
 		})
 	}
 }

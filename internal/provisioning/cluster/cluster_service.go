@@ -2456,7 +2456,7 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 
 	// The listeners act on the new name, so they must only learn about it, once
 	// the rename is committed. They must not use the transaction.
-	return transaction.AfterCommit(ctx, func() error {
+	return transaction.AfterCommit(ctx, func(ctx context.Context) error {
 		s.clusterUpdateProgress.reset(oldName)
 
 		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
@@ -4145,6 +4145,8 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 		lifecycleMonitors[cluster.Name] = cancel
 	}
 
+	listenerKey := uuid.NewString()
+
 	lifecycle.ClusterUpdateSignal.AddListener(func(signalCtx context.Context, cum lifecycle.ClusterUpdateMessage) {
 		lifecycleMonitorsMu.Lock()
 		defer lifecycleMonitorsMu.Unlock()
@@ -4186,7 +4188,13 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 
 			lifecycleMonitors[cum.Name] = cancel
 		}
-	})
+	}, listenerKey)
+
+	// The task starts again on leadership changes, which must not add another listener.
+	go func() {
+		<-ctx.Done()
+		lifecycle.ClusterUpdateSignal.RemoveListener(listenerKey)
+	}()
 
 	return nil
 }

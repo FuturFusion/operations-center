@@ -787,26 +787,6 @@ definitions:
                 x-go-name: WriteProtected
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    BackupPost:
-        properties:
-            complete:
-                description: Complete includes the images and the cached update files in the backup.
-                example: false
-                type: boolean
-                x-go-name: Complete
-            with_images:
-                description: WithImages includes the images in the backup.
-                example: false
-                type: boolean
-                x-go-name: WithImages
-            with_updates:
-                description: WithUpdates includes the cached update files in the backup.
-                example: false
-                type: boolean
-                x-go-name: WithUpdates
-        title: BackupPost represents the options for the creation of a system backup.
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     Certificate:
         description: The corresponding private key is never part of this representation.
         properties:
@@ -3479,6 +3459,26 @@ definitions:
                 x-go-name: TargetPort
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
+    NetworkGlobal:
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+        title: NetworkGlobal represents the system's network configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkGlobalPut:
+        description: |-
+            NetworkGlobalPut represents the fields available for an update of the
+            system's network configuration.
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     NetworkIntegration:
         properties:
             config:
@@ -3599,6 +3599,26 @@ definitions:
                 x-go-name: TargetBackend
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
+    NetworkLocal:
+        properties:
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        title: NetworkLocal represents the network configuration of this member.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkLocalPut:
+        description: |-
+            NetworkLocalPut represents the fields available for an update of the
+            network configuration of this member.
+        properties:
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     NetworkPeer:
         properties:
             config:
@@ -3662,9 +3682,6 @@ definitions:
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
     NetworkPut:
-        description: |-
-            NetworkPut represents the fields available for an update of the
-            system's network configuration.
         properties:
             address:
                 description: Address of Operations Center which is used by managed servers to connect.
@@ -3674,6 +3691,7 @@ definitions:
                 description: Address and port to bind the REST API to.
                 type: string
                 x-go-name: RestServerAddress
+        title: NetworkPut represents the user-configurable network config, the part of this member and the part shared by all cluster members.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     NetworkZone:
@@ -6356,13 +6374,114 @@ definitions:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
                 x-go-name: ServerRegistrationScriptlet
-        title: Settings represents global system settings.
+        title: Settings represents the system settings, the part of this member and the part shared by all cluster members.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsGlobal:
+        properties:
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
+        title: SettingsGlobal represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsGlobalPut:
+        description: |-
+            SettingsGlobalPut represents the fields available for an update of the global
+            system settings.
+        properties:
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsLocal:
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
+        title: SettingsLocal represents the system settings of this member.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsLocalPut:
+        description: |-
+            SettingsLocalPut represents the fields available for an update of the
+            system settings of this member.
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+            log_levels:
+                additionalProperties:
+                    type: string
+                description: |-
+                    Log levels per component, overriding LogLevel. The keys are component
+                    names, a level configured for a component applies to all of its children
+                    as well.
+                example:
+                    provisioning: DEBUG
+                type: object
+                x-go-name: LogLevels
+            metrics_components:
+                description: |-
+                    MetricsComponents is the list of components, which expose metrics.
+                    Enabling a component enables all of its children as well.
+                example:
+                    - runtime
+                    - api
+                items:
+                    type: string
+                type: array
+                x-go-name: MetricsComponents
+            metrics_enabled:
+                description: MetricsEnabled enables the metrics endpoint /1.0/metrics.
+                example: true
+                type: boolean
+                x-go-name: MetricsEnabled
+            pprof_enabled:
+                description: PprofEnabled enables the pprof debug endpoints under /internal/debug/pprof.
+                example: false
+                type: boolean
+                x-go-name: PprofEnabled
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SettingsPut:
-        description: |-
-            SettingsPut represents the fields available for an update of the global
-            system settings.
         properties:
             log_level:
                 description: Daemon log level.
@@ -6404,6 +6523,7 @@ definitions:
                 description: ServerRegistrationScriptlet hold the server registration scriptlet.
                 type: string
                 x-go-name: ServerRegistrationScriptlet
+        title: SettingsPut represents the user-configurable system settings, the part of this member and the part shared by all cluster members.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SharedAPISystemNetwork:
@@ -6980,7 +7100,7 @@ definitions:
                 description: Address and port to bind the REST API to.
                 type: string
                 x-go-name: RestServerAddress
-        title: Network represents the system's network configuration.
+        title: Network represents the network config, the part of this member and the part shared by all cluster members.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetworkBond:
@@ -14375,40 +14495,6 @@ paths:
             summary: Get the updates
             tags:
                 - updates
-    /1.0/system/:backup:
-        post:
-            consumes:
-                - application/json
-            description: |-
-                Create and return a `gzip` compressed tar archive backup of the state and
-                configuration of Operations Center. The inventory is not part of the
-                backup, it is synced again from the clusters after a restore. The images
-                and the cached update files are only included on request.
-            operationId: system_backup_post
-            parameters:
-                - description: Backup options
-                  in: body
-                  name: system_backup_post
-                  schema:
-                    $ref: '#/definitions/BackupPost'
-            produces:
-                - application/json
-                - application/gzip
-            responses:
-                "200":
-                    description: gzip compressed tar archive
-                    schema:
-                        format: binary
-                        type: string
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Create a system backup
-            tags:
-                - system
     /1.0/system/:clean-cache:
         post:
             description: Remove reproducible, cached content.
@@ -14423,41 +14509,6 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Clean operations-center's cache
-            tags:
-                - system
-    /1.0/system/:restore:
-        post:
-            consumes:
-                - application/gzip
-            description: |-
-                Restore a `gzip` compressed tar archive backup created by
-                `POST /1.0/system/:backup`. The backup is validated, before Operations
-                Center restarts to apply it. Operations, which have been in progress when
-                the backup was created, are aborted after the restore.
-
-                A restore is refused, while a server is being deployed, updated, evacuated
-                or restored or while a cluster update is in progress.
-            operationId: system_restore_post
-            parameters:
-                - description: System backup to restore
-                  in: body
-                  name: gzip tar archive
-                  required: true
-                  schema:
-                    format: binary
-                    type: string
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Restore a system backup
             tags:
                 - system
     /1.0/system/certificate:

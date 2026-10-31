@@ -1440,7 +1440,8 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 		filesRepoDeleteErr      error
 		repoDeleteByNameErr     error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr        require.ErrorAssertionFunc
+		wantFilesDeleted bool
 	}{
 		{
 			name:    "success",
@@ -1451,7 +1452,8 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:        require.NoError,
+			wantFilesDeleted: true,
 		},
 		{
 			name:    "error - invalid name",
@@ -1492,7 +1494,8 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 			},
 			filesRepoDeleteErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:        boom.ErrorIs,
+			wantFilesDeleted: true,
 		},
 	}
 
@@ -1510,8 +1513,10 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 				},
 			}
 
+			filesDeleted := false
 			filesRepo := &mock.ImageIncusFileRepoMock{
 				DeleteFunc: func(ctx context.Context, img *image.IncusImage) error {
+					filesDeleted = true
 					return tc.filesRepoDeleteErr
 				},
 			}
@@ -1523,6 +1528,7 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantFilesDeleted, filesDeleted, "files are only deleted once the deletion of the rows is committed")
 		})
 	}
 }

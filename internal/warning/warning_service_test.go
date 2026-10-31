@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -670,5 +671,43 @@ func newTestWarning(t *testing.T, uuidPattern string, wType api.WarningType, sou
 		Status:     api.WarningStatusNew,
 		Messages:   []string{message},
 		Count:      1,
+	}
+}
+
+func TestWarningService_Emit_inTransaction(t *testing.T) {
+	for _, commit := range []bool{true, false} {
+		t.Run(fmt.Sprintf("commit=%t", commit), func(t *testing.T) {
+			upserts := 0
+			repo := &mock.WarningRepoMock{
+				GetByScopeAndTypeFunc: func(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warning.Warnings, error) {
+					return nil, nil
+				},
+				UpsertFunc: func(ctx context.Context, w warning.Warning) (int64, error) {
+					upserts++
+
+					return 0, nil
+				},
+			}
+
+			warningSvc := warning.NewWarningService(repo)
+
+			err := transaction.Do(t.Context(), func(ctx context.Context) error {
+				warningSvc.Emit(ctx, newTestWarning(t, "1", api.WarningTypeUnreachable, "src1", "message1"))
+				require.Zero(t, upserts, "the warning is recorded after the commit")
+
+				if !commit {
+					return boom.Error
+				}
+
+				return nil
+			})
+			if commit {
+				require.NoError(t, err)
+				require.Equal(t, 1, upserts)
+			} else {
+				require.ErrorIs(t, err, boom.Error)
+				require.Zero(t, upserts, "a rolled back transaction records no warning")
+			}
+		})
 	}
 }

@@ -2656,9 +2656,13 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				},
 			}
 
-			err = config.UpdateNetwork(t.Context(), system.NetworkPut{
+			err = config.UpdateLocalNetwork(t.Context(), system.NetworkLocalPut{
+				RestServerAddress: "[::]:8443",
+			})
+			require.NoError(t, err)
+
+			err = config.UpdateNetwork(t.Context(), system.NetworkGlobalPut{
 				OperationsCenterAddress: "https://192.168.1.200:8443",
-				RestServerAddress:       "[::]:8443",
 			})
 			require.NoError(t, err)
 

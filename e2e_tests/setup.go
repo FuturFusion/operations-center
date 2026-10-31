@@ -528,6 +528,7 @@ func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir st
 	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`)
 	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/dev/operations-centerd`)
+	mustRun(t, `../scripts/e2e/sideload-libs.sh ../bin/operations-centerd OperationsCenter /root/dev/lib`)
 	if testing.CoverMode() != "" {
 		err := os.WriteFile(filepath.Join(tmpDir, "environment"), []byte(`GOCOVERDIR=/tmp/coverdata
 `), 0o700)

@@ -157,16 +157,17 @@ func TestStartAndStop(t *testing.T) {
 				IsBackgroundTasksDisabled: true,
 				SourcePollSkipFirst:       true,
 			})
-			err := config.UpdateNetwork(ctx, system.NetworkPut{
-				OperationsCenterAddress: "https://127.0.0.1:" + freePort,
-				RestServerAddress:       ":" + tc.bindPort,
+			err := config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+				RestServerAddress: ":" + tc.bindPort,
 			})
 			require.NoError(t, err)
 
-			d := restapi.NewDaemon(
-				ctx,
-				env,
-			)
+			err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
+				OperationsCenterAddress: "https://127.0.0.1:" + freePort,
+			})
+			require.NoError(t, err)
+
+			d := restapi.NewDaemon(ctx, env)
 
 			err = d.Start(ctx)
 			tc.assertStartErr(t, err)

@@ -1,10 +1,12 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
 
+	"github.com/cowsql/go-cowsql/cluster/db/transaction"
 	"github.com/mattn/go-sqlite3"
 )
 
@@ -15,8 +17,12 @@ func init() {
 	sql.Register("sqlite3_with_fk", &sqlite3.SQLiteDriver{ConnectHook: sqliteEnableForeignKeys})
 }
 
+type DB struct {
+	*sql.DB
+}
+
 // Open the local database object.
-func Open(dir string) (*sql.DB, error) {
+func Open(dir string) (*DB, error) {
 	path := filepath.Join(dir, "local.db")
 
 	// These are used to tune the transaction BEGIN behavior instead of using the
@@ -32,7 +38,11 @@ func Open(dir string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	return db, nil
+	return &DB{DB: db}, nil
+}
+
+func (d *DB) BeginTx(ctx context.Context) (transaction.TX, error) {
+	return d.DB.BeginTx(ctx, nil)
 }
 
 func sqliteEnableForeignKeys(conn *sqlite3.SQLiteConn) error {

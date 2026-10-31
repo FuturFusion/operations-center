@@ -23,5 +23,5 @@ func WithHTTPClient(httpClient *http.Client) Option {
 // WaitBackgroundTasks waits for all currently running background tasks of the
 // service to complete.
 func (s *serverService) WaitBackgroundTasks() {
-	s.backgroundTasks.Wait()
+	s.background.running.Wait()
 }

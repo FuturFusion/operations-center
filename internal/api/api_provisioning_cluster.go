@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -469,33 +470,27 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentCluster, err := c.service.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q: %w", name, err)
 		}
-	}()
 
-	currentCluster, err := c.service.GetByName(ctx, name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get cluster %q: %w", name, err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentCluster)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentCluster)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		err = c.service.Rename(ctx, name, cluster.Name)
+		if err != nil {
+			return fmt.Errorf("Failed renaming cluster %q: %w", name, err)
+		}
 
-	err = c.service.Rename(ctx, name, cluster.Name)
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed renaming cluster %q: %w", name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)

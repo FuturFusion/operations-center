@@ -13,6 +13,7 @@ CAs
 changelog
 CLI
 config
+cowsql
 dbx
 DCO
 DHCP

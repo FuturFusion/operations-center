@@ -171,3 +171,10 @@ func requireKeyFile(t *testing.T, keyFile string) {
 	require.NoError(t, err)
 	require.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "the key is only readable by the owner")
 }
+
+func requireWriteFile(t *testing.T, filename string, content string) {
+	t.Helper()
+
+	err := os.WriteFile(filename, []byte(content), 0o600)
+	require.NoError(t, err)
+}

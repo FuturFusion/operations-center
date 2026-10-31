@@ -22,29 +22,37 @@ func NewImageSource(db sqlite.DBTX) *imageSource {
 }
 
 func (i imageSource) Create(ctx context.Context, in image.IncusImageSource) (int64, error) {
-	return entities.CreateIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), in)
+	})
 }
 
 func (i imageSource) GetAll(ctx context.Context) (image.IncusImageSources, error) {
-	channels, err := entities.GetIncusImageSources(ctx, transaction.GetDBTX(ctx, i.db))
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (image.IncusImageSources, error) {
+		channels, err := entities.GetIncusImageSources(ctx, transaction.GetDBTX(ctx, i.db))
+		if err != nil {
+			return nil, err
+		}
 
-	return channels, nil
+		return channels, nil
+	})
 }
 
 func (i imageSource) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetIncusImageSourceNames(ctx, transaction.GetDBTX(ctx, i.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetIncusImageSourceNames(ctx, transaction.GetDBTX(ctx, i.db))
+	})
 }
 
 func (i imageSource) GetByName(ctx context.Context, name string) (*image.IncusImageSource, error) {
-	channel, err := entities.GetIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), name)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*image.IncusImageSource, error) {
+		channel, err := entities.GetIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), name)
+		if err != nil {
+			return nil, err
+		}
 
-	return channel, nil
+		return channel, nil
+	})
 }
 
 func (i imageSource) Update(ctx context.Context, in image.IncusImageSource) error {
@@ -54,5 +62,7 @@ func (i imageSource) Update(ctx context.Context, in image.IncusImageSource) erro
 }
 
 func (i imageSource) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteIncusImageSource(ctx, transaction.GetDBTX(ctx, i.db), name)
+	})
 }

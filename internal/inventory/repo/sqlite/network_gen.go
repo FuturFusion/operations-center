@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type network struct {
@@ -29,89 +29,93 @@ func NewNetwork(db sqlite.DBTX) *network {
 }
 
 func (r network) Create(ctx context.Context, in inventory.Network) (inventory.Network, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO networks (uuid, cluster_id, project_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Network)
-	if err != nil {
-		return inventory.Network{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Network, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.Network{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO networks (uuid, cluster_id, project_name, name, object, last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), ?3, ?4, ?5, ?6)
+	`
 
-	return scanNetwork(row)
+		marshaledObject, err := json.Marshal(in.Object.Network)
+		if err != nil {
+			return inventory.Network{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.Network{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func (r network) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (inventory.Networks, error) {
-	const sqlStmt = `
-SELECT
-  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
-FROM networks
-  INNER JOIN clusters ON networks.cluster_id = clusters.id
-WHERE true
-%s
-ORDER BY clusters.name, networks.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Networks, error) {
+		const sqlStmt = `
+	SELECT
+	  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
+	FROM networks
+	  INNER JOIN clusters ON networks.cluster_id = clusters.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, networks.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND networks.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND networks.project_name = ?`)
+			args = append(args, filter.ProjectName)
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND networks.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND networks.name = ?`)
+			args = append(args, filter.Name)
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var networks inventory.Networks
-	for rows.Next() {
-		var network inventory.Network
-		network, err = scanNetwork(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		networks = append(networks, network)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var networks inventory.Networks
+		for rows.Next() {
+			var network inventory.Network
+			network, err = scanNetwork(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return networks, nil
+			networks = append(networks, network)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return networks, nil
+	})
 }
 
 func (r network) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkFilter) (query string, args []any) {
@@ -127,143 +131,153 @@ ORDER BY networks.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND networks.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND networks.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND networks.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND networks.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
 }
 
 func (r network) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r network) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Network, error) {
-	const sqlStmt = `
-SELECT
-  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
-FROM
-  networks
-  INNER JOIN clusters ON networks.cluster_id = clusters.id
-WHERE networks.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Network, error) {
+		const sqlStmt = `
+	SELECT
+	  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
+	FROM
+	  networks
+	  INNER JOIN clusters ON networks.cluster_id = clusters.id
+	WHERE networks.uuid=?1;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.Network{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
+		if row.Err() != nil {
+			return inventory.Network{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanNetwork(row)
+		return scanNetwork(row)
+	})
 }
 
 func (r network) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM networks WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM networks WHERE uuid=?1;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r network) DeleteWithFilter(ctx context.Context, filter inventory.NetworkFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM networks WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM networks WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r network) UpdateByUUID(ctx context.Context, in inventory.Network) (inventory.Network, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE networks SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Network)
-	if err != nil {
-		return inventory.Network{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Network, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.Network{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE networks SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), project_name=?3, name=?4, object=?5, last_updated=?6
+	WHERE uuid=?1
+	`
 
-	return scanNetwork(row)
+		marshaledObject, err := json.Marshal(in.Object.Network)
+		if err != nil {
+			return inventory.Network{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.Network{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func scanNetwork(row interface{ Scan(dest ...any) error }) (inventory.Network, error) {

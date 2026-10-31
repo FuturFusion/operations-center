@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type instance struct {
@@ -29,100 +29,104 @@ func NewInstance(db sqlite.DBTX) *instance {
 }
 
 func (r instance) Create(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO instances (uuid, cluster_id, server_id, project_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.InstanceFull)
-	if err != nil {
-		return inventory.Instance{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Instance, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.Instance{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO instances (uuid, cluster_id, server_id, project_name, name, object, last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), ?4, ?5, ?6, ?7)
+	`
 
-	return scanInstance(row)
+		marshaledObject, err := json.Marshal(in.Object.InstanceFull)
+		if err != nil {
+			return inventory.Instance{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.Instance{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func (r instance) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (inventory.Instances, error) {
-	const sqlStmt = `
-SELECT
-  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
-FROM instances
-  INNER JOIN clusters ON instances.cluster_id = clusters.id
-  INNER JOIN servers ON instances.server_id = servers.id
-WHERE true
-%s
-ORDER BY clusters.name, servers.name, instances.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Instances, error) {
+		const sqlStmt = `
+	SELECT
+	  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
+	FROM instances
+	  INNER JOIN clusters ON instances.cluster_id = clusters.id
+	  INNER JOIN servers ON instances.server_id = servers.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, servers.name, instances.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
+		}
 
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
-	}
+		if filter.Server != nil {
+			whereClause = append(whereClause, ` AND servers.name = ?`)
+			args = append(args, filter.Server)
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND instances.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND instances.project_name = ?`)
+			args = append(args, filter.ProjectName)
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND instances.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND instances.name = ?`)
+			args = append(args, filter.Name)
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var instances inventory.Instances
-	for rows.Next() {
-		var instance inventory.Instance
-		instance, err = scanInstance(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		instances = append(instances, instance)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var instances inventory.Instances
+		for rows.Next() {
+			var instance inventory.Instance
+			instance, err = scanInstance(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return instances, nil
+			instances = append(instances, instance)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return instances, nil
+	})
 }
 
 func (r instance) selectStmtGetAllUUIDWithFilter(filter inventory.InstanceFilter) (query string, args []any) {
@@ -139,154 +143,164 @@ ORDER BY instances.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = ?`)
+		args = append(args, filter.Server)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND instances.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND instances.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND instances.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND instances.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
 }
 
 func (r instance) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r instance) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
-	const sqlStmt = `
-SELECT
-  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
-FROM
-  instances
-  INNER JOIN clusters ON instances.cluster_id = clusters.id
-  INNER JOIN servers ON instances.server_id = servers.id
-WHERE instances.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Instance, error) {
+		const sqlStmt = `
+	SELECT
+	  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
+	FROM
+	  instances
+	  INNER JOIN clusters ON instances.cluster_id = clusters.id
+	  INNER JOIN servers ON instances.server_id = servers.id
+	WHERE instances.uuid=?1;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.Instance{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
+		if row.Err() != nil {
+			return inventory.Instance{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanInstance(row)
+		return scanInstance(row)
+	})
 }
 
 func (r instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM instances WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM instances WHERE uuid=?1;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r instance) DeleteWithFilter(ctx context.Context, filter inventory.InstanceFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM instances WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM instances WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r instance) UpdateByUUID(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE instances SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.InstanceFull)
-	if err != nil {
-		return inventory.Instance{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Instance, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.Instance{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE instances SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=?4, name=?5, object=?6, last_updated=?7
+	WHERE uuid=?1
+	`
 
-	return scanInstance(row)
+		marshaledObject, err := json.Marshal(in.Object.InstanceFull)
+		if err != nil {
+			return inventory.Instance{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.Instance{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func scanInstance(row interface{ Scan(dest ...any) error }) (inventory.Instance, error) {
