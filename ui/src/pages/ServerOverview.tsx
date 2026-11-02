@@ -5,7 +5,7 @@ import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { fetchServer } from "api/server";
 import { formatDate } from "util/date";
 import type { ServerTypeKey } from "util/server";
-import { ServerTypeString } from "util/server";
+import { primaryApplicationVersion, ServerTypeString } from "util/server";
 import { Badge } from "react-bootstrap";
 
 type FieldState = {
@@ -100,9 +100,21 @@ const ServerOverview = () => {
         <div className="col-10 detail-table-cell">{server?.channel}</div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">OS version</div>
+        <div className="col-10 detail-table-cell">
+          {server?.version_data?.os?.version}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Type</div>
         <div className="col-10 detail-table-cell">
           {ServerTypeString[(server?.server_type as ServerTypeKey) ?? ""]}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Application version</div>
+        <div className="col-10 detail-table-cell">
+          {server && primaryApplicationVersion(server)}
         </div>
       </div>
       <div className="row">

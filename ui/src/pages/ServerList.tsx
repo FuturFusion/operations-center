@@ -8,7 +8,7 @@ import ServerActions from "components/ServerActions";
 import ServerStatus from "components/ServerStatus";
 import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
-import { ServerTypeString } from "util/server";
+import { primaryApplicationVersion, ServerTypeString } from "util/server";
 import { BsLink45Deg } from "react-icons/bs";
 
 const Server = () => {
@@ -37,11 +37,16 @@ const Server = () => {
     "Name",
     "Description / Properties",
     "Cluster",
+    "OS version",
     "Type",
+    "Application version",
     "Status",
     "Actions",
   ];
   const rows = servers.map((item) => {
+    const osVersion = item.version_data?.os?.version ?? "";
+    const applicationVersion = primaryApplicationVersion(item);
+
     return {
       cols: [
         {
@@ -96,8 +101,16 @@ const Server = () => {
           sortKey: item.cluster,
         },
         {
+          content: osVersion,
+          sortKey: osVersion,
+        },
+        {
           content: ServerTypeString[item.server_type as ServerTypeKey],
           sortKey: item.server_type,
+        },
+        {
+          content: applicationVersion,
+          sortKey: applicationVersion,
         },
         {
           content: <ServerStatus server={item} />,
