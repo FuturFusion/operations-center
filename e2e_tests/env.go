@@ -34,6 +34,9 @@ var (
 	bmcProxyAddress      = envOrDefault("OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS", "")
 	hostAddress          = envOrDefault("OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS", "")
 
+	selfUpdateFromVersion   = envOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION", "")
+	selfUpdateReplaceDaemon = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON", false)
+
 	goCoverDir      = ""
 	ocE2EGoCoverDir = ""
 )

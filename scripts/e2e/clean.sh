@@ -23,7 +23,7 @@ tmp_dir="${OPERATIONS_CENTER_E2E_TEST_TMP_DIR:?OPERATIONS_CENTER_E2E_TEST_TMP_DI
 oc="${OPERATIONS_CENTER_BIN:-bin/operations-center.linux.amd64}"
 
 missing='not found|doesn.t exist'
-iso_volumes='.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso")) | .name'
+iso_volumes='.[] | select(.name | test("IncusOS-.*|IncusOS.*-boot-media\\.iso|IncusOS_OperationsCenter_.*\\.iso")) | .name'
 
 # Fingerprint added and removed again by assertOperationsCenterCliSystem.
 test_fingerprint='ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -184,19 +184,22 @@ step "Remove temporary files"
 rm -rf "$tmp_dir/image-downloads"
 rm -rf "$tmp_dir/oidc-cli-config"
 rm -rf "$tmp_dir/openfga-cli-config"
+rm -rf "$tmp_dir/self-update-cli-config"
 rm -rf "$tmp_dir/images"
 rm -rf "$tmp_dir"/coverage_*
 # One preseeded ISO is created per provisioning token, so these accumulate
 # over the runs. The ISO of Operations Center is kept, it is expensive to
 # recreate and its name does not match this pattern.
 rm -f "$tmp_dir"/IncusOS-preseeded-*.iso
+# The pinned images of the self update test accumulate per version.
+rm -f "$tmp_dir"/IncusOS_OperationsCenter_*.iso
 
 step "Remove Incus remotes"
 ignore_missing incus remote remove incus-os-cluster
 ignore_missing incus remote remove incus-os-cluster-after-factory-reset
 
 step "Remove Incus instances"
-for instance in IncusOS01 IncusOS02 IncusOS03 IncusOS04; do
+for instance in IncusOS01 IncusOS02 IncusOS03 IncusOS04 OperationsCenterSelfUpdate; do
   ignore_missing incus remove --force "$instance"
 done
 

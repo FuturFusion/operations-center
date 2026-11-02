@@ -36,6 +36,8 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION`: Version of IncusOS and Operations Center, which `TestE2E_OperationsCenterSelfUpdate` installs before the update. If not set, the second newest version of the stable channel of the image server is used (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON`: Replace the daemon of the old version with the local build before `TestE2E_OperationsCenterSelfUpdate` triggers the update. See [`TestE2E_OperationsCenterSelfUpdate`](#teste2e_operationscenterselfupdate) (default: "false")
 
 ## Test structure
 
@@ -99,6 +101,38 @@ its servers, so the pool installs them again before their next use.
 | `update_server_application` | IncusOS04          |                        | Updates a single application |
 | `update_server_os_only`     | IncusOS04          |                        | Updates only the OS          |
 | `cluster_rolling_update`    |                    | IncusOS01 to IncusOS03 | Rolling update with workload |
+
+### `TestE2E_OperationsCenterSelfUpdate`
+
+The test updates Operations Center itself. It uses its own VM
+`OperationsCenterSelfUpdate`, so the shared Operations Center VM is not
+involved. The test does the following:
+
+1. Install the previous stable release of IncusOS and Operations Center from
+   the official image server. The test requests the offline image of the IncusOS
+   customizer. Its resources image holds the applications of the same version.
+   Without it, IncusOS installs the newest applications.
+2. Wait until Operations Center is self registered and reports an update for
+   itself and its OS.
+3. Trigger the update with `provisioning server system update operations-center`.
+   The application update is applied right away. The OS update is staged.
+4. Reboot with `provisioning server system reboot operations-center`.
+5. Assert that Operations Center is ready, runs the new versions, has no
+   pending update and logs no errors.
+
+By default, the test does not replace the daemon with the local build. This
+way, the test covers the path the users take: a released version updates to a
+released version. The test can not be faked by the local build. The local build
+is only active until the next reboot, and it hides the daemon of the update
+until then. Also, the local build might migrate the database to a schema, which
+the target release does not know yet. The target release then refuses to start,
+which does not happen in production.
+
+Set `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON=true` to replace the
+daemon of the old version with the local build. Use this to test a change of
+the code, which triggers the update, before it is released. The target of the
+update is still the released version. The test only checks the versions after
+the reboot and asserts that the local build is no longer mounted.
 
 ## Setup
 
