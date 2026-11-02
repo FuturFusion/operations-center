@@ -1,3 +1,5 @@
+import type { Server } from "types/server";
+
 export enum ServerType {
   Incus = "incus",
   IncusLTS70 = "incus-lts-7.0",
@@ -19,6 +21,15 @@ export const IncusServerTypeString = {
 };
 
 export type ServerTypeKey = keyof typeof ServerTypeString;
+
+// Returns the version of the primary application, preferring the friendly one.
+export const primaryApplicationVersion = (server: Server): string => {
+  const application = server.version_data?.applications?.find(
+    (app) => app.name !== "" && app.name in ServerTypeString,
+  );
+
+  return application?.friendly_version || application?.version || "";
+};
 
 export enum ServerStatus {
   Unknown = "unknown",
