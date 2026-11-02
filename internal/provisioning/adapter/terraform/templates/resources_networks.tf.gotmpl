@@ -54,13 +54,13 @@ resource "incus_network" "{{ $projectPrefix }}{{ .Name }}" {
 locals {
   meshTunnelInterfaces = {
     {{- range $serverName, $interfaceName := .MeshTunnelInterfaces }}
-    "{{ $serverName }}" = "{{ $interfaceName }}"
+    "{{ tfString $serverName }}" = "{{ tfString $interfaceName }}"
     {{- end }}
   }
 
   meshTunnelLocalAddresses = {
     {{- range $serverName, $localAddress := .MeshTunnelLocalAddresses }}
-    "{{ $serverName }}" = "{{ $localAddress }}"
+    "{{ tfString $serverName }}" = "{{ $localAddress }}"
     {{- end }}
   }
 }
