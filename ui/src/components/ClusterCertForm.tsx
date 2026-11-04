@@ -13,6 +13,10 @@ const ClusterCertForm: FC<Props> = ({ formik }) => {
       <Form noValidate>
         <Form.Group className="mb-4" controlId="cert">
           <Form.Label>Cluster certificate</Form.Label>
+          <Form.Text muted className="d-block mb-1">
+            Paste the server certificate first, followed by any intermediate CA
+            certificates.
+          </Form.Text>
           <Form.Control
             type="text"
             as="textarea"
