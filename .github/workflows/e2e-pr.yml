@@ -15,5 +15,7 @@ jobs:
   e2e:
     name: E2E
     if: github.event.label.name == 'run-e2e'
-    # Load the workflow from main. A PR can not change the authorization check.
+    # Load the workflow from main. It checks the event and the roles.
+    # A PR can change this file. Only the runner group restriction to
+    # e2e.yml@refs/heads/main keeps PR code away from the self-hosted runner.
     uses: FuturFusion/operations-center/.github/workflows/e2e.yml@main
