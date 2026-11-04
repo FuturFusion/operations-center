@@ -263,12 +263,59 @@ func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ..
 	return runWithContext(ctx, t, command, args...)
 }
 
+// runWithTimeoutAndProgress is runWithTimeout, that additionally logs every line
+// of the output with the given prefix, while the command is running.
+func runWithTimeoutAndProgress(t *testing.T, prefix string, command string, timeout time.Duration, args ...any) cmdResponse {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	defer cancel()
+
+	progress := &logLineWriter{logf: t.Logf, prefix: prefix}
+	defer progress.Flush()
+
+	return runCmdWithContext(ctx, t, false, progress, command, args...)
+}
+
+// logLineWriter logs every complete line written to it.
+type logLineWriter struct {
+	logf    func(format string, args ...any)
+	prefix  string
+	pending []byte
+}
+
+func (w *logLineWriter) Write(p []byte) (int, error) {
+	w.pending = append(w.pending, p...)
+
+	for {
+		line, rest, found := bytes.Cut(w.pending, []byte("\n"))
+		if !found {
+			break
+		}
+
+		w.logf("%s%s", w.prefix, line)
+		w.pending = rest
+	}
+
+	return len(p), nil
+}
+
+// Flush logs the remaining incomplete line.
+func (w *logLineWriter) Flush() {
+	if len(w.pending) == 0 {
+		return
+	}
+
+	w.logf("%s%s", w.prefix, w.pending)
+	w.pending = nil
+}
+
 // runWithContext executes the provided command in a shell and accepts additionally
 // a context.
 func runWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
-	return runCmdWithContext(ctx, t, false, command, args...)
+	return runCmdWithContext(ctx, t, false, nil, command, args...)
 }
 
 // runQuietWithContext is runWithContext for commands, which are executed in a
@@ -277,12 +324,13 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 func runQuietWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
-	return runCmdWithContext(ctx, t, true, command, args...)
+	return runCmdWithContext(ctx, t, true, nil, command, args...)
 }
 
 // runCmdWithContext executes the provided command in a shell. If quiet is true,
-// the output of a successful run is not recorded in the debug output.
-func runCmdWithContext(ctx context.Context, t *testing.T, quiet bool, command string, args ...any) cmdResponse {
+// the output of a successful run is not recorded in the debug output. If
+// progress is not nil, the output is also written to progress.
+func runCmdWithContext(ctx context.Context, t *testing.T, quiet bool, progress io.Writer, command string, args ...any) cmdResponse {
 	t.Helper()
 
 	name := "bash"
@@ -306,8 +354,14 @@ func runCmdWithContext(ctx context.Context, t *testing.T, quiet bool, command st
 		cmd.Env = env
 	}
 
-	cmd.Stdout = resp.output
-	cmd.Stderr = resp.output
+	var output io.Writer = resp.output
+	if progress != nil {
+		output = io.MultiWriter(resp.output, progress)
+	}
+
+	// Use the same writer for both, so exec does not write to it concurrently.
+	cmd.Stdout = output
+	cmd.Stderr = output
 
 	err := cmd.Run()
 	if err != nil {

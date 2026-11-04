@@ -3,8 +3,10 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -60,6 +62,111 @@ func Test_cmd(t *testing.T) {
 
 			require.Equal(t, tc.wantSuccess, resp.Success())
 			require.Equal(t, tc.wantOutput, resp.Output())
+		})
+	}
+}
+
+func Test_runCmdWithContext_progress(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	progress := &bytes.Buffer{}
+
+	// Run test
+	resp := runCmdWithContext(t.Context(), t, false, progress, `echo foo; echo bar >&2`)
+
+	// Assert
+	require.True(t, resp.Success(), "expect the command to succeed")
+	require.Equal(t, "foo\nbar\n", resp.Output(), "expect stdout and stderr to be captured")
+	require.Equal(t, "foo\nbar\n", progress.String(), "expect stdout and stderr to be written to progress")
+}
+
+func Test_logLineWriter(t *testing.T) {
+	tests := []struct {
+		name   string
+		writes []string
+
+		wantLines        []string
+		wantLinesFlushed []string
+	}{
+		{
+			name: "no writes",
+
+			wantLines:        nil,
+			wantLinesFlushed: nil,
+		},
+		{
+			name:   "empty write",
+			writes: []string{""},
+
+			wantLines:        nil,
+			wantLinesFlushed: nil,
+		},
+		{
+			name:   "single line",
+			writes: []string{"foo\n"},
+
+			wantLines:        []string{"> foo"},
+			wantLinesFlushed: []string{"> foo"},
+		},
+		{
+			name:   "multiple lines in one write",
+			writes: []string{"foo\nbar\n"},
+
+			wantLines:        []string{"> foo", "> bar"},
+			wantLinesFlushed: []string{"> foo", "> bar"},
+		},
+		{
+			name:   "line split across writes",
+			writes: []string{"fo", "o\nba", "r\n"},
+
+			wantLines:        []string{"> foo", "> bar"},
+			wantLinesFlushed: []string{"> foo", "> bar"},
+		},
+		{
+			name:   "trailing incomplete line",
+			writes: []string{"foo\nbar"},
+
+			wantLines:        []string{"> foo"},
+			wantLinesFlushed: []string{"> foo", "> bar"},
+		},
+		{
+			name:   "empty line",
+			writes: []string{"\n"},
+
+			wantLines:        []string{"> "},
+			wantLinesFlushed: []string{"> "},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			var lines []string
+
+			w := &logLineWriter{
+				logf: func(format string, args ...any) {
+					lines = append(lines, fmt.Sprintf(format, args...))
+				},
+				prefix: "> ",
+			}
+
+			// Run test
+			for _, write := range tc.writes {
+				n, err := w.Write([]byte(write))
+				require.NoError(t, err)
+				require.Equal(t, len(write), n, "expect all bytes to be consumed")
+			}
+
+			linesBeforeFlush := slices.Clone(lines)
+
+			w.Flush()
+
+			// Assert
+			require.Equal(t, tc.wantLines, linesBeforeFlush, "lines logged before flush")
+			require.Equal(t, tc.wantLinesFlushed, lines, "lines logged after flush")
 		})
 	}
 }
