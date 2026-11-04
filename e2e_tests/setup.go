@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -768,10 +767,6 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, isos map[string]s
 	stop := timeTrack(t)
 	defer stop()
 
-	existingServersResp := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length'`, cpuArch)
-	existingServers, err := strconv.ParseInt(existingServersResp.OutputTrimmed(), 10, 64)
-	require.NoError(t, err)
-
 	timeout := 20*time.Minute + time.Duration(len(names))*3*time.Minute
 	if !concurrentSetup {
 		timeout = time.Duration(int(timeout) * len(names))
@@ -904,32 +899,17 @@ func createIncusOSInstances(ctx context.Context, t *testing.T, isos map[string]s
 		})
 	}
 
-	err = errgrp.Wait()
+	err := errgrp.Wait()
 	if err != nil {
 		logVMDebugInfo(t, names...)
 
 		require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 	}
 
-	// Wait for instances to self update in Operations Center
-	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(ctx, strechedTimeout(2*time.Minute))
-	defer instanceReadyCancel()
-
-	for {
-		operationsCenterSelfRegistered := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == %d'`, 10*time.Second, cpuArch, int(existingServers)+len(names))
-		require.NoError(t, operationsCenterSelfRegistered.err)
-
-		if operationsCenterSelfRegistered.Success() {
-			break
-		}
-
-		select {
-		case <-instanceReadyTimeoutCtx.Done():
-			require.NoError(t, instanceReadyTimeoutCtx.Err())
-
-		case <-time.After(time.Second):
-		}
-	}
+	// A new server registers with its hostname. Wait for these records only,
+	// since the status of the other servers can change in the meantime.
+	_, hostnames := mustGetInstanceIPAndNames(t, names)
+	mustWaitInventoryReady(ctx, t, hostnames)
 
 	renameServers(t, names)
 }
