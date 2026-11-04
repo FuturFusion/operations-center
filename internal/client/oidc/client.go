@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,6 +26,10 @@ import (
 
 // ErrOIDCExpired is returned when the token is expired and we can't retry the request ourselves.
 var ErrOIDCExpired = fmt.Errorf("OIDC token expired, please re-try the request")
+
+// ErrOIDCTrustTupleChanged is returned when an unauthorized response announces
+// a different OIDC issuer, client ID or audience than the stored one.
+var ErrOIDCTrustTupleChanged = fmt.Errorf("OIDC configuration announced by the server does not match the stored configuration, remove and add the remote again if the change is expected")
 
 // Custom transport that modifies requests to inject the audience field.
 type oidcTransport struct {
@@ -109,9 +115,15 @@ type ClientOption func(c *OIDCClient)
 
 // NewClient constructs a new OIDCClient, ensuring the token field is non-nil to prevent panics during authentication.
 // The provided httpClient is only used for the requests to Operations Center, the identity provider is always reached with system trust.
-func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) *OIDCClient {
+// It returns an error if the OIDC context file exists but can not be read.
+func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) (*OIDCClient, error) {
+	oidcContext, err := loadOIDCContextFromFile(oidcContextFile)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &OIDCClient{
-		oidcContext:     loadOIDCContextFromFile(oidcContextFile),
+		oidcContext:     oidcContext,
 		oidcContextFile: oidcContextFile,
 		httpClient:      httpClient,
 
@@ -126,10 +138,10 @@ func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOp
 		opt(client)
 	}
 
-	return client
+	return client, nil
 }
 
-func loadOIDCContextFromFile(oidcContextFile string) OIDCContext {
+func loadOIDCContextFromFile(oidcContextFile string) (OIDCContext, error) {
 	oidcContext := OIDCContext{
 		Tokens: oidc.Tokens[*oidc.IDTokenClaims]{
 			Token: &oauth2.Token{},
@@ -137,20 +149,25 @@ func loadOIDCContextFromFile(oidcContextFile string) OIDCContext {
 	}
 
 	if oidcContextFile == "" {
-		return oidcContext
+		return oidcContext, nil
 	}
 
 	contents, err := os.ReadFile(oidcContextFile)
-	if err != nil {
-		return oidcContext
+	if errors.Is(err, fs.ErrNotExist) {
+		return oidcContext, nil
 	}
 
+	if err != nil {
+		return OIDCContext{}, fmt.Errorf("Failed to read OIDC context file %q: %w", oidcContextFile, err)
+	}
+
+	// An unreadable file must not reset the stored trust tuple.
 	err = json.Unmarshal(contents, &oidcContext)
 	if err != nil {
-		return oidcContext
+		return OIDCContext{}, fmt.Errorf("Failed to parse OIDC context file %q: %w", oidcContextFile, err)
 	}
 
-	return oidcContext
+	return oidcContext, nil
 }
 
 func saveOIDCContextToFile(oidcContextFile string, oidcContext OIDCContext) error {
@@ -190,6 +207,7 @@ const earlyRefreshLeeway = 15 * time.Second
 
 // Do function executes an HTTP request using the OIDCClient's http client, and manages authorization by refreshing or authenticating as needed.
 // If the request fails with an HTTP Unauthorized status, it attempts to refresh the access token, or perform an OIDC authentication if refresh fails.
+// It returns ErrOIDCTrustTupleChanged if an unauthorized response announces a different trust tuple.
 func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 	o.oidcContextMu.Lock()
 	oidcContext := o.oidcContext
@@ -221,37 +239,28 @@ func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	trustTupleChanged := false
-
-	if oidcContext.TrustTuple.Issuer != resp.Header.Get("X-OperationsCenter-OIDC-issuer") && resp.Header.Get("X-OperationsCenter-OIDC-issuer") != "" {
-		oidcContext.TrustTuple.Issuer = resp.Header.Get("X-OperationsCenter-OIDC-issuer")
-		trustTupleChanged = true
+	// The server sends the trust tuple headers only with HTTP status unauthorized.
+	if resp.StatusCode != http.StatusUnauthorized {
+		return resp, nil
 	}
 
-	if oidcContext.TrustTuple.ClientID != resp.Header.Get("X-OperationsCenter-OIDC-clientid") && resp.Header.Get("X-OperationsCenter-OIDC-clientid") != "" {
-		oidcContext.TrustTuple.ClientID = resp.Header.Get("X-OperationsCenter-OIDC-clientid")
-		trustTupleChanged = true
-	}
-
-	if oidcContext.TrustTuple.Audience != resp.Header.Get("X-OperationsCenter-OIDC-audience") && resp.Header.Get("X-OperationsCenter-OIDC-audience") != "" {
-		oidcContext.TrustTuple.Audience = resp.Header.Get("X-OperationsCenter-OIDC-audience")
-		trustTupleChanged = true
+	trustTuple, trustTupleChanged, err := pinTrustTuple(oidcContext.TrustTuple, resp.Header)
+	if err != nil {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("%w (stored in %q)", err, o.oidcContextFile)
 	}
 
 	if trustTupleChanged {
+		oidcContext.TrustTuple = trustTuple
+
 		o.oidcContextMu.Lock()
-		o.oidcContext = oidcContext
+		o.oidcContext.TrustTuple = trustTuple
 		o.oidcContextMu.Unlock()
 
 		err = saveOIDCContextToFile(o.oidcContextFile, oidcContext)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	// Return immediately if the error is not HTTP status unauthorized.
-	if resp.StatusCode != http.StatusUnauthorized {
-		return resp, nil
 	}
 
 	// We can not refresh, if we don't have the issuer or the client ID.
@@ -301,6 +310,46 @@ func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// pinTrustTuple returns the trust tuple to use after an unauthorized response.
+// Without a stored tuple, it returns the received tuple. With a stored tuple,
+// it returns ErrOIDCTrustTupleChanged if a received value differs. Empty
+// received values are ignored. A response must never move the refresh token
+// to a different issuer.
+func pinTrustTuple(stored OIDCTrustTuple, header http.Header) (_ OIDCTrustTuple, changed bool, _ error) {
+	received := OIDCTrustTuple{
+		Issuer:   header.Get("X-OperationsCenter-OIDC-issuer"),
+		ClientID: header.Get("X-OperationsCenter-OIDC-clientid"),
+		Audience: header.Get("X-OperationsCenter-OIDC-audience"),
+	}
+
+	if stored.Issuer == "" && stored.ClientID == "" {
+		return received, received != stored, nil
+	}
+
+	fields := []struct {
+		name     string
+		stored   string
+		received string
+	}{
+		{name: "issuer", stored: stored.Issuer, received: received.Issuer},
+		{name: "client ID", stored: stored.ClientID, received: received.ClientID},
+		{name: "audience", stored: stored.Audience, received: received.Audience},
+	}
+
+	var mismatches []string
+	for _, field := range fields {
+		if field.received != "" && field.received != field.stored {
+			mismatches = append(mismatches, fmt.Sprintf("%s: stored %q, received %q", field.name, field.stored, field.received))
+		}
+	}
+
+	if len(mismatches) > 0 {
+		return stored, false, fmt.Errorf("%w: %s", ErrOIDCTrustTupleChanged, strings.Join(mismatches, ", "))
+	}
+
+	return stored, false, nil
 }
 
 // getProvider initializes a new OpenID Connect Relying Party for a given issuer and clientID.
