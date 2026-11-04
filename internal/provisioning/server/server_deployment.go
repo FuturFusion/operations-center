@@ -1252,10 +1252,21 @@ func (s *serverService) lookupDeploymentRun(name string) *deploymentRun {
 // deploymentStepContext bounds a single attempt of a step and publishes its
 // cancellation, so a cancelled deployment does not have to wait the attempt out.
 // The caller holds the run of the server, so it can not vanish meanwhile.
-func (s *serverService) deploymentStepContext(ctx context.Context, name string, timeout time.Duration) (context.Context, context.CancelFunc) {
+// The BMC exchanges of the attempt are recorded, if the deployment has an open
+// recording.
+func (s *serverService) deploymentStepContext(ctx context.Context, name string, deployment *provisioning.ServerDeployment, timeout time.Duration) (context.Context, context.CancelFunc) {
 	run := s.lookupDeploymentRun(name)
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
+
+	entry, ok := s.lookupBMCRecordingSession(name)
+	if ok && deployment != nil {
+		ctx = provisioning.ContextWithBMCRecordingScope(ctx, provisioning.BMCRecordingScope{
+			Recorder: entry.session,
+			State:    deployment.State,
+			Retries:  deployment.Retries,
+		})
+	}
 
 	if run == nil {
 		return ctx, cancel
@@ -1297,6 +1308,10 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 	err := request.Validate()
 	if err != nil {
 		return err
+	}
+
+	if request.RecordBMC && s.bmcRecording == nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Recording the BMC traffic is not available")
 	}
 
 	if config.GetNetwork().OperationsCenterAddress == "" {
@@ -1514,6 +1529,12 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 			StartedAt:              now,
 			StateEnteredAt:         now,
 			History:                []api.ServerDeploymentStep{},
+		}
+
+		if request.RecordBMC {
+			server.StatusInternal.Deployment.BMCRecording = &provisioning.ServerDeploymentBMCRecording{
+				ID: provisioning.BMCRecordingID(now),
+			}
 		}
 
 		server.Status = api.ServerStatusDeploying
@@ -1775,6 +1796,13 @@ func (s *serverService) deploymentStep(ctx context.Context, name string) (bool, 
 		slog.String("deployment_state", deployment.State.String()),
 	)
 
+	if deployment.Request.RecordBMC {
+		s.ensureBMCRecordingSession(ctx, log, *server)
+
+		// The deployment may end within this step, on any of the paths below.
+		defer s.settleBMCRecording(context.WithoutCancel(ctx), log, name)
+	}
+
 	// An unknown state yields the zero definition, which is not a cancel phase and
 	// not a kind the dispatcher drives, so it reaches the check below.
 	definition, ok := deploymentStates[deployment.State]
@@ -2027,7 +2055,7 @@ func (s *serverService) runBoundedDeploymentAction(ctx context.Context, log *slo
 		return nil, fmt.Errorf("Deployment state %q is not an action", server.StatusInternal.Deployment.State)
 	}
 
-	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
+	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, server.StatusInternal.Deployment, definition.callTimeoutOrDefault())
 	defer cancel()
 
 	return definition.action(s, callCtx, log, server, definition)
@@ -2041,7 +2069,7 @@ func (s *serverService) checkBoundedDeploymentWait(ctx context.Context, log *slo
 		return deploymentWaitPending, nil, deploymentFatalError{err: fmt.Errorf("Deployment state %q is not a wait", server.StatusInternal.Deployment.State)}
 	}
 
-	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, definition.callTimeoutOrDefault())
+	callCtx, cancel := s.deploymentStepContext(ctx, server.Name, server.StatusInternal.Deployment, definition.callTimeoutOrDefault())
 	defer cancel()
 
 	return definition.wait(s, callCtx, log, server, definition)

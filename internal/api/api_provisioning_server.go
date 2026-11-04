@@ -1589,6 +1589,15 @@ func (s *serverHandler) serverDeployPost(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	// Not part of the documented API, it is a development feature.
+	recordBMC := r.FormValue("record_bmc")
+	if recordBMC != "" {
+		request.RecordBMC, err = strconv.ParseBool(recordBMC)
+		if err != nil {
+			return response.BadRequest(fmt.Errorf("Invalid value %q for query parameter %q: %w", recordBMC, "record_bmc", err))
+		}
+	}
+
 	err = s.service.DeployByName(r.Context(), name, request)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to deploy server %q: %w", name, err))

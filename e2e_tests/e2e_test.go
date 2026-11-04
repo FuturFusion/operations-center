@@ -144,12 +144,21 @@ func TestE2E_UpdateChannel(t *testing.T) {
 }
 
 func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
-	runE2ETest(
-		t,
-		"token seed - pre-register a server and deploy it via BMC",
-		setupEmptyInstance("IncusOS01"),
-		serverDeployment("IncusOS01"),
-	)
+	profiles, err := redfishProfiles(redfishProfileNames)
+	require.NoError(t, err, "expect OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES to name known profiles")
+
+	// The profiles run in sequence on the same instance, so the load of the
+	// host does not change with the number of profiles.
+	for _, profile := range profiles {
+		t.Run(profile.name, func(t *testing.T) {
+			runE2ETest(
+				t,
+				"token seed - pre-register a server and deploy it via BMC with Redfish proxy profile "+profile.name,
+				setupEmptyInstance("IncusOS01"),
+				serverDeployment("IncusOS01", profile),
+			)
+		})
+	}
 }
 
 func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {

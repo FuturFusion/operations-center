@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/google/uuid"
@@ -82,6 +83,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			CancelDeploymentByNameFunc: func(ctx context.Context, name string, skipCleanup bool) error {
 //				panic("mock out the CancelDeploymentByName method")
 //			},
+//			DeleteBMCRecordingFunc: func(ctx context.Context, name string, id string) error {
+//				panic("mock out the DeleteBMCRecording method")
+//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
@@ -117,6 +121,18 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			},
 //			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 //				panic("mock out the GetAllWithFilter method")
+//			},
+//			GetBMCRecordingFunc: func(ctx context.Context, name string, id string) (*api.BMCRecordingManifest, error) {
+//				panic("mock out the GetBMCRecording method")
+//			},
+//			GetBMCRecordingArchiveFunc: func(ctx context.Context, name string, id string, anonymize bool) (io.ReadCloser, int, error) {
+//				panic("mock out the GetBMCRecordingArchive method")
+//			},
+//			GetBMCRecordingFileFunc: func(ctx context.Context, name string, id string, filename string) (io.ReadCloser, int64, error) {
+//				panic("mock out the GetBMCRecordingFile method")
+//			},
+//			GetBMCRecordingsFunc: func(ctx context.Context, name string) ([]api.BMCRecordingManifest, error) {
+//				panic("mock out the GetBMCRecordings method")
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
@@ -278,6 +294,9 @@ type ServerServiceMock struct {
 	// CancelDeploymentByNameFunc mocks the CancelDeploymentByName method.
 	CancelDeploymentByNameFunc func(ctx context.Context, name string, skipCleanup bool) error
 
+	// DeleteBMCRecordingFunc mocks the DeleteBMCRecording method.
+	DeleteBMCRecordingFunc func(ctx context.Context, name string, id string) error
+
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
@@ -313,6 +332,18 @@ type ServerServiceMock struct {
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error)
+
+	// GetBMCRecordingFunc mocks the GetBMCRecording method.
+	GetBMCRecordingFunc func(ctx context.Context, name string, id string) (*api.BMCRecordingManifest, error)
+
+	// GetBMCRecordingArchiveFunc mocks the GetBMCRecordingArchive method.
+	GetBMCRecordingArchiveFunc func(ctx context.Context, name string, id string, anonymize bool) (io.ReadCloser, int, error)
+
+	// GetBMCRecordingFileFunc mocks the GetBMCRecordingFile method.
+	GetBMCRecordingFileFunc func(ctx context.Context, name string, id string, filename string) (io.ReadCloser, int64, error)
+
+	// GetBMCRecordingsFunc mocks the GetBMCRecordings method.
+	GetBMCRecordingsFunc func(ctx context.Context, name string) ([]api.BMCRecordingManifest, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
@@ -575,6 +606,15 @@ type ServerServiceMock struct {
 			// SkipCleanup is the skipCleanup argument value.
 			SkipCleanup bool
 		}
+		// DeleteBMCRecording holds details about calls to the DeleteBMCRecording method.
+		DeleteBMCRecording []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ID is the id argument value.
+			ID string
+		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
 			// Ctx is the ctx argument value.
@@ -668,6 +708,44 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// Filter is the filter argument value.
 			Filter provisioning.ServerFilter
+		}
+		// GetBMCRecording holds details about calls to the GetBMCRecording method.
+		GetBMCRecording []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ID is the id argument value.
+			ID string
+		}
+		// GetBMCRecordingArchive holds details about calls to the GetBMCRecordingArchive method.
+		GetBMCRecordingArchive []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ID is the id argument value.
+			ID string
+			// Anonymize is the anonymize argument value.
+			Anonymize bool
+		}
+		// GetBMCRecordingFile holds details about calls to the GetBMCRecordingFile method.
+		GetBMCRecordingFile []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ID is the id argument value.
+			ID string
+			// Filename is the filename argument value.
+			Filename string
+		}
+		// GetBMCRecordings holds details about calls to the GetBMCRecordings method.
+		GetBMCRecordings []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
@@ -951,6 +1029,7 @@ type ServerServiceMock struct {
 	lockBMCServerSetLocationIndicatorByName        sync.RWMutex
 	lockBeginUpdateRunByCluster                    sync.RWMutex
 	lockCancelDeploymentByName                     sync.RWMutex
+	lockDeleteBMCRecording                         sync.RWMutex
 	lockDeleteByName                               sync.RWMutex
 	lockDeployByName                               sync.RWMutex
 	lockDeploymentControlLoop                      sync.RWMutex
@@ -963,6 +1042,10 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithActiveDeploymentByTokenSeed sync.RWMutex
 	lockGetAllNamesWithFilter                      sync.RWMutex
 	lockGetAllWithFilter                           sync.RWMutex
+	lockGetBMCRecording                            sync.RWMutex
+	lockGetBMCRecordingArchive                     sync.RWMutex
+	lockGetBMCRecordingFile                        sync.RWMutex
+	lockGetBMCRecordings                           sync.RWMutex
 	lockGetByName                                  sync.RWMutex
 	lockGetChangelogByName                         sync.RWMutex
 	lockGetSystemKernel                            sync.RWMutex
@@ -1741,6 +1824,46 @@ func (mock *ServerServiceMock) CancelDeploymentByNameCalls() []struct {
 	return calls
 }
 
+// DeleteBMCRecording calls DeleteBMCRecordingFunc.
+func (mock *ServerServiceMock) DeleteBMCRecording(ctx context.Context, name string, id string) error {
+	if mock.DeleteBMCRecordingFunc == nil {
+		panic("ServerServiceMock.DeleteBMCRecordingFunc: method is nil but ServerService.DeleteBMCRecording was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+		ID   string
+	}{
+		Ctx:  ctx,
+		Name: name,
+		ID:   id,
+	}
+	mock.lockDeleteBMCRecording.Lock()
+	mock.calls.DeleteBMCRecording = append(mock.calls.DeleteBMCRecording, callInfo)
+	mock.lockDeleteBMCRecording.Unlock()
+	return mock.DeleteBMCRecordingFunc(ctx, name, id)
+}
+
+// DeleteBMCRecordingCalls gets all the calls that were made to DeleteBMCRecording.
+// Check the length with:
+//
+//	len(mockedServerService.DeleteBMCRecordingCalls())
+func (mock *ServerServiceMock) DeleteBMCRecordingCalls() []struct {
+	Ctx  context.Context
+	Name string
+	ID   string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+		ID   string
+	}
+	mock.lockDeleteBMCRecording.RLock()
+	calls = mock.calls.DeleteBMCRecording
+	mock.lockDeleteBMCRecording.RUnlock()
+	return calls
+}
+
 // DeleteByName calls DeleteByNameFunc.
 func (mock *ServerServiceMock) DeleteByName(ctx context.Context, name string) error {
 	if mock.DeleteByNameFunc == nil {
@@ -2190,6 +2313,170 @@ func (mock *ServerServiceMock) GetAllWithFilterCalls() []struct {
 	mock.lockGetAllWithFilter.RLock()
 	calls = mock.calls.GetAllWithFilter
 	mock.lockGetAllWithFilter.RUnlock()
+	return calls
+}
+
+// GetBMCRecording calls GetBMCRecordingFunc.
+func (mock *ServerServiceMock) GetBMCRecording(ctx context.Context, name string, id string) (*api.BMCRecordingManifest, error) {
+	if mock.GetBMCRecordingFunc == nil {
+		panic("ServerServiceMock.GetBMCRecordingFunc: method is nil but ServerService.GetBMCRecording was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+		ID   string
+	}{
+		Ctx:  ctx,
+		Name: name,
+		ID:   id,
+	}
+	mock.lockGetBMCRecording.Lock()
+	mock.calls.GetBMCRecording = append(mock.calls.GetBMCRecording, callInfo)
+	mock.lockGetBMCRecording.Unlock()
+	return mock.GetBMCRecordingFunc(ctx, name, id)
+}
+
+// GetBMCRecordingCalls gets all the calls that were made to GetBMCRecording.
+// Check the length with:
+//
+//	len(mockedServerService.GetBMCRecordingCalls())
+func (mock *ServerServiceMock) GetBMCRecordingCalls() []struct {
+	Ctx  context.Context
+	Name string
+	ID   string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+		ID   string
+	}
+	mock.lockGetBMCRecording.RLock()
+	calls = mock.calls.GetBMCRecording
+	mock.lockGetBMCRecording.RUnlock()
+	return calls
+}
+
+// GetBMCRecordingArchive calls GetBMCRecordingArchiveFunc.
+func (mock *ServerServiceMock) GetBMCRecordingArchive(ctx context.Context, name string, id string, anonymize bool) (io.ReadCloser, int, error) {
+	if mock.GetBMCRecordingArchiveFunc == nil {
+		panic("ServerServiceMock.GetBMCRecordingArchiveFunc: method is nil but ServerService.GetBMCRecordingArchive was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Name      string
+		ID        string
+		Anonymize bool
+	}{
+		Ctx:       ctx,
+		Name:      name,
+		ID:        id,
+		Anonymize: anonymize,
+	}
+	mock.lockGetBMCRecordingArchive.Lock()
+	mock.calls.GetBMCRecordingArchive = append(mock.calls.GetBMCRecordingArchive, callInfo)
+	mock.lockGetBMCRecordingArchive.Unlock()
+	return mock.GetBMCRecordingArchiveFunc(ctx, name, id, anonymize)
+}
+
+// GetBMCRecordingArchiveCalls gets all the calls that were made to GetBMCRecordingArchive.
+// Check the length with:
+//
+//	len(mockedServerService.GetBMCRecordingArchiveCalls())
+func (mock *ServerServiceMock) GetBMCRecordingArchiveCalls() []struct {
+	Ctx       context.Context
+	Name      string
+	ID        string
+	Anonymize bool
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Name      string
+		ID        string
+		Anonymize bool
+	}
+	mock.lockGetBMCRecordingArchive.RLock()
+	calls = mock.calls.GetBMCRecordingArchive
+	mock.lockGetBMCRecordingArchive.RUnlock()
+	return calls
+}
+
+// GetBMCRecordingFile calls GetBMCRecordingFileFunc.
+func (mock *ServerServiceMock) GetBMCRecordingFile(ctx context.Context, name string, id string, filename string) (io.ReadCloser, int64, error) {
+	if mock.GetBMCRecordingFileFunc == nil {
+		panic("ServerServiceMock.GetBMCRecordingFileFunc: method is nil but ServerService.GetBMCRecordingFile was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Name     string
+		ID       string
+		Filename string
+	}{
+		Ctx:      ctx,
+		Name:     name,
+		ID:       id,
+		Filename: filename,
+	}
+	mock.lockGetBMCRecordingFile.Lock()
+	mock.calls.GetBMCRecordingFile = append(mock.calls.GetBMCRecordingFile, callInfo)
+	mock.lockGetBMCRecordingFile.Unlock()
+	return mock.GetBMCRecordingFileFunc(ctx, name, id, filename)
+}
+
+// GetBMCRecordingFileCalls gets all the calls that were made to GetBMCRecordingFile.
+// Check the length with:
+//
+//	len(mockedServerService.GetBMCRecordingFileCalls())
+func (mock *ServerServiceMock) GetBMCRecordingFileCalls() []struct {
+	Ctx      context.Context
+	Name     string
+	ID       string
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Name     string
+		ID       string
+		Filename string
+	}
+	mock.lockGetBMCRecordingFile.RLock()
+	calls = mock.calls.GetBMCRecordingFile
+	mock.lockGetBMCRecordingFile.RUnlock()
+	return calls
+}
+
+// GetBMCRecordings calls GetBMCRecordingsFunc.
+func (mock *ServerServiceMock) GetBMCRecordings(ctx context.Context, name string) ([]api.BMCRecordingManifest, error) {
+	if mock.GetBMCRecordingsFunc == nil {
+		panic("ServerServiceMock.GetBMCRecordingsFunc: method is nil but ServerService.GetBMCRecordings was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetBMCRecordings.Lock()
+	mock.calls.GetBMCRecordings = append(mock.calls.GetBMCRecordings, callInfo)
+	mock.lockGetBMCRecordings.Unlock()
+	return mock.GetBMCRecordingsFunc(ctx, name)
+}
+
+// GetBMCRecordingsCalls gets all the calls that were made to GetBMCRecordings.
+// Check the length with:
+//
+//	len(mockedServerService.GetBMCRecordingsCalls())
+func (mock *ServerServiceMock) GetBMCRecordingsCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetBMCRecordings.RLock()
+	calls = mock.calls.GetBMCRecordings
+	mock.lockGetBMCRecordings.RUnlock()
 	return calls
 }
 

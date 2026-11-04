@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const (
@@ -111,15 +114,16 @@ func serverDeploymentCleanup(t *testing.T, name string, cleanup func(ctx context
 }
 
 // serverDeployment pre-registers the empty instance as a server and has
-// Operations Center deploy IncusOS on it through the BMC.
-func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDir string) {
+// Operations Center deploy IncusOS on it through the BMC. The BMC is a Redfish
+// proxy with the given profile.
+func serverDeployment(name string, profile redfishProfile) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t, "serverDeployment "+name)
+		stop := timeTrack(t, "serverDeployment "+name+" "+profile.name)
 		defer stop()
 
-		endpoint := startRedfishProxy(t, name)
+		endpoint := startRedfishProxy(t, name, profile.name, redfishProxyMediaDir(tmpDir))
 
 		// Setup
 		token := createProvisioningToken(t)
@@ -130,7 +134,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 
 		biosProfileFilename := filepath.Join(tmpDir, "bios_profile.yaml")
 
-		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAML(), 0o600)
+		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAML(profile), 0o600)
 		require.NoError(t, err)
 
 		// Run test
@@ -143,10 +147,11 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		// Run test
 		//
 		// The BIOS profile is only handed in with the deployment, it is not part
-		// of the profiles shipped with Operations Center.
+		// of the profiles shipped with Operations Center. The BMC traffic is
+		// recorded, so the recorder is covered against the Redfish proxy.
 		t.Log("Deploy the server")
 
-		resp := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
+		resp := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --record-bmc --wait %s`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename, strings.Join(profile.deployFlags, " "))
 		if !resp.Success() {
 			fmt.Println("====[ Deployment status ]====")
 			fmt.Println(run(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f yaml`, cpuArch, name).Output())
@@ -157,7 +162,8 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		require.NoError(t, fmtRunErr(resp), "expect the deployment of the server to complete")
 
 		// Assertions
-		assertServerDeployed(t, name)
+		assertServerDeployed(t, name, profile)
+		assertBMCRecording(t, name, profile.name, endpoint, tmpDir)
 		assertVirtualMediaRandomRead(t, name)
 
 		mustWaitIncusOSReady(ctx, t, []string{name})
@@ -215,25 +221,49 @@ func assertServerPreRegistered(t *testing.T, name string, endpoint string) {
 }
 
 // assertServerDeployed verifies, that the deployment has completed with the
-// BIOS profile handed in and that it left the instance in the expected state.
-func assertServerDeployed(t *testing.T, name string) {
+// BIOS profile handed in, that it took the code paths expected for the
+// profile of the Redfish proxy and that it left the instance in the expected
+// state.
+func assertServerDeployed(t *testing.T, name string, profile redfishProfile) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.state'`, cpuArch, name)
-	require.Equal(t, "completed", resp.OutputTrimmed(), "expect the deployment to be completed")
+	var deployment api.ServerDeploymentStatus
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.bios_profiles == ["%s"]'`, cpuArch, name, deployBIOSProfileName)
+	err := json.Unmarshal([]byte(mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json`, cpuArch, name).Output()), &deployment)
+	require.NoError(t, err, "expect the deployment status to be shown as JSON")
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.media_bytes_read > 0'`, cpuArch, name)
+	require.Equal(t, api.ServerDeploymentStateCompleted, deployment.State, "expect the deployment to be completed")
+	require.Equal(t, []string{deployBIOSProfileName}, deployment.BIOSProfiles, "expect the BIOS profile handed in to be applied")
 
-	resp = mustRun(t, `incus config get %s %s`, name, deployBIOSProfileConfigKey)
+	states := make([]api.ServerDeploymentState, 0, len(deployment.History))
+	for _, step := range deployment.History {
+		states = append(states, step.State)
+	}
+
+	for _, state := range profile.requiredStates {
+		require.Contains(t, states, state, "expect the deployment to pass state %q with profile %q", state, profile.name)
+	}
+
+	for _, state := range profile.forbiddenStates {
+		require.NotContains(t, states, state, "expect the deployment to skip state %q with profile %q", state, profile.name)
+	}
+
+	mediaSize := mustDeployMediaSize(t, deployment.MediaURL)
+	if profile.expectPartialMediaRead {
+		require.Positive(t, deployment.MediaBytesRead, "expect the server to read the streamed media")
+		require.Less(t, deployment.MediaBytesRead, mediaSize, "expect the server to read only parts of the streamed media")
+	} else {
+		require.Equal(t, mediaSize, deployment.MediaBytesRead, "expect the Redfish proxy to download the whole media")
+	}
+
+	resp := mustRun(t, `incus config get %s %s`, name, deployBIOSProfileConfigKey)
 	require.Equal(t, deployBIOSProfileConfigValue, resp.OutputTrimmed(), "expect the BIOS attribute of the profile to be applied")
 
 	resp = mustRun(t, `incus config get %s security.secureboot`, name)
-	require.Equal(t, "true", resp.OutputTrimmed(), "expect secure boot to be enabled")
+	require.Equal(t, profile.expectSecureBoot, resp.OutputTrimmed(), "expect security.secureboot of the instance")
 
 	resp = mustRun(t, `incus config device list %s`, name)
 	require.NotContains(t, resp.Output(), "boot-media", "expect the installation media to be detached")
