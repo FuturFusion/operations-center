@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"path"
 	"strconv"
@@ -1825,20 +1824,16 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 	}
 
 	// Prepare the proxy.
-	proxy := &httputil.ReverseProxy{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
 
-			// Bypass system proxy for communication to IncusOS servers.
-			Proxy: func(r *http.Request) (*url.URL, error) {
-				return nil, nil
-			},
-		},
-		Rewrite: func(r *httputil.ProxyRequest) {
-			r.Out.URL.Scheme = "https"
-			r.Out.URL.Host = connectionURL.Host
+		// Bypass system proxy for communication to IncusOS servers.
+		Proxy: func(r *http.Request) (*url.URL, error) {
+			return nil, nil
 		},
 	}
+
+	proxy := newSanitizingProxy(transport, "https", connectionURL.Host)
 
 	// Allow IncusOS to adjust the returned paths to the prefix used by the proxy.
 	prefix := path.Join(s.preNamePrefix, name)
