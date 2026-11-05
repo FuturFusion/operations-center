@@ -37,6 +37,18 @@ const (
 
 const seedImageSizeUpperBound = 6 * 1024 * 1024 * 1024 // bytes, ~double the current size
 
+// cacheUsageFunc reports the space situation of the file system holding the
+// cache.
+type cacheUsageFunc = func() (file.UsageInformation, error)
+
+// WithCacheUsage replaces how the seed image cache determines the space
+// situation of its file system. Without it, the cache queries the file system.
+func WithCacheUsage(usage func() (file.UsageInformation, error)) Option {
+	return func(f *Flasher) {
+		f.cacheUsage = usage
+	}
+}
+
 var errCacheMiss = errors.New("Seed image is not cached")
 
 var cacheIDRegexp = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -46,7 +58,7 @@ type imageCache struct {
 	root *os.Root
 
 	// usage reports the space situation of the filesystem holding the cache.
-	usage func() (file.UsageInformation, error)
+	usage cacheUsageFunc
 
 	// beforeAcquire is called before the generation of an image is acquired. It
 	// is only set by tests, to drive the window between the cache miss and the
