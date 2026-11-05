@@ -94,3 +94,73 @@ func Test_serverHandler_serverPut(t *testing.T) {
 		})
 	}
 }
+
+func Test_serverHandler_serverDeployPostRecordBMC(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query string
+
+		wantStatusCode  int
+		wantDeployCalls int
+		wantRecordBMC   bool
+	}{
+		{
+			name: "success - without record_bmc",
+
+			wantStatusCode:  http.StatusOK,
+			wantDeployCalls: 1,
+			wantRecordBMC:   false,
+		},
+		{
+			name:  "success - with record_bmc",
+			query: "?record_bmc=true",
+
+			wantStatusCode:  http.StatusOK,
+			wantDeployCalls: 1,
+			wantRecordBMC:   true,
+		},
+		{
+			name:  "error - record_bmc invalid",
+			query: "?record_bmc=maybe",
+
+			wantStatusCode:  http.StatusBadRequest,
+			wantDeployCalls: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		// Not parallel, rendering the shared response.EmptySyncResponse races.
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			service := &provisioningMock.ServerServiceMock{
+				DeployByNameFunc: func(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error {
+					return nil
+				},
+			}
+
+			handler := &serverHandler{
+				service: service,
+			}
+
+			body := `{"token_uuid": "b32d0079-c48b-4957-b1cb-bef54125c861", "seed": "default"}`
+			req := httptest.NewRequest(http.MethodPost, "/one/:deploy"+tc.query, strings.NewReader(body))
+			req.SetPathValue("name", "one")
+
+			rec := httptest.NewRecorder()
+
+			// Run test
+			err := handler.serverDeployPost(req).Render(rec)
+
+			// Assert
+			require.NoError(t, err, "rendering the response must not fail")
+			require.Equal(t, tc.wantStatusCode, rec.Code, "body: %s", rec.Body.String())
+			require.Len(t, service.DeployByNameCalls(), tc.wantDeployCalls)
+
+			for _, call := range service.DeployByNameCalls() {
+				require.Equal(t, tc.wantRecordBMC, call.Request.RecordBMC, "record_bmc is passed to the service")
+			}
+		})
+	}
+}
