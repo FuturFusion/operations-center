@@ -8,27 +8,43 @@ permissions:
 jobs:
   authorize:
     name: Authorize
-    # Only users with write, maintain or admin role may start or re-run it.
-    # Only scheduled and manual runs on main skip this.
-    # Any other event must pass the check.
+    # Scheduled and manual runs on main skip this job.
+    # Any other run must come from a writer adding the "run-e2e" label.
+    # A PR can change the calling workflow and its events, so check the event here.
     if: ${{ !((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-24.04
     steps:
-      - name: Check role of triggering actor
+      - name: Check event and roles
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          SENDER: ${{ github.event.sender.login }}
           ACTOR: ${{ github.triggering_actor }}
         run: |
-          role=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${ACTOR}/permission" --jq .role_name)
-          case "${role}" in
-            admin|maintain|write)
-              echo "${ACTOR} has role '${role}', E2E tests are allowed."
-              ;;
-            *)
-              echo "::error::${ACTOR} has role '${role}'. Only users with write, maintain or admin role may run the E2E tests."
-              exit 1
-              ;;
-          esac
+          if [ "${EVENT_NAME}" != "pull_request" ] || [ "${EVENT_ACTION}" != "labeled" ] || [ "${LABEL}" != "run-e2e" ]; then
+            echo "::error::Event '${EVENT_NAME}' with action '${EVENT_ACTION}' may not run the E2E tests. Only adding the 'run-e2e' label may."
+            exit 1
+          fi
+
+          check_role() {
+            role=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/$1/permission" --jq .role_name)
+            case "${role}" in
+              admin|maintain|write)
+                echo "$1 has role '${role}'."
+                ;;
+              *)
+                echo "::error::$1 has role '${role}'. Only users with write, maintain or admin role may run the E2E tests."
+                exit 1
+                ;;
+            esac
+          }
+
+          # Users with the triage role can add labels, so check the user who added the label.
+          check_role "${SENDER}"
+          # The user who starts a re-run.
+          check_role "${ACTOR}"
 
   api-tests:
     name: Operations Center E2E Tests
@@ -53,8 +69,13 @@ jobs:
       - arch-amd64
       - futurfusion-operations-center-daily
     steps:
+      # For PR runs, the default ref is the merge commit at label time.
+      # A push after the label does not change the tested code.
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Do not store the token on the persistent runner.
+          persist-credentials: false
 
       - name: Install Go
         uses: actions/setup-go@v6
