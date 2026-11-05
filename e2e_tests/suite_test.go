@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -83,6 +84,11 @@ type scenarioResult struct {
 	note     string
 }
 
+// pendingOCRestore is the state of Operations Center before the run of the
+// last failed scenario. The next scenario or top level test restores it, since
+// all of them share the Operations Center.
+var pendingOCRestore *ocState
+
 // runE2ESuite runs the scenarios in the given order as subtests of t. The
 // scenarios share the setup of the Operations Center and the servers of pool.
 // The setup runs in the first scenario selected by "-run" and again after a
@@ -119,6 +125,8 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 		step := scenarioStepStart
 		start := time.Now()
 
+		var stateBeforeRun *ocState
+
 		ok := t.Run(scenario.name, func(t *testing.T) {
 			ran = true
 
@@ -138,6 +146,12 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 
 				if needsSetup {
 					setupOperationsCenterOrMarkBroken(ctx, t, suite, tmpDir)
+
+					if pendingOCRestore != nil {
+						restoreOCStateOrMarkBroken(ctx, t, tmpDir, *pendingOCRestore)
+						pendingOCRestore = nil
+					}
+
 					needsSetup = false
 				}
 
@@ -159,6 +173,9 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 				if len(scenario.cluster) > 0 {
 					pool.ensureCluster(ctx, t, tmpDir, scenario.cluster)
 				}
+
+				state := mustObserveOCState(t)
+				stateBeforeRun = &state
 
 				step = scenarioStepRun
 
@@ -201,6 +218,10 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 			result.note = fmt.Sprintf("Failed in step %q", failedStep)
 
 			needsSetup = true
+
+			if stateBeforeRun != nil {
+				pendingOCRestore = stateBeforeRun
+			}
 
 			if len(scenario.servers()) > 0 {
 				pool.markDirty(scenario.servers(), fmt.Sprintf("scenario %s failed", scenario.name))
@@ -279,6 +300,73 @@ func runE2EScenario(t *testing.T, name string, run func(ctx context.Context, t *
 	defer stop()
 
 	run(ctx, t, tmpDir)
+}
+
+// restoreOCStateOrMarkBroken restores the state of Operations Center, which a
+// failed scenario left behind. A failure marks the setup as broken, since all
+// the remaining tests share the Operations Center.
+func restoreOCStateOrMarkBroken(ctx context.Context, t *testing.T, tmpDir string, reference ocState) {
+	t.Helper()
+
+	defer markSetupBrokenOnFailure(t, "restore of the Operations Center state")
+
+	mustRestoreOCState(ctx, t, tmpDir, reference)
+}
+
+// mustRestoreOCState applies the changed system configs again and removes the
+// added objects. A system config, which it can not restore, fails the test,
+// since it changes the behavior of Operations Center. The remaining
+// differences are only logged, since the tests select objects by name.
+func mustRestoreOCState(ctx context.Context, t *testing.T, tmpDir string, reference ocState) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	diff := diffOCState(reference, mustObserveOCState(t))
+	if diff.isEmpty() {
+		return
+	}
+
+	t.Logf("The failed scenario left changes in Operations Center, restoring:\n%s", diff)
+
+	for _, name := range diff.configs {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("system_%s_restore.json", name))
+		err := os.WriteFile(filename, []byte(reference.configs[name]), 0o600)
+		require.NoError(t, err)
+
+		if name == "security" {
+			err = applySystemSecurityWithContext(ctx, t, filename)
+			require.NoError(t, err, "Failed to restore the security config")
+
+			continue
+		}
+
+		mustRun(t, `../bin/operations-center.linux.%s system %s edit < %s`, cpuArch, name, filename)
+	}
+
+	// Restoring the ACME config might change the certificate, which
+	// Operations Center serves.
+	if slices.Contains(diff.configs, "security") && operationsCenterRemoteNeedsRetrust(ctx, t) {
+		err := retrustOperationsCenterRemoteWithContext(ctx, t)
+		require.NoError(t, err, "Failed to add the remote of the CLI again")
+	}
+
+	for _, kind := range ocObjectKinds {
+		for _, id := range diff.added[kind.name] {
+			err := fmtRunErr(runWithContext(ctx, t, kind.remove, cpuArch, id))
+			if err != nil {
+				t.Logf("Failed to remove the %s %q: %v", kind.name, id, err)
+			}
+		}
+	}
+
+	diff = diffOCState(reference, mustObserveOCState(t))
+	require.Empty(t, diff.configs, "expect the system configs to be restored")
+
+	if !diff.isEmpty() {
+		t.Logf("Operations Center still differs from the state before the failed scenario:\n%s", diff)
+	}
 }
 
 func skipUnlessE2ETestEnabled(t *testing.T) {

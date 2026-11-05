@@ -410,6 +410,19 @@ independent problems as possible, without repeating the same failure.
 
 A failure in the run of a scenario never blocks other scenarios.
 
+The pool does not cover the state of the Operations Center itself. Before the
+run of a scenario, the suite records the system configs (security, settings,
+updates, network) and the tokens, channels, cluster templates, image sources
+and images (see `ocState`). The cleanups of a failed scenario might miss some
+of its changes. So after a failed run, the next scenario compares the
+Operations Center with the recorded state and restores it. This also happens,
+if the next scenario belongs to the next suite or is a top level test. The
+restore applies the changed system configs again and removes the added objects.
+A system config, which it can not restore, marks the setup as broken (see
+[Broken setup of the Operations Center](#broken-setup-of-the-operations-center)),
+since all the remaining tests share the Operations Center. Other remaining
+differences are only logged, since the tests select objects by name.
+
 At the end, a suite logs a summary with the result, the duration and the failed
 step of each scenario, which ran.
 
@@ -536,7 +549,9 @@ Every test and every scenario depends on `setupOperationsCenter`, so a failure
 of it is terminal for the whole run.
 
 `setupOperationsCenterOrMarkBroken` therefore records such a failure and the
-remaining tests skip with that reason instead of reproducing it. Only the shared
+remaining tests skip with that reason instead of reproducing it. A failed
+restore of the Operations Center state after a failed scenario is recorded the
+same way. Only the shared
 setup is covered, a failure of the per test setup or of a test body is
 independent and keeps its signal.
 
