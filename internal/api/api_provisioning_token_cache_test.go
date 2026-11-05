@@ -21,7 +21,6 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -30,6 +29,7 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -60,15 +60,13 @@ func Test_tokenSeedImageGet_servedFromCache(t *testing.T) {
 	cacheDir := filepath.Join(t.TempDir(), "seed-images")
 	require.NoError(t, os.Mkdir(cacheDir, 0o700))
 
-	requireSpaceForCachedImage(t, filepath.Dir(cacheDir))
-
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)))
+	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
 
 	repo := &repoMock.TokenRepoMock{
 		GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
@@ -180,15 +178,13 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	cacheDir := filepath.Join(t.TempDir(), "seed-images")
 	require.NoError(t, os.Mkdir(cacheDir, 0o700))
 
-	requireSpaceForCachedImage(t, filepath.Dir(cacheDir))
-
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)))
+	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
 
 	var lookups atomic.Int64
 
@@ -369,21 +365,10 @@ func cachedImages(t *testing.T, cacheDir string, public bool) []string {
 	return names
 }
 
-// requireSpaceForCachedImage skips the test, if dir cannot take a cached image.
-func requireSpaceForCachedImage(t *testing.T, dir string) {
-	t.Helper()
-
-	const required = 3 << 30
-
-	var stat unix.Statfs_t
-
-	err := unix.Statfs(dir, &stat)
-	require.NoError(t, err)
-
-	available := stat.Bavail * uint64(stat.Bsize)
-	if available < required {
-		t.Skipf("%q has %d bytes available, the seed image cache requires at least %d", dir, available, required)
-	}
+// ampleCacheUsage reports plenty of free space. The test images are small, so
+// the tests must not depend on the free space of the machine.
+func ampleCacheUsage() (file.UsageInformation, error) {
+	return file.UsageInformation{TotalSpaceBytes: 1 << 40, AvailableSpaceBytes: 1 << 40}, nil
 }
 
 type readCountingReadCloser struct {
