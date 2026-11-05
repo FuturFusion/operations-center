@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
@@ -722,4 +723,184 @@ func TestBMCRecording_SymlinkOutsideOfRoot(t *testing.T) {
 	entries, err := os.ReadDir(outsideDir)
 	require.NoError(t, err)
 	require.Empty(t, entries, "nothing is written outside of the root")
+}
+
+func TestBMCRecording_GetArchiveAnonymized(t *testing.T) {
+	t.Parallel()
+
+	const operationsCenterAddress = "https://oc.corp.example.net:7443"
+
+	server := provisioning.Server{
+		Name:          "r640-03",
+		ConnectionURL: "https://r640-03.corp.example.net:8443",
+		BMCConfig: api.BMCConfig{
+			Endpoint: "https://bmc.corp.example.net",
+			Username: "bmcadmin",
+			Password: "Sup3rS3cret!",
+		},
+		BMCData: api.BMCData{
+			ServerSerialNumber: "SN123456",
+			ServerSKU:          "R640SKU77",
+			ServerAssetTag:     "R&D-07",
+			ServerUUID:         "4c4c4544-0042-3510-8051-b3c04f4e3332",
+		},
+	}
+
+	deployment := testDeployment(startedAt)
+	deployment.MediaURL = ""
+
+	tokenUUID := deployment.Request.TokenUUID.String()
+
+	exchanges := []api.BMCRecordingExchange{
+		{
+			Method:      "POST",
+			URL:         "https://BMC.Corp.Example.Net/redfish/v1/Managers/1/VirtualMedia/CD/Actions/VirtualMedia.InsertMedia",
+			RequestBody: `{"Image":"https://oc.corp.example.net:7443/1.0/provisioning/tokens/` + tokenUUID + `/seeds/seed01/image.iso"}`,
+			Status:      204,
+		},
+		{
+			Method:       "GET",
+			URL:          "https://bmc.corp.example.net/redfish/v1/Managers/1",
+			Status:       200,
+			ResponseBody: `{"SerialNumber":"MGRSN98765","AssetTag":"R&D-07","Oem":{"Dell":{"SystemServiceTag":"7QZ1234"}},"SKU":"R640SKU77"}`,
+		},
+		{
+			Method:       "GET",
+			URL:          "https://bmc.corp.example.net/redfish/v1/Managers/1/EthernetInterfaces/1",
+			Status:       200,
+			ResponseBody: `{"HostName":"idrac-7QZ1234","PermanentMACAddress":"AABBCCDDEEFF","IPv6Addresses":[{"Address":"fe80::aabb:ccff:fedd:eeff"},{"Address":"2a02:1234::10"}],"Password":"Sup3rS3cret!"}`,
+		},
+		{
+			Method:               "GET",
+			URL:                  "https://bmc.corp.example.net/redfish/v1/Systems/1/Oem/Dump",
+			Status:               200,
+			ResponseBody:         base64.StdEncoding.EncodeToString(append([]byte("serial=SN123456 mgr=MGRSN98765 mac=aa:bb:cc:dd:ee:ff "), 0xff)),
+			ResponseBodyEncoding: api.BMCRecordingBodyEncodingBase64,
+		},
+	}
+
+	secrets := []string{
+		"oc.corp.example.net",
+		"bmc.corp.example.net",
+		"r640-03",
+		"bmcadmin",
+		"Sup3rS3cret!",
+		tokenUUID,
+		"SN123456",
+		"MGRSN98765",
+		"R640SKU77",
+		"R&D-07",
+		`R&D-07`,
+		"7QZ1234",
+		"aa:bb:cc:dd:ee:ff",
+		"aabbccddeeff",
+		"fe80::aabb:ccff:fedd:eeff",
+		"2a02:1234::10",
+		"4c4c4544-0042-3510-8051-b3c04f4e3332",
+	}
+
+	tests := []struct {
+		name     string
+		finalize func(t *testing.T, session provisioning.BMCRecordingSession)
+	}{
+		{
+			name:     "running deployment",
+			finalize: func(t *testing.T, session provisioning.BMCRecordingSession) { t.Helper() },
+		},
+		{
+			name: "recording closed without its deployment",
+			finalize: func(t *testing.T, session provisioning.BMCRecordingSession) {
+				t.Helper()
+
+				require.NoError(t, session.Finalize(t.Context(), provisioning.ServerDeployment{}))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			repo, _ := newTestRepo(t)
+
+			session, err := repo.Open(t.Context(), server, deployment)
+			require.NoError(t, err)
+
+			for _, exchange := range exchanges {
+				session.Record(t.Context(), exchange)
+			}
+
+			tc.finalize(t, session)
+
+			manifest, err := repo.GetByID(t.Context(), server.Name, recordingID)
+			require.NoError(t, err)
+
+			rewrite := provisioning.NewBMCRecordingRewrite(server, *manifest, operationsCenterAddress)
+
+			// Run test
+			rc, _, err := repo.GetArchive(t.Context(), server.Name, recordingID, rewrite)
+			require.NoError(t, err)
+
+			defer rc.Close()
+
+			content, err := io.ReadAll(rc)
+			require.NoError(t, err)
+
+			// Assert
+			text := anonymizedArchiveText(t, content)
+
+			require.Contains(t, text, "operations-center.example", "the Operations Center host is replaced by its placeholder")
+
+			for _, secret := range secrets {
+				require.NotContains(t, strings.ToLower(text), strings.ToLower(secret), "the anonymized archive must not hold %q", secret)
+			}
+		})
+	}
+}
+
+// anonymizedArchiveText returns the files of the archive as text. The bodies
+// of the exchanges are added once more, base64 decoded, so a test can search
+// them.
+func anonymizedArchiveText(t *testing.T, content []byte) string {
+	t.Helper()
+
+	archive, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
+	require.NoError(t, err)
+
+	var text strings.Builder
+	for _, f := range archive.File {
+		r, err := f.Open()
+		require.NoError(t, err)
+
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		require.NoError(t, r.Close())
+
+		text.Write(data)
+
+		if f.Name != "exchanges.jsonl" {
+			continue
+		}
+
+		for line := range strings.Lines(string(data)) {
+			var exchange api.BMCRecordingExchange
+			require.NoError(t, json.Unmarshal([]byte(line), &exchange), "an anonymized exchange stays valid JSON")
+
+			for _, body := range []struct{ data, encoding string }{
+				{exchange.RequestBody, exchange.RequestBodyEncoding},
+				{exchange.ResponseBody, exchange.ResponseBodyEncoding},
+			} {
+				decoded := []byte(body.data)
+				if body.encoding == api.BMCRecordingBodyEncodingBase64 {
+					decoded, err = base64.StdEncoding.DecodeString(body.data)
+					require.NoError(t, err, "an anonymized base64 body stays valid base64")
+				}
+
+				text.Write(decoded)
+			}
+		}
+	}
+
+	return text.String()
 }
