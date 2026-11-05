@@ -6,6 +6,9 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // e2eScenario is a single scenario of an end 2 end suite. It runs as a subtest
@@ -119,6 +122,13 @@ func runE2EScenario(t *testing.T, name string, run func(ctx context.Context, t *
 	}
 
 	timeout := strechedTimeout(testTimeout)
+
+	deadline, ok := t.Deadline()
+	if ok {
+		var err error
+		timeout, err = cappedTestTimeout(time.Until(deadline), timeout, strechedTimeout(deadlineReserve), strechedTimeout(minTestDuration))
+		require.NoError(t, err)
+	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()

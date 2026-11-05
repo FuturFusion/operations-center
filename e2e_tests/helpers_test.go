@@ -567,3 +567,62 @@ func Test_redfishProxyBIOSProfileYAML(t *testing.T) {
 	require.Equal(t, strechedTimeout(config.ServerDeploymentMediaIdlePeriod), time.Duration(*settings.InstallMediaIdlePeriod), "install_media_idle_period")
 	require.Equal(t, strechedTimeout(config.ServerDeploymentRebootTimeout), time.Duration(*settings.RebootTimeout), "reboot_timeout")
 }
+
+func Test_cappedTestTimeout(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		remaining time.Duration
+
+		assertErr require.ErrorAssertionFunc
+		want      time.Duration
+	}{
+		{
+			name:      "enough time left",
+			remaining: 3 * time.Hour,
+
+			assertErr: require.NoError,
+			want:      45 * time.Minute,
+		},
+		{
+			name:      "timeout capped by the deadline",
+			remaining: 30 * time.Minute,
+
+			assertErr: require.NoError,
+			want:      20 * time.Minute,
+		},
+		{
+			name:      "exactly the minimum left",
+			remaining: 15 * time.Minute,
+
+			assertErr: require.NoError,
+			want:      5 * time.Minute,
+		},
+		{
+			name:      "not enough time left",
+			remaining: 14 * time.Minute,
+
+			assertErr: require.Error,
+			want:      0,
+		},
+		{
+			name:      "deadline passed",
+			remaining: -time.Minute,
+
+			assertErr: require.Error,
+			want:      0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := cappedTestTimeout(tc.remaining, 45*time.Minute, 10*time.Minute, 5*time.Minute)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
