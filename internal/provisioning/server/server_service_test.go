@@ -65,7 +65,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			repoGetAllWithFilter: provisioning.Servers{
 				{
 					Name:          "one",
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
@@ -114,7 +114,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			repoGetAllWithFilter: provisioning.Servers{
 				{
 					Name:          "one",
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
@@ -425,7 +425,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - new registration",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 			},
 
@@ -435,7 +435,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - pre registered server by system UUID",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("1"),
 			},
@@ -452,7 +452,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - pre registered server by machine ID",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				MachineID:     new("1"),
 			},
@@ -469,7 +469,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - upper case system UUID is normalized to lower case",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
 			},
@@ -487,7 +487,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - upper case system UUID is stored in lower case",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
 			},
@@ -499,7 +499,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "success - upper case machine ID is normalized to lower case",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				MachineID:     new("E9DE436EB94E4AEF8563883AEC84096E"),
 			},
@@ -517,7 +517,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - pre registered server by system UUID",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("1"),
 			},
@@ -529,7 +529,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - pre registered server by machine ID",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				MachineID:     new("1"),
 			},
@@ -541,7 +541,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 			},
 
@@ -551,7 +551,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - remote Operations Center",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				Type:          api.ServerTypeOperationsCenter,
 			},
@@ -562,7 +562,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - repo.Create",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 			},
 			repoCreateErr: boom.Error,
@@ -573,7 +573,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - matched server already registered",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("1"),
 			},
@@ -590,7 +590,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - repo.Update - pre registered server by system UUID",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 				SystemUUID:    new("1"),
 			},
@@ -608,7 +608,7 @@ func TestServerService_Register(t *testing.T) {
 			name: "error - Ping",
 			server: provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(testCertificate),
 			},
 			repoUpdateErr: boom.Error,
@@ -749,12 +749,12 @@ func TestServerService_GetAll(t *testing.T) {
 				provisioning.Server{
 					Name:          "one",
 					Cluster:       new("one"),
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 				},
 				provisioning.Server{
 					Name:          "two",
 					Cluster:       new("one"),
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 				},
 			},
 
@@ -1091,14 +1091,14 @@ func TestServerService_GetByName(t *testing.T) {
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 			},
 
 			assertErr: require.NoError,
 			wantServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					NeedsUpdate:   new(false),
 					NeedsReboot:   new(false),
@@ -1115,7 +1115,7 @@ func TestServerService_GetByName(t *testing.T) {
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:        "IncusOS",
@@ -1169,7 +1169,7 @@ func TestServerService_GetByName(t *testing.T) {
 			wantServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "IncusOS",
@@ -1204,7 +1204,7 @@ func TestServerService_GetByName(t *testing.T) {
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:        "IncusOS",
@@ -1272,7 +1272,7 @@ func TestServerService_GetByName(t *testing.T) {
 			wantServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "IncusOS",
@@ -1307,7 +1307,7 @@ func TestServerService_GetByName(t *testing.T) {
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:        "IncusOS",
@@ -1357,7 +1357,7 @@ func TestServerService_GetByName(t *testing.T) {
 			wantServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "IncusOS",
@@ -1404,7 +1404,7 @@ func TestServerService_GetByName(t *testing.T) {
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 			},
 			updateSvcGetAllWithFilterErr: boom.Error,
 
@@ -1456,7 +1456,7 @@ func TestServerService_Update(t *testing.T) {
 			Name:          "one",
 			Type:          api.ServerTypeIncus,
 			Cluster:       new("one"),
-			ConnectionURL: "http://one/",
+			ConnectionURL: "https://one/",
 			Certificate:   new(testCertificate),
 			Status:        api.ServerStatusReady,
 			Channel:       "stable",
@@ -1996,12 +1996,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2016,13 +2016,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause network config changed",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseNetworkConfigChanged,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2037,13 +2037,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause system is ready for system in pending registering state",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSystemIsReady,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusPending,
@@ -2059,13 +2059,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause system is ready",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSystemIsReady,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2080,13 +2080,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause OS update applied keeps updating state",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseOSUpdateApplied,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2102,13 +2102,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause application update applied",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseApplicationUpdateApplied,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2124,13 +2124,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause network interface state changed",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseNetworkInterfaceStateChanged,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2145,13 +2145,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause storage config changed",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseStorageConfigChanged,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2166,13 +2166,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause system reboot triggered",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSystemRebootTriggered,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2187,13 +2187,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause shutdown triggered",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseShutdownTriggered,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2208,12 +2208,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - rebooting",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusOffline,
@@ -2234,7 +2234,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetAllWithFilter: provisioning.Servers{
 				{
 					Name:          "one",
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
@@ -2250,13 +2250,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause secure boot update applied",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSecureBootUpdateApplied,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2271,13 +2271,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "success - cause suspend triggered",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSuspendTriggered,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2298,7 +2298,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetAllWithFilter: provisioning.Servers{
 				{
 					Name:          "one",
-					ConnectionURL: "http://one/",
+					ConnectionURL: "https://one/",
 					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
@@ -2312,7 +2312,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "error - repo.GetByCertificate not found",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one/",
+				ConnectionURL:             "https://one/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateErr: domain.ErrNotFound,
@@ -2323,7 +2323,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "error - repo.GetByCertificate",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one/",
+				ConnectionURL:             "https://one/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateErr: boom.Error,
@@ -2334,13 +2334,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "error - undefined update cause",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one-new/",
+				ConnectionURL:             "https://one-new/",
 				Cause:                     api.ServerSelfUpdateCause("other-cause"),
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2358,7 +2358,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2371,12 +2371,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "error - repo.UpdateByID",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one/",
+				ConnectionURL:             "https://one/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
@@ -2392,12 +2392,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		{
 			name: "error - repo.GetByName",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
-				ConnectionURL:             "http://one/",
+				ConnectionURL:             "https://one/",
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
