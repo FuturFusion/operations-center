@@ -1,11 +1,15 @@
 package e2e
 
 import (
+	"cmp"
 	"context"
+	"fmt"
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
+	"text/tabwriter"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -44,10 +48,50 @@ func (s e2eScenario) servers() []string {
 	return append(slices.Clone(s.standalone), s.cluster...)
 }
 
+// poolSteps returns the steps, which the pool runs for the scenario.
+func (s e2eScenario) poolSteps() []poolStep {
+	var steps []poolStep
+	if len(s.servers()) > 0 {
+		steps = append(steps, poolStepStandalone)
+	}
+
+	if len(s.cluster) > 0 {
+		steps = append(steps, poolStepCluster)
+	}
+
+	return steps
+}
+
+// scenarioStep is the step of a scenario, which runs or failed.
+type scenarioStep string
+
+const (
+	// scenarioStepStart covers the checks before the setup, e.g. the time left
+	// before the deadline of "go test".
+	scenarioStepStart   scenarioStep = "start"
+	scenarioStepSetup   scenarioStep = "setup"
+	scenarioStepPrepare scenarioStep = "prepare"
+	scenarioStepPool    scenarioStep = "pool"
+	scenarioStepRun     scenarioStep = "run"
+)
+
+// scenarioResult is the result of a scenario for the summary of a suite.
+type scenarioResult struct {
+	name     string
+	status   string
+	duration time.Duration
+	note     string
+}
+
 // runE2ESuite runs the scenarios in the given order as subtests of t. The
 // scenarios share the setup of the Operations Center and the servers of pool.
 // The setup runs in the first scenario selected by "-run" and again after a
 // failed scenario. pool is nil, if no scenario requires a server.
+//
+// A failed scenario does not stop the suite, since the pool brings the servers
+// into the state, which the next scenario requires. If a pool step fails
+// repeatedly, the suite skips the remaining scenarios, which need this step
+// (see poolStepFailureLimit).
 func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 	t.Helper()
 
@@ -65,20 +109,47 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 
 	suite := t
 	needsSetup := true
+	failures := poolStepFailures{}
+	results := []scenarioResult{}
 
 	for _, scenario := range scenarios {
+		ran := false
+		skipped := false
+		blockedReason := ""
+		step := scenarioStepStart
+		start := time.Now()
+
 		ok := t.Run(scenario.name, func(t *testing.T) {
+			ran = true
+
+			defer func() {
+				skipped = t.Skipped()
+			}()
+
+			blockedReason = failures.blockedReason(scenario.poolSteps())
+			if blockedReason != "" {
+				t.Skip(blockedReason)
+			}
+
 			runE2EScenario(t, scenario.name, func(ctx context.Context, t *testing.T, tmpDir string) {
 				t.Helper()
+
+				step = scenarioStepSetup
 
 				if needsSetup {
 					setupOperationsCenterOrMarkBroken(ctx, t, suite, tmpDir)
 					needsSetup = false
 				}
 
+				step = scenarioStepPrepare
+
 				if scenario.prepare != nil {
 					scenario.prepare(ctx, t, tmpDir)
-					pool.markDirty(scenario.servers())
+					pool.markDirty(scenario.servers(), fmt.Sprintf("prepare of %s changed the install", scenario.name))
+				}
+
+				if len(scenario.servers()) > 0 {
+					step = scenarioStepPool
 				}
 
 				if len(scenario.standalone) > 0 {
@@ -89,24 +160,81 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 					pool.ensureCluster(ctx, t, tmpDir, scenario.cluster)
 				}
 
+				step = scenarioStepRun
+
 				scenario.run(ctx, t, tmpDir)
 			})
 		})
 
+		// The scenario is not selected by "-run" or "go test -failfast"
+		// stopped the suite.
+		if !ran {
+			continue
+		}
+
+		result := scenarioResult{
+			name:     scenario.name,
+			status:   "PASS",
+			duration: time.Since(start),
+		}
+
+		if skipped {
+			result.status = "SKIP"
+			result.note = cmp.Or(blockedReason, "Skipped, see the log of the scenario")
+		}
+
+		// The pool steps of a scenario, which reached its run, succeeded.
+		if step == scenarioStepRun {
+			failures.succeed(scenario.poolSteps())
+		}
+
 		// A failed scenario might leave the Operations Center and its servers
 		// in a bad state.
 		if !ok {
+			failedStep := string(step)
+			if step == scenarioStepPool {
+				failedStep = string(pool.step)
+				failures.fail(pool.step, scenario.name)
+			}
+
+			result.status = "FAIL"
+			result.note = fmt.Sprintf("Failed in step %q", failedStep)
+
 			needsSetup = true
 
 			if len(scenario.servers()) > 0 {
-				pool.markDirty(scenario.servers())
+				pool.markDirty(scenario.servers(), fmt.Sprintf("scenario %s failed", scenario.name))
 			}
 		}
 
 		if len(scenario.leavesDirty) > 0 {
-			pool.markDirty(scenario.leavesDirty)
+			pool.markDirty(scenario.leavesDirty, fmt.Sprintf("scenario %s changed them", scenario.name))
 		}
+
+		results = append(results, result)
 	}
+
+	logSuiteSummary(t, results)
+}
+
+// logSuiteSummary logs the results of the scenarios, which ran.
+func logSuiteSummary(t *testing.T, results []scenarioResult) {
+	t.Helper()
+
+	if len(results) == 0 {
+		return
+	}
+
+	var summary strings.Builder
+
+	w := tabwriter.NewWriter(&summary, 0, 0, 2, ' ', 0)
+	for _, result := range results {
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%v\t%s\n", result.status, result.name, result.duration.Round(time.Second), result.note)
+	}
+
+	_ = w.Flush()
+
+	t.Logf("Summary of the suite %s:\n%s", t.Name(), summary.String())
 }
 
 // runE2EScenario runs a single end 2 end scenario with its own timeout, time

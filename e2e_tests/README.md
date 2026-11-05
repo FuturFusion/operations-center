@@ -384,6 +384,39 @@ keeps this state in memory only. After a run with
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`, remove the VMs of `TestE2E_UpdateChannel`
 before running it again. Otherwise the pool reuses the updated servers.
 
+### Failed scenarios
+
+A failed scenario does not stop the suite. The next scenario does not depend on
+the success of the scenario before. It depends on the state of the servers. The
+pool checks this state and brings the servers into the required state. A
+passing scenario therefore always starts from a checked state. After a failed
+scenario:
+
+* The pool installs the servers of the failed scenario again before their next
+  use. The pool logs the reason, when it installs a server again.
+* The next scenario runs the setup of the Operations Center again. The setup
+  keeps a usable Operations Center VM, so this is cheap.
+
+A failure while the pool brings the servers into the required state is a failed
+pool step: `standalone` (install, factory reset, rename) or `cluster` (create
+the cluster). The first failure of a pool step might be caused by the scenario
+before, so the next scenario tries again with servers, which the pool installs
+again. If the same pool step fails twice in a row, the suite skips the remaining
+scenarios, which need this step (see `poolStepFailures`). A scenario, which
+needs a cluster, also needs the `standalone` step. A scenario, which reaches its
+run, resets the failures of its pool steps. The other scenarios of the suite
+and the other suites still run. This way, one run of the suites reports as many
+independent problems as possible, without repeating the same failure.
+
+A failure in the run of a scenario never blocks other scenarios.
+
+At the end, a suite logs a summary with the result, the duration and the failed
+step of each scenario, which ran.
+
+`make e2e-test` uses `-failfast`, so locally the first failed scenario stops
+the run. Together with `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`, this
+keeps the state for debugging. The CI workflow runs without `-failfast`.
+
 Some changes only reach a server during its install, e.g. the content of its
 seed. A scenario, which needs such a change, sets `prepare`. The suite runs
 `prepare` before the pool brings the servers into the required state. The pool
