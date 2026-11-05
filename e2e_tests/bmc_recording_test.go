@@ -17,11 +17,13 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-// assertBMCRecording verifies, that the deployment of the server has been
-// recorded and that the anonymized export holds none of the identifying values
-// of the server and of the Redfish proxy. Both exports are kept in the test
-// directory, so they are available after the run.
-func assertBMCRecording(t *testing.T, name string, endpoint string, tmpDir string) {
+// assertBMCRecording verifies that the deployment of the server has been
+// recorded. It also checks that the anonymized export does not hold the
+// address of the Redfish proxy, the system UUID, the serial number and the
+// token UUID. Both exports are kept in the test
+// directory, so they are available after the run. The file names contain the
+// profile of the Redfish proxy, so the exports of the profiles do not collide.
+func assertBMCRecording(t *testing.T, name string, profile string, endpoint string, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -48,8 +50,8 @@ func assertBMCRecording(t *testing.T, name string, endpoint string, tmpDir strin
 	require.Equal(t, api.ServerDeploymentStateCompleted, listed.FinalState, "expect the recording to be finalized with the outcome of the deployment")
 	require.Positive(t, listed.Exchanges, "expect BMC exchanges to be recorded")
 
-	anonymizedFilename := filepath.Join(tmpDir, name+"-bmc-recording.zip")
-	rawFilename := filepath.Join(tmpDir, name+"-bmc-recording-raw.zip")
+	anonymizedFilename := filepath.Join(tmpDir, name+"-"+profile+"-bmc-recording.zip")
+	rawFilename := filepath.Join(tmpDir, name+"-"+profile+"-bmc-recording-raw.zip")
 
 	// The test directory is kept between runs, so an export of an earlier run is replaced.
 	mustRun(t, `../bin/operations-center.linux.%s admin bmc-recording download %s %s --anonymize --force --quiet --output %s`, cpuArch, name, listed.RecordingID, anonymizedFilename)
@@ -105,13 +107,30 @@ func assertBMCRecording(t *testing.T, name string, endpoint string, tmpDir strin
 		require.True(t, states[state], "expect the BMC exchanges of state %q to be recorded", state)
 	}
 
-	for _, content := range [][]byte{manifestContent, exchangesContent} {
-		require.NotContains(t, string(content), proxyHost, "expect the address of the Redfish proxy to be anonymized")
-		require.NotContains(t, strings.ToLower(string(content)), strings.ToLower(server.BMCData.ServerUUID), "expect the system UUID to be anonymized")
+	rawManifestContent, rawExchanges := readBMCRecordingArchive(t, rawFilename)
+	require.Contains(t, string(rawExchanges), proxyHost, "expect the raw export to hold the address of the Redfish proxy, so the anonymized export proves a change")
+
+	var rawManifest api.BMCRecordingManifest
+
+	err = json.Unmarshal(rawManifestContent, &rawManifest)
+	require.NoError(t, err, "expect the raw manifest to be valid JSON")
+	require.NotEmpty(t, rawManifest.Request.TokenUUID, "expect the raw manifest to hold the token UUID")
+
+	identifying := map[string]string{
+		"the address of the Redfish proxy": proxyHost,
+		"the system UUID":                  server.BMCData.ServerUUID,
+		"the token UUID":                   rawManifest.Request.TokenUUID,
 	}
 
-	_, rawExchanges := readBMCRecordingArchive(t, rawFilename)
-	require.Contains(t, string(rawExchanges), proxyHost, "expect the raw export to hold the address of the Redfish proxy, so the anonymized export proves a change")
+	if server.BMCData.ServerSerialNumber != "" {
+		identifying["the serial number"] = server.BMCData.ServerSerialNumber
+	}
+
+	for _, content := range [][]byte{manifestContent, exchangesContent} {
+		for description, value := range identifying {
+			require.NotContains(t, strings.ToLower(string(content)), strings.ToLower(value), "expect %s to be anonymized", description)
+		}
+	}
 }
 
 // readBMCRecordingArchive returns the manifest and the exchanges of an exported
