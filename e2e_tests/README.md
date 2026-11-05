@@ -441,8 +441,7 @@ once.
 The pool caches the ISOs of the stable token in
 `OPERATIONS_CENTER_E2E_TEST_TMP_DIR` and as storage volumes. The cached ISOs
 of an earlier run lack the change of `prepare`. So `prepare` also removes the
-cached ISOs with `removeStableTokenISOs`. The pool generates them again with
-the current seed.
+cached ISOs. The pool generates them again with the current seed.
 
 The pool only installs servers, which a selected scenario requires, so a single
 scenario only pays for its own servers. If it installs, it also installs all
@@ -735,8 +734,8 @@ the cached ISOs of the stable token, since the CA certificates are new for
 every run. The pool generates the ISOs again and installs the servers after
 this step. This way the seed of the servers contains the CA certificates as
 well. The servers keep these CA certificates for the following scenarios.
-The cached ISOs lack the CA certificates of the current run. So the scenario
-removes the cached ISOs in its `prepare` step and again on cleanup.
+The scenario removes the cached ISOs again on cleanup. This way the other
+scenarios do not install the CA certificates of this run.
 
 The scenario changes the certificate of Operations Center. The CLI pins this
 certificate, so the scenario adds the remote of the CLI again after every
