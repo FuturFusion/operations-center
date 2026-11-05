@@ -1,6 +1,19 @@
 name: End-to-End Tests
 on:
   workflow_call:
+    inputs:
+      go-test-run:
+        description: Regular expression for "go test -run", empty runs every test.
+        type: string
+        default: ""
+      redfish-profiles:
+        description: Comma separated profiles of the Redfish proxy for TestE2E_WithTokenSeed_DeployServer.
+        type: string
+        default: generic
+      artifact-suffix:
+        description: Suffix of the artifact name, so two calls in the same run do not collide.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -84,6 +97,15 @@ jobs:
           echo "setting zfs sync to disabled for better performance in CI environment"
           sudo zfs set sync=disabled default
 
+      # The stream-media profile of the Redfish proxy mounts the installation
+      # media through FUSE. incusd runs as root and reads the media, so the
+      # mount must allow other users.
+      - name: Setup FUSE
+        if: contains(inputs.redfish-profiles, 'stream-media')
+        run: |
+          sudo apt install -y fuse3
+          grep -qx user_allow_other /etc/fuse.conf || echo user_allow_other | sudo tee -a /etc/fuse.conf
+
       - name: Install opentofu
         run: |
           curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
@@ -104,17 +126,21 @@ jobs:
           OPERATIONS_CENTER_E2E_TEST: "true"
           OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
           OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
+          OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES: ${{ inputs.redfish-profiles }}
+          GO_TEST_RUN: ${{ inputs.go-test-run }}
         run: |
           set -o pipefail
           mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
           rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.zip
-          go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+          go test -v ./e2e_tests -timeout 180m -run "${GO_TEST_RUN}" | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
 
       - name: Compute artifact name
         id: artifact
         if: always()
+        env:
+          ARTIFACT_SUFFIX: ${{ inputs.artifact-suffix }}
         run: |
-          echo "name=operations-center-e2e-logs-$(date -u +%Y-%m-%d)-run-${GITHUB_RUN_NUMBER}-attempt-${GITHUB_RUN_ATTEMPT}" >> "${GITHUB_OUTPUT}"
+          echo "name=operations-center-e2e-logs-$(date -u +%Y-%m-%d)-run-${GITHUB_RUN_NUMBER}-attempt-${GITHUB_RUN_ATTEMPT}${ARTIFACT_SUFFIX:+-${ARTIFACT_SUFFIX}}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload logs
         if: always()
