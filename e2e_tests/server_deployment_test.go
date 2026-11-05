@@ -146,7 +146,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		// of the profiles shipped with Operations Center.
 		t.Log("Deploy the server")
 
-		resp := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
+		resp := runWithTimeoutAndProgress(t, "Deployment "+name+": ", `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
 		if !resp.Success() {
 			fmt.Println("====[ Deployment status ]====")
 			fmt.Println(run(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f yaml`, cpuArch, name).Output())
