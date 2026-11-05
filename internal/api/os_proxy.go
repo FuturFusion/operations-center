@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"net/http/httputil"
 
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -33,17 +32,13 @@ func (o *osProxyHandler) apiOSProxy(r *http.Request) response.Response {
 	}
 
 	// Prepare the proxy.
-	proxy := &httputil.ReverseProxy{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", internalenvironment.IncusOSSocket)
-			},
-		},
-		Rewrite: func(r *httputil.ProxyRequest) {
-			r.Out.URL.Scheme = "http"
-			r.Out.URL.Host = "incus-os"
+	transport := &http.Transport{
+		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+			return net.Dial("unix", internalenvironment.IncusOSSocket)
 		},
 	}
+
+	proxy := newSanitizingProxy(transport, "http", "incus-os")
 
 	// Allow IncusOS to adjust the returned paths to the prefix used by the proxy.
 	r.Header.Add("X-IncusOS-Proxy", o.prefix)

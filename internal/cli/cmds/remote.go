@@ -3,7 +3,9 @@ package cmds
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -152,7 +154,7 @@ func (c *cmdRemoteAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 	return nil
 }
 
-func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
+func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) (err error) {
 	name := args[0]
 	remote := config.Remote{
 		Addr:     args[1],
@@ -176,7 +178,25 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`Remote with name %q already exists`, name)
 	}
 
-	err = c.checkRemoteConnectivity(cmd.Context(), name, &remote, cfg.CertInfo, c.flagAcceptCertificate)
+	tokensFile := ""
+	if remote.AuthType == config.AuthTypeOIDC {
+		tokensFile = oidcTokensFile(configDir, name)
+
+		// The remote does not exist yet. A file left from an earlier attempt
+		// must not be used, because it might hold a different trust tuple or tokens.
+		err = os.Remove(tokensFile)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("Failed to remove stale OIDC tokens file: %w", err)
+		}
+
+		defer func() {
+			if err != nil {
+				_ = os.Remove(tokensFile)
+			}
+		}()
+	}
+
+	err = c.checkRemoteConnectivity(cmd.Context(), tokensFile, &remote, cfg.CertInfo, c.flagAcceptCertificate)
 	if err != nil {
 		return err
 	}
@@ -195,7 +215,7 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string, remote *config.Remote, clientCertInfo *localtls.CertInfo, acceptCertificate bool) error {
+func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, tokensFile string, remote *config.Remote, clientCertInfo *localtls.CertInfo, acceptCertificate bool) error {
 	// Setup an operations center client with the newly provided remote configuration.
 	opts := []client.Option{}
 	opts = append(opts, client.WithClientCertificate(clientCertInfo))
@@ -205,12 +225,7 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 	}
 
 	if remote.AuthType == config.AuthTypeOIDC {
-		configDir, err := c.env.UserConfigDir()
-		if err != nil {
-			return err
-		}
-
-		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", name+".json")))
+		opts = append(opts, client.WithOIDCTokensFile(tokensFile))
 	}
 
 	remoteOCClient, err := client.New(remote.Addr, opts...)
@@ -248,7 +263,11 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 
 	// Verify the users credentials (TLS client cert or OIDC).
 	serverInfo, err := remoteOCClient.GetAPIServerInfo(ctx)
-	if err != nil || serverInfo.Auth != string(remote.AuthType) {
+	if err != nil {
+		return fmt.Errorf("Failed to verify the credentials: %w", err)
+	}
+
+	if serverInfo.Auth != string(remote.AuthType) {
 		return fmt.Errorf("Received authentication mismatch: got %q, expected %q. Ensure the server trusts the client fingerprint %q", serverInfo.Auth, remote.AuthType, clientCertInfo.Fingerprint())
 	}
 
@@ -401,7 +420,7 @@ func (c *cmdRemoteRemove) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if remote.AuthType == config.AuthTypeOIDC {
-		err = os.Remove(filepath.Join(configDir, "oidc-tokens", name+".json"))
+		err = os.Remove(oidcTokensFile(configDir, name))
 		if err != nil {
 			cmd.PrintErrf("Warning: Failed to remove oidc tokens file: %v\n", err)
 		}
@@ -478,4 +497,8 @@ func (c *cmdRemoteSwitch) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func oidcTokensFile(configDir string, name string) string {
+	return filepath.Join(configDir, "oidc-tokens", name+".json")
 }

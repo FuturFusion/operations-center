@@ -149,7 +149,12 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 		// The OIDC client only uses the certificate pinned httpClient for the
 		// requests to Operations Center. The identity provider is a separate trust
 		// domain and is reached with system trust.
-		c.httpClient = oidcClient.NewClient(httpClient, *c.oidcTokensFilename)
+		oidcHTTPClient, err := oidcClient.NewClient(httpClient, *c.oidcTokensFilename)
+		if err != nil {
+			return OperationsCenterClient{}, err
+		}
+
+		c.httpClient = oidcHTTPClient
 	}
 
 	return c, nil

@@ -23,3 +23,15 @@ func WithAuthenticateCallback(callback func(tokenURL string)) ClientOption {
 		c.authenticateCallback = callback
 	}
 }
+
+// TrustTupleOf returns the trust tuple of c. It returns an empty trust tuple for a nil client.
+func TrustTupleOf(c *OIDCClient) OIDCTrustTuple {
+	if c == nil {
+		return OIDCTrustTuple{}
+	}
+
+	c.oidcContextMu.Lock()
+	defer c.oidcContextMu.Unlock()
+
+	return c.oidcContext.TrustTuple
+}
