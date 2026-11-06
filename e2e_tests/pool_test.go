@@ -234,7 +234,7 @@ func Test_planStandalone(t *testing.T) {
 		name     string
 		names    []string
 		observed map[string]observedServer
-		dirty    map[string]bool
+		dirty    map[string]string
 
 		want poolPlan
 	}{
@@ -301,8 +301,8 @@ func Test_planStandalone(t *testing.T) {
 				"IncusOS02": clustered("IncusOS02"),
 				"IncusOS03": clustered("IncusOS03"),
 			},
-			dirty: map[string]bool{
-				"IncusOS02": true,
+			dirty: map[string]string{
+				"IncusOS02": "scenario failed",
 			},
 
 			want: poolPlan{
@@ -351,7 +351,7 @@ func Test_clusterReady(t *testing.T) {
 	tests := []struct {
 		name     string
 		observed map[string]observedServer
-		dirty    map[string]bool
+		dirty    map[string]string
 
 		want bool
 	}{
@@ -429,8 +429,8 @@ func Test_clusterReady(t *testing.T) {
 				"IncusOS01": member("IncusOS01"),
 				"IncusOS02": member("IncusOS02"),
 			},
-			dirty: map[string]bool{
-				"IncusOS02": true,
+			dirty: map[string]string{
+				"IncusOS02": "scenario failed",
 			},
 
 			want: false,
@@ -442,6 +442,99 @@ func Test_clusterReady(t *testing.T) {
 			t.Parallel()
 
 			got := clusterReady("incus-os-cluster", []string{"IncusOS01", "IncusOS02"}, tc.observed, tc.dirty)
+
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_poolStepFailures_blockedReason(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		record func(f poolStepFailures)
+		steps  []poolStep
+
+		want string
+	}{
+		{
+			name:   "no failures",
+			record: func(f poolStepFailures) {},
+			steps:  []poolStep{poolStepStandalone, poolStepCluster},
+
+			want: "",
+		},
+		{
+			name: "single failure allows a retry",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepCluster, "create_cluster")
+			},
+			steps: []poolStep{poolStepStandalone, poolStepCluster},
+
+			want: "",
+		},
+		{
+			name: "repeated failure blocks the step",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepCluster, "create_cluster")
+				f.fail(poolStepCluster, "cluster_rolling_reboot")
+			},
+			steps: []poolStep{poolStepStandalone, poolStepCluster},
+
+			want: `Blocked, the pool step "cluster" failed in [create_cluster cluster_rolling_reboot]`,
+		},
+		{
+			name: "blocked cluster does not block standalone",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepCluster, "create_cluster")
+				f.fail(poolStepCluster, "cluster_rolling_reboot")
+			},
+			steps: []poolStep{poolStepStandalone},
+
+			want: "",
+		},
+		{
+			name: "blocked standalone blocks cluster",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepStandalone, "register_server")
+				f.fail(poolStepStandalone, "bmc_power_off_and_on")
+			},
+			steps: []poolStep{poolStepStandalone, poolStepCluster},
+
+			want: `Blocked, the pool step "standalone" failed in [register_server bmc_power_off_and_on]`,
+		},
+		{
+			name: "success resets the failures",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepCluster, "create_cluster")
+				f.succeed([]poolStep{poolStepStandalone, poolStepCluster})
+				f.fail(poolStepCluster, "factory_reset_cluster")
+			},
+			steps: []poolStep{poolStepStandalone, poolStepCluster},
+
+			want: "",
+		},
+		{
+			name: "scenario without servers is never blocked",
+			record: func(f poolStepFailures) {
+				f.fail(poolStepStandalone, "register_server")
+				f.fail(poolStepStandalone, "bmc_power_off_and_on")
+			},
+			steps: nil,
+
+			want: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			failures := poolStepFailures{}
+			tc.record(failures)
+
+			got := failures.blockedReason(tc.steps)
 
 			require.Equal(t, tc.want, got)
 		})
