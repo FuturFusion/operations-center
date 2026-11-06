@@ -180,13 +180,36 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, connection URL can not be empty for server type %s", s.Type)
 	}
 
-	_, err = url.Parse(s.ConnectionURL)
-	if err != nil {
-		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
+	if s.ConnectionURL != "" {
+		err = validateConnectionURL(s.ConnectionURL, s.Type != api.ServerTypeOperationsCenter)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
+		}
 	}
 
 	if ptr.From(s.Certificate) == "" {
 		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
+	}
+
+	return nil
+}
+
+// validateConnectionURL requires an absolute https URL. This rejects reserved
+// values like "socket.unix", which select the local unix socket of Operations
+// Center. The Operations Center record has no host, if the REST listener is
+// disabled.
+func validateConnectionURL(connectionURL string, requireHost bool) error {
+	u, err := url.Parse(connectionURL)
+	if err != nil {
+		return err
+	}
+
+	if u.Scheme != "https" {
+		return fmt.Errorf("scheme must be %q, got %q", "https", u.Scheme)
+	}
+
+	if requireHost && u.Hostname() == "" {
+		return errors.New("host can not be empty")
 	}
 
 	return nil
