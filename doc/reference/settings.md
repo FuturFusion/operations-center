@@ -53,6 +53,12 @@ it is removed from their trust store as well.
 | `oidc.audience`  | Audience the OIDC tokens should be verified against        | string   |         |
 | `oidc.claim`     | Claim which should be used to identify the user or subject | string   |         |
 
+Operations Center only accepts OIDC tokens that the issuer created for
+`oidc.client_id`. The token must contain the client ID in the `aud`, `azp` or
+`client_id` claim. If `oidc.audience` is set, the `aud` claim must also contain
+this value. This prevents the use of tokens that the issuer created for other
+applications.
+
 ### OpenFGA
 
 | Configuration | Description                                              | Value(s) | Default |
