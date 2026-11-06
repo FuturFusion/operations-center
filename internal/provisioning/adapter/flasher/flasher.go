@@ -31,7 +31,8 @@ type Flasher struct {
 	serverURL         string
 	serverCertificate string
 
-	cache *imageCache
+	cache      *imageCache
+	cacheUsage cacheUsageFunc
 }
 
 var _ provisioning.FlasherPort = &Flasher{}
@@ -59,6 +60,11 @@ func New(serverURL string, serverCertificate tls.Certificate, opts ...Option) *F
 
 	for _, opt := range opts {
 		opt(flasher)
+	}
+
+	// Apply after all options, so the order of the options does not matter.
+	if flasher.cache != nil && flasher.cacheUsage != nil {
+		flasher.cache.usage = flasher.cacheUsage
 	}
 
 	return flasher
