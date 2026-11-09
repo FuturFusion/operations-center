@@ -16,6 +16,11 @@ For a full list of available functions and examples for more advanced expression
 see the full language definition at https://expr-lang.org/docs/language-definition.
 ```
 
+```{note}
+A filter expression can be at most 4096 bytes long. Brackets can be nested at
+most 32 levels deep. Operations Center rejects longer or deeper expressions.
+```
+
 ## Common Examples
 
 ### Filtering Results from Inventory
