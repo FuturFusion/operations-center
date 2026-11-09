@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -866,6 +867,15 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 			count:     0,
 		},
 		{
+			name: "error - filter expression too long",
+			filter: provisioning.ServerFilter{
+				Expression: new(strings.Repeat("(", 500_000)),
+			},
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
+			count:     0,
+		},
+		{
 			name: "error - filter expression run",
 			filter: provisioning.ServerFilter{
 				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
@@ -1024,6 +1034,15 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 			},
 
 			assertErr: errassert.ValidationErrorContains("Failed to compile filter expression:"),
+			count:     0,
+		},
+		{
+			name: "error - filter expression too long",
+			filter: provisioning.ServerFilter{
+				Expression: new(strings.Repeat("(", 500_000)),
+			},
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
 			count:     0,
 		},
 		{

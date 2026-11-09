@@ -10,6 +10,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -16452,6 +16453,15 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
+			name: "error - filter expression too long",
+			filter: provisioning.ClusterFilter{
+				Expression: new(strings.Repeat("(", 500_000)),
+			},
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
+			count:     0,
+		},
+		{
 			name: "error - filter expression run",
 			filter: provisioning.ClusterFilter{
 				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
@@ -16624,6 +16634,15 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 				require.ErrorContains(tt, err, "Failed to compile filter expression:")
 			},
 			count: 0,
+		},
+		{
+			name: "error - filter expression too long",
+			filter: provisioning.ClusterFilter{
+				Expression: new(strings.Repeat("(", 500_000)),
+			},
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
+			count:     0,
 		},
 		{
 			name: "error - filter expression run",

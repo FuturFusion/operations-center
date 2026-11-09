@@ -2181,7 +2181,7 @@ func (s *clusterService) GetAllWithFilter(ctx context.Context, filter provisioni
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(provisioning.ToExprCluster(provisioning.Cluster{})),
 			expr.AsBool(),
@@ -2250,7 +2250,7 @@ func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter provi
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
