@@ -1458,7 +1458,7 @@ func (r redfish) LogSources(ctx context.Context, server provisioning.Server) ([]
 		services["manager"] = manager.LogServices
 	}
 
-	var logSources []string
+	logSources := []string{}
 	for name, getLogServices := range services {
 		logServices, err := getLogServices()
 		if err != nil {
