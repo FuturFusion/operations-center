@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -116,7 +117,7 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 	var statements []string
 
 	// Query all rows.
-	rows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s ORDER BY rowid", table))
+	rows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s ORDER BY rowid", quoteIdentifier(table)))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch rows for table %q: %w", table, err)
 	}
@@ -173,7 +174,8 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 				values[j] = v
 
 			case []byte:
-				values[j] = fmt.Sprintf("'%s'", string(v))
+				// Write a BLOB literal like sqlite3 .dump. Raw bytes may contain quotes.
+				values[j] = "X'" + strings.ToUpper(hex.EncodeToString(v)) + "'"
 
 			case time.Time:
 				// Try and match the sqlite3 .dump output format.
@@ -196,11 +198,15 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 			}
 		}
 
-		statement := fmt.Sprintf("INSERT INTO %s VALUES(%s);", table, strings.Join(values, ","))
+		statement := fmt.Sprintf("INSERT INTO %s VALUES(%s);", quoteIdentifier(table), strings.Join(values, ","))
 		statements = append(statements, statement)
 	}
 
 	return statements, nil
+}
+
+func quoteIdentifier(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }
 
 func (i *internalHandler) internalSQLSelect(ctx context.Context, query string, result *dump.SQLResult) error {
