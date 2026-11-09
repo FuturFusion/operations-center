@@ -22,7 +22,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
   const [skipPostJoin, setSkipPostJoin] = useState(false);
-  const [copyServicesConfig, setCopyServicesConfig] = useState(false);
+  const [copyServicesConfig, setCopyServicesConfig] = useState(true);
   const [serverNames, setServerNames] = useState<string[]>([]);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -38,7 +38,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
 
   const clearValues = () => {
     setSkipPostJoin(false);
-    setCopyServicesConfig(false);
+    setCopyServicesConfig(true);
     setServerNames([]);
   };
 
