@@ -337,6 +337,19 @@ func TestServerService_BMCServerPowerOnByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -516,6 +529,19 @@ func TestServerService_BMCServerPowerOffByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -643,6 +669,18 @@ func TestServerService_BMCServerRestartByName(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:    "error - no BMC server client registered for type",
@@ -792,6 +830,18 @@ func TestServerService_BMCServerSetLocationIndicatorByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -931,6 +981,19 @@ func TestServerService_ApplyBIOSAttributesByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			waitDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -1049,6 +1112,18 @@ func TestServerService_BMCBIOSAttributesByName(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:    "error - no BMC server client registered for type",
@@ -1299,6 +1374,19 @@ func TestServerService_ValidateBIOSProfileByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			biosProfileResolve: &resolution,
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
 	}
 
 	for _, tc := range tests {
@@ -1381,6 +1469,18 @@ func TestServerService_BMCBIOSAttributeAcceptableValuesByNameAndAttribute(t *tes
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:    "error - no BMC server client registered for type",
@@ -1480,6 +1580,18 @@ func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
@@ -1575,6 +1687,18 @@ func TestServerService_BMCLogSourcesByName(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:    "error - no BMC server client registered for type",
@@ -1713,6 +1837,19 @@ func TestServerService_BMCLogEntriesByNameAndLogSource(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:         "error - server has no BMC configured",
+			nameArg:      "one",
+			logSourceArg: "chassis/Logs",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:         "error - no BMC server client registered for type",
 			nameArg:      "one",
 			logSourceArg: "chassis/Logs",
@@ -1820,6 +1957,18 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:    "error - no BMC server client registered for type",
@@ -2426,6 +2575,28 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - server has no BMC configured",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			tokenSvcGetSeed: &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:      closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
+		},
+		{
 			name:    "error - no BMC server client registered for type",
 			nameArg: "one",
 			mediaArg: api.ServerBMCAttachMedia{
@@ -2924,6 +3095,20 @@ func TestServerService_BMCDetachMediaByName(t *testing.T) {
 			resyncDone:        closedChannel(),
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:              "error - server has no BMC configured",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeNone,
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedErrorContains("has no BMC configured"),
 		},
 		{
 			name:              "error - no BMC server client registered for type",

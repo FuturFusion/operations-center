@@ -9,7 +9,7 @@
 
  - Code comments should be no longer than one line, unless they are required to cover complex unintuitive logic.
  - Commit messages should similarly be kept as short and to the point as possible, no need to summarize the whole issue.
- - We don't use the define and test one line `if` syntax, instead splitting defintion and testing across two lines.
+ - We don't use the define and test one line `if` syntax, instead splitting definition and testing across two lines.
 
 # Error handling
 
