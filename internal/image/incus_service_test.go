@@ -373,6 +373,32 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: errassert.ValidationErrorContains(`Invalid metadata: Invalid incus image, ".." is not a valid file name`),
 		},
 		{
+			name: "error - architecture not supported",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "10",
+  "arch": "s390x",
+  "variant": "cloud",
+  "version": "20260515"
+}
+`),
+
+			assertErr: errassert.ValidationErrorContains(`Invalid metadata: Invalid incus image, architecture is not supported`),
+		},
+		{
+			name: "error - release with colon",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "10:beta",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "20260515"
+}
+`),
+
+			assertErr: errassert.ValidationErrorContains(`Invalid metadata: Invalid incus image name, expect name in the format "os:release:architecture:variant"`),
+		},
+		{
 			name:               "error - repo.GetByName",
 			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{

@@ -108,12 +108,23 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		variant = "default"
 	}
 
-	err = validateFilePathElements(os, release, variant)
+	newImg := IncusImage{
+		Name:            incusImageName(os, release, architecture, variant),
+		Aliases:         []string{fmt.Sprintf("%s/%s/%s", os, release, variant)},
+		OperatingSystem: os,
+		Release:         release,
+		Architecture:    architecture,
+		Variant:         variant,
+		Description:     description,
+		Versions:        make(map[string]api.IncusImageVersion, 1),
+	}
+
+	err = newImg.Validate()
 	if err != nil {
 		return "", fmt.Errorf("Invalid metadata: %w", err)
 	}
 
-	name := strings.Join([]string{os, release, architecture, variant}, ":")
+	name := newImg.Name
 
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
@@ -121,16 +132,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 			return "", fmt.Errorf("Failed to get incus image %q: %w", name, err)
 		}
 
-		img = &IncusImage{
-			Name:            name,
-			Aliases:         []string{fmt.Sprintf("%s/%s/%s", os, release, variant)},
-			OperatingSystem: os,
-			Release:         release,
-			Architecture:    architecture,
-			Variant:         variant,
-			Description:     description,
-			Versions:        make(map[string]api.IncusImageVersion, 1),
-		}
+		img = &newImg
 
 		_, err = s.repo.Create(ctx, *img)
 		if err != nil {
