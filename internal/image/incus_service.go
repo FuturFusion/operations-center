@@ -658,7 +658,7 @@ func (s *imageIncusService) Update(ctx context.Context, incusImage IncusImage) e
 
 func (s *imageIncusService) ValidateFilterExpression(ctx context.Context, filterExpression string) error {
 	if filterExpression != "" {
-		_, err := expr.Compile(
+		_, err := expropts.Compile(
 			filterExpression,
 			expr.Env(ExprIncusImageVersionFile{}),
 			expr.AsBool(),
@@ -793,7 +793,7 @@ func filterImageVersionFilesByFilterExpression(images IncusImages, filterExpress
 		return IncusImages{}, nil
 	}
 
-	filterExpressionProgram, err := expr.Compile(
+	filterExpressionProgram, err := expropts.Compile(
 		filterExpression,
 		expr.Env(ExprIncusImageVersionFile{}),
 		expr.AsBool(),
