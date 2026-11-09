@@ -2958,6 +2958,10 @@ func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name st
 		return nil, nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
+	if !server.BMCConfig.HasBMC() {
+		return nil, nil, errNoBMCConfigured(server.Name)
+	}
+
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
 		//domain-errors:internal Programmer error, the BMC API type is not handled.
@@ -2965,6 +2969,12 @@ func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name st
 	}
 
 	return server, client, nil
+}
+
+func errNoBMCConfigured(name string) error {
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q has no BMC configured", name).
+		WithHintf("Configure the BMC of the server first.").
+		WithDetail("server", name)
 }
 
 func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error {
@@ -3644,6 +3654,10 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		return bmcAttachedMedia{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
+	if !server.BMCConfig.HasBMC() {
+		return bmcAttachedMedia{}, errNoBMCConfigured(server.Name)
+	}
+
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
 		//domain-errors:internal Programmer error, the BMC API type is not handled.
@@ -3733,6 +3747,10 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	if !server.BMCConfig.HasBMC() {
+		return nil, errNoBMCConfigured(server.Name)
 	}
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
