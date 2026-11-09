@@ -3175,6 +3175,24 @@ const (
   "LogServices": { "@odata.id": "/redfish/v1/Systems/1/LogServices" }
 }`
 
+	logServiceRootWithoutChassisBody = `{
+  "Id": "RootService",
+  "Name": "Root Service",
+  "RedfishVersion": "1.21.0",
+  "Systems": { "@odata.id": "/redfish/v1/Systems" },
+  "Managers": { "@odata.id": "/redfish/v1/Managers" }
+}`
+
+	logSystemMemberWithoutLogServicesBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1"
+}`
+
+	logManagerMemberWithoutLogServicesBody = `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`
+
 	logManagersCollectionBody = `{
   "Members@odata.count": 1,
   "Members": [
@@ -3563,7 +3581,31 @@ func TestRedfish_LogSources(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			want:      nil,
+			want:      []string{},
+		},
+		{
+			name: "success - no chassis and no log services",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           logSystemsCollectionBody,
+				systemStatusCode:      http.StatusOK,
+				systemBody:            logSystemMemberWithoutLogServicesBody,
+				managersStatusCode:    http.StatusOK,
+				managersBody:          logManagersCollectionBody,
+				managerStatusCode:     http.StatusOK,
+				managerBody:           logManagerMemberWithoutLogServicesBody,
+				extraRoutes: map[string]mockRedfishRoute{
+					"/redfish/v1/": {
+						statusCode: http.StatusOK,
+						body:       logServiceRootWithoutChassisBody,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      []string{},
 		},
 		{
 			name: "error - failed to get BMC chassis",
