@@ -52,8 +52,8 @@ func ValidateACMEConfig(s system.SecurityACME) error {
 	}
 
 	if s.Email != "" {
-		addr, err := mail.ParseAddress(s.Email)
-		if err != nil || addr.Address != s.Email || !file.IsPathElement(s.Email) {
+		_, err := mail.ParseAddress(s.Email)
+		if err != nil || !file.IsPathElement(s.Email) {
 			return fmt.Errorf("ACME email %q is not a valid email address", s.Email)
 		}
 	}
