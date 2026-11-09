@@ -67,8 +67,7 @@ require (
 	github.com/flosch/pongo2/v6 v6.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-chi/chi/v5 v5.5.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.5 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.9 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
@@ -232,7 +231,7 @@ require (
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/mattn/go-sqlite3 v1.14.52
-	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
+	github.com/oauth2-proxy/mockoidc v0.0.0-20261103160011-e06ed0b7cb7f
 	github.com/olekukonko/tablewriter v1.1.5
 	github.com/openfga/api/proto v0.0.0-20260723150800-6981fff8d33b
 	github.com/openfga/go-sdk v0.8.3
