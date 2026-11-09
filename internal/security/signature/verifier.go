@@ -49,7 +49,8 @@ func (v verifier) Verify(sjson []byte) ([]byte, error) {
 	stdoutBuf := bytes.Buffer{}
 	stderrBuf := bytes.Buffer{}
 
-	cmd := exec.Command("openssl", "smime", "-text", "-verify", "-CAfile", rootCAFile.Name())
+	// Trust only the pinned root CA.
+	cmd := exec.Command("openssl", "smime", "-text", "-verify", "-CAfile", rootCAFile.Name(), "-no-CApath", "-no-CAstore")
 	cmd.Stdin = bytes.NewBuffer(sjson)
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
