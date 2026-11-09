@@ -70,13 +70,17 @@ members.
 The storage pools of all servers are required to have the same names and types.
 The devices of a storage pool can differ between servers.
 
-Instead of configuring the services on the new servers manually, the service
-configuration can be copied from an existing cluster member by adding the
-`--copy-services-config` flag:
+By default, Operations Center copies the service configuration from an existing
+cluster member to the added servers. This applies to the CLI and to the UI. To
+skip the copy, set the `--copy-services-config` flag to `false`:
 
 ```bash
-operations-center cluster add-servers my-cluster --server-names new-server --copy-services-config
+operations-center cluster add-servers my-cluster --server-names new-server --copy-services-config=false
 ```
+
+Without the copy, you must configure the services on the added servers
+manually. The configuration must be consistent with the existing cluster
+members.
 
 The configuration of the `lvm`, `iscsi`, `multipath`, `nvme`, `ceph`, `linstor`
 and `ovn` services is copied. The LVM `system_id` is never copied. If the LVM
