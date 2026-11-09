@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"path"
 	"path/filepath"
@@ -29,6 +30,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -691,10 +693,14 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 		return fmt.Errorf("Failed to refresh images from source %q: %w", source.Name, err)
 	}
 
+	setIncusImageNames(originImages)
+
 	originImages, err = filterImageVersionFilesByFilterExpression(originImages, source.FilterExpression)
 	if err != nil {
 		return fmt.Errorf("Failed to filter images from source %q: %w", source.Name, err)
 	}
+
+	originImages, conflictingFilePaths := validateIncusImages(ctx, source, originImages)
 
 	dbImages, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
 		Source: new(source.Name),
@@ -702,6 +708,11 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 	if err != nil {
 		return fmt.Errorf("Failed to get images from DB for source %q: %w", source.Name, err)
 	}
+
+	// The conflict in the image source might be temporary. Keep the existing images.
+	dbImages = slices.DeleteFunc(dbImages, func(image IncusImage) bool {
+		return conflictingFilePaths[image.FilePath()]
+	})
 
 	imagesToDeleteFromDB := determineImagesToDeleteFromDB(originImages, dbImages)
 	for _, image := range imagesToDeleteFromDB {
@@ -783,6 +794,51 @@ syncImages:
 	}
 
 	return nil
+}
+
+// setIncusImageNames sets the name of each image to "os:release:architecture:variant".
+// Simplestreams does not define a format for product names, so each image source uses its own.
+func setIncusImageNames(images IncusImages) {
+	for i := range images {
+		images[i].Architecture = fixArchitectureMapping(images[i].Architecture)
+		images[i].Name = incusImageName(images[i].OperatingSystem, images[i].Release, images[i].Architecture, images[i].Variant)
+	}
+}
+
+// incusImageName uses the operating system in lowercase, like images.linuxcontainers.org.
+func incusImageName(os string, release string, architecture string, variant string) string {
+	return strings.Join([]string{strings.ToLower(os), release, architecture, variant}, ":")
+}
+
+// validateIncusImages skips and logs invalid images. Image sources often provide
+// unsupported images, so this must not fail the refresh.
+// It also returns the file paths that more than one image uses.
+func validateIncusImages(ctx context.Context, source IncusImageSource, images IncusImages) (IncusImages, map[string]bool) {
+	// Images with the same file path would share their files. Skip all of them.
+	filePathCount := make(map[string]int, len(images))
+	for _, image := range images {
+		filePathCount[image.FilePath()]++
+	}
+
+	conflictingFilePaths := map[string]bool{}
+	n := 0
+	for _, image := range images {
+		err := image.Validate()
+		if err == nil && filePathCount[image.FilePath()] > 1 {
+			conflictingFilePaths[image.FilePath()] = true
+			err = errors.New("Image source provides multiple products for this image")
+		}
+
+		if err != nil {
+			slog.WarnContext(ctx, "Skipped incus image", slog.String("source", source.Name), slog.String("image", image.Name), slog.String("path", image.FilePath()), logger.Err(err))
+			continue
+		}
+
+		images[n] = image
+		n++
+	}
+
+	return images[:n], conflictingFilePaths
 }
 
 func filterImageVersionFilesByFilterExpression(images IncusImages, filterExpression string) (IncusImages, error) {

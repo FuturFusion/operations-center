@@ -57,7 +57,8 @@ func (i IncusImage) Validate() error {
 		return err
 	}
 
-	if i.Name != strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":") {
+	// Image sources like images.linuxcontainers.org use the operating system in lower case for the name.
+	if !strings.EqualFold(i.Name, strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":")) {
 		return domain.NewValidationErrf(`Invalid incus image, name needs to match "os:release:architecture:variant"`)
 	}
 
