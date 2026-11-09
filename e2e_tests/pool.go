@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -26,10 +27,15 @@ type serverPool struct {
 	// the given servers, by the name of the server.
 	prepareISOs func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string
 
-	// dirty holds the servers, which the pool installs again before their next
-	// use. A failed scenario might have left them in a bad state.
-	dirty             map[string]bool
+	// dirty maps the servers, which the pool installs again before their next
+	// use, to the reason. A failed scenario might have left them in a bad
+	// state.
+	dirty             map[string]string
 	cleanupRegistered bool
+
+	// step is the step, which the pool runs or ran last. After a failure, it
+	// names the failed step.
+	step poolStep
 }
 
 func newServerPool(t *testing.T, names []string, channel string, prepareISOs func(ctx context.Context, t *testing.T, tmpDir string, names []string) map[string]string) *serverPool {
@@ -40,15 +46,16 @@ func newServerPool(t *testing.T, names []string, channel string, prepareISOs fun
 		names:       names,
 		channel:     channel,
 		prepareISOs: prepareISOs,
-		dirty:       map[string]bool{},
+		dirty:       map[string]string{},
 	}
 }
 
 // markDirty makes the pool install the given servers again before their next
-// use. The pool does not keep this state across runs.
-func (p *serverPool) markDirty(names []string) {
+// use. The pool logs the reason, when it installs them. The pool does not keep
+// this state across runs.
+func (p *serverPool) markDirty(names []string, reason string) {
 	for _, name := range names {
-		p.dirty[name] = true
+		p.dirty[name] = reason
 	}
 }
 
@@ -61,6 +68,8 @@ func (p *serverPool) ensureStandalone(ctx context.Context, t *testing.T, tmpDir 
 	defer stop()
 
 	require.Subset(t, p.names, names, "expect the servers to be part of the pool")
+
+	p.step = poolStepStandalone
 
 	p.registerCleanup()
 
@@ -75,6 +84,13 @@ func (p *serverPool) ensureStandalone(ctx context.Context, t *testing.T, tmpDir 
 
 	if len(plan.reinstall) > 0 {
 		t.Logf("Installing %v again", plan.reinstall)
+
+		for _, name := range plan.reinstall {
+			reason, ok := p.dirty[name]
+			if ok {
+				t.Logf("Server %q is dirty: %s", name, reason)
+			}
+		}
 
 		mustRemoveServers(ctx, t, plan.reinstall, observed)
 
@@ -108,11 +124,15 @@ func (p *serverPool) ensureCluster(ctx context.Context, t *testing.T, tmpDir str
 
 	require.Subset(t, p.names, names, "expect the servers to be part of the pool")
 
+	p.step = poolStepCluster
+
 	p.registerCleanup()
 
 	observed := mustObserveServers(t, p.names)
 	if !clusterReady(incusOSClusterName, names, observed, p.dirty) {
 		p.ensureStandalone(ctx, t, tmpDir, names)
+
+		p.step = poolStepCluster
 
 		mustCreateCluster(t, tmpDir, p.channel, names)
 	}
@@ -298,12 +318,13 @@ type poolPlan struct {
 
 // planStandalone plans the steps, which bring the given servers into the
 // state "ready and not clustered". pool lists all the servers of the pool.
-func planStandalone(names []string, pool []string, observed map[string]observedServer, dirty map[string]bool) poolPlan {
+func planStandalone(names []string, pool []string, observed map[string]observedServer, dirty map[string]string) poolPlan {
 	actions := make(map[string]serverAction, len(pool))
 	reinstall := false
 
 	for _, name := range names {
-		actions[name] = nextServerAction(name, observed[name], dirty[name])
+		_, isDirty := dirty[name]
+		actions[name] = nextServerAction(name, observed[name], isDirty)
 		if actions[name] == serverActionReinstall {
 			reinstall = true
 		}
@@ -373,7 +394,7 @@ func planStandalone(names []string, pool []string, observed map[string]observedS
 
 // clusterReady reports, whether the cluster consists of exactly the given
 // servers and all of them are ready.
-func clusterReady(cluster string, names []string, observed map[string]observedServer, dirty map[string]bool) bool {
+func clusterReady(cluster string, names []string, observed map[string]observedServer, dirty map[string]string) bool {
 	members := 0
 	for _, server := range observed {
 		if server.record.Cluster == cluster {
@@ -387,8 +408,9 @@ func clusterReady(cluster string, names []string, observed map[string]observedSe
 
 	for _, name := range names {
 		server := observed[name]
+		_, isDirty := dirty[name]
 
-		if dirty[name] ||
+		if isDirty ||
 			server.instance.Status != instanceStatusRunning ||
 			server.record.Name != name ||
 			server.record.Status != "ready" ||
@@ -398,4 +420,52 @@ func clusterReady(cluster string, names []string, observed map[string]observedSe
 	}
 
 	return true
+}
+
+// poolStep is a step, which brings the servers of the pool into the state,
+// which a scenario requires.
+type poolStep string
+
+const (
+	// poolStepStandalone brings servers into the state "ready and not
+	// clustered". It installs, factory resets or renames servers.
+	poolStepStandalone poolStep = "standalone"
+
+	// poolStepCluster creates the cluster incus-os-cluster from servers in
+	// the state "ready and not clustered".
+	poolStepCluster poolStep = "cluster"
+)
+
+// poolStepFailureLimit is the number of consecutive failures of a pool step,
+// after which a suite skips the remaining scenarios, which need this step. The
+// first failure might be caused by the scenario before. The retry installs the
+// servers again, so a second failure points to a real problem.
+const poolStepFailureLimit = 2
+
+// poolStepFailures maps the pool steps to the scenarios, in which they failed
+// since their last success.
+type poolStepFailures map[poolStep][]string
+
+// fail records the failure of step in the given scenario.
+func (f poolStepFailures) fail(step poolStep, scenario string) {
+	f[step] = append(f[step], scenario)
+}
+
+// succeed records the success of the given steps.
+func (f poolStepFailures) succeed(steps []poolStep) {
+	for _, step := range steps {
+		delete(f, step)
+	}
+}
+
+// blockedReason returns the reason, why a scenario, which needs the given
+// steps, can not run. It returns an empty string, if the scenario can run.
+func (f poolStepFailures) blockedReason(steps []poolStep) string {
+	for _, step := range steps {
+		if len(f[step]) >= poolStepFailureLimit {
+			return fmt.Sprintf("Blocked, the pool step %q failed in %v", step, f[step])
+		}
+	}
+
+	return ""
 }

@@ -180,6 +180,11 @@ func runE2ETest(
 
 		setupOperationsCenterOrMarkBroken(ctx, t, t, tmpDir)
 
+		if pendingOCRestore != nil {
+			restoreOCStateOrMarkBroken(ctx, t, tmpDir, *pendingOCRestore)
+			pendingOCRestore = nil
+		}
+
 		setup(ctx, t, tmpDir)
 
 		test(ctx, t, tmpDir)
@@ -196,22 +201,27 @@ var (
 func setupOperationsCenterOrMarkBroken(ctx context.Context, t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
-	// A failure unwinds through runtime.Goexit, which runs the deferred
-	// functions, so the report is recorded either way.
-	defer func() {
-		if !t.Failed() {
-			return
-		}
-
-		setupBrokenMu.Lock()
-		defer setupBrokenMu.Unlock()
-
-		if setupBrokenReport == "" {
-			setupBrokenReport = fmt.Sprintf("setup of the Operations Center failed in %s", t.Name())
-		}
-	}()
+	defer markSetupBrokenOnFailure(t, "setup of the Operations Center")
 
 	setupOperationsCenter(ctx, t, owner, tmpDir)
+}
+
+// markSetupBrokenOnFailure records a failure of t as a broken setup. Call it
+// deferred. A failure unwinds through runtime.Goexit, which runs the deferred
+// functions, so the report is recorded either way.
+func markSetupBrokenOnFailure(t *testing.T, step string) {
+	t.Helper()
+
+	if !t.Failed() {
+		return
+	}
+
+	setupBrokenMu.Lock()
+	defer setupBrokenMu.Unlock()
+
+	if setupBrokenReport == "" {
+		setupBrokenReport = fmt.Sprintf("%s failed in %s", step, t.Name())
+	}
 }
 
 // setupBrokenReason returns the report of the test, which found the setup of the

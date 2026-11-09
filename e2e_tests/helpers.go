@@ -1897,6 +1897,28 @@ func strechedTimeout(timeout time.Duration) time.Duration {
 	return time.Duration(float64(timeout) * timeoutStretchFactor)
 }
 
+const (
+	// deadlineReserve is the time, which a test leaves before the deadline of
+	// "go test" for its cleanup, its debug output and the cleanup of its suite.
+	deadlineReserve = 10 * time.Minute
+
+	// minTestDuration is the least time, for which a test starts.
+	minTestDuration = 5 * time.Minute
+)
+
+// cappedTestTimeout caps the timeout of a test, so the test ends before the
+// deadline of "go test". The test binary panics at this deadline. The panic
+// skips the cleanup and the debug output and hides the results of all the
+// remaining tests. remaining is the time until the deadline.
+func cappedTestTimeout(remaining time.Duration, timeout time.Duration, reserve time.Duration, minimum time.Duration) (time.Duration, error) {
+	available := remaining - reserve
+	if available < minimum {
+		return 0, fmt.Errorf("only %v left before the deadline of go test, which is not enough to start the test", remaining.Round(time.Second))
+	}
+
+	return min(timeout, available), nil
+}
+
 var (
 	// debugOutputMu guards debugOutput, which is written concurrently by the
 	// errgroup goroutines, which set up the VMs.

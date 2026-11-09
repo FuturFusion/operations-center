@@ -28,7 +28,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")
 * `OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP`: Whether to setup the IncusOS instances concurrently (default: "true")
 * `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR`: Factor to stretch timeouts by (default: "1.0"). This also stretches the deployment timeouts in the BIOS profile of `TestE2E_WithTokenSeed_DeployServer`. It does not change the `-timeout` flag of `go test`. Raise this flag by the same factor.
-* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case or a single scenario of a suite, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "60m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary.
+* `OPERATIONS_CENTER_E2E_TEST_TIMEOUT`: Timeout for a single test case or a single scenario of a suite, subject to `OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR` (default: "45m"). This is not the same as the `-timeout` flag of `go test`, which is a budget shared by all the test cases of the suite. Exceeding the timeout of a single test case fails this test case, which allows the cleanup and the collection of the debug output to take place, while exceeding the `go test` timeout panics the whole test binary. A test therefore caps its timeout, so it ends 10 minutes before the `go test` deadline. If less than 15 minutes are left, the test fails right away and does not start (see `cappedTestTimeout`). Both values are subject to the stretch factor.
 * `OPERATIONS_CENTER_E2E_TEST_CPU_ARCH`: CPU architecture used (default: "amd64")
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
@@ -384,6 +384,52 @@ keeps this state in memory only. After a run with
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`, remove the VMs of `TestE2E_UpdateChannel`
 before running it again. Otherwise the pool reuses the updated servers.
 
+### Failed scenarios
+
+A failed scenario does not stop the suite. The next scenario does not depend on
+the success of the scenario before. It depends on the state of the servers. The
+pool checks this state and brings the servers into the required state. A
+passing scenario therefore always starts from a checked state. After a failed
+scenario:
+
+* The pool installs the servers of the failed scenario again before their next
+  use. The pool logs the reason, when it installs a server again.
+* The next scenario runs the setup of the Operations Center again. The setup
+  keeps a usable Operations Center VM, so this is cheap.
+
+A failure while the pool brings the servers into the required state is a failed
+pool step: `standalone` (install, factory reset, rename) or `cluster` (create
+the cluster). The first failure of a pool step might be caused by the scenario
+before, so the next scenario tries again with servers, which the pool installs
+again. If the same pool step fails twice in a row, the suite skips the remaining
+scenarios, which need this step (see `poolStepFailures`). A scenario, which
+needs a cluster, also needs the `standalone` step. A scenario, which reaches its
+run, resets the failures of its pool steps. The other scenarios of the suite
+and the other suites still run. This way, one run of the suites reports as many
+independent problems as possible, without repeating the same failure.
+
+A failure in the run of a scenario never blocks other scenarios.
+
+The pool does not cover the state of the Operations Center itself. Before the
+run of a scenario, the suite records the system configs (security, settings,
+updates, network) and the tokens, channels, cluster templates, image sources
+and images (see `ocState`). The cleanups of a failed scenario might miss some
+of its changes. So after a failed run, the next scenario compares the
+Operations Center with the recorded state and restores it. This also happens,
+if the next scenario belongs to the next suite or is a top level test. The
+restore applies the changed system configs again and removes the added objects.
+A system config, which it can not restore, marks the setup as broken (see
+[Broken setup of the Operations Center](#broken-setup-of-the-operations-center)),
+since all the remaining tests share the Operations Center. Other remaining
+differences are only logged, since the tests select objects by name.
+
+At the end, a suite logs a summary with the result, the duration and the failed
+step of each scenario, which ran.
+
+`make e2e-test` uses `-failfast`, so locally the first failed scenario stops
+the run. Together with `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`, this
+keeps the state for debugging. The CI workflow runs without `-failfast`.
+
 Some changes only reach a server during its install, e.g. the content of its
 seed. A scenario, which needs such a change, sets `prepare`. The suite runs
 `prepare` before the pool brings the servers into the required state. The pool
@@ -391,6 +437,11 @@ installs the servers of the scenario again after `prepare`. An example is
 `acme_renewal`, which adds custom CA certificates to the Operations Center
 host. Place such a scenario first, so the pool installs all the servers only
 once.
+
+The pool caches the ISOs of the stable token in
+`OPERATIONS_CENTER_E2E_TEST_TMP_DIR` and as storage volumes. The cached ISOs
+of an earlier run lack the change of `prepare`. So `prepare` also removes the
+cached ISOs. The pool generates them again with the current seed.
 
 The pool only installs servers, which a selected scenario requires, so a single
 scenario only pays for its own servers. If it installs, it also installs all
@@ -497,7 +548,9 @@ Every test and every scenario depends on `setupOperationsCenter`, so a failure
 of it is terminal for the whole run.
 
 `setupOperationsCenterOrMarkBroken` therefore records such a failure and the
-remaining tests skip with that reason instead of reproducing it. Only the shared
+remaining tests skip with that reason instead of reproducing it. A failed
+restore of the Operations Center state after a failed scenario is recorded the
+same way. Only the shared
 setup is covered, a failure of the per test setup or of a test body is
 independent and keeps its signal.
 
@@ -676,11 +729,13 @@ default CA bundle, like with the internal ACME server of a company.
 
 The scenario `acme_renewal` of the suite `TestE2E_StableServers` covers the
 ACME support. In its `prepare` step, it adds both CA certificates to the custom
-CA certificates of the IncusOS host of Operations Center. The pool installs the
-servers after this step. This way the seed of the servers contains them as
+CA certificates of the IncusOS host of Operations Center. The step also removes
+the cached ISOs of the stable token, since the CA certificates are new for
+every run. The pool generates the ISOs again and installs the servers after
+this step. This way the seed of the servers contains the CA certificates as
 well. The servers keep these CA certificates for the following scenarios.
-The cached ISOs lack the CA certificates of the current run. So the scenario
-removes the cached ISOs in its `prepare` step and again on cleanup.
+The scenario removes the cached ISOs again on cleanup. This way the other
+scenarios do not install the CA certificates of this run.
 
 The scenario changes the certificate of Operations Center. The CLI pins this
 certificate, so the scenario adds the remote of the CLI again after every
