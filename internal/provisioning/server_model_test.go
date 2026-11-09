@@ -30,7 +30,7 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -82,7 +82,7 @@ one
 				Name:          "", // invalid
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -102,7 +102,7 @@ one
 				Name:          ":self", // reserved for internal use, not allowed
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -122,7 +122,7 @@ one
 				Name:          "one",
 				Type:          "", // empty
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -142,7 +142,7 @@ one
 				Name:          "one",
 				Type:          api.ServerType("invalid"), // invalid
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -197,12 +197,107 @@ one
 			},
 		},
 		{
+			name: "valid - operations center without host",
+			server: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				ConnectionURL: "https://:",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - operations center connection URL reserved unix socket value",
+			server: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				ConnectionURL: "socket.unix", // invalid
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL reserved unix socket value",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       new("one"),
+				ConnectionURL: "socket.unix", // invalid
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL scheme not https",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       new("one"),
+				ConnectionURL: "http://one/", // invalid
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL without host",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       new("one"),
+				ConnectionURL: "https:///path", // invalid
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`),
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - public connection URL invalid",
 			server: provisioning.Server{
 				Name:                "one",
 				Type:                api.ServerTypeIncus,
 				Cluster:             new("one"),
-				ConnectionURL:       "http://one/",
+				ConnectionURL:       "https://one/",
 				PublicConnectionURL: ":|\\", // invalid
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
@@ -222,7 +317,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate:   new(``), // invalid
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -239,7 +334,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -259,7 +354,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -279,7 +374,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -300,7 +395,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -320,7 +415,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -343,7 +438,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -367,7 +462,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
@@ -391,7 +486,7 @@ one
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
-				ConnectionURL: "http://one/",
+				ConnectionURL: "https://one/",
 				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
