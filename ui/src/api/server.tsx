@@ -270,7 +270,7 @@ export const fetchServerBMCLogSources = (name: string): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/bmc/logs`)
       .then(processResponse)
-      .then((data) => resolve(data.metadata))
+      .then((data) => resolve(data.metadata ?? []))
       .catch(reject);
   });
 };
@@ -282,7 +282,7 @@ export const fetchServerBMCLogEntries = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/bmc/logs/${logSource}`)
       .then(processResponse)
-      .then((data) => resolve(data.metadata))
+      .then((data) => resolve(data.metadata ?? []))
       .catch(reject);
   });
 };

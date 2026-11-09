@@ -86,3 +86,32 @@ test("TabView select second tab", () => {
 
   expect(handleSelect).toHaveBeenCalledTimes(1);
 });
+
+test("renders only default tab content without selected tab", () => {
+  const tabs = [
+    {
+      key: "tab1",
+      title: "Tab 1",
+      content: <span>Tab 1 content</span>,
+    },
+    {
+      key: "tab2",
+      title: "Tab 2",
+      content: <span>Tab 2 content</span>,
+    },
+  ];
+
+  const handleSelect = vi.fn();
+  render(
+    <TabView
+      defaultTab="tab1"
+      activeTab={undefined}
+      tabs={tabs}
+      onSelect={handleSelect}
+    />,
+  );
+
+  expect(handleSelect).toHaveBeenCalledTimes(0);
+  expect(screen.getByText("Tab 1 content")).toBeInTheDocument();
+  expect(screen.queryByText("Tab 2 content")).not.toBeInTheDocument();
+});

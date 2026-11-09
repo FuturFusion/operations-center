@@ -27,7 +27,7 @@ const TabView: FC<TabViewProps> = ({
     return tabs.map((item) => {
       return (
         <Tab eventKey={item.key} title={item.title}>
-          {(!activeTab || activeTab == item.key) && item.content}
+          {activeKey == item.key && item.content}
         </Tab>
       );
     });

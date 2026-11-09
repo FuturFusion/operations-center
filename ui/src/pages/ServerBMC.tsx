@@ -440,6 +440,8 @@ const ServerBMC = () => {
         <div>
           Error while loading log sources: <pre>{logSourcesError.message}</pre>
         </div>
+      ) : !isLogSourcesLoading && logSources.length == 0 ? (
+        <div>The BMC does not provide any log sources.</div>
       ) : (
         <>
           <Form.Select
