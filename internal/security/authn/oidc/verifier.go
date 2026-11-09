@@ -279,7 +279,7 @@ func (o *Verifier) Callback(w http.ResponseWriter, r *http.Request) {
 	handler(w, r)
 }
 
-// VerifyAccessToken is a wrapper around op.VerifyAccessToken which avoids having to deal with Go generics elsewhere. It validates the access token (issuer, signature and expiration).
+// VerifyAccessToken is a wrapper around op.VerifyAccessToken which avoids having to deal with Go generics elsewhere. It validates the access token (issuer, signature, expiration, audience and client).
 func (o *Verifier) VerifyAccessToken(ctx context.Context, token string) (*oidc.AccessTokenClaims, error) {
 	accessTokenVerifier, err := o.getAccessTokenVerifierCached(ctx)
 	if err != nil {
@@ -291,13 +291,28 @@ func (o *Verifier) VerifyAccessToken(ctx context.Context, token string) (*oidc.A
 		return nil, err
 	}
 
-	// Check that the token includes the configured audience.
-	audience := claims.GetAudience()
-	if o.audience != "" && !slices.Contains(audience, o.audience) {
-		return nil, fmt.Errorf("Provided OIDC token doesn't allow the configured audience")
+	err = checkTokenBinding(claims, o.clientID, o.audience)
+	if err != nil {
+		return nil, err
 	}
 
 	return claims, nil
+}
+
+// checkTokenBinding rejects tokens the issuer minted for other clients.
+// The issuer signature alone is not enough if the issuer serves other clients too.
+func checkTokenBinding(claims *oidc.AccessTokenClaims, clientID string, audience string) error {
+	if audience != "" && !slices.Contains(claims.Audience, audience) {
+		return fmt.Errorf("Provided OIDC token doesn't allow the configured audience")
+	}
+
+	// Identity providers name the client in different claims.
+	issuedForClient := slices.Contains(claims.Audience, clientID) || claims.AuthorizedParty == clientID || claims.ClientID == clientID
+	if clientID == "" || !issuedForClient {
+		return fmt.Errorf("Provided OIDC token was not issued for the configured client")
+	}
+
+	return nil
 }
 
 // WriteHeaders writes the OIDC configuration as HTTP headers so the client can initatiate the device code flow.
