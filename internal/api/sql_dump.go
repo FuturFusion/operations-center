@@ -160,18 +160,7 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 				}
 
 			case string:
-				// This is based on logic from dump_callback in sqlite source for sqlite3_db_dump function.
-				v = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))
-
-				if strings.Contains(v, "\r") {
-					v = "replace(" + strings.ReplaceAll(v, "\r", "\\r") + ",'\\r',char(13))"
-				}
-
-				if strings.Contains(v, "\n") {
-					v = "replace(" + strings.ReplaceAll(v, "\n", "\\n") + ",'\\n',char(10))"
-				}
-
-				values[j] = v
+				values[j] = quoteString(v)
 
 			case []byte:
 				// Write a BLOB literal like sqlite3 .dump. Raw bytes may contain quotes.
@@ -203,6 +192,39 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 	}
 
 	return statements, nil
+}
+
+func quoteString(s string) string {
+	// Like sqlite3 .dump, write newlines and carriage returns as markers.
+	// A marker must not occur in the text, or replace() changes the text on restore.
+	literal := "'" + strings.ReplaceAll(s, "'", "''") + "'"
+
+	if strings.Contains(s, "\n") {
+		marker := unusedMarker(literal, `\n`, `\012`)
+		literal = "replace(" + strings.ReplaceAll(literal, "\n", marker) + ",'" + marker + "',char(10))"
+	}
+
+	if strings.Contains(s, "\r") {
+		marker := unusedMarker(literal, `\r`, `\015`)
+		literal = "replace(" + strings.ReplaceAll(literal, "\r", marker) + ",'" + marker + "',char(13))"
+	}
+
+	return literal
+}
+
+func unusedMarker(s string, first string, second string) string {
+	for _, marker := range []string{first, second} {
+		if !strings.Contains(s, marker) {
+			return marker
+		}
+	}
+
+	for i := 0; ; i++ {
+		marker := fmt.Sprintf("(%s%d)", first, i)
+		if !strings.Contains(s, marker) {
+			return marker
+		}
+	}
 }
 
 func quoteIdentifier(name string) string {
