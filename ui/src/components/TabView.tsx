@@ -1,6 +1,7 @@
 import { FC, ReactNode } from "react";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
+import ErrorBoundary from "components/ErrorBoundary";
 
 interface Tab {
   key: string;
@@ -27,7 +28,9 @@ const TabView: FC<TabViewProps> = ({
     return tabs.map((item) => {
       return (
         <Tab eventKey={item.key} title={item.title}>
-          {activeKey == item.key && item.content}
+          {activeKey == item.key && (
+            <ErrorBoundary label={item.title}>{item.content}</ErrorBoundary>
+          )}
         </Tab>
       );
     });

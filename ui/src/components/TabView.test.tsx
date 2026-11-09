@@ -115,3 +115,42 @@ test("renders only default tab content without selected tab", () => {
   expect(screen.getByText("Tab 1 content")).toBeInTheDocument();
   expect(screen.queryByText("Tab 2 content")).not.toBeInTheDocument();
 });
+
+test("renders error message of failing tab content", () => {
+  const FailingContent = () => {
+    throw new Error("boom");
+  };
+
+  const tabs = [
+    {
+      key: "tab1",
+      title: "Tab 1",
+      content: <FailingContent />,
+    },
+    {
+      key: "tab2",
+      title: "Tab 2",
+      content: <span>Tab 2 content</span>,
+    },
+  ];
+
+  // React logs caught render errors. Keep the test output clean.
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const handleSelect = vi.fn();
+  render(
+    <TabView
+      defaultTab="tab1"
+      activeTab="tab1"
+      tabs={tabs}
+      onSelect={handleSelect}
+    />,
+  );
+
+  expect(
+    screen.getByText("Error while rendering Tab 1: boom"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Tab 2")).toBeInTheDocument();
+
+  consoleError.mockRestore();
+});
