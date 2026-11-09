@@ -447,6 +447,12 @@ func Test_fixArchitectureMapping(t *testing.T) {
 			want: "arm64",
 		},
 		{
+			name:         "loongarch64 - loong64",
+			architecture: "loongarch64",
+
+			want: "loong64",
+		},
+		{
 			name:         "other",
 			architecture: "other",
 
