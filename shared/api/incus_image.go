@@ -47,7 +47,7 @@ type IncusImagePost struct {
 	Version string `json:"version" yaml:"version"`
 }
 
-var incusImageArchitectures = []string{"amd64", "arm64", "armhf", "riscv64"}
+var incusImageArchitectures = []string{"amd64", "arm64", "armhf", "loong64", "riscv64"}
 
 // ValidateIncusImageArchitecture checks that incus images support the
 // architecture.
