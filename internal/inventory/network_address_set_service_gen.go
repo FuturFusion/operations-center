@@ -63,7 +63,7 @@ func (s networkAddressSetService) GetAllWithFilter(ctx context.Context, filter N
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(ToExprNetworkAddressSet(NetworkAddressSet{})),
 			expr.AsBool(),
@@ -71,7 +71,7 @@ func (s networkAddressSetService) GetAllWithFilter(ctx context.Context, filter N
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -108,14 +108,14 @@ func (s networkAddressSetService) GetAllUUIDsWithFilter(ctx context.Context, fil
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 

@@ -63,7 +63,7 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(ToExprImage(Image{})),
 			expr.AsBool(),
@@ -71,7 +71,7 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -108,14 +108,14 @@ func (s imageService) GetAllUUIDsWithFilter(ctx context.Context, filter ImageFil
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 

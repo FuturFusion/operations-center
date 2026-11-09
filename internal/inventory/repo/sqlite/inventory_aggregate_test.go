@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,6 +15,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 )
 
 func TestInventoryAggregateDatabaseActions(t *testing.T) {
@@ -137,5 +140,53 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 
 	for _, item := range aggregate.StorageVolumes {
 		require.NotEqual(t, uuid.Nil, item.UUID, "storage volume %q has a UUID", item.Name)
+	}
+}
+
+func TestInventoryAggregate_GetAllWithFilter_invalidExpression(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		expression string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:       "error - non bool expression",
+			expression: `"string"`,
+
+			assertErr: errassert.ValidationErrorContains("Failed to compile filter expression"),
+		},
+		{
+			name:       "error - too long",
+			expression: strings.Repeat("(", 500_000),
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
+		},
+		{
+			name:       "error - nested too deeply",
+			expression: strings.Repeat("(", expropts.MaxExpressionNestingDepth+1) + "true" + strings.Repeat(")", expropts.MaxExpressionNestingDepth+1),
+
+			assertErr: errassert.ValidationErrorContains("Expression is nested too deeply"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			aggregateRepo := inventorySqlite.NewInventoryAggregate(nil)
+
+			// Run test
+			aggregates, err := aggregateRepo.GetAllWithFilter(context.Background(), inventory.InventoryAggregateFilter{
+				Expression: &tc.expression,
+			})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Nil(t, aggregates, "no aggregates are returned for an invalid expression")
+		})
 	}
 }

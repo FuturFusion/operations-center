@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
@@ -65,7 +66,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
@@ -73,7 +74,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 

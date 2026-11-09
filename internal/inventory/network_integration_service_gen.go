@@ -63,7 +63,7 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(ToExprNetworkIntegration(NetworkIntegration{})),
 			expr.AsBool(),
@@ -71,7 +71,7 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -108,14 +108,14 @@ func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, fi
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
