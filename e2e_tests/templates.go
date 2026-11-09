@@ -190,12 +190,6 @@ $CLIENT_CERTIFICATE$
     description: Initial admin client
 `)
 
-	incusOSServiceLVMConfig = []byte(`---
-config:
-  enabled: true
-  system_id: 1999
-`)
-
 	// createClusterFromTemplate templates.
 
 	incusOSClusterServicesConfigTemplate = []byte(`---
