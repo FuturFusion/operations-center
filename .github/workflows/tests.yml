@@ -70,7 +70,8 @@ jobs:
             efitools \
             dosfstools \
             mtools \
-            systemd-repart
+            systemd-repart \
+            sqlite3
 
       - name: Download go dependencies
         run: |
