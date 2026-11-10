@@ -188,6 +188,7 @@ type ExprOsapiSystemNetworkBridge struct {
 type ExprOsapiSystemNetworkConfig struct {
 	ConfirmationTimeout        string                            `json:"confirmation_timeout,omitempty" yaml:"confirmation_timeout,omitempty" expr:"confirmation_timeout"`
 	DefaultConfirmationTimeout string                            `json:"default_confirmation_timeout,omitempty" yaml:"default_confirmation_timeout,omitempty" expr:"default_confirmation_timeout"`
+	IgnoreServiceChecks        bool                              `json:"ignore_service_checks" yaml:"ignore_service_checks" expr:"ignore_service_checks"`
 	DNS                        *ExprOsapiSystemNetworkDNS        `json:"dns,omitempty"   yaml:"dns,omitempty" expr:"dns"`
 	Time                       *ExprOsapiSystemNetworkTime       `json:"time,omitempty"  yaml:"time,omitempty" expr:"time"`
 	Proxy                      *ExprOsapiSystemNetworkProxy      `json:"proxy,omitempty" yaml:"proxy,omitempty" expr:"proxy"`
@@ -830,6 +831,7 @@ func ToExprOsapiSystemNetworkConfig(s osapi.SystemNetworkConfig) ExprOsapiSystem
 	return ExprOsapiSystemNetworkConfig{
 		ConfirmationTimeout:        s.ConfirmationTimeout,
 		DefaultConfirmationTimeout: s.DefaultConfirmationTimeout,
+		IgnoreServiceChecks:        s.IgnoreServiceChecks,
 		DNS:                        toPtr(ToExprOsapiSystemNetworkDNS(fromPtr(s.DNS))),
 		Time:                       toPtr(ToExprOsapiSystemNetworkTime(fromPtr(s.Time))),
 		Proxy:                      toPtr(ToExprOsapiSystemNetworkProxy(fromPtr(s.Proxy))),

@@ -26,7 +26,7 @@ import (
 const (
 	// openFGAVersion must match the version of the github.com/openfga/openfga
 	// module in go.mod.
-	openFGAVersion = "1.22.0"
+	openFGAVersion = "1.22.1"
 
 	openFGABinaryName = "openfga"
 
@@ -39,8 +39,8 @@ const (
 // openFGAVersion. The sums are from the checksums.txt file of the release.
 // Update the sums together with openFGAVersion.
 var openFGATarballSHA256 = map[string]string{
-	"linux_amd64": "eaa86a22c7ece1e461467082447fdf943bd2aca03ed400e31d5c82953d85cf14",
-	"linux_arm64": "51d74f9a98ef958f0fd41caff96384962b22c66a803572ee7532438839f9f6a4",
+	"linux_amd64": "80d2d4b582762c02dc86b1246f7f6f54d6854259727b36e5b5c43ba90792814a",
+	"linux_arm64": "57678dc8697a224cc867081993d3a3676e005ce19d787463c913c73aed75cf5c",
 }
 
 // ensureOpenFGABinary returns the path of the OpenFGA binary below tmpDir. It
