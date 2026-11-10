@@ -128,7 +128,7 @@ func TestTokenImageSeedConfigs_Value(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`{"applications":{"version":"1","applications":null},"incus":{"version":"1","apply_defaults":false,"preseed":null},"install":{"version":"1","force_install":false,"force_reboot":false,"target":null},"migration_manager":{"version":"1","apply_defaults":false,"preseed":null},"network":{"version":"1"},"operations_center":{"version":"1","apply_defaults":false,"preseed":null},"security":{"encryption_recovery_keys":null,"version":"1"},"update":{"auto_reboot":false,"channel":"","check_frequency":"","version":"1"}}`),
+			wantValue: []byte(`{"applications":{"version":"1","applications":null},"incus":{"version":"1","apply_defaults":false,"preseed":null},"install":{"version":"1","force_install":false,"force_reboot":false,"target":null},"migration_manager":{"version":"1","apply_defaults":false,"preseed":null},"network":{"ignore_service_checks":false,"version":"1"},"operations_center":{"version":"1","apply_defaults":false,"preseed":null},"security":{"encryption_recovery_keys":null,"version":"1"},"update":{"auto_reboot":false,"channel":"","check_frequency":"","version":"1"}}`),
 		},
 	}
 
