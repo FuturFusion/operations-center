@@ -14,6 +14,15 @@
 // Swagger 2.0, or with an OIDC bearer token, which is described by the "oidc"
 // security definition.
 //
+// Every POST request needs a Content-Type header. A PUT, PATCH or DELETE
+// request needs it, if the request has a body. The server rejects the media
+// types "text/plain", "application/x-www-form-urlencoded" and
+// "multipart/form-data" with status 415. The only exception is the upload of
+// an Incus image, which uses "multipart/form-data". Browsers send these media
+// types to other sites without asking the server first. The check protects
+// against cross-site request forgery. Requests through the local unix socket
+// are not checked.
+//
 //	Schemes: https
 //	BasePath: /
 //	Version: 1.0
