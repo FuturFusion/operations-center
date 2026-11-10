@@ -74,6 +74,9 @@ export const updateUpdate = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/updates/${uuid}`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -103,6 +106,9 @@ export const refreshUpdates = (): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/updates/:refresh`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
