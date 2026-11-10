@@ -108,6 +108,11 @@ func getEntitiesSchemas(ctx context.Context, db dbdriver.DBTX) (map[string][2]st
 		tablesSchemas[name] = [2]string{kind, schema + ";"}
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not iterate table names and schema: %w", err)
+	}
+
 	return tablesSchemas, names, nil
 }
 
@@ -189,6 +194,11 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 
 		statement := fmt.Sprintf("INSERT INTO %s VALUES(%s);", quoteIdentifier(table), strings.Join(values, ","))
 		statements = append(statements, statement)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to iterate rows in table %q: %w", table, err)
 	}
 
 	return statements, nil
