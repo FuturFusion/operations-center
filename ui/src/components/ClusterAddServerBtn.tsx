@@ -113,40 +113,33 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
                 onChange={(values: string[]) => setServerNames(values)}
               />
             </Form.Group>
-            <Form.Group
-              controlId="skipPostJoin"
-              className="mb-3 d-flex align-items-center gap-2"
-            >
+            <Form.Group className="mb-3" controlId="skipPostJoin">
               <Form.Check
                 type="checkbox"
+                label="Skip the post join operations"
                 name="skipPostJoin"
                 checked={skipPostJoin}
                 disabled={opInProgress}
                 onChange={(e) => setSkipPostJoin(e.target.checked)}
               />
-              <Form.Label className="me-2 mb-0">
-                If set to true, the post join operations (namely the creation of
-                the local storage volumes for backups, images and logs) are
-                skipped.
-              </Form.Label>
+              <Form.Text>
+                The post-join operations will not be done, this includes
+                creation of local storage volumes for backups, images and logs.
+              </Form.Text>
             </Form.Group>
-            <Form.Group
-              controlId="copyServicesConfig"
-              className="mb-3 d-flex align-items-center gap-2"
-            >
+            <Form.Group className="mb-3" controlId="copyServicesConfig">
               <Form.Check
                 type="checkbox"
+                label="Copy the services config from an existing cluster member"
                 name="copyServicesConfig"
                 checked={copyServicesConfig}
                 disabled={opInProgress}
                 onChange={(e) => setCopyServicesConfig(e.target.checked)}
               />
-              <Form.Label className="me-2 mb-0">
-                If set to true, the services config (lvm, iscsi, multipath,
-                nvme, ceph, linstor, ovn) is copied from an existing member of
-                the cluster to the servers to be added, before they join the
-                cluster.
-              </Form.Label>
+              <Form.Text>
+                The config of lvm, iscsi, multipath, nvme, ceph, linstor and ovn
+                will be copied to the servers before they join the cluster.
+              </Form.Text>
             </Form.Group>
           </div>
         </div>
