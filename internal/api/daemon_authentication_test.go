@@ -1064,6 +1064,20 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode:   http.StatusForbidden,
 			wantBodyContains: "",
 		},
+		{
+			name:     "oidc http POST /1.0/images/incus as admin with empty multipart/form-data",
+			client:   oidcClient,
+			method:   http.MethodPost,
+			resource: tcpBaseURL + "/1.0/images/incus",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[admin],
+				"Content-Type":  "multipart/form-data; boundary=x",
+			},
+			body: bytes.NewBufferString("--x--\r\n"),
+
+			wantStatusCode:   http.StatusBadRequest,
+			wantBodyContains: "The multipart request has no parts, the metadata tarball is required",
+		},
 	}
 
 	tests = slices.Concat(tests, adminRouteTests, contentTypeTests)
