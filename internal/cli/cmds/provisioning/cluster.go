@@ -811,7 +811,7 @@ func (c *cmdClusterAddServers) Command() *cobra.Command {
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
 	cmd.Flags().BoolVar(&c.flagSkipPostJoinOperations, "skip-post-join", false, "if this flag is provided, the post join configuration operations are skipped for the newly joined servers")
-	cmd.Flags().BoolVar(&c.flagCopyServicesConfig, "copy-services-config", false, "if this flag is provided, the services config is copied from an existing cluster member to the servers to be added")
+	cmd.Flags().BoolVar(&c.flagCopyServicesConfig, "copy-services-config", true, "copy the services config from an existing cluster member to the servers to be added, use --copy-services-config=false to disable")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run

@@ -3,8 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -22,17 +20,15 @@ func addAndRemoveServer(ctx context.Context, t *testing.T, tmpDir string) {
 
 	printServerList(t)
 
-	// Update LVM settings.
-	err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
-	require.NoError(t, err)
-
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server os service edit IncusOS04:lvm < %s`, cpuArch, filepath.Join(tmpDir, "lvm_enable.yaml"))
-
-	// Add IncusOS04 to cluster.
+	// Add IncusOS04 to cluster. The services config is copied by default.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add-servers incus-os-cluster --server-names IncusOS04`, cpuArch)
 
 	// Assertions
 	assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"})
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning server os service show IncusOS04:lvm -f json | jq -r -e '.config.enabled == true'`, cpuArch)
+	require.NoError(t, resp.err)
+	require.True(t, resp.Success(), "expect LVM to be enabled on IncusOS04 by the services config copied from an existing cluster member")
 
 	// Evacuate IncusOS03.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning server system evacuate IncusOS03`, cpuArch)
