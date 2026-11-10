@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -107,6 +108,11 @@ func getEntitiesSchemas(ctx context.Context, db dbdriver.DBTX) (map[string][2]st
 		tablesSchemas[name] = [2]string{kind, schema + ";"}
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not iterate table names and schema: %w", err)
+	}
+
 	return tablesSchemas, names, nil
 }
 
@@ -116,7 +122,7 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 	var statements []string
 
 	// Query all rows.
-	rows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s ORDER BY rowid", table))
+	rows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s ORDER BY rowid", quoteIdentifier(table)))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch rows for table %q: %w", table, err)
 	}
@@ -159,21 +165,11 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 				}
 
 			case string:
-				// This is based on logic from dump_callback in sqlite source for sqlite3_db_dump function.
-				v = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))
-
-				if strings.Contains(v, "\r") {
-					v = "replace(" + strings.ReplaceAll(v, "\r", "\\r") + ",'\\r',char(13))"
-				}
-
-				if strings.Contains(v, "\n") {
-					v = "replace(" + strings.ReplaceAll(v, "\n", "\\n") + ",'\\n',char(10))"
-				}
-
-				values[j] = v
+				values[j] = quoteString(v)
 
 			case []byte:
-				values[j] = fmt.Sprintf("'%s'", string(v))
+				// Write a BLOB literal. Raw bytes may contain quotes.
+				values[j] = quoteBlob(v)
 
 			case time.Time:
 				// Try and match the sqlite3 .dump output format.
@@ -196,11 +192,62 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 			}
 		}
 
-		statement := fmt.Sprintf("INSERT INTO %s VALUES(%s);", table, strings.Join(values, ","))
+		statement := fmt.Sprintf("INSERT INTO %s VALUES(%s);", quoteIdentifier(table), strings.Join(values, ","))
 		statements = append(statements, statement)
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to iterate rows in table %q: %w", table, err)
+	}
+
 	return statements, nil
+}
+
+func quoteBlob(b []byte) string {
+	return "X'" + strings.ToUpper(hex.EncodeToString(b)) + "'"
+}
+
+func quoteString(s string) string {
+	// SQLite stops parsing SQL at a NUL byte. Write the text as a BLOB cast to TEXT.
+	if strings.Contains(s, "\x00") {
+		return "CAST(" + quoteBlob([]byte(s)) + " AS TEXT)"
+	}
+
+	// Like sqlite3 .dump, write newlines and carriage returns as markers.
+	// A marker must not occur in the text, or replace() changes the text on restore.
+	literal := "'" + strings.ReplaceAll(s, "'", "''") + "'"
+
+	if strings.Contains(s, "\n") {
+		marker := unusedMarker(literal, `\n`, `\012`)
+		literal = "replace(" + strings.ReplaceAll(literal, "\n", marker) + ",'" + marker + "',char(10))"
+	}
+
+	if strings.Contains(s, "\r") {
+		marker := unusedMarker(literal, `\r`, `\015`)
+		literal = "replace(" + strings.ReplaceAll(literal, "\r", marker) + ",'" + marker + "',char(13))"
+	}
+
+	return literal
+}
+
+func unusedMarker(s string, first string, second string) string {
+	for _, marker := range []string{first, second} {
+		if !strings.Contains(s, marker) {
+			return marker
+		}
+	}
+
+	for i := 0; ; i++ {
+		marker := fmt.Sprintf("(%s%d)", first, i)
+		if !strings.Contains(s, marker) {
+			return marker
+		}
+	}
+}
+
+func quoteIdentifier(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }
 
 func (i *internalHandler) internalSQLSelect(ctx context.Context, query string, result *dump.SQLResult) error {
@@ -231,8 +278,8 @@ func (i *internalHandler) internalSQLSelect(ctx context.Context, query string, r
 		}
 
 		for i, column := range row {
-			// Convert bytes to string. This is safe as
-			// long as we don't have any BLOB column type.
+			// The driver returns BLOB values as []byte. Convert them to string for the JSON response.
+			// Bytes that are not valid UTF-8 are not preserved.
 			data, ok := column.([]byte)
 			if ok {
 				row[i] = string(data)

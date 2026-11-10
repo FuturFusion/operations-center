@@ -71,6 +71,8 @@ func getAppliedPatches(ctx context.Context, db dbdriver.DBTX) ([]string, error) 
 		return []string{}, fmt.Errorf("Failed to get applied patches: %w", err)
 	}
 
+	defer func() { _ = rows.Close() }()
+
 	for rows.Next() {
 		var name string
 		err = rows.Scan(&name)
@@ -79,6 +81,11 @@ func getAppliedPatches(ctx context.Context, db dbdriver.DBTX) ([]string, error) 
 		}
 
 		response = append(response, name)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return []string{}, fmt.Errorf("Failed to iterate applied patches: %w", err)
 	}
 
 	return response, nil
