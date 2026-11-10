@@ -168,8 +168,8 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 				values[j] = quoteString(v)
 
 			case []byte:
-				// Write a BLOB literal like sqlite3 .dump. Raw bytes may contain quotes.
-				values[j] = "X'" + strings.ToUpper(hex.EncodeToString(v)) + "'"
+				// Write a BLOB literal. Raw bytes may contain quotes.
+				values[j] = quoteBlob(v)
 
 			case time.Time:
 				// Try and match the sqlite3 .dump output format.
@@ -204,7 +204,16 @@ func getTableData(ctx context.Context, db dbdriver.DBTX, table string) ([]string
 	return statements, nil
 }
 
+func quoteBlob(b []byte) string {
+	return "X'" + strings.ToUpper(hex.EncodeToString(b)) + "'"
+}
+
 func quoteString(s string) string {
+	// SQLite stops parsing SQL at a NUL byte. Write the text as a BLOB cast to TEXT.
+	if strings.Contains(s, "\x00") {
+		return "CAST(" + quoteBlob([]byte(s)) + " AS TEXT)"
+	}
+
 	// Like sqlite3 .dump, write newlines and carriage returns as markers.
 	// A marker must not occur in the text, or replace() changes the text on restore.
 	literal := "'" + strings.ReplaceAll(s, "'", "''") + "'"
@@ -269,8 +278,8 @@ func (i *internalHandler) internalSQLSelect(ctx context.Context, query string, r
 		}
 
 		for i, column := range row {
-			// Convert bytes to string. This is safe as
-			// long as we don't have any BLOB column type.
+			// The driver returns BLOB values as []byte. Convert them to string for the JSON response.
+			// Bytes that are not valid UTF-8 are not preserved.
 			data, ok := column.([]byte)
 			if ok {
 				row[i] = string(data)
