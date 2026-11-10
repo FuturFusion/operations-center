@@ -144,14 +144,41 @@ func TestValidateACMEConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "error - email with display name",
+			name: "valid - email with display name",
 			modify: func(cfg system.SecurityACME) system.SecurityACME {
 				cfg.Email = "Admin <admin@example.org>"
 				return cfg
 			},
 
+			assertErr: require.NoError,
+		},
+		{
+			name: "valid - email with quoted display name",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.Email = `"Admin Team" <admin@example.org>`
+				return cfg
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "valid - email in angle brackets",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.Email = "<admin@example.org>"
+				return cfg
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - email with display name containing path separator",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.Email = `"A/B" <admin@example.org>`
+				return cfg
+			},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "is not a valid email address", a...)
+				require.ErrorContains(tt, err, `ACME email "\"A/B\" <admin@example.org>" is not a valid email address`, a...)
 			},
 		},
 		{

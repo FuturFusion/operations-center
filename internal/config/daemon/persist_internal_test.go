@@ -147,3 +147,36 @@ func Test_saveToDisk_replacesSymlinkOutsideOfVarDir(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, fileInfo.Mode().IsRegular(), "the symlink is replaced by the config file")
 }
+
+func Test_Init_acmeEmailWithDisplayName(t *testing.T) {
+	dir := t.TempDir()
+	env := &mock.EnvironmentMock{
+		VarDirFunc:    func() string { return dir },
+		IsIncusOSFunc: func() bool { return false },
+	}
+
+	previousStore := defaultStore.Load()
+	previousInternalConfig := globalInternalConfig.Load()
+
+	t.Cleanup(func() {
+		defaultStore.Store(previousStore)
+		globalInternalConfig.Store(previousInternalConfig)
+	})
+
+	configYAML := `security:
+  acme:
+    agree_tos: true
+    ca_url: https://acme-v02.api.letsencrypt.org/directory
+    domain: operations-center.example.org
+    email: Ops <ops@example.org>
+`
+	err := os.WriteFile(filepath.Join(dir, ConfigFilename), []byte(configYAML), 0o600)
+	require.NoError(t, err)
+
+	// Run test
+	err = Init(env)
+
+	// Assert
+	require.NoError(t, err, "an ACME email with display name stored by an earlier version must not stop the startup")
+	require.Equal(t, "Ops <ops@example.org>", GetSecurity().ACME.Email)
+}
