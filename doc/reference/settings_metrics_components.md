@@ -4,6 +4,10 @@ This is the complete list of the metrics components the daemon registers,
 grouped by their top level. Enabling a component enables all of its children as
 well, so a top level name is enough to cover everything below it.
 
+api:
+
+- `api`
+
 runtime:
 
 - `runtime`
