@@ -70,8 +70,14 @@ func (h *internalBMCRecordingHandler) recordingGet(r *http.Request) response.Res
 			"Content-Type": "application/zip",
 		}
 
+		// The filename matches the server name in the anonymized manifest.
+		filenameServer := name
+		if anonymize {
+			filenameServer = provisioning.BMCRecordingServerPlaceholder
+		}
+
 		// The zip is compressed already.
-		return response.ReadCloserResponse(r, rc, false, fmt.Sprintf("%s-%s.zip", name, id), size, headers)
+		return response.ReadCloserResponse(r, rc, false, fmt.Sprintf("%s-%s.zip", filenameServer, id), size, headers)
 	}
 
 	manifest, err := h.service.GetBMCRecording(r.Context(), name, id)
