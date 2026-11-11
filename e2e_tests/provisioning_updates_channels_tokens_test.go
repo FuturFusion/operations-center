@@ -138,9 +138,10 @@ func assertProvisioningChannels(t *testing.T, tmpDir string, ocAPI operationsCen
 	t.Log("Assert provisioning channels")
 
 	// Setup
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.channels | index("stable")) and (.upstream_channels | index("stable"))) ] | sort_by(.version) | reverse | .[0:2] | .[].uuid'`, cpuArch)
+	// A manually uploaded update can have the same version as an upstream update.
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r -e '[ .[] | select(.update_status == "ready" and (.channels | index("stable")) and (.upstream_channels | index("stable"))) ] | unique_by(.version) | reverse | .[0:2] | .[].uuid'`, cpuArch)
 	updateUUIDs := strings.Fields(resp.Output())
-	require.Len(t, updateUUIDs, 2, "expect at least 2 ready updates in the stable channel")
+	require.Len(t, updateUUIDs, 2, "expect at least 2 ready updates with distinct versions in the stable channel")
 
 	originalChannels := make([]string, 0, len(updateUUIDs))
 	versions := make([]string, 0, len(updateUUIDs))
