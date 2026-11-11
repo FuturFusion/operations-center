@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -49,6 +50,13 @@ func provisioningUpdatesChannelsAndTokens(ctx context.Context, t *testing.T, tmp
 	t.Helper()
 
 	ocAPI := newOperationsCenterAPI(t)
+
+	// A failed run with disabled cleanup leaves the channel and the tokens.
+	err := removeProvisioningChannel(ctx, t, provisioningChannelName)
+	require.NoError(t, err, "expect the channel of a previous run to be removed")
+
+	err = removeProvisioningTokens(ctx, t, provisioningTokenDescription, provisioningTokenEditedDescription, provisioningExpiredTokenDescription, provisioningSeedTokenDescription)
+	require.NoError(t, err, "expect the tokens of a previous run to be removed")
 
 	assertProvisioningUpdates(t, ocAPI)
 	assertProvisioningChannels(t, tmpDir, ocAPI)
@@ -150,7 +158,7 @@ func assertProvisioningChannels(t *testing.T, tmpDir string, ocAPI operationsCen
 		versions = append(versions, mustRun(t, `../bin/operations-center.linux.%s provisioning update show %s -f json | jq -r -e '.version'`, cpuArch, updateUUID).OutputTrimmed())
 	}
 
-	t.Cleanup(provisioningChannelCleanup(t, provisioningChannelName, updateUUIDs, originalChannels))
+	t.Cleanup(provisioningChannelCleanup(t, provisioningChannelName))
 
 	// Add
 	mustRun(t, `../bin/operations-center.linux.%s provisioning channel add %s --description "E2E channel"`, cpuArch, provisioningChannelName)
@@ -206,9 +214,8 @@ func assertProvisioningChannels(t *testing.T, tmpDir string, ocAPI operationsCen
 	mustRun(t, `../bin/operations-center.linux.%s provisioning channel list -f json | jq -r -e 'all(.name != "%s")'`, cpuArch, provisioningChannelName)
 }
 
-// provisioningChannelCleanup restores the channels of the given updates and
-// removes the channel.
-func provisioningChannelCleanup(t *testing.T, channelName string, updateUUIDs []string, originalChannels []string) func() {
+// provisioningChannelCleanup removes the channel.
+func provisioningChannelCleanup(t *testing.T, channelName string) func() {
 	t.Helper()
 
 	return func() {
@@ -220,18 +227,33 @@ func provisioningChannelCleanup(t *testing.T, channelName string, updateUUIDs []
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		for i, updateUUID := range updateUUIDs {
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel %s`, cpuArch, updateUUID, originalChannels[i])
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
-		}
-
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s provisioning channel list -f json | jq -r -e 'all(.name != "%[2]s")' || ../bin/operations-center.linux.%[1]s provisioning channel remove %[2]s`, cpuArch, channelName)
-		if !resp.Success() {
-			t.Error(resp.Error())
+		err := removeProvisioningChannel(ctx, t, channelName)
+		if err != nil {
+			t.Error(err)
 		}
 	}
+}
+
+// removeProvisioningChannel unassigns the channel from all updates and removes
+// the channel, if it exists.
+func removeProvisioningChannel(ctx context.Context, t *testing.T, channelName string) error {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s provisioning update list -f json | jq -r '.[] | select(.channels | index("%[2]s")) | .uuid + " " + (.channels - ["%[2]s"] | join(","))'`, cpuArch, channelName)
+	err := fmtRunErr(resp)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for line := range strings.Lines(resp.Output()) {
+		updateUUID, channels, _ := strings.Cut(strings.TrimSpace(line), " ")
+		errs = append(errs, fmtRunErr(runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel %s`, cpuArch, updateUUID, channels)))
+	}
+
+	errs = append(errs, fmtRunErr(runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s provisioning channel list -f json | jq -r -e 'all(.name != "%[2]s")' || ../bin/operations-center.linux.%[1]s provisioning channel remove %[2]s`, cpuArch, channelName)))
+
+	return errors.Join(errs...)
 }
 
 func assertSystemUpdatesDefaultChannels(t *testing.T, tmpDir string) {
@@ -357,19 +379,29 @@ func provisioningTokensCleanup(t *testing.T, descriptions ...string) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description as $d | %s | index($d)) | .uuid'`, cpuArch, asJSON(t, descriptions))
-		if !resp.Success() {
-			t.Error(resp.Error())
-			return
-		}
-
-		for token := range strings.FieldsSeq(resp.Output()) {
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token remove %s`, cpuArch, token)
-			if !resp.Success() {
-				t.Error(resp.Error())
-			}
+		err := removeProvisioningTokens(ctx, t, descriptions...)
+		if err != nil {
+			t.Error(err)
 		}
 	}
+}
+
+// removeProvisioningTokens removes the tokens with the given descriptions.
+func removeProvisioningTokens(ctx context.Context, t *testing.T, descriptions ...string) error {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description as $d | %s | index($d)) | .uuid'`, cpuArch, asJSON(t, descriptions))
+	err := fmtRunErr(resp)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for token := range strings.FieldsSeq(resp.Output()) {
+		errs = append(errs, fmtRunErr(runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token remove %s`, cpuArch, token)))
+	}
+
+	return errors.Join(errs...)
 }
 
 func assertProvisioningTokenSeedImages(t *testing.T, tmpDir string, ocAPI operationsCenterAPI) {
