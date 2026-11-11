@@ -34,8 +34,9 @@ preview() {
   grep -h -B5 -A30 "^func ${test}(" e2e_tests/*_test.go
 }
 
-# listTests prints the top level tests and the scenarios of the suites. The
-# suites only create their subtests in list mode, they do not run anything.
+# listTests prints the top level tests and the scenarios of the suites in
+# alphabetical order. The suites only create their subtests in list mode, they
+# do not run anything.
 listTests() {
   local output
 
@@ -45,7 +46,7 @@ listTests() {
     return 1
   fi
 
-  sed -n 's/^=== RUN   \(TestE2E.*\)$/\1/p' <<<"$output"
+  sed -n 's/^=== RUN   \(TestE2E.*\)$/\1/p' <<<"$output" | LC_ALL=C sort
 }
 
 # toRegex converts the selected tests to a regex for "go test -run". The
