@@ -916,7 +916,10 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 
 	defer logout()
 
-	uri := taskMonitor.URI
+	return waitForTask(ctx, client, server, taskMonitor.URI)
+}
+
+func waitForTask(ctx context.Context, client *gofish.APIClient, server provisioning.Server, uri string) error {
 	transientPolls := 0
 	pollInterval := defaultWaitForTaskRetryAfter
 
@@ -1315,6 +1318,16 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 	}
 
 	if setBootDevice {
+		// A BMC can reject the boot override until the media is inserted.
+		if taskMonitor != nil {
+			err = waitForTask(ctx, client, server, taskMonitor.TaskMonitor)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to wait for the BMC to attach the media: %w", err)
+			}
+
+			taskMonitor = nil
+		}
+
 		if mediaType != "" {
 			bootSource = bootSourceForVirtualMediaType[mediaType]
 		}
