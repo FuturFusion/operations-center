@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"io"
 
 	"github.com/google/uuid"
 
@@ -79,6 +80,12 @@ type ServerService interface {
 	DeployByName(ctx context.Context, name string, request ServerDeploymentRequest) error
 	CancelDeploymentByName(ctx context.Context, name string, skipCleanup bool) error
 	DeploymentControlLoop(ctx context.Context, serverNameFilter *string) error
+
+	GetBMCRecordings(ctx context.Context, name string) ([]api.BMCRecordingManifest, error)
+	GetBMCRecording(ctx context.Context, name string, id string) (*api.BMCRecordingManifest, error)
+	GetBMCRecordingArchive(ctx context.Context, name string, id string, anonymize bool) (_ io.ReadCloser, size int, _ error)
+	GetBMCRecordingFile(ctx context.Context, name string, id string, filename string) (_ io.ReadCloser, size int64, _ error)
+	DeleteBMCRecording(ctx context.Context, name string, id string) error
 }
 
 type ServerRepo interface {
