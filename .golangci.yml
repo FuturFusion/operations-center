@@ -109,6 +109,10 @@ linters:
         - pattern: ^file\.(Copy|PathExists|WriteFileAtomic)$
           pkg: ^github\.com/FuturFusion/operations-center/internal/util/file$
           msg: Use os.Root for file system access, for example file.PathExistsIn or file.WriteFileAtomicIn.
+        # The expr parser has no recursion limit. Deep nesting overflows the stack.
+        - pattern: ^expr\.Compile$
+          pkg: ^github\.com/expr-lang/expr$
+          msg: Use expropts.Compile. It limits the length and the nesting depth of the expression.
     gocritic:
       disable-all: true
       enabled-checks:
@@ -254,6 +258,10 @@ linters:
           - forbidigo
         text: "Pure packages must"
         path: '_test\.go$'
+      - linters:
+          - forbidigo
+        text: "Use expropts.Compile"
+        path: '^internal/util/expropts/compile\.go$|_test\.go$'
       # Syscall is only used to map errors and not for side effects.
       - linters:
           - depguard

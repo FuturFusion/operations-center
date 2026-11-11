@@ -750,7 +750,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Updates) error {
 	if su.FilterExpression != "" {
-		_, err := expr.Compile(
+		_, err := expropts.Compile(
 			su.FilterExpression,
 			expr.Env(provisioning.ToExprUpdate(provisioning.Update{})),
 			expr.AsBool(),
@@ -763,7 +763,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 	}
 
 	if su.FileFilterExpression != "" {
-		_, err := expr.Compile(
+		_, err := expropts.Compile(
 			su.FileFilterExpression,
 			UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
 		)
@@ -781,7 +781,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates provisioning.Upda
 		// of the config so we can assume the filter expression to compile without
 		// error.
 		// If not the case, the Run call will fail with a "program is nil" error.
-		filterExpression, _ := expr.Compile(
+		filterExpression, _ := expropts.Compile(
 			config.GetUpdates().FilterExpression,
 			expr.Env(provisioning.ToExprUpdate(provisioning.Update{})),
 			expr.AsBool(),
@@ -889,7 +889,7 @@ func (s updateService) filterUpdateFileByFilterExpression(updates provisioning.U
 	// of the config so we can assume the filter expression to compile without
 	// error.
 	// If not the case, the Run call will fail with a "program is nil" error.
-	fileFilterExpression, _ := expr.Compile(
+	fileFilterExpression, _ := expropts.Compile(
 		config.GetUpdates().FileFilterExpression,
 		UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
 	)

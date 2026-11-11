@@ -433,7 +433,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter provisionin
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(provisioning.ToExprServer(provisioning.Server{})),
 			expr.AsBool(),
@@ -498,7 +498,7 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter provis
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(
+		filterExpression, err = expropts.Compile(
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),

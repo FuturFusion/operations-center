@@ -4,6 +4,7 @@ package inventory_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -74,7 +76,14 @@ func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: errassert.ValidationError,
+			count:     0,
+		},
+		{
+			name:             "error - filter expression too long",
+			filterExpression: new(strings.Repeat("(", 500_000)),
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
 			count:     0,
 		},
 		{
@@ -165,7 +174,14 @@ func TestNetworkForwardService_GetAllUUIDsWithFilter(t *testing.T) {
 				uuidgen.FromPattern(t, "1"),
 			},
 
-			assertErr: require.Error,
+			assertErr: errassert.ValidationError,
+			count:     0,
+		},
+		{
+			name:             "error - filter expression too long",
+			filterExpression: new(strings.Repeat("(", 500_000)),
+
+			assertErr: errassert.ValidationErrorContains("Expression is too long"),
 			count:     0,
 		},
 		{
