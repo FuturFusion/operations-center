@@ -263,6 +263,14 @@ func logSuiteSummary(t *testing.T, results []scenarioResult) {
 func runE2EScenario(t *testing.T, name string, run func(ctx context.Context, t *testing.T, tmpDir string)) {
 	t.Helper()
 
+	runE2EScenarioWithTimeout(t, name, testTimeout, run)
+}
+
+// runE2EScenarioWithTimeout is runE2EScenario with a timeout other than
+// testTimeout.
+func runE2EScenarioWithTimeout(t *testing.T, name string, scenarioTimeout time.Duration, run func(ctx context.Context, t *testing.T, tmpDir string)) {
+	t.Helper()
+
 	logEnvSettings(t)
 
 	reason := setupBrokenReason()
@@ -270,7 +278,7 @@ func runE2EScenario(t *testing.T, name string, run func(ctx context.Context, t *
 		t.Skipf("Setup of the Operations Center is broken, skipping: %s", reason)
 	}
 
-	timeout := strechedTimeout(testTimeout)
+	timeout := strechedTimeout(scenarioTimeout)
 
 	deadline, ok := t.Deadline()
 	if ok {

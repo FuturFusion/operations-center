@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -144,12 +145,34 @@ func TestE2E_UpdateChannel(t *testing.T) {
 }
 
 func TestE2E_WithTokenSeed_DeployServer(t *testing.T) {
-	runE2ETest(
+	profiles, err := redfishProfiles(redfishProfileNames)
+	require.NoError(t, err, "expect OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES to name known profiles")
+
+	if listOnly {
+		for _, profile := range profiles {
+			t.Run(profile.name, func(t *testing.T) {
+				t.Skip("OPERATIONS_CENTER_E2E_TEST_LIST env var set, only listing end 2 end tests.")
+			})
+		}
+
+		return
+	}
+
+	// Each round of parallel deployments gets the timeout of one test.
+	rounds := (len(profiles) + redfishParallel - 1) / redfishParallel
+
+	runE2ETestWithTimeout(
 		t,
-		"token seed - pre-register a server and deploy it via BMC",
-		setupEmptyInstance("IncusOS01"),
-		serverDeployment("IncusOS01"),
+		"token seed - pre-register servers and deploy them via BMC with Redfish proxy profiles",
+		time.Duration(rounds)*testTimeout,
+		noSetup,
+		serverDeployments(profiles),
 	)
+}
+
+// noSetup is the setup of a test, which sets up everything itself.
+func noSetup(ctx context.Context, t *testing.T, tmpDir string) {
+	t.Helper()
 }
 
 func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
@@ -169,13 +192,26 @@ func runE2ETest(
 ) {
 	t.Helper()
 
+	runE2ETestWithTimeout(t, name, testTimeout, setup, test)
+}
+
+// runE2ETestWithTimeout is runE2ETest with a timeout other than testTimeout.
+func runE2ETestWithTimeout(
+	t *testing.T,
+	name string,
+	timeout time.Duration,
+	setup func(ctx context.Context, t *testing.T, tmpDir string),
+	test func(ctx context.Context, t *testing.T, tmpDir string),
+) {
+	t.Helper()
+
 	if listOnly {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST_LIST env var set, only listing end 2 end tests.")
 	}
 
 	skipUnlessE2ETestEnabled(t)
 
-	runE2EScenario(t, name, func(ctx context.Context, t *testing.T, tmpDir string) {
+	runE2EScenarioWithTimeout(t, name, timeout, func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
 		setupOperationsCenterOrMarkBroken(ctx, t, t, tmpDir)
