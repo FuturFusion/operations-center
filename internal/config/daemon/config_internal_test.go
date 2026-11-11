@@ -37,8 +37,8 @@ func Test_validate(t *testing.T) {
 			oldCfg: &config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						RestServerAddress:       "127.0.0.1:7443",
-						OperationsCenterAddress: "http://localhost:7443",
+						RestServerAddress:       "127.0.0.1:8443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -47,7 +47,7 @@ func Test_validate(t *testing.T) {
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "", // empty not allowed on IncusOS
-						OperationsCenterAddress: "http://localhost:7443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -63,8 +63,8 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						RestServerAddress:       "127.0.0.1:0:7443", // invalid multiple single colons
-						OperationsCenterAddress: "http://localhost:7443",
+						RestServerAddress:       "127.0.0.1:0:8443", // invalid multiple single colons
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -79,8 +79,8 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						RestServerAddress:       "localhost:7443", // invalid not an ip
-						OperationsCenterAddress: "http://localhost:7443",
+						RestServerAddress:       "localhost:8443", // invalid not an ip
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -96,7 +96,7 @@ func Test_validate(t *testing.T) {
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:abc", // invalid port
-						OperationsCenterAddress: "http://localhost:7443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -112,7 +112,7 @@ func Test_validate(t *testing.T) {
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:0", // invalid port out of range
-						OperationsCenterAddress: "http://localhost:7443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -128,7 +128,7 @@ func Test_validate(t *testing.T) {
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:70000", // invalid port out of range
-						OperationsCenterAddress: "http://localhost:7443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -143,7 +143,7 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						OperationsCenterAddress: "http://localhost:7443",
+						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -158,7 +158,7 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						RestServerAddress: "127.0.0.1:7443",
+						RestServerAddress: "127.0.0.1:8443",
 					},
 				},
 				Updates: defaultUpdates,
@@ -173,7 +173,7 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: system.Network{
 					NetworkPut: system.NetworkPut{
-						RestServerAddress:       "127.0.0.1:7443",
+						RestServerAddress:       "127.0.0.1:8443",
 						OperationsCenterAddress: ":|\\", // invalid
 					},
 				},
