@@ -97,6 +97,10 @@ func newImageCache(root *os.Root) *imageCache {
 	return cache
 }
 
+func (c *imageCache) usageInformation() (file.UsageInformation, error) {
+	return file.UsageInformationForPath(c.root.Name())
+}
+
 // SeedImageFingerprintID returns the ID of the image generated from fingerprint
 // and the given seed configuration, without generating anything.
 //
