@@ -352,13 +352,49 @@ func (r bmcRecording) GetArchive(ctx context.Context, serverName string, id stri
 		return nil, 0, errRecordingNotFound(serverName, id)
 	}
 
-	// The body limit and the retention limit bound the size, so the archive is
-	// built in memory.
+	manifest, err := openSnapshot(r.root, filepath.Join(dir, manifestFilename))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer manifest.Close()
+
+	exchanges, err := openSnapshot(r.root, filepath.Join(dir, exchangesFilename))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer exchanges.Close()
+
+	files := []*io.SectionReader{manifest.section, exchanges.section}
+
+	// A value is only replaced in every line if it is known before the first
+	// line is written. Both passes read the same snapshot of the files, so a
+	// line that is appended in between is not written without being learned.
+	if rewrite != nil {
+		for _, source := range files {
+			err = forEachLine(source, func(content string, _ string) error {
+				rewrite.Learn(content)
+				return nil
+			})
+			if err != nil {
+				return nil, 0, err
+			}
+
+			_, err = source.Seek(0, io.SeekStart)
+			if err != nil {
+				return nil, 0, fmt.Errorf("Failed to rewind BMC recording file: %w", err)
+			}
+		}
+	}
+
+	// The size of a recording has no fixed limit. It is mostly bound by the
+	// length of the deployment, so the archive is built in memory.
 	buf := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buf)
 
-	for _, filename := range []string{manifestFilename, exchangesFilename} {
-		err = addToArchive(zipWriter, r.root, filepath.Join(dir, filename), rewrite)
+	for i, filename := range []string{manifestFilename, exchangesFilename} {
+		err = addToArchive(zipWriter, filename, files[i], rewrite)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -372,33 +408,62 @@ func (r bmcRecording) GetArchive(ctx context.Context, serverName string, id stri
 	return io.NopCloser(buf), buf.Len(), nil
 }
 
-func addToArchive(zipWriter *zip.Writer, root *os.Root, path string, rewrite *provisioning.BMCRecordingRewrite) error {
-	source, err := root.Open(path)
+// snapshot is an open file that is read up to its size at the time it was
+// opened. The manifest is replaced by a rename, so the open file stays the
+// same. The exchanges are only appended to.
+type snapshot struct {
+	*os.File
+	section *io.SectionReader
+}
+
+func openSnapshot(root *os.Root, path string) (*snapshot, error) {
+	f, err := root.Open(path)
 	if err != nil {
-		return fmt.Errorf("Failed to open BMC recording file %q: %w", path, err)
+		return nil, fmt.Errorf("Failed to open BMC recording file %q: %w", path, err)
 	}
 
-	defer source.Close()
-
-	target, err := zipWriter.Create(filepath.Base(path))
+	info, err := f.Stat()
 	if err != nil {
-		return fmt.Errorf("Failed to create %q in zip file: %w", filepath.Base(path), err)
+		_ = f.Close()
+		return nil, fmt.Errorf("Failed to get size of BMC recording file %q: %w", path, err)
+	}
+
+	return &snapshot{File: f, section: io.NewSectionReader(f, 0, info.Size())}, nil
+}
+
+func addToArchive(zipWriter *zip.Writer, filename string, source io.Reader, rewrite *provisioning.BMCRecordingRewrite) error {
+	target, err := zipWriter.Create(filename)
+	if err != nil {
+		return fmt.Errorf("Failed to create %q in zip file: %w", filename, err)
 	}
 
 	if rewrite == nil {
 		_, err = file.SafeCopy(target, source)
 		if err != nil {
-			return fmt.Errorf("Failed to copy BMC recording file %q to zip archive: %w", path, err)
+			return fmt.Errorf("Failed to copy BMC recording file %q to zip archive: %w", filename, err)
 		}
 
 		return nil
 	}
 
+	return forEachLine(source, func(content string, newline string) error {
+		_, err := io.WriteString(target, rewrite.Apply(content)+newline)
+		if err != nil {
+			return fmt.Errorf("Failed to write BMC recording file %q to zip archive: %w", filename, err)
+		}
+
+		return nil
+	})
+}
+
+// forEachLine calls fn with every line without its newline. The newline is
+// empty for a last line without newline.
+func forEachLine(source io.Reader, fn func(content string, newline string) error) error {
 	reader := bufio.NewReader(source)
 	for {
 		line, readErr := reader.ReadString('\n')
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			return fmt.Errorf("Failed to read BMC recording file %q: %w", path, readErr)
+			return fmt.Errorf("Failed to read BMC recording file: %w", readErr)
 		}
 
 		content, newline := line, ""
@@ -406,9 +471,11 @@ func addToArchive(zipWriter *zip.Writer, root *os.Root, path string, rewrite *pr
 			content, newline = line[:len(line)-1], "\n"
 		}
 
-		_, err = io.WriteString(target, rewrite.Apply(content)+newline)
-		if err != nil {
-			return fmt.Errorf("Failed to write BMC recording file %q to zip archive: %w", path, err)
+		if line != "" {
+			err := fn(content, newline)
+			if err != nil {
+				return err
+			}
 		}
 
 		if readErr != nil {
