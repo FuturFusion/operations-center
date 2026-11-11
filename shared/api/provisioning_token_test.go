@@ -59,10 +59,10 @@ func TestTokenSeedImagePathSegments(t *testing.T) {
 
 			require.Equal(t, tc.wantPath, path.Join(segments...))
 
-			baseURL, err := url.Parse("https://operations-center:7443/1.0")
+			baseURL, err := url.Parse("https://operations-center:8443/1.0")
 			require.NoError(t, err)
 
-			require.Equal(t, "https://operations-center:7443/1.0/"+tc.wantPath, baseURL.JoinPath(segments...).String())
+			require.Equal(t, "https://operations-center:8443/1.0/"+tc.wantPath, baseURL.JoinPath(segments...).String())
 		})
 	}
 }
