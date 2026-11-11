@@ -1,0 +1,20 @@
+# Empty baseline.
+findings:
+  - id: v3:aaa
+    status: accepted
+    reason: Only reachable by admins.
+    title: TLS chain is not verified
+    file: internal/tls.go
+    cwe: CWE-295
+    severity: HIGH
+    date: "2026-10-29"
+    reviewed_by: tester
+  - id: v3:ddd
+    status: accepted
+    reason: Only reachable by admins.
+    title: Certificate pinned on first use
+    file: internal/tls.go
+    cwe: CWE-295
+    severity: LOW
+    date: "2026-10-29"
+    reviewed_by: tester
