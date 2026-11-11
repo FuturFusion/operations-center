@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
@@ -307,6 +308,20 @@ func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context
 	return _d.base.CancelDeploymentByName(ctx, name, skipCleanup)
 }
 
+// DeleteBMCRecording implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) DeleteBMCRecording(ctx context.Context, name string, id string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteBMCRecording", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteBMCRecording(ctx, name, id)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -473,6 +488,62 @@ func (_d ServerServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filt
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
+// GetBMCRecording implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetBMCRecording(ctx context.Context, name string, id string) (bMCRecordingManifest *api.BMCRecordingManifest, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetBMCRecording", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetBMCRecording(ctx, name, id)
+}
+
+// GetBMCRecordingArchive implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetBMCRecordingArchive(ctx context.Context, name string, id string, anonymize bool) (readCloser io.ReadCloser, size int, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetBMCRecordingArchive", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetBMCRecordingArchive(ctx, name, id, anonymize)
+}
+
+// GetBMCRecordingFile implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetBMCRecordingFile(ctx context.Context, name string, id string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetBMCRecordingFile", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetBMCRecordingFile(ctx, name, id, filename)
+}
+
+// GetBMCRecordings implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetBMCRecordings(ctx context.Context, name string) (bMCRecordingManifests []api.BMCRecordingManifest, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetBMCRecordings", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetBMCRecordings(ctx, name)
 }
 
 // GetByName implements provisioning.ServerService.
