@@ -25,6 +25,10 @@ func New(root *os.Root) *localfs {
 	}
 }
 
+func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+	return file.UsageInformationForPath(l.root.Name())
+}
+
 // imagePath returns the path of img, extended by elements, relative to the
 // root. Every path element must be a single file name. This keeps the path
 // inside the root.
