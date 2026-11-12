@@ -58,6 +58,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	)
 
 	part, err = mr.NextPart()
+	if errors.Is(err, io.EOF) {
+		return "", domain.NewValidationErrf("The multipart request has no parts, the metadata tarball is required")
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("Add version failed to get first multipart item: %w", err)
 	}
