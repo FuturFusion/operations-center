@@ -5,7 +5,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 
@@ -95,12 +94,6 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter := api.NetworkAddressSetFilterFromURLValues(r.URL.Query())
 
 	filter := inventory.NetworkAddressSetFilter{
@@ -109,7 +102,7 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 		Expression:  apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		// FIXME: Should we require a non empty filter with recursion?
 		networkAddressSets, err := i.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
