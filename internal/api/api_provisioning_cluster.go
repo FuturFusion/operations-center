@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -93,19 +92,13 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter := api.ClusterFilterFromURLValues(r.URL.Query())
 
 	filter := provisioning.ClusterFilter{
 		Expression: apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		clusters, err := c.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
@@ -1046,13 +1039,7 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response {
 	clusterName := r.PathValue("clusterName")
 
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		clusterArtifacts, err := c.service.GetClusterArtifactAll(r.Context(), clusterName)
 		if err != nil {
 			return response.SmartError(err)

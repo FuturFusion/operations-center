@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
@@ -66,13 +65,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *channelsHandler) channelsGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		channels, err := u.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)

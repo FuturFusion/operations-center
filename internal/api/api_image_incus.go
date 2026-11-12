@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/image"
@@ -182,13 +181,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		incusImages, err := i.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)
