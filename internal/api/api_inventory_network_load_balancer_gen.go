@@ -5,7 +5,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 
@@ -95,12 +94,6 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *auth
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter := api.NetworkLoadBalancerFilterFromURLValues(r.URL.Query())
 
 	filter := inventory.NetworkLoadBalancerFilter{
@@ -109,7 +102,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 		Expression:  apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		// FIXME: Should we require a non empty filter with recursion?
 		networkLoadBalancers, err := i.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
