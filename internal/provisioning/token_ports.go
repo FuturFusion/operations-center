@@ -32,8 +32,7 @@ type TokenService interface {
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string, force bool) error
 	GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error)
 	GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*TokenImage, error)
-	ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, _ error)
-	PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error
+	PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, _ error)
 	GetPreparedTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (*TokenImage, error)
 }
 
@@ -60,9 +59,9 @@ type TokenClientPort interface {
 type FlasherPort interface {
 	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
-	SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs) (string, error)
 	SeedImageCacheGeneration(ctx context.Context, cachePrefix string) uint64
 	GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	PrepareSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (fingerprintID string, _ error)
 	OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
 	RemoveSeededImages(ctx context.Context, cachePrefix string) error
 }
