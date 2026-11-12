@@ -270,7 +270,21 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			name:               "error - invalid multipart reader",
 			multipartReaderArg: multipart.NewReader(bytes.NewBufferString(`invalid`), ``),
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Add version failed to get first multipart item: multipart: boundary is empty", a...)
+			},
+		},
+		{
+			name:               "error - empty multipart request",
+			multipartReaderArg: multipart.NewReader(bytes.NewBufferString(""), "x"),
+
+			assertErr: errassert.ValidationErrorContains("The multipart request has no parts, the metadata tarball is required"),
+		},
+		{
+			name:               "error - multipart request with closing boundary only",
+			multipartReaderArg: multipart.NewReader(bytes.NewBufferString("--x--\r\n"), "x"),
+
+			assertErr: errassert.ValidationErrorContains("The multipart request has no parts, the metadata tarball is required"),
 		},
 		{
 			name:               "error - unsupported image file",
