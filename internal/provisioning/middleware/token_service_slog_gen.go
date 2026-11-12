@@ -613,7 +613,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 }
 
 // PrepareTokenSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (err error) {
+func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -631,6 +631,7 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
+				slog.String("fingerprintID", fingerprintID),
 				slog.Any("err", err),
 			)
 		} else {
@@ -679,42 +680,6 @@ func (_d TokenServiceWithSlog) RenameTokenSeed(ctx context.Context, id uuid.UUID
 		}
 	}()
 	return _d._base.RenameTokenSeed(ctx, id, oldName, newName, force)
-}
-
-// ResolveTokenSeedImageID implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
-	ctx = logger.ContextWithComponent(ctx, _d._component)
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("id", id),
-			slog.String("name", name),
-			slog.Any("imageType", imageType),
-			slog.Any("architecture", architecture),
-			slog.String("channel", channel),
-		)
-	}
-	log.DebugContext(ctx, "=> calling ResolveTokenSeedImageID")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.String("fingerprintID", fingerprintID),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			log.DebugContext(ctx, "<= method ResolveTokenSeedImageID returned an error")
-		} else {
-			log.DebugContext(ctx, "<= method ResolveTokenSeedImageID finished")
-		}
-	}()
-	return _d._base.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
 }
 
 // SetServerService implements provisioning.TokenService.
