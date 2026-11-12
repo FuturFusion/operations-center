@@ -217,6 +217,12 @@ func PreconditionFailed(err error) Response {
 	return errorResponseFromError(http.StatusPreconditionFailed, err)
 }
 
+// UnsupportedMediaType returns an unsupported media type response (415) with
+// the given error.
+func UnsupportedMediaType(err error) Response {
+	return errorResponseFromError(http.StatusUnsupportedMediaType, err)
+}
+
 // InternalError returns an internal error response (500) with the given error.
 func InternalError(err error) Response {
 	return errorResponseFromError(http.StatusInternalServerError, err)
