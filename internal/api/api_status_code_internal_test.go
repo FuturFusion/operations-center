@@ -173,6 +173,8 @@ func Test_updateAndActionHandlers_statusOK(t *testing.T) {
 			req, err := http.NewRequest(tc.method, server.URL+tc.target, strings.NewReader(tc.requestBody))
 			require.NoError(t, err)
 
+			req.Header.Set("Content-Type", "application/json")
+
 			// Run test
 			resp, err := server.Client().Do(req)
 			require.NoError(t, err)

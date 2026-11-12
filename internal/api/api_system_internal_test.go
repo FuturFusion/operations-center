@@ -99,6 +99,7 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 
 	tests := []struct {
 		name                              string
+		requestContentType                string
 		requestBody                       string
 		systemServiceUpdateCertificateErr error
 
@@ -106,21 +107,32 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 		wantResponseBodyContain string
 	}{
 		{
-			name:        "success",
-			requestBody: `{"certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", "key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}`,
+			name:               "success",
+			requestContentType: "application/json",
+			requestBody:        `{"certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", "key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}`,
 
 			wantStatus:              http.StatusOK,
 			wantResponseBodyContain: "Success",
 		},
 		{
-			name:        "error - invalid request body",
-			requestBody: `invalid`,
+			name:               "error - text/plain content type",
+			requestContentType: "text/plain;charset=UTF-8",
+			requestBody:        `{"certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", "key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}`,
+
+			wantStatus:              http.StatusUnsupportedMediaType,
+			wantResponseBodyContain: `Unsupported Content-Type \"text/plain;charset=UTF-8\"`,
+		},
+		{
+			name:               "error - invalid request body",
+			requestContentType: "application/json",
+			requestBody:        `invalid`,
 
 			wantStatus:              http.StatusBadRequest,
 			wantResponseBodyContain: "invalid character 'i'",
 		},
 		{
 			name:                              "error - systemService.UpdateCertificate",
+			requestContentType:                "application/json",
 			requestBody:                       `{"certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", "key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}`,
 			systemServiceUpdateCertificateErr: boom.Error,
 
@@ -156,6 +168,8 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 			// Execute http request
 			req, err := http.NewRequest(http.MethodPost, server.URL+"/certificate", bytes.NewBufferString(tc.requestBody))
 			require.NoError(t, err)
+
+			req.Header.Set("Content-Type", tc.requestContentType)
 
 			client := &http.Client{}
 			resp, err := client.Do(req)
