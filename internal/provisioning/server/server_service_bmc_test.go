@@ -2233,21 +2233,21 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                      string
-		nameArg                   string
-		mediaArg                  api.ServerBMCAttachMedia
-		operationsCenterAddress   string
-		repoGetByNameServer       *provisioning.Server
-		repoGetByNameErr          error
-		tokenSvcGetSeed           *provisioning.TokenSeed
-		tokenSvcGetSeedErr        error
-		tokenSvcResolveImageIDErr error
-		channelSvcGetByNameErr    error
-		bmcClientAttachMediaErr   error
-		bmcClientWaitErr          error
-		bmcClientGetDataErr       error
-		repoUpdateErr             error
-		resyncDone                chan struct{}
+		name                    string
+		nameArg                 string
+		mediaArg                api.ServerBMCAttachMedia
+		operationsCenterAddress string
+		repoGetByNameServer     *provisioning.Server
+		repoGetByNameErr        error
+		tokenSvcGetSeed         *provisioning.TokenSeed
+		tokenSvcGetSeedErr      error
+		tokenSvcPrepareImageErr error
+		channelSvcGetByNameErr  error
+		bmcClientAttachMediaErr error
+		bmcClientWaitErr        error
+		bmcClientGetDataErr     error
+		repoUpdateErr           error
+		resyncDone              chan struct{}
 
 		wantMediaURL       string
 		wantVirtualMediaID string
@@ -2619,6 +2619,24 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
 		},
 		{
+			name:    "error - tokenSvc.PrepareTokenSeedImage",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			tokenSvcPrepareImageErr: boom.Error,
+			resyncDone:              closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name:    "error - client.AttachMedia",
 			nameArg: "one",
 			mediaArg: api.ServerBMCAttachMedia{
@@ -2674,8 +2692,8 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 
 					return tc.tokenSvcGetSeed, tc.tokenSvcGetSeedErr
 				},
-				ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
-					return testSeedImageID, tc.tokenSvcResolveImageIDErr
+				PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+					return testSeedImageID, tc.tokenSvcPrepareImageErr
 				},
 			}
 
@@ -2744,7 +2762,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 		},
 	}
 
-	setup := func(t *testing.T) (provisioning.ServerService, chan lifecycle.BMCVirtualMediaMessage, chan struct{}, *adapterMock.BMCServerClientPortMock) {
+	setup := func(t *testing.T) (provisioning.ServerService, chan lifecycle.BMCVirtualMediaMessage, chan struct{}, *adapterMock.BMCServerClientPortMock, *svcMock.TokenServiceMock) {
 		t.Helper()
 
 		config.InitTest(t, &envMock.EnvironmentMock{
@@ -2776,7 +2794,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
 				return &provisioning.TokenSeed{Name: name, Public: true}, nil
 			},
-			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+			PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 				return testSeedImageID, nil
 			},
 		}
@@ -2818,7 +2836,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 
 		t.Cleanup(serverSvc.WaitBackgroundTasks)
 
-		return serverSvc, messages, resyncDone, bmcClient
+		return serverSvc, messages, resyncDone, bmcClient, tokenSvc
 	}
 
 	awaitMessage := func(t *testing.T, messages chan lifecycle.BMCVirtualMediaMessage) lifecycle.BMCVirtualMediaMessage {
@@ -2847,7 +2865,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 
 	t.Run("attach reports everything needed to prepare the image", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			serverSvc, messages, resyncDone, _ := setup(t)
+			serverSvc, messages, resyncDone, _, _ := setup(t)
 
 			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
 				TokenUUID:      tokenUUID,
@@ -2858,17 +2876,6 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 				VirtualMediaID: "system:1",
 			})
 			require.NoError(t, err)
-
-			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-				Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
-				Server:         "one",
-				VirtualMediaID: "system:1",
-				TokenUUID:      uuid.MustParse(tokenUUID),
-				Seed:           "default",
-				ImageType:      api.ImageTypeISO,
-				Architecture:   images.UpdateFileArchitecture64BitX86,
-				Channel:        "stable",
-			}, awaitMessage(t, messages))
 
 			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
 				Operation:      lifecycle.BMCVirtualMediaOperationAttach,
@@ -2887,7 +2894,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 
 	t.Run("detach reports the virtual media it has been detached from", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			serverSvc, messages, resyncDone, _ := setup(t)
+			serverSvc, messages, resyncDone, _, _ := setup(t)
 
 			err := serverSvc.BMCDetachMediaByName(t.Context(), "one", "system:1")
 			require.NoError(t, err)
@@ -2902,16 +2909,14 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 		})
 	})
 
-	t.Run("the preparation is reported before the BMC is instructed", func(t *testing.T) {
+	t.Run("the image is prepared before the BMC is instructed", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			serverSvc, messages, resyncDone, bmcClient := setup(t)
+			serverSvc, _, resyncDone, bmcClient, tokenSvc := setup(t)
 
-			var reportedBeforeAttach []lifecycle.BMCVirtualMediaMessage
+			var preparedBeforeAttach int
 
 			bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
-				for len(messages) > 0 {
-					reportedBeforeAttach = append(reportedBeforeAttach, <-messages)
-				}
+				preparedBeforeAttach = len(tokenSvc.PrepareTokenSeedImageCalls())
 
 				return nil, nil
 			}
@@ -2926,16 +2931,15 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			require.Len(t, reportedBeforeAttach, 1, "the installation media has to be reported before the BMC is instructed to attach it")
-			require.Equal(t, lifecycle.BMCVirtualMediaOperationPreAttach, reportedBeforeAttach[0].Operation)
+			require.Equal(t, 1, preparedBeforeAttach, "the installation media has to be prepared before the BMC is instructed to attach it")
 
 			awaitResync(t, resyncDone)
 		})
 	})
 
-	t.Run("a failed attach only reports the preparation", func(t *testing.T) {
+	t.Run("a failed attach reports nothing", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			serverSvc, messages, _, bmcClient := setup(t)
+			serverSvc, messages, _, bmcClient, _ := setup(t)
 
 			bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 				return nil, boom.Error
@@ -2951,24 +2955,13 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 			})
 			boom.ErrorIs(t, err)
 
-			require.Equal(t, lifecycle.BMCVirtualMediaMessage{
-				Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
-				Server:         "one",
-				VirtualMediaID: "system:1",
-				TokenUUID:      uuid.MustParse(tokenUUID),
-				Seed:           "default",
-				ImageType:      api.ImageTypeISO,
-				Architecture:   images.UpdateFileArchitecture64BitX86,
-				Channel:        "stable",
-			}, awaitMessage(t, messages))
-
 			require.Empty(t, messages)
 		})
 	})
 
 	t.Run("a rejected attach request reports nothing", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			serverSvc, messages, _, _ := setup(t)
+			serverSvc, messages, _, _, _ := setup(t)
 
 			err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
 				TokenUUID:      tokenUUID,
