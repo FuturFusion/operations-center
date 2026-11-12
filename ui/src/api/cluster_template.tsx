@@ -28,6 +28,9 @@ export const createClusterTemplate = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/cluster-templates`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -54,6 +57,9 @@ export const renameClusterTemplate = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/cluster-templates/${name}`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -69,6 +75,9 @@ export const updateClusterTemplate = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/cluster-templates/${name}`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
