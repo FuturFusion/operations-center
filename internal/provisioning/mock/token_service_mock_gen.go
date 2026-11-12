@@ -77,14 +77,11 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			PreparePreSeededImageFunc: func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uuid.UUID, error) {
 //				panic("mock out the PreparePreSeededImage method")
 //			},
-//			PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
+//			PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 //				panic("mock out the PrepareTokenSeedImage method")
 //			},
 //			RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
 //				panic("mock out the RenameTokenSeed method")
-//			},
-//			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
-//				panic("mock out the ResolveTokenSeedImageID method")
 //			},
 //			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
 //				panic("mock out the SetServerService method")
@@ -154,13 +151,10 @@ type TokenServiceMock struct {
 	PreparePreSeededImageFunc func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uuid.UUID, error)
 
 	// PrepareTokenSeedImageFunc mocks the PrepareTokenSeedImage method.
-	PrepareTokenSeedImageFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error
+	PrepareTokenSeedImageFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error)
 
 	// RenameTokenSeedFunc mocks the RenameTokenSeed method.
 	RenameTokenSeedFunc func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error
-
-	// ResolveTokenSeedImageIDFunc mocks the ResolveTokenSeedImageID method.
-	ResolveTokenSeedImageIDFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error)
 
 	// SetServerServiceFunc mocks the SetServerService method.
 	SetServerServiceFunc func(serverSvc provisioning.ServerService)
@@ -356,21 +350,6 @@ type TokenServiceMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
-		// ResolveTokenSeedImageID holds details about calls to the ResolveTokenSeedImageID method.
-		ResolveTokenSeedImageID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
-			// Name is the name argument value.
-			Name string
-			// ImageType is the imageType argument value.
-			ImageType api.ImageType
-			// Architecture is the architecture argument value.
-			Architecture images.UpdateFileArchitecture
-			// Channel is the channel argument value.
-			Channel string
-		}
 		// SetServerService holds details about calls to the SetServerService method.
 		SetServerService []struct {
 			// ServerSvc is the serverSvc argument value.
@@ -412,7 +391,6 @@ type TokenServiceMock struct {
 	lockPreparePreSeededImage                sync.RWMutex
 	lockPrepareTokenSeedImage                sync.RWMutex
 	lockRenameTokenSeed                      sync.RWMutex
-	lockResolveTokenSeedImageID              sync.RWMutex
 	lockSetServerService                     sync.RWMutex
 	lockUpdate                               sync.RWMutex
 	lockUpdateTokenSeed                      sync.RWMutex
@@ -1103,7 +1081,7 @@ func (mock *TokenServiceMock) PreparePreSeededImageCalls() []struct {
 }
 
 // PrepareTokenSeedImage calls PrepareTokenSeedImageFunc.
-func (mock *TokenServiceMock) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
+func (mock *TokenServiceMock) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 	if mock.PrepareTokenSeedImageFunc == nil {
 		panic("TokenServiceMock.PrepareTokenSeedImageFunc: method is nil but TokenService.PrepareTokenSeedImage was just called")
 	}
@@ -1199,58 +1177,6 @@ func (mock *TokenServiceMock) RenameTokenSeedCalls() []struct {
 	mock.lockRenameTokenSeed.RLock()
 	calls = mock.calls.RenameTokenSeed
 	mock.lockRenameTokenSeed.RUnlock()
-	return calls
-}
-
-// ResolveTokenSeedImageID calls ResolveTokenSeedImageIDFunc.
-func (mock *TokenServiceMock) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
-	if mock.ResolveTokenSeedImageIDFunc == nil {
-		panic("TokenServiceMock.ResolveTokenSeedImageIDFunc: method is nil but TokenService.ResolveTokenSeedImageID was just called")
-	}
-	callInfo := struct {
-		Ctx          context.Context
-		ID           uuid.UUID
-		Name         string
-		ImageType    api.ImageType
-		Architecture images.UpdateFileArchitecture
-		Channel      string
-	}{
-		Ctx:          ctx,
-		ID:           id,
-		Name:         name,
-		ImageType:    imageType,
-		Architecture: architecture,
-		Channel:      channel,
-	}
-	mock.lockResolveTokenSeedImageID.Lock()
-	mock.calls.ResolveTokenSeedImageID = append(mock.calls.ResolveTokenSeedImageID, callInfo)
-	mock.lockResolveTokenSeedImageID.Unlock()
-	return mock.ResolveTokenSeedImageIDFunc(ctx, id, name, imageType, architecture, channel)
-}
-
-// ResolveTokenSeedImageIDCalls gets all the calls that were made to ResolveTokenSeedImageID.
-// Check the length with:
-//
-//	len(mockedTokenService.ResolveTokenSeedImageIDCalls())
-func (mock *TokenServiceMock) ResolveTokenSeedImageIDCalls() []struct {
-	Ctx          context.Context
-	ID           uuid.UUID
-	Name         string
-	ImageType    api.ImageType
-	Architecture images.UpdateFileArchitecture
-	Channel      string
-} {
-	var calls []struct {
-		Ctx          context.Context
-		ID           uuid.UUID
-		Name         string
-		ImageType    api.ImageType
-		Architecture images.UpdateFileArchitecture
-		Channel      string
-	}
-	mock.lockResolveTokenSeedImageID.RLock()
-	calls = mock.calls.ResolveTokenSeedImageID
-	mock.lockResolveTokenSeedImageID.RUnlock()
 	return calls
 }
 
