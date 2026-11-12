@@ -108,7 +108,7 @@ func assertProvisioningUpdates(t *testing.T, ocAPI operationsCenterAPI) {
 	require.Equal(t, allUpdates, resp.OutputTrimmed(), "expect the updates listed without authentication to match the updates of the CLI")
 
 	// The other routes require authentication.
-	mustCurl(t, http.StatusUnauthorized, `-X POST "%s/provisioning/updates/:refresh"`, ocAPI.baseURL)
+	mustCurl(t, http.StatusUnauthorized, `-X POST -H "Content-Type: application/json" "%s/provisioning/updates/:refresh"`, ocAPI.baseURL)
 
 	// Changelog
 	resp = mustRun(t, `curl -sSk --fail-with-body "%s/provisioning/updates/%s/changelog?channel=stable&upstream=false&architecture=%s" | jq -r -e '.metadata | [ .current_version, .prior_version, .channel ] | join(",")'`, ocAPI.baseURL, updateUUID, incusOSArchitecture(t))
