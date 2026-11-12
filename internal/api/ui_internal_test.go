@@ -95,6 +95,14 @@ func TestRegisterUIHandlers(t *testing.T) {
 					wantBody:       uiIndexContent,
 				},
 				{
+					name: "path below a file falls back to index",
+
+					url: "/ui/index.html/x",
+
+					wantStatusCode: http.StatusOK,
+					wantBody:       uiIndexContent,
+				},
+				{
 					name: "redirect to index",
 
 					url: "/ui",
@@ -170,7 +178,8 @@ func TestRegisterUIHandlers_symlinkOutsideOfUIDir(t *testing.T) {
 	serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/assets/secret.txt", nil))
 
 	// Assert
-	require.NotEqual(t, http.StatusOK, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code, "a symlink to the outside falls back to index.html")
+	require.Equal(t, uiIndexContent, rec.Body.String())
 	require.NotContains(t, rec.Body.String(), "secret-file-content", "a symlink must not serve files outside of the web UI directory")
 }
 
