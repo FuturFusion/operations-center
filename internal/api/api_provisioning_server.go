@@ -181,12 +181,6 @@ func registerProvisioningServerHandler(
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serversGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter, err := api.ServerFilterFromURLValues(r.URL.Query())
 	if err != nil {
 		return response.SmartError(err)
@@ -198,7 +192,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		Expression: apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		servers, err := s.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
