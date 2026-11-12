@@ -158,6 +158,15 @@ operations-center admin os system security edit
 
 The supported log levels are `TRACE`, `DEBUG`, `INFO`, `WARN` and `ERROR`.
 
+```{warning}
+At the `TRACE` level, Operations Center logs every argument and every return
+value of the services, repositories and adapters. These values can contain
+secrets, e.g. keys, tokens, passwords or certificates. In production, use
+`TRACE` only for a short time and only for the components under investigation.
+Protect the log files and remove them after the investigation. Check the logs
+for secrets before you share them.
+```
+
 ### Per component log levels
 
 `log_level` applies to the whole daemon. `log_levels` raises or lowers the

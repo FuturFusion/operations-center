@@ -145,6 +145,8 @@ client from the reason. Prose is never duplicated there.
 * The decorators generated for the services, repositories and ports only trace
   returned errors at debug level. Raise the level of the component to see them,
   see `settings.log_levels`.
+* At trace level, the decorators log all arguments and return values. These
+  can contain secrets, e.g. keys, tokens or passwords. See `settings.log_levels`.
 
 A record of a failed request carries the message reported to the user
 (`response`), the reason, the details and the complete chain (`err`):
