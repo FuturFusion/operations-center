@@ -146,7 +146,7 @@ func statusCodeAndReason(err error) (int, api.ErrorReason) {
 // reasonForStatusCode returns the generic reason for the given HTTP status code.
 func reasonForStatusCode(statusCode int) api.ErrorReason {
 	switch statusCode {
-	case http.StatusBadRequest, http.StatusUnsupportedMediaType:
+	case http.StatusBadRequest:
 		return api.ErrorReasonInvalidArgument
 
 	case http.StatusUnauthorized:

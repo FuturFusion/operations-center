@@ -24,9 +24,6 @@ export const createImageSource = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/images/incus/sources`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -42,9 +39,6 @@ export const updateImageSource = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/images/incus/sources/${name}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -70,9 +64,6 @@ export const refreshImageSource = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/images/incus/sources/${name}/:refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))

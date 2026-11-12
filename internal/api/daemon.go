@@ -1237,28 +1237,6 @@ func (d *Daemon) setupAPIRoutes(
 		return true
 	}
 
-	isContentTypeCheckExempt := func(r *http.Request) bool {
-		// POST /1.0/images/incus requires multipart/form-data. It relies on the
-		// cross-origin check only.
-		if r.Method == http.MethodPost && r.URL.Path == "/1.0/images/incus" {
-			return true
-		}
-
-		// IncusOS registers with a token and sends no Content-Type. The token is
-		// not an ambient browser credential.
-		if r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers" && r.URL.Query().Get("token") != "" {
-			return true
-		}
-
-		// IncusOS updates itself with the server certificate and sends no
-		// Content-Type.
-		if r.Method == http.MethodPut && r.URL.Path == "/1.0/provisioning/servers/:self" {
-			return true
-		}
-
-		return false
-	}
-
 	simplestreamsRouter := router.SubGroup("/incus-images")
 	simplestreamsRouter.AddMiddlewares(cors.Handler(cors.CORSConfig{
 		AllowedOrigins:   "*",
@@ -1268,10 +1246,7 @@ func (d *Daemon) setupAPIRoutes(
 	}))
 
 	api10router := router.SubGroup("/1.0").AddMiddlewares(
-		d.authenticator.Middleware(
-			authn.WithIsAuthenticationRequired(isAuthenticationRequired),
-			authn.WithIsContentTypeCheckExempt(isContentTypeCheckExempt),
-		),
+		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
 	)
 	registerAPI10Handler(api10router)
 

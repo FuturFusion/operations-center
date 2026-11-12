@@ -33,9 +33,6 @@ export const createToken = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -60,9 +57,6 @@ export const updateToken = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -99,9 +93,6 @@ export const createTokenSeed = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/seeds`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -132,9 +123,6 @@ export const renameTokenSeed = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/seeds/${name}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -151,9 +139,6 @@ export const updateTokenSeed = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/seeds/${name}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -169,9 +154,6 @@ export const tokenImageURL = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/image`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then(processResponse)

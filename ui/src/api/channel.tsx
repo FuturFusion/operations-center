@@ -34,9 +34,6 @@ export const createChannel = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/channels`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())
@@ -61,9 +58,6 @@ export const updateChannel = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/channels/${name}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: body,
     })
       .then((response) => response.json())

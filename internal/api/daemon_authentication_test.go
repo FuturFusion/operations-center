@@ -409,7 +409,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
-				"Content-Type":  "application/json",
 			},
 			body: http.NoBody,
 
@@ -430,7 +429,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
-				"Content-Type":  "application/json",
 			},
 			body: http.NoBody,
 
@@ -451,7 +449,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
-				"Content-Type":  "application/json",
 			},
 			body: bytes.NewBufferString(`{
   "uses_remaining": 10,
@@ -498,9 +495,6 @@ func TestAuthentication(t *testing.T) {
 			},
 			method:   http.MethodPost,
 			resource: tcpBaseURL + "/1.0/provisioning/servers",
-			headers: map[string]string{
-				"Content-Type": "application/json",
-			},
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -569,7 +563,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
-				"Content-Type":  "application/json",
 			},
 			body: bytes.NewBufferString(`{
   "name": "serverA",
@@ -594,7 +587,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
-				"Content-Type":  "application/json",
 			},
 			body: bytes.NewBufferString(`{
   "name": "serverA",
@@ -619,7 +611,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
-				"Content-Type":  "application/json",
 			},
 			body: bytes.NewBufferString(`{
   "name": "serverA",
@@ -972,7 +963,6 @@ func TestAuthentication(t *testing.T) {
 				resource: tcpBaseURL + route.path,
 				headers: map[string]string{
 					"Authorization": "Bearer " + accessTokens[role],
-					"Content-Type":  "application/json",
 				},
 				body: http.NoBody,
 
@@ -987,7 +977,6 @@ func TestAuthentication(t *testing.T) {
 			resource: tcpBaseURL + route.path,
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
-				"Content-Type":  "application/json",
 			},
 			body: http.NoBody,
 
@@ -995,92 +984,7 @@ func TestAuthentication(t *testing.T) {
 		})
 	}
 
-	// The Content-Type check protects against cross-site request forgery. It
-	// runs before authentication and authorization.
-	contentTypeTests := []testCase{
-		{
-			name:     "oidc http POST /1.0/system/:restore as admin with text/plain",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/system/:restore",
-			headers: map[string]string{
-				"Authorization": "Bearer " + accessTokens[admin],
-				"Content-Type":  "text/plain",
-			},
-			body: bytes.NewBufferString("backup"),
-
-			wantStatusCode:   http.StatusUnsupportedMediaType,
-			wantBodyContains: `Unsupported Content-Type \"text/plain\"`,
-		},
-		{
-			name:     "oidc http POST /internal/sql as admin without Content-Type",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/internal/sql",
-			headers: map[string]string{
-				"Authorization": "Bearer " + accessTokens[admin],
-			},
-			body: bytes.NewBufferString(`{"query": "SELECT 1"}`),
-
-			wantStatusCode:   http.StatusUnsupportedMediaType,
-			wantBodyContains: "Missing Content-Type",
-		},
-		{
-			name:     "oidc http POST /1.0/provisioning/servers/serverA/system/:poweroff as admin without body and without Content-Type",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/provisioning/servers/serverA/system/:poweroff",
-			headers: map[string]string{
-				"Authorization": "Bearer " + accessTokens[admin],
-			},
-			body: http.NoBody,
-
-			wantStatusCode:   http.StatusUnsupportedMediaType,
-			wantBodyContains: "Missing Content-Type",
-		},
-		{
-			name:     "http POST /1.0/provisioning/servers without token and without Content-Type",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/provisioning/servers",
-			headers:  map[string]string{},
-			body:     bytes.NewBufferString(`{"name": "serverB"}`),
-
-			wantStatusCode:   http.StatusUnsupportedMediaType,
-			wantBodyContains: "Missing Content-Type",
-		},
-		{
-			// Forbidden instead of unsupported media type proves the exemption.
-			name:     "oidc http POST /1.0/images/incus as viewer with multipart/form-data",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/images/incus",
-			headers: map[string]string{
-				"Authorization": "Bearer " + accessTokens[viewer],
-				"Content-Type":  "multipart/form-data; boundary=x",
-			},
-			body: bytes.NewBufferString("--x--\r\n"),
-
-			wantStatusCode:   http.StatusForbidden,
-			wantBodyContains: "",
-		},
-		{
-			name:     "oidc http POST /1.0/images/incus as admin with empty multipart/form-data",
-			client:   oidcClient,
-			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/images/incus",
-			headers: map[string]string{
-				"Authorization": "Bearer " + accessTokens[admin],
-				"Content-Type":  "multipart/form-data; boundary=x",
-			},
-			body: bytes.NewBufferString("--x--\r\n"),
-
-			wantStatusCode:   http.StatusBadRequest,
-			wantBodyContains: "The multipart request has no parts, the metadata tarball is required",
-		},
-	}
-
-	tests = slices.Concat(tests, adminRouteTests, contentTypeTests)
+	tests = slices.Concat(tests, adminRouteTests)
 
 	env := &mock.EnvironmentMock{
 		IsIncusOSFunc: func() bool {
