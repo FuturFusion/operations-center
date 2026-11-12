@@ -315,15 +315,7 @@ func (c OperationsCenterClient) GetBaseAddr() string {
 	return c.baseURL
 }
 
-// DoHTTP sends a prepared request. If the request has no Content-Type, DoHTTP
-// sets "application/json". The server rejects state changing requests without
-// a Content-Type. The IncusOS CLI sends requests without a body and without a
-// Content-Type.
 func (c OperationsCenterClient) DoHTTP(req *http.Request) (*http.Response, error) {
-	if req.Header.Get("Content-Type") == "" {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
 	return c.httpClient.Do(req)
 }
 

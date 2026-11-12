@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
@@ -54,7 +55,7 @@ func (c *CmdQuery) run(cmd *cobra.Command, args []string) error {
 		query = internalQuery
 	}
 
-	resp, err := doRequest(cmd.Context(), c.flagRequest, query, nil, []byte(c.flagData))
+	resp, err := doRequest(cmd.Context(), c.flagRequest, query, nil, bytes.NewBuffer([]byte(c.flagData)))
 	if err != nil {
 		return err
 	}

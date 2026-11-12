@@ -1204,7 +1204,6 @@ func doTokenRequestFullWithClient(t *testing.T, client *http.Client, server *htt
 	req, err := http.NewRequest(method, server.URL+target, bytes.NewBufferString(requestBody))
 	require.NoError(t, err)
 
-	req.Header.Set("Content-Type", "application/json")
 	maps.Copy(req.Header, requestHeader)
 
 	resp, err := client.Do(req)

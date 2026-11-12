@@ -4,11 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -276,65 +274,4 @@ func generateServerCert(t *testing.T) (tls.Certificate, *x509.Certificate) {
 	require.NoError(t, err)
 
 	return cert, x509Cert
-}
-
-func TestOperationsCenterClient_DoHTTP(t *testing.T) {
-	d := daemonSetup(t)
-
-	tests := []struct {
-		name        string
-		method      string
-		path        string
-		contentType string
-		body        string
-
-		wantStatusCode int
-	}{
-		{
-			name:        "success - POST without body and without Content-Type gets the default Content-Type",
-			method:      http.MethodPost,
-			path:        "/1.0/provisioning/servers/unknown/system/:reboot",
-			contentType: "",
-			body:        "",
-
-			wantStatusCode: http.StatusNotFound,
-		},
-		{
-			name:        "success - POST with body and without Content-Type gets the default Content-Type",
-			method:      http.MethodPost,
-			path:        "/internal/sql",
-			contentType: "",
-			body:        `{"query": "SELECT 1"}`,
-
-			wantStatusCode: http.StatusOK,
-		},
-		{
-			name:        "error - POST with Content-Type keeps the Content-Type of the caller",
-			method:      http.MethodPost,
-			path:        "/internal/sql",
-			contentType: "text/plain",
-			body:        `{"query": "SELECT 1"}`,
-
-			wantStatusCode: http.StatusUnsupportedMediaType,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			req, err := http.NewRequestWithContext(t.Context(), tc.method, d.authorizedHTTPClient.GetBaseAddr()+tc.path, strings.NewReader(tc.body))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", tc.contentType)
-
-			// Run test
-			resp, err := d.authorizedHTTPClient.DoHTTP(req)
-			require.NoError(t, err)
-			defer resp.Body.Close()
-
-			// Assert
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			require.Equal(t, tc.wantStatusCode, resp.StatusCode, "status code of the response, body: %s", string(body))
-		})
-	}
 }

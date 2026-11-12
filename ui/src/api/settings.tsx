@@ -60,9 +60,6 @@ export const updateSystemCertificate = (
     fetch(`/1.0/system/certificate`, {
       method: "POST",
       body: body,
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -77,9 +74,6 @@ export const updateSystemNetwork = (
     fetch(`/1.0/system/network`, {
       method: "PUT",
       body: body,
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -94,9 +88,6 @@ export const updateSystemSecurity = (
     fetch(`/1.0/system/security`, {
       method: "PUT",
       body: body,
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -111,9 +102,6 @@ export const updateSystemSettings = (
     fetch(`/1.0/system/settings`, {
       method: "PUT",
       body: body,
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -128,9 +116,6 @@ export const updateSystemUpdates = (
     fetch(`/1.0/system/updates`, {
       method: "PUT",
       body: body,
-      headers: {
-        "Content-Type": "application/json",
-      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
