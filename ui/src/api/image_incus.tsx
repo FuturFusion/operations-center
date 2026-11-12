@@ -27,6 +27,9 @@ export const updateIncusImage = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/images/incus/${name}`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())

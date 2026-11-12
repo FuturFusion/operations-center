@@ -206,21 +206,53 @@ func TestSmartError_nil(t *testing.T) {
 func TestErrorResponseFromError(t *testing.T) {
 	t.Parallel()
 
-	resp := response.BadRequest(fmt.Errorf("Invalid request body: %w", errors.New("unexpected EOF")))
+	tests := []struct {
+		name string
+		resp response.Response
 
-	require.Equal(t, http.StatusBadRequest, resp.Code())
-	require.Equal(t, "Invalid request body: unexpected EOF", resp.String(), "the status text is not repeated in the message")
+		wantCode    int
+		wantMessage string
+		wantReason  api.ErrorReason
+	}{
+		{
+			name: "BadRequest",
+			resp: response.BadRequest(fmt.Errorf("Invalid request body: %w", errors.New("unexpected EOF"))),
 
-	recorder := httptest.NewRecorder()
+			wantCode:    http.StatusBadRequest,
+			wantMessage: "Invalid request body: unexpected EOF",
+			wantReason:  api.ErrorReasonInvalidArgument,
+		},
+		{
+			name: "UnsupportedMediaType",
+			resp: response.UnsupportedMediaType(errors.New(`Unsupported Content-Type "text/plain"`)),
 
-	err := resp.Render(recorder)
-	require.NoError(t, err)
+			wantCode:    http.StatusUnsupportedMediaType,
+			wantMessage: `Unsupported Content-Type "text/plain"`,
+			wantReason:  api.ErrorReasonInvalidArgument,
+		},
+	}
 
-	var body api.ResponseRaw
-	err = json.NewDecoder(recorder.Body).Decode(&body)
-	require.NoError(t, err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.Equal(t, api.ErrorReasonInvalidArgument, errorMetadata(t, body.Metadata).Reason)
+			// Run test
+			recorder := httptest.NewRecorder()
+
+			err := tc.resp.Render(recorder)
+			require.NoError(t, err)
+
+			var body api.ResponseRaw
+			err = json.NewDecoder(recorder.Body).Decode(&body)
+			require.NoError(t, err)
+
+			// Assert
+			require.Equal(t, tc.wantCode, tc.resp.Code())
+			require.Equal(t, tc.wantMessage, tc.resp.String(), "the status text is not repeated in the message")
+			require.Equal(t, tc.wantCode, recorder.Code, "the rendered status code matches the response code")
+			require.Equal(t, tc.wantReason, errorMetadata(t, body.Metadata).Reason)
+		})
+	}
 }
 
 func errorMetadata(t *testing.T, metadata any) api.ErrorMetadata {

@@ -15,6 +15,7 @@ type MiddlewareOption func(c *middlewareConfig)
 
 type middlewareConfig struct {
 	isAuthenticationRequired func(r *http.Request) bool
+	isContentTypeCheckExempt func(r *http.Request) bool
 }
 
 func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request) bool) MiddlewareOption {
@@ -23,10 +24,21 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 	}
 }
 
+// WithIsContentTypeCheckExempt sets a function, which reports requests that
+// skip the Content-Type check. Use it only for callers that are not browsers or
+// for media types a browser can send without a CORS preflight.
+func WithIsContentTypeCheckExempt(isContentTypeCheckExempt func(r *http.Request) bool) MiddlewareOption {
+	return func(c *middlewareConfig) {
+		c.isContentTypeCheckExempt = isContentTypeCheckExempt
+	}
+}
+
 // Middleware returns a http handler middleware, which will try to authenticate
 // a request by probing all provided authers in sequence.
-// Cross-origin browser requests with an unsafe method are rejected before
-// authentication.
+// Two checks protect against cross-site request forgery. Both run before
+// authentication. Cross-origin browser requests with an unsafe method are
+// rejected. Requests with an unsafe method, which a browser can send without a
+// CORS preflight, are rejected based on the Content-Type.
 // When successful, the authenticated username and the protocol of the
 // authentication is stored in the request context.
 // For requests, which are not authenticated, only the authentication status is
@@ -34,6 +46,7 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.HandlerFunc) http.HandlerFunc {
 	cfg := &middlewareConfig{
 		isAuthenticationRequired: func(r *http.Request) bool { return true },
+		isContentTypeCheckExempt: func(r *http.Request) bool { return false },
 	}
 
 	for _, opt := range opts {
@@ -67,6 +80,20 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				}
 
 				return
+			}
+
+			if !cfg.isContentTypeCheckExempt(r) {
+				err = checkContentType(r)
+				if err != nil {
+					slog.WarnContext(logCtx, "Rejecting request with unsupported content type", logger.Err(err), slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+
+					err = response.UnsupportedMediaType(err).Render(w)
+					if err != nil {
+						slog.WarnContext(logCtx, "Render unsupported media type response failed", logger.Err(err))
+					}
+
+					return
+				}
 			}
 
 			// Authentication

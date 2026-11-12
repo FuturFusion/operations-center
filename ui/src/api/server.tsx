@@ -48,6 +48,9 @@ export const preRegisterServer = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -60,6 +63,9 @@ export const deployServer = (name: string, body: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/:deploy`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then(processResponse)
@@ -75,6 +81,9 @@ export const cancelServerDeployment = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/:cancel-deploy`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ skip_cleanup: skipCleanup }),
     })
       .then(processResponse)
@@ -99,6 +108,9 @@ export const renameServer = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -114,6 +126,9 @@ export const updateServer = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -126,6 +141,9 @@ export const resyncServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/:resync`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -137,6 +155,9 @@ export const evacuateServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:evacuate`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -148,6 +169,9 @@ export const poweroffServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:poweroff`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -159,6 +183,9 @@ export const rebootServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:reboot`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -170,6 +197,9 @@ export const restoreServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:restore`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -186,6 +216,9 @@ export const updateSystemServer = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:update`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         os: { name: "os", trigger_update: updateOS },
         os_only: osOnly,
@@ -205,6 +238,9 @@ export const refreshServerBMC = (name: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/bmc/:refresh`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then(processResponse)
       .then(() => resolve())
@@ -222,6 +258,9 @@ const serverBMCPowerAction = (
       `/1.0/provisioning/servers/${name}/bmc/:${action}${force ? "?force=1" : ""}`,
       {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
     )
       .then(processResponse)
@@ -258,6 +297,9 @@ export const setServerLocationIndicatorBMC = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/bmc/:server-locate`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ active: active }),
     })
       .then(processResponse)
@@ -303,6 +345,9 @@ export const updateSystemNetwork = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/network`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -327,6 +372,9 @@ export const updateSystemStorage = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/storage`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
