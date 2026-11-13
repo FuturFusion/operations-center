@@ -23,8 +23,8 @@ const WarningOverview = () => {
     return <div>Error while loading warning</div>;
   }
 
-  const messagesLength = warning?.messages.length || 0;
-  const messages = warning?.messages;
+  const messages = warning?.messages ?? [];
+  const messagesLength = messages.length;
 
   return (
     <>
@@ -37,7 +37,7 @@ const WarningOverview = () => {
         <div className="row">
           <div className="col-2 detail-table-header">Last message</div>
           <div className="col-10 detail-table-cell">
-            {messagesLength > 0 ? messages?.[messagesLength - 1] : ""}
+            {messagesLength > 0 ? messages[messagesLength - 1] : ""}
           </div>
         </div>
         <div className="row">

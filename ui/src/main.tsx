@@ -6,6 +6,7 @@ import "./css/index.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "react-datepicker/dist/react-datepicker.css";
 import App from "./App.tsx";
+import ErrorBoundary from "components/ErrorBoundary";
 import { AuthProvider } from "context/authProvider";
 import { NotificationProvider } from "context/notificationProvider";
 import { initTheme } from "util/theme";
@@ -20,7 +21,9 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <NotificationProvider>
           <StrictMode>
-            <App />
+            <ErrorBoundary label="Operations Center">
+              <App />
+            </ErrorBoundary>
           </StrictMode>
         </NotificationProvider>
       </BrowserRouter>

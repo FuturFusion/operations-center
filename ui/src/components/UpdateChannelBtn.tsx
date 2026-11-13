@@ -18,7 +18,7 @@ interface Props {
 const UpdateChannelBtn: FC<Props> = ({ update }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
-  const [channels, setChannels] = useState(update.channels);
+  const [channels, setChannels] = useState(update.channels ?? []);
   const { data: allChannels } = useChannels();
   const queryClient = useQueryClient();
   const { notify } = useNotification();
@@ -64,7 +64,7 @@ const UpdateChannelBtn: FC<Props> = ({ update }) => {
         title="Channels update"
         style={actionStyle}
         onClick={() => {
-          setChannels(update.channels);
+          setChannels(update.channels ?? []);
           setShowModal(true);
         }}
       />

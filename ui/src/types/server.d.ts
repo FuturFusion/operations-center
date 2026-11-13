@@ -25,7 +25,7 @@ export interface OSVersionData {
 
 export interface ServerVersionData {
   os: OSVersionData;
-  applications: ApplicationVersionData[];
+  applications: ApplicationVersionData[] | null;
   needs_reboot: boolean;
   needs_update: boolean;
   in_maintenance: number;
@@ -87,7 +87,7 @@ export interface BMCVirtualMedia {
   image_name: string;
   connected_via: string;
   status: string;
-  media_types: string[];
+  media_types: string[] | null;
   transfer_method: string;
   transfer_protocol_type: string;
   write_protected: boolean;
@@ -160,7 +160,7 @@ export interface ServerDeploymentStatus {
   state: string;
   request: ServerDeploymentPost;
   force_reboot: boolean;
-  bios_profiles: string[];
+  bios_profiles: string[] | null;
   bios_attributes: Record<string, unknown>;
   bios_deferred_attributes: Record<string, unknown>;
   deployment_settings?: ServerDeploymentSettings;
@@ -173,7 +173,7 @@ export interface ServerDeploymentStatus {
   started_at: string;
   state_entered_at: string;
   finished_at: string;
-  history: ServerDeploymentStep[];
+  history: ServerDeploymentStep[] | null;
 }
 
 export interface Server {

@@ -45,7 +45,17 @@ export const errorMessage = <T>(response: APIResponse<T>): string => {
 
 export const processResponse = async (response: Response) => {
   if (!response.ok) {
-    const error = (await response.json()) as APIResponse<ErrorMetadata | null>;
+    // A proxy in front of the server may answer with a non JSON body.
+    const body = await response.text();
+    let error: APIResponse<ErrorMetadata | null>;
+    try {
+      error = JSON.parse(body) as APIResponse<ErrorMetadata | null>;
+    } catch {
+      throw new Error(
+        `${response.status} ${response.statusText}: ${body.slice(0, 200)}`.trim(),
+      );
+    }
+
     throw new APIError(error);
   }
   return response.json();

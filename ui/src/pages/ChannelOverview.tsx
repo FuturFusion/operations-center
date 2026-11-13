@@ -68,7 +68,7 @@ const ChannelOverview = () => {
         <div className="col-2 detail-table-header">Updates</div>
         <div className="col-10 detail-table-cell">
           {updates
-            ?.filter((u) => u.channels.includes(name ?? ""))
+            ?.filter((u) => (u.channels ?? []).includes(name ?? ""))
             .map((u) => (
               <div>
                 <Link

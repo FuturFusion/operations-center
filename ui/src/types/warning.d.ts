@@ -12,6 +12,6 @@ export interface Warning {
   first_occurrence: string;
   last_occurrence: string;
   last_updated: string;
-  messages: string[];
+  messages: string[] | null;
   count: number;
 }
