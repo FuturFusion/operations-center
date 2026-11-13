@@ -10,7 +10,7 @@ network:
   # Use ":" to bind to all unicast and anycast addresses (IPv4 and IPv6).
   # Use "::" or "[::]" to bind to all IPv6 addresses and "0.0.0.0" to bind to
   # all IPv4 addresses.
-  # If the port is omitted, the default port 7443 is used.
+  # If the port is omitted, the default port 8443 is used.
   rest_server_address: ""
 
 security:
