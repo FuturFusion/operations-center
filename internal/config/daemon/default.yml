@@ -72,6 +72,7 @@ settings:
   # component also enables all of its children.
   metrics_components:
     - runtime
+    - api
 
 updates:
   # URL of the server providing updates for incus-os.
