@@ -15,6 +15,10 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
       security?.trusted_tls_client_cert_fingerprints ?? [],
     trusted_tls_client_certificates:
       security?.trusted_tls_client_certificates ?? [],
+    trusted_tls_metrics_client_cert_fingerprints:
+      security?.trusted_tls_metrics_client_cert_fingerprints ?? [],
+    trusted_tls_metrics_client_certificates:
+      security?.trusted_tls_metrics_client_certificates ?? [],
     trusted_https_proxies: security?.trusted_https_proxies ?? [],
     oidc: {
       issuer: security?.oidc.issuer ?? "",
@@ -58,6 +62,14 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
         trusted_tls_client_certificates: values.trusted_tls_client_certificates
           .map((s) => s.trim())
           .filter((s) => s !== ""),
+        trusted_tls_metrics_client_cert_fingerprints:
+          values.trusted_tls_metrics_client_cert_fingerprints
+            .map((s) => s.trim())
+            .filter((s) => s !== ""),
+        trusted_tls_metrics_client_certificates:
+          values.trusted_tls_metrics_client_certificates
+            .map((s) => s.trim())
+            .filter((s) => s !== ""),
         acme: {
           ...values.acme,
           provider_environment: values.acme.provider_environment.filter(
@@ -116,6 +128,55 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                   const certificates = e.target.value.split(/\n\s*\n/);
                   formik.setFieldValue(
                     "trusted_tls_client_certificates",
+                    certificates,
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="trusted_tls_metrics_cert">
+              <Form.Label>Metrics only certificate fingerprints</Form.Label>
+              <Form.Text className="d-block mb-2">
+                SHA256 fingerprints of metrics only certificates, one per line.
+                A metrics only certificate can only read the metrics.
+              </Form.Text>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={4}
+                name="trusted_tls_metrics_client_cert_fingerprints"
+                value={formik.values.trusted_tls_metrics_client_cert_fingerprints.join(
+                  "\n",
+                )}
+                onChange={(e) => {
+                  const lines = e.target.value.split("\n");
+                  formik.setFieldValue(
+                    "trusted_tls_metrics_client_cert_fingerprints",
+                    lines,
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="trusted_tls_metrics_certs">
+              <Form.Label>Metrics only certificates</Form.Label>
+              <Form.Text className="d-block mb-2">
+                X509 PEM encoded metrics only certificates, separated by an
+                empty line. A metrics only certificate can only read the
+                metrics.
+              </Form.Text>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={10}
+                name="trusted_tls_metrics_client_certificates"
+                value={formik.values.trusted_tls_metrics_client_certificates.join(
+                  "\n\n",
+                )}
+                onChange={(e) => {
+                  const certificates = e.target.value.split(/\n\s*\n/);
+                  formik.setFieldValue(
+                    "trusted_tls_metrics_client_certificates",
                     certificates,
                   );
                 }}

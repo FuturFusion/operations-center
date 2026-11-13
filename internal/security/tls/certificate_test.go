@@ -10,6 +10,120 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 )
 
+func TestCanonicalFingerprint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		fingerprint string
+
+		want string
+	}{
+		{
+			name:        "empty",
+			fingerprint: "",
+
+			want: "",
+		},
+		{
+			name:        "canonical",
+			fingerprint: "ab12cd",
+
+			want: "ab12cd",
+		},
+		{
+			name:        "upper case with colons",
+			fingerprint: "AB:12:CD",
+
+			want: "ab12cd",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Run test
+			got := securitytls.CanonicalFingerprint(tc.fingerprint)
+
+			// Assert
+			require.Equal(t, tc.want, got, "expect lower case without colons")
+		})
+	}
+}
+
+func TestIsSHA256Fingerprint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		fingerprint string
+
+		want bool
+	}{
+		{
+			name:        "canonical",
+			fingerprint: testcert.ClientCertificateFingerprint,
+
+			want: true,
+		},
+		{
+			name:        "upper case with colons",
+			fingerprint: "B4:E0:8E:F4:C7:FB:1C:14:B4:B7:34:22:E9:37:5F:A3:BD:D9:92:83:6E:D5:8B:C7:86:73:DC:D5:32:08:3A:D0",
+
+			want: true,
+		},
+		{
+			name:        "empty",
+			fingerprint: "",
+
+			want: false,
+		},
+		{
+			name:        "truncated",
+			fingerprint: testcert.ClientCertificateFingerprint[:40],
+
+			want: false,
+		},
+		{
+			name:        "too long",
+			fingerprint: testcert.ClientCertificateFingerprint + "00",
+
+			want: false,
+		},
+		{
+			name:        "odd length",
+			fingerprint: testcert.ClientCertificateFingerprint[:63],
+
+			want: false,
+		},
+		{
+			name:        "not hex",
+			fingerprint: "zz" + testcert.ClientCertificateFingerprint[2:],
+
+			want: false,
+		},
+		{
+			name:        "surrounding whitespace",
+			fingerprint: " " + testcert.ClientCertificateFingerprint + "\n",
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Run test
+			got := securitytls.IsSHA256Fingerprint(tc.fingerprint)
+
+			// Assert
+			require.Equal(t, tc.want, got, "expect only full SHA256 fingerprints to be accepted")
+		})
+	}
+}
+
 func TestCertificateFingerprints(t *testing.T) {
 	t.Parallel()
 

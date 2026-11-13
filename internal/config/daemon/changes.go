@@ -28,10 +28,17 @@ func isTrustedTLSClientsChanged(oldCfg, newCfg config) bool {
 		!slices.Equal(oldCfg.Security.TrustedTLSClientCertificates, newCfg.Security.TrustedTLSClientCertificates)
 }
 
+// isTrustedTLSMetricsClientsChanged is separate from isTrustedTLSClientsChanged,
+// because metrics only certificates are not a fallback authentication method.
+func isTrustedTLSMetricsClientsChanged(oldCfg, newCfg config) bool {
+	return !slices.Equal(oldCfg.Security.TrustedTLSMetricsClientCertFingerprints, newCfg.Security.TrustedTLSMetricsClientCertFingerprints) ||
+		!slices.Equal(oldCfg.Security.TrustedTLSMetricsClientCertificates, newCfg.Security.TrustedTLSMetricsClientCertificates)
+}
+
 // isSecurityAuthChanged reports whether anything the authenticators or authorizers
 // are built from has changed.
 func isSecurityAuthChanged(oldCfg, newCfg config) bool {
-	return isTrustedTLSClientsChanged(oldCfg, newCfg) || isOIDCOrOpenFGAChanged(oldCfg, newCfg)
+	return isTrustedTLSClientsChanged(oldCfg, newCfg) || isTrustedTLSMetricsClientsChanged(oldCfg, newCfg) || isOIDCOrOpenFGAChanged(oldCfg, newCfg)
 }
 
 func isTrustedHTTPSProxiesChanged(oldCfg, newCfg config) bool {
