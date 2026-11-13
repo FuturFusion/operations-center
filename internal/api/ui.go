@@ -31,11 +31,13 @@ const uiPathSegment = "ui"
 // Open is part of the http.FileSystem interface.
 func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
 	fsFile, err := httpFS.FileSystem.Open(name)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return httpFS.FileSystem.Open("index.html")
+	if err == nil || errors.Is(err, fs.ErrPermission) {
+		return fsFile, err
 	}
 
-	return fsFile, err
+	// os.Root fails with "path escapes from parent" for symlinks that point
+	// outside. Treat it like a missing file, so the SPA fallback applies.
+	return httpFS.FileSystem.Open("index.html")
 }
 
 // openUIRoot opens the "ui" directory below the usr share dir as root. It
