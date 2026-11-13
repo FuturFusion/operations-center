@@ -1,10 +1,7 @@
-//go:build linux
-
 package file
 
 import (
 	"os"
-	"syscall"
 )
 
 // Copy copies a file, overwriting the target if it exists.
@@ -13,8 +10,6 @@ func Copy(source string, dest string) error {
 	if err != nil {
 		return err
 	}
-
-	_, uid, gid := GetOwnerMode(fi)
 
 	if fi.Mode()&os.ModeSymlink != 0 {
 		target, err := os.Readlink(source)
@@ -34,7 +29,9 @@ func Copy(source string, dest string) error {
 			return err
 		}
 
-		return os.Lchown(dest, uid, gid)
+		return copyOwner(fi, func(uid int, gid int) error {
+			return os.Lchown(dest, uid, gid)
+		})
 	}
 
 	s, err := os.Open(source)
@@ -61,17 +58,10 @@ func Copy(source string, dest string) error {
 		return err
 	}
 
-	err = d.Chown(uid, gid)
+	err = copyOwner(fi, d.Chown)
 	if err != nil {
 		return err
 	}
 
 	return d.Close()
-}
-
-func GetOwnerMode(fInfo os.FileInfo) (os.FileMode, int, int) {
-	mode := fInfo.Mode()
-	uid := int(fInfo.Sys().(*syscall.Stat_t).Uid)
-	gid := int(fInfo.Sys().(*syscall.Stat_t).Gid)
-	return mode, uid, gid
 }
