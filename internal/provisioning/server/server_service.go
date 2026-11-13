@@ -3623,11 +3623,6 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		return bmcAttachedMedia{}, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Token seed %q must be public to attach it as installation media via the BMC", media.Seed)
 	}
 
-	fingerprintID, err := s.tokenSvc.ResolveTokenSeedImageID(ctx, tokenUUID, seed.Name, imageType, architecture, media.Channel)
-	if err != nil {
-		return bmcAttachedMedia{}, fmt.Errorf("Failed to resolve the installation media image of token seed %q: %w", media.Seed, err)
-	}
-
 	// Build the image URL the BMC streams the installation media from. It points
 	// at the public token seed image endpoint of Operations Center.
 	base := config.GetNetwork().OperationsCenterAddress
@@ -3637,17 +3632,6 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 
 	// OperationsCenterAddress is validated on config save.
 	baseURL, _ := url.Parse(base)
-
-	segments := append(
-		[]string{"1.0", "provisioning", "tokens", tokenUUID.String(), "seeds", seed.Name},
-		api.TokenSeedPreparedImagePathSegments(imageType, architecture, media.Channel, deploymentID, fingerprintID)...,
-	)
-
-	imageURL := baseURL.JoinPath(segments...)
-
-	for _, reason := range mediaURLWarnings(imageURL) {
-		slog.WarnContext(ctx, "Installation media URL might not be accepted by the BMC", slog.String("reason", reason), slog.String("url", imageURL.String()), slog.String("name", name))
-	}
 
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
@@ -3664,8 +3648,31 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		return bmcAttachedMedia{}, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
-	mediaMessage := lifecycle.BMCVirtualMediaMessage{
-		Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+	// The BMC might fetch the image as soon as it gets the URL. The preparation
+	// ensures, that such a request waits for the image instead of failing.
+	fingerprintID, err := s.tokenSvc.PrepareTokenSeedImage(ctx, tokenUUID, seed.Name, imageType, architecture, media.Channel)
+	if err != nil {
+		return bmcAttachedMedia{}, fmt.Errorf("Failed to prepare the installation media image of token seed %q: %w", media.Seed, err)
+	}
+
+	segments := append(
+		[]string{"1.0", "provisioning", "tokens", tokenUUID.String(), "seeds", seed.Name},
+		api.TokenSeedPreparedImagePathSegments(imageType, architecture, media.Channel, deploymentID, fingerprintID)...,
+	)
+
+	imageURL := baseURL.JoinPath(segments...)
+
+	for _, reason := range mediaURLWarnings(imageURL) {
+		slog.WarnContext(ctx, "Installation media URL might not be accepted by the BMC", slog.String("reason", reason), slog.String("url", imageURL.String()), slog.String("name", name))
+	}
+
+	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String(), media.SetBootDevice)
+	if err != nil {
+		return bmcAttachedMedia{}, fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
+	}
+
+	lifecycle.BMCVirtualMediaSignal.Emit(ctx, lifecycle.BMCVirtualMediaMessage{
+		Operation:      lifecycle.BMCVirtualMediaOperationAttach,
 		Server:         server.Name,
 		VirtualMediaID: media.VirtualMediaID,
 		TokenUUID:      tokenUUID,
@@ -3673,16 +3680,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		ImageType:      imageType,
 		Architecture:   architecture,
 		Channel:        media.Channel,
-	}
-	lifecycle.BMCVirtualMediaSignal.Emit(ctx, mediaMessage)
-
-	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String(), media.SetBootDevice)
-	if err != nil {
-		return bmcAttachedMedia{}, fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
-	}
-
-	mediaMessage.Operation = lifecycle.BMCVirtualMediaOperationAttach
-	lifecycle.BMCVirtualMediaSignal.Emit(ctx, mediaMessage)
+	})
 
 	attached := bmcAttachedMedia{
 		imageURL:      imageURL.String(),

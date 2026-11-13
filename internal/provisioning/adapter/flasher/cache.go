@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -97,20 +99,6 @@ func newImageCache(root *os.Root) *imageCache {
 	return cache
 }
 
-// SeedImageFingerprintID returns the ID of the image generated from fingerprint
-// and the given seed configuration, without generating anything.
-//
-// It lets a caller name an image before it exists, so that the address an image
-// is served under can be handed out while it is still being generated.
-func (f *Flasher) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (string, error) {
-	_, tarball, err := f.seedTarball(ctx, id, seedConfig)
-	if err != nil {
-		return "", err
-	}
-
-	return seedImageFingerprintID(fingerprint, tarball), nil
-}
-
 // seedImageFingerprintID folds what the flasher itself seeds into every image
 // into the fingerprint of the caller.
 func seedImageFingerprintID(fingerprint string, tarball []byte) string {
@@ -155,23 +143,10 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, gener
 		}
 	}()
 
-	if f.cache == nil {
-		return nil, provisioning.SeedImageInfo{}, errors.New("Seed image cache is not configured")
-	}
-
-	if !cacheIDRegexp.MatchString(cacheID) {
-		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Invalid seed image cache ID %q", cacheID)
-	}
-
-	// The seed tarball is deterministic for a given configuration and cheap to
-	// build compared to the image, so the image can be named before it is known,
-	// whether it has to be generated at all.
-	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
+	offset, tarball, fingerprintID, err := f.nameSeededImage(ctx, cacheID, fingerprint, id, seedConfig)
 	if err != nil {
 		return nil, provisioning.SeedImageInfo{}, err
 	}
-
-	fingerprintID := seedImageFingerprintID(fingerprint, tarball)
 
 	for {
 		// A waiting caller must not generate the image again, if it has been
@@ -203,41 +178,129 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, gener
 			continue
 		}
 
-		image, info, err = func() (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
-			defer release()
+		// generateAcquired takes ownership of the source and closes it.
+		generateSource := source
+		source = nil
 
-			image, info, err := f.cache.open(public, cacheID, fingerprintID)
-			if err == nil {
-				return image, info, nil
-			}
+		image, info, err = f.generateAcquired(ctx, public, cacheID, generation, fingerprintID, offset, tarball, generateSource)
+		release()
 
-			if !errors.Is(err, errCacheMiss) {
-				return nil, provisioning.SeedImageInfo{}, err
-			}
+		return image, info, err
+	}
+}
 
-			generateSource := source
+// nameSeededImage builds the seed tarball and the ID of the image generated
+// from fingerprint and the tarball.
+//
+// The seed tarball is deterministic for a given configuration and cheap to
+// build compared to the image. So the image can be named before it is known,
+// whether it has to be generated at all.
+func (f *Flasher) nameSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (offset int64, tarball []byte, fingerprintID string, _ error) {
+	if f.cache == nil {
+		return 0, nil, "", errors.New("Seed image cache is not configured")
+	}
 
-			// generate takes ownership of the source and closes it.
-			source = nil
+	if !cacheIDRegexp.MatchString(cacheID) {
+		return 0, nil, "", fmt.Errorf("Invalid seed image cache ID %q", cacheID)
+	}
 
-			err = f.generate(ctx, public, cacheID, generation, fingerprintID, offset, tarball, generateSource)
-			if err != nil {
-				return nil, provisioning.SeedImageInfo{}, err
-			}
+	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
+	if err != nil {
+		return 0, nil, "", err
+	}
 
-			image, info, err = f.cache.open(public, cacheID, fingerprintID)
-			if err != nil {
-				return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
-			}
+	return offset, tarball, seedImageFingerprintID(fingerprint, tarball), nil
+}
 
-			return image, info, nil
-		}()
-		if err != nil {
-			return nil, provisioning.SeedImageInfo{}, err
+// PrepareSeededImage starts the generation of the seeded image for cacheID in
+// the background, unless it is stored or being generated already. It takes the
+// same arguments as GenerateSeededImage.
+//
+// It returns the ID of the image as soon as OpenSeededImage waits for it. This
+// way, the address of the image can be handed out right away, while the image
+// is still being generated. source is closed in all cases.
+func (f *Flasher) PrepareSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ string, err error) {
+	// source is only consumed, if the image has to be generated.
+	defer func() {
+		if source != nil {
+			err = errors.Join(err, source.Close())
+		}
+	}()
+
+	offset, tarball, fingerprintID, err := f.nameSeededImage(ctx, cacheID, fingerprint, id, seedConfig)
+	if err != nil {
+		return "", err
+	}
+
+	if f.cache.generation(cacheID) != generation {
+		return "", errSeedImageStale(fingerprintID)
+	}
+
+	image, _, err := f.cache.open(public, cacheID, fingerprintID)
+	if err == nil {
+		return fingerprintID, image.Close()
+	}
+
+	if !errors.Is(err, errCacheMiss) {
+		return "", err
+	}
+
+	_, release := f.cache.acquire(public, cacheID, fingerprintID)
+	if release == nil {
+		// The very same image is already being generated.
+		return fingerprintID, nil
+	}
+
+	// generateAcquired takes ownership of the source and closes it.
+	generateSource := source
+	source = nil
+
+	// The generation outlives the caller, it must not end with its context.
+	generateCtx := context.WithoutCancel(ctx)
+
+	go func() {
+		defer release()
+
+		image, _, err := f.generateAcquired(generateCtx, public, cacheID, generation, fingerprintID, offset, tarball, generateSource)
+		if err == nil {
+			err = image.Close()
 		}
 
-		return image, info, nil
+		if err != nil {
+			slog.WarnContext(generateCtx, "Failed to prepare seed image", logger.Err(err), slog.String("cache_id", cacheID), slog.String("fingerprint", fingerprintID))
+			return
+		}
+
+		slog.InfoContext(generateCtx, "Seed image prepared", slog.String("cache_id", cacheID), slog.String("fingerprint", fingerprintID))
+	}()
+
+	return fingerprintID, nil
+}
+
+// generateAcquired generates the image, after the caller acquired its
+// generation. It returns the image right away, if it has been stored in the
+// meantime. source is closed in all cases.
+func (f *Flasher) generateAcquired(ctx context.Context, public bool, cacheID string, generation uint64, fingerprintID string, offset int64, tarball []byte, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
+	image, info, err := f.cache.open(public, cacheID, fingerprintID)
+	if err == nil {
+		return image, info, source.Close()
 	}
+
+	if !errors.Is(err, errCacheMiss) {
+		return nil, provisioning.SeedImageInfo{}, errors.Join(err, source.Close())
+	}
+
+	err = f.generate(ctx, public, cacheID, generation, fingerprintID, offset, tarball, source)
+	if err != nil {
+		return nil, provisioning.SeedImageInfo{}, err
+	}
+
+	image, info, err = f.cache.open(public, cacheID, fingerprintID)
+	if err != nil {
+		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
+	}
+
+	return image, info, nil
 }
 
 // OpenSeededImage returns the generated image addressed by cacheID and

@@ -57,14 +57,12 @@ type ServerLifecycleMessage struct {
 type BMCVirtualMediaOperation string
 
 const (
-	BMCVirtualMediaOperationPreAttach BMCVirtualMediaOperation = "pre-attach"
-	BMCVirtualMediaOperationAttach    BMCVirtualMediaOperation = "attach"
-	BMCVirtualMediaOperationDetach    BMCVirtualMediaOperation = "detach"
+	BMCVirtualMediaOperationAttach BMCVirtualMediaOperation = "attach"
+	BMCVirtualMediaOperationDetach BMCVirtualMediaOperation = "detach"
 )
 
-// BMCVirtualMediaMessage reports, that installation media is about to be
-// attached to, has been attached to or has been detached from a virtual media
-// device of a server via its BMC.
+// BMCVirtualMediaMessage reports, that installation media has been attached to
+// or has been detached from a virtual media device of a server via its BMC.
 type BMCVirtualMediaMessage struct {
 	Operation      BMCVirtualMediaOperation
 	Server         string

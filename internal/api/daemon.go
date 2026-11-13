@@ -926,23 +926,6 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
 		switch msg.Operation {
-		case lifecycle.BMCVirtualMediaOperationPreAttach:
-			go func() {
-				// Use a detached context, so that generating the image is neither
-				// bound to a DB transaction nor to the request having triggered it.
-				ctx := context.WithoutCancel(ctx)
-
-				slog.InfoContext(ctx, "Preparation of installation media triggered", slog.String("name", msg.Server))
-
-				err := tokenSvc.PrepareTokenSeedImage(ctx, msg.TokenUUID, msg.Seed, msg.ImageType, msg.Architecture, msg.Channel)
-				if err != nil {
-					slog.WarnContext(ctx, "Failed to prepare installation media", logger.Err(err), slog.String("name", msg.Server))
-					return
-				}
-
-				slog.InfoContext(ctx, "Preparation of installation media completed", slog.String("name", msg.Server))
-			}()
-
 		case lifecycle.BMCVirtualMediaOperationAttach:
 			slog.DebugContext(ctx, "Installation media attached", slog.String("name", msg.Server), slog.String("virtual_media_id", msg.VirtualMediaID))
 
@@ -1468,10 +1451,6 @@ func (d *Daemon) setupBackgroundTasks(
 	// Trigger the server deployment control loop from the virtual media events,
 	// so attaching and detaching the installation media resolves promptly.
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
-		if msg.Operation == lifecycle.BMCVirtualMediaOperationPreAttach {
-			return
-		}
-
 		name := msg.Server
 
 		go func() {

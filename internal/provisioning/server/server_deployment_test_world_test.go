@@ -1176,7 +1176,7 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 				},
 			}, nil
 		},
-		ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+		PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 			return "fingerprint-1", nil
 		},
 	}

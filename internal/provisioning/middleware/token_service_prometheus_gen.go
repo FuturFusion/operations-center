@@ -281,7 +281,7 @@ func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, 
 }
 
 // PrepareTokenSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (err error) {
+func (_d TokenServiceWithPrometheus) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -306,20 +306,6 @@ func (_d TokenServiceWithPrometheus) RenameTokenSeed(ctx context.Context, id uui
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameTokenSeed", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RenameTokenSeed(ctx, id, oldName, newName, force)
-}
-
-// ResolveTokenSeedImageID implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResolveTokenSeedImageID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
 }
 
 // SetServerService implements provisioning.TokenService.
