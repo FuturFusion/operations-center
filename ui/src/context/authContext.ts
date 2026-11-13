@@ -4,12 +4,14 @@ interface ContextProps {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   authMethod: string | undefined;
+  authError: Error | null;
 }
 
 const initialState: ContextProps = {
   isAuthenticated: false,
   isAuthLoading: true,
   authMethod: "",
+  authError: null,
 };
 
 export const AuthContext = createContext<ContextProps>(initialState);

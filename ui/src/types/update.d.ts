@@ -4,8 +4,8 @@ export interface Update {
   published_at: string;
   severity: string;
   origin: string;
-  channels: string[];
-  upstream_channels: string[];
+  channels: string[] | null;
+  upstream_channels: string[] | null;
   changelog: string;
   update_status: string;
 }

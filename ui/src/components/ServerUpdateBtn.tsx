@@ -193,7 +193,9 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           <h3>Changes</h3>
           <ChangelogView
             changelog={changelog ?? undefined}
-            installedApplications={server.version_data.applications}
+            installedApplications={
+              server.version_data.applications ?? undefined
+            }
             osName={server.version_data.os?.name}
           />
         </p>

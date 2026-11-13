@@ -142,10 +142,10 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
             areSettingsVisible,
             () => setAreSettingsVisible(!areSettingsVisible),
           )}
-          {deployment.history?.length > 0 &&
+          {(deployment.history ?? []).length > 0 &&
             detailRow(
               "History",
-              deployment.history.map((step) => (
+              (deployment.history ?? []).map((step) => (
                 <div key={`${step.state}-${step.entered_at}`}>
                   {formatDateTime(step.entered_at)} {step.state}
                   {step.retries > 0 && ` (retried ${step.retries}x)`}

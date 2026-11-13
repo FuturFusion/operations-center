@@ -48,7 +48,7 @@ const ClusterArtifactFiles = () => {
 
   const headers = ["Name", "Mime type", "Size"];
   const rows =
-    artifact?.files.map((item) => {
+    (artifact?.files ?? []).map((item) => {
       return {
         cols: [
           {

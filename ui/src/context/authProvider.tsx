@@ -4,7 +4,11 @@ import { fetchSettings } from "api/server";
 import { AuthContext } from "context/authContext";
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { data: settings = null, isLoading } = useQuery({
+  const {
+    data: settings = null,
+    error,
+    isLoading,
+  } = useQuery({
     queryKey: ["settings"],
     queryFn: fetchSettings,
   });
@@ -15,6 +19,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         isAuthenticated: !!settings?.auth && settings.auth !== "untrusted",
         authMethod: settings?.auth,
         isAuthLoading: isLoading,
+        authError: settings ? null : error,
       }}
     >
       {children}

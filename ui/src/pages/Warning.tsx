@@ -17,7 +17,7 @@ const Warning = () => {
 
   const headers = ["Type", "Status", "Count", "First seen", "Last seen"];
   const rows = warnings.map((item) => {
-    const messages = item.messages.map((message) => {
+    const messages = (item.messages ?? []).map((message) => {
       return (
         <>
           <div
@@ -63,7 +63,7 @@ const Warning = () => {
           sortKey: formatDate(item.last_occurrence),
         },
       ],
-      additional_data: item.messages.length > 0 && (
+      additional_data: (item.messages ?? []).length > 0 && (
         <>
           <b style={{ fontSize: "14px" }}>Messages</b> {messages}
         </>

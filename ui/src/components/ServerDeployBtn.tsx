@@ -186,8 +186,8 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
               {virtualMedia.map((media) => (
                 <option key={media.id} value={media.id}>
                   {media.id}
-                  {media.media_types?.length > 0 &&
-                    ` (${media.media_types.join(", ")})`}
+                  {(media.media_types ?? []).length > 0 &&
+                    ` (${(media.media_types ?? []).join(", ")})`}
                 </option>
               ))}
             </Form.Select>

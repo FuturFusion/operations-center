@@ -93,6 +93,6 @@ export interface ClusterArtifact {
   name: string;
   description: string;
   properties: YamlValue;
-  files: ClusterArtifactFile[];
+  files: ClusterArtifactFile[] | null;
   last_updated: string;
 }
