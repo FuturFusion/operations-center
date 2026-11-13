@@ -5,7 +5,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 
@@ -106,12 +105,6 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer *authz.Auth
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter := api.StorageVolumeFilterFromURLValues(r.URL.Query())
 
 	filter := inventory.StorageVolumeFilter{
@@ -121,7 +114,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 		Expression:  apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		// FIXME: Should we require a non empty filter with recursion?
 		storageVolumes, err := i.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {

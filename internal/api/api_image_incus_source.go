@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -64,13 +63,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		imageSources, err := i.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)

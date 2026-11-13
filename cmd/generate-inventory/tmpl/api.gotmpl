@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 
@@ -114,12 +113,6 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter := api.{{ .Name | pascalcase }}FilterFromURLValues(r.URL.Query())
 
 	filter := inventory.{{ .Name | pascalcase }}Filter{
@@ -133,7 +126,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		Expression:  apiFilter.Expression,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		// FIXME: Should we require a non empty filter with recursion?
 		{{ .PluralName | camelcase }}, err := i.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {

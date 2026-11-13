@@ -88,13 +88,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		tokens, err := t.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)
@@ -660,13 +654,7 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		tokenSeeds, err := t.service.GetTokenSeedAll(r.Context(), UUID)
 		if err != nil {
 			return response.SmartError(err)
