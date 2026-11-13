@@ -121,7 +121,22 @@ func TestSystemCertificate(t *testing.T) {
 	requestBody, err := json.Marshal(systemCertificatePost)
 	require.NoError(t, err)
 
+	// A cross-origin browser request is rejected, although it uses the correct
+	// Content-Type.
 	req, err := http.NewRequest(http.MethodPost, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Header.Set("Origin", "https://attacker.example")
+
+	respCrossOrigin, err := socketClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, respCrossOrigin.Body.Close())
+	require.Equal(t, http.StatusForbidden, respCrossOrigin.StatusCode, "cross-origin requests are rejected by the CSRF protection")
+
+	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
 
 	resp2, err := socketClient.Do(req)
 	require.NoError(t, err)
@@ -351,9 +366,30 @@ func TestSystemBackupRestore(t *testing.T) {
 	err = os.WriteFile(filepath.Join(varDir, config.ConfigFilename), []byte("settings:\n  log_level: DEBUG\n"), 0o600)
 	require.NoError(t, err)
 
+	// A cross-origin browser request is rejected, although it uses the correct
+	// Content-Type.
+	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/:restore", bytes.NewReader(backup))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/gzip")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Header.Set("Origin", "https://attacker.example")
+
+	resp, err = socketClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusForbidden, resp.StatusCode, "cross-origin requests are rejected by the CSRF protection")
+
+	select {
+	case <-d.RestartRequested():
+		t.Fatal("Rejected cross-origin restore requested a restart")
+
+	default:
+	}
+
 	// A broken backup is rejected without restart.
 	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/:restore", bytes.NewBufferString("not a backup"))
 	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/gzip")
 
 	resp, err = socketClient.Do(req)
 	require.NoError(t, err)
@@ -363,6 +399,7 @@ func TestSystemBackupRestore(t *testing.T) {
 	// Restore the backup.
 	req, err = http.NewRequest(http.MethodPost, "http://unix/1.0/system/:restore", bytes.NewReader(backup))
 	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/gzip")
 
 	resp, err = socketClient.Do(req)
 	require.NoError(t, err)
@@ -397,4 +434,175 @@ func TestSystemBackupRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	require.False(t, systemLocalfs.NewBackup(fsroot.Open(t, varDir)).IsRestoreApplied())
+}
+
+// Test that requests through the unix socket skip the Content-Type check.
+// IncusOS sends its requests to a local Operations Center without a
+// Content-Type.
+func TestUnixSocketContentType(t *testing.T) {
+	// Setup daemon
+	tmpDir := t.TempDir()
+	port := testingnet.FreePort(t, "")
+
+	ctx := context.Background()
+
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(tmpDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return tmpDir
+		},
+		CacheDirFunc: func() string {
+			return tmpDir
+		},
+		UsrShareDirFunc: func() string {
+			return tmpDir
+		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
+	}
+
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
+	err := config.UpdateNetwork(ctx, system.NetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:" + port,
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
+	})
+	require.NoError(t, err)
+
+	d := api.NewDaemon(
+		ctx,
+		env,
+	)
+
+	err = d.Start(ctx)
+	t.Cleanup(func() {
+		err = d.Stop(context.Background())
+		require.NoError(t, err)
+	})
+
+	require.NoError(t, err)
+
+	socketClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", filepath.Join(tmpDir, "unix.socket"))
+			},
+		},
+	}
+
+	// Return the current metadata of a resource as the body for a PUT request.
+	metadataOf := func(t *testing.T, path string) io.Reader {
+		t.Helper()
+
+		resp, err := socketClient.Get("http://unix" + path)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		var getResponse struct {
+			Metadata json.RawMessage `json:"metadata"`
+		}
+
+		err = json.NewDecoder(resp.Body).Decode(&getResponse)
+		require.NoError(t, err)
+
+		return bytes.NewReader(getResponse.Metadata)
+	}
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		contentType string
+		body        func(t *testing.T) io.Reader
+
+		wantStatusCode int
+	}{
+		{
+			name:        "PUT /1.0/system/security without Content-Type",
+			method:      http.MethodPut,
+			path:        "/1.0/system/security",
+			contentType: "",
+			body: func(t *testing.T) io.Reader {
+				t.Helper()
+				return metadataOf(t, "/1.0/system/security")
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name:        "PUT /1.0/system/settings without Content-Type",
+			method:      http.MethodPut,
+			path:        "/1.0/system/settings",
+			contentType: "",
+			body: func(t *testing.T) io.Reader {
+				t.Helper()
+				return metadataOf(t, "/1.0/system/settings")
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name:        "POST /1.0/system/:clean-cache without body and without Content-Type",
+			method:      http.MethodPost,
+			path:        "/1.0/system/:clean-cache",
+			contentType: "",
+			body: func(t *testing.T) io.Reader {
+				t.Helper()
+				return http.NoBody
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name:        "POST /internal/sql without Content-Type",
+			method:      http.MethodPost,
+			path:        "/internal/sql",
+			contentType: "",
+			body: func(t *testing.T) io.Reader {
+				t.Helper()
+				return bytes.NewBufferString(`{"query": "SELECT 1"}`)
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name:        "POST /internal/sql with text/plain",
+			method:      http.MethodPost,
+			path:        "/internal/sql",
+			contentType: "text/plain",
+			body: func(t *testing.T) io.Reader {
+				t.Helper()
+				return bytes.NewBufferString(`{"query": "SELECT 1"}`)
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			req, err := http.NewRequest(tc.method, "http://unix"+tc.path, tc.body(t))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", tc.contentType)
+
+			// Run test
+			resp, err := socketClient.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			// Assert
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantStatusCode, resp.StatusCode, "requests through the unix socket skip the Content-Type check, body: %s", string(body))
+		})
+	}
 }

@@ -29,6 +29,9 @@ func TestAuthenticator_Middleware_crossOrigin(t *testing.T) {
 		{
 			name:   "success - POST without browser headers",
 			method: http.MethodPost,
+			headers: map[string]string{
+				"Content-Type": "application/json",
+			},
 
 			wantStatusCode: http.StatusNoContent,
 		},
@@ -37,6 +40,7 @@ func TestAuthenticator_Middleware_crossOrigin(t *testing.T) {
 			method: http.MethodPost,
 			headers: map[string]string{
 				"Sec-Fetch-Site": "same-origin",
+				"Content-Type":   "application/json",
 			},
 
 			wantStatusCode: http.StatusNoContent,
@@ -46,6 +50,7 @@ func TestAuthenticator_Middleware_crossOrigin(t *testing.T) {
 			method: http.MethodPost,
 			headers: map[string]string{
 				"Sec-Fetch-Site": "none",
+				"Content-Type":   "application/json",
 			},
 
 			wantStatusCode: http.StatusNoContent,
@@ -54,7 +59,8 @@ func TestAuthenticator_Middleware_crossOrigin(t *testing.T) {
 			name:   "success - POST with Origin matching Host",
 			method: http.MethodPost,
 			headers: map[string]string{
-				"Origin": "https://oc.example:8443",
+				"Origin":       "https://oc.example:8443",
+				"Content-Type": "application/json",
 			},
 
 			wantStatusCode: http.StatusNoContent,
@@ -112,6 +118,117 @@ func TestAuthenticator_Middleware_crossOrigin(t *testing.T) {
 			})
 
 			req := httptest.NewRequest(tc.method, "https://oc.example:8443/internal/sql", http.NoBody)
+			for key, value := range tc.headers {
+				req.Header.Set(key, value)
+			}
+
+			rec := httptest.NewRecorder()
+
+			// Run test
+			handler(rec, req)
+
+			// Assert
+			require.Equal(t, tc.wantStatusCode, rec.Code, "unexpected status code, body: %s", rec.Body.String())
+		})
+	}
+}
+
+func TestAuthenticator_Middleware_contentType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		opts       []authn.MiddlewareOption
+		remoteAddr string
+		headers    map[string]string
+
+		wantStatusCode int
+	}{
+		{
+			name:       "success - POST with application/json",
+			opts:       nil,
+			remoteAddr: "192.0.2.1:1234",
+			headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+
+			wantStatusCode: http.StatusNoContent,
+		},
+		{
+			name:       "success - POST without Content-Type through unix socket",
+			opts:       nil,
+			remoteAddr: "@",
+			headers:    map[string]string{},
+
+			wantStatusCode: http.StatusNoContent,
+		},
+		{
+			name: "success - POST without Content-Type for exempt request",
+			opts: []authn.MiddlewareOption{
+				authn.WithIsContentTypeCheckExempt(func(r *http.Request) bool { return true }),
+			},
+			remoteAddr: "192.0.2.1:1234",
+			headers:    map[string]string{},
+
+			wantStatusCode: http.StatusNoContent,
+		},
+		{
+			name:       "error - POST without Content-Type",
+			opts:       nil,
+			remoteAddr: "192.0.2.1:1234",
+			headers:    map[string]string{},
+
+			wantStatusCode: http.StatusUnsupportedMediaType,
+		},
+		{
+			name:       "error - POST with text/plain",
+			opts:       nil,
+			remoteAddr: "192.0.2.1:1234",
+			headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+
+			wantStatusCode: http.StatusUnsupportedMediaType,
+		},
+		{
+			name: "error - POST with text/plain for request not exempt",
+			opts: []authn.MiddlewareOption{
+				authn.WithIsContentTypeCheckExempt(func(r *http.Request) bool { return false }),
+			},
+			remoteAddr: "192.0.2.1:1234",
+			headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+
+			wantStatusCode: http.StatusUnsupportedMediaType,
+		},
+		{
+			name:       "error - cross-origin POST with text/plain is rejected by the cross-origin check first",
+			opts:       nil,
+			remoteAddr: "192.0.2.1:1234",
+			headers: map[string]string{
+				"Content-Type":   "text/plain",
+				"Sec-Fetch-Site": "cross-site",
+				"Origin":         "https://attacker.example",
+			},
+
+			wantStatusCode: http.StatusForbidden,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			authenticator := authn.New([]authn.Auther{trustedAuther{}})
+			handler := authenticator.Middleware(tc.opts...)(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			req := httptest.NewRequest(http.MethodPost, "https://oc.example:8443/internal/sql", http.NoBody)
+			req.RemoteAddr = tc.remoteAddr
+			req.TLS = nil
 			for key, value := range tc.headers {
 				req.Header.Set(key, value)
 			}
