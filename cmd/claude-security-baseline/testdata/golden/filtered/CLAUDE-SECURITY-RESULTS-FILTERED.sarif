@@ -1,0 +1,70 @@
+{
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "message": {
+            "text": "a <b> & c"
+          },
+          "properties": {
+            "claudeSecurityPlugin": {
+              "id": "F1",
+              "claudeSecurityPluginFindingId": "v3:aaa",
+              "line": 10
+            }
+          },
+          "ruleId": "CWE-295"
+        },
+        {
+          "level": "warning",
+          "properties": {
+            "claudeSecurityPlugin": {
+              "id": "F2",
+              "claudeSecurityPluginFindingId": "v3:bbb",
+              "line": 20
+            }
+          },
+          "ruleId": "CWE-522",
+          "suppressions": [
+            {
+              "kind": "external",
+              "status": "accepted",
+              "justification": "false-positive: Only admins | see it."
+            }
+          ]
+        },
+        {
+          "level": "warning",
+          "properties": {
+            "claudeSecurityPlugin": {
+              "id": "F3",
+              "claudeSecurityPluginFindingId": "v3:bbb",
+              "line": 30
+            }
+          },
+          "ruleId": "CWE-522",
+          "suppressions": [
+            {
+              "kind": "external",
+              "status": "accepted",
+              "justification": "false-positive: Only admins | see it."
+            }
+          ]
+        },
+        {
+          "level": "note",
+          "properties": {
+            "claudeSecurityPlugin": {
+              "id": "F4",
+              "claudeSecurityPluginFindingId": "v3:ddd",
+              "line": 40
+            }
+          },
+          "ruleId": "CWE-295"
+        }
+      ]
+    }
+  ],
+  "version": "2.1.0"
+}
