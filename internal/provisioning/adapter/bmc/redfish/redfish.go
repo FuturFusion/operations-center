@@ -95,7 +95,14 @@ func (r redfish) getClientWithResponseHeaderTimeout(ctx context.Context, server 
 		slog.WarnContext(ctx, "Redfish API call inside of a transaction", logger.AddStacktrace())
 	}
 
-	httpClient, err := newBMCHTTPClient(server, r.retryDelay, headerTimeout)
+	var observe func(api.BMCRecordingExchange)
+
+	scope, ok := provisioning.BMCRecordingScopeFromContext(ctx)
+	if ok && scope.Recorder != nil {
+		observe = newExchangeObserver(ctx, scope)
+	}
+
+	httpClient, err := newBMCHTTPClient(server, r.retryDelay, headerTimeout, observe)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,8 +135,8 @@ func (r redfish) getClientWithResponseHeaderTimeout(ctx context.Context, server 
 }
 
 // newBMCHTTPClient returns the HTTP client the Redfish requests of a server are
-// issued with.
-func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, headerTimeout time.Duration) (*http.Client, error) {
+// issued with. A non nil observe receives every exchange with the BMC.
+func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, headerTimeout time.Duration, observe func(api.BMCRecordingExchange)) (*http.Client, error) {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   connectionTimeout,
@@ -146,8 +153,11 @@ func newBMCHTTPClient(server provisioning.Server, retryDelay time.Duration, head
 		ForceAttemptHTTP2: true,
 	}
 
+	retry := newRetryTransport(transport, retryDelay)
+	retry.observe = observe
+
 	httpClient := &http.Client{
-		Transport: newRetryTransport(transport, retryDelay),
+		Transport: retry,
 	}
 
 	if server.BMCConfig.Certificate != "" {
@@ -906,7 +916,10 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 
 	defer logout()
 
-	uri := taskMonitor.URI
+	return waitForTask(ctx, client, server, taskMonitor.URI)
+}
+
+func waitForTask(ctx context.Context, client *gofish.APIClient, server provisioning.Server, uri string) error {
 	transientPolls := 0
 	pollInterval := defaultWaitForTaskRetryAfter
 
@@ -1305,6 +1318,16 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 	}
 
 	if setBootDevice {
+		// A BMC can reject the boot override until the media is inserted.
+		if taskMonitor != nil {
+			err = waitForTask(ctx, client, server, taskMonitor.TaskMonitor)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to wait for the BMC to attach the media: %w", err)
+			}
+
+			taskMonitor = nil
+		}
+
 		if mediaType != "" {
 			bootSource = bootSourceForVirtualMediaType[mediaType]
 		}

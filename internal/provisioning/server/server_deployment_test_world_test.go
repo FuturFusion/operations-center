@@ -1084,6 +1084,11 @@ type deploymentWorldConfig struct {
 
 	noSecureBootMedia bool
 
+	bmcRecording provisioning.BMCRecordingRepo
+
+	// wrapBMCClient adjusts the fake BMC client before the services use it.
+	wrapBMCClient func(client *adapterMock.BMCServerClientPortMock)
+
 	worldOptions []func(*bmcWorld)
 }
 
@@ -1194,6 +1199,9 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 	}
 
 	bmcClient := deploymentBMCClient(t, world)
+	if cfg.wrapBMCClient != nil {
+		cfg.wrapBMCClient(bmcClient)
+	}
 
 	newService := func() provisioning.ServerService {
 		opts := []provisioningServer.Option{
@@ -1212,6 +1220,10 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 				deploymentSecureBootCertificateSource(),
 				deploymentSecureBootCatalog(t),
 			))
+		}
+
+		if cfg.bmcRecording != nil {
+			opts = append(opts, provisioningServer.WithBMCRecordingRepo(cfg.bmcRecording))
 		}
 
 		return provisioningServer.New(serverDB, nil, nil, tokenSvc, nil, channelSvc, nil, tls.Certificate{}, opts...)

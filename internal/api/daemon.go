@@ -63,6 +63,7 @@ import (
 	provisioningClusterArtifactRepo "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
 	localartifactEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	provisioningLocalfs "github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localrecording"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
@@ -347,7 +348,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 		securebootmedia.New(secureBootMediaRoot),
 	)
 
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
+	bmcRecordingRoot, err := d.openSubRoot(d.varRoot, "bmc-recordings")
+	if err != nil {
+		return err
+	}
+
+	bmcRecording := provisioningRepoMiddleware.NewBMCRecordingRepoWithSlog(
+		localrecording.New(bmcRecordingRoot),
+	)
+
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog, bmcRecording)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter)
 	if err != nil {
 		return err
@@ -970,6 +980,7 @@ func (d *Daemon) setupServerService(
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
 	secureBootCatalog provisioning.SecureBootCertificateCatalogPort,
+	bmcRecording provisioning.BMCRecordingRepo,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -991,6 +1002,7 @@ func (d *Daemon) setupServerService(
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
+		provisioningServer.WithBMCRecordingRepo(bmcRecording),
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
@@ -1196,6 +1208,7 @@ func (d *Daemon) setupAPIRoutes(
 		d.authenticator.Middleware(),
 	)
 	registerInternalHandler(internalRouter, d.authorizer, db)
+	registerInternalBMCRecordingHandler(internalRouter, d.authorizer, serverSvc)
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)

@@ -35,6 +35,8 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES`: Comma separated list of the profiles of the Redfish proxy, for which `TestE2E_WithTokenSeed_DeployServer` deploys a server. Up to `OPERATIONS_CENTER_E2E_TEST_REDFISH_PARALLEL` profiles deploy at the same time. Every further round adds 20 to 30 minutes. An unknown profile fails the test. See [Fake BMC](#fake-bmc) (default: "generic,hpe-ilo5,dell-idrac9,lenovo-xcc")
+* `OPERATIONS_CENTER_E2E_TEST_REDFISH_PARALLEL`: Number of the deployments of `TestE2E_WithTokenSeed_DeployServer`, which run at the same time. Each one needs its own instance, see [Fake BMC](#fake-bmc). A value below 1 falls back to the default (default: "4")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION`: Version of IncusOS and Operations Center, which `TestE2E_OperationsCenterSelfUpdate` installs before the update. If not set, the second newest version of the stable channel of the image server is used (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON`: Replace the daemon of the old version with the local build before `TestE2E_OperationsCenterSelfUpdate` triggers the update. See [`TestE2E_OperationsCenterSelfUpdate`](#teste2e_operationscenterselfupdate) (default: "false")
@@ -54,7 +56,7 @@ order:
 | `TestE2E_OperationsCenter`               | none                                         | Suite of the scenarios, which need no IncusOS server                       |
 | `TestE2E_StableServers`                  | IncusOS01 to IncusOS04 on the stable channel | Suite of the scenarios with servers and clusters                           |
 | `TestE2E_UpdateChannel`                  | IncusOS01 to IncusOS04 on the prod channel   | Suite of the update scenarios                                              |
-| `TestE2E_WithTokenSeed_DeployServer`     | none                                         | Single test, deploys IncusOS01 through its BMC                             |
+| `TestE2E_WithTokenSeed_DeployServer`     | none                                         | Deploys IncusOS01 and up through their BMC, one per proxy profile          |
 | `TestE2E_FromManualUpload_CreateCluster` | none                                         | Single test, creates a single node cluster from a manually uploaded update |
 
 ### `TestE2E_OperationsCenter`
@@ -655,6 +657,93 @@ streaming the media requests byte ranges instead. The test therefore reads the
 installation media a second time, the way such a BMC does: the start
 sequentially, then the end, then random portions (see
 `assertVirtualMediaRandomRead`).
+
+The deployment test records the BMC traffic of the deployment (see
+`assertBMCRecording`). It downloads the recording twice into the test
+directory: as recorded, as `<server>-<profile>-bmc-recording-raw.zip`, and
+anonymized, as `<server>-<profile>-bmc-recording.zip`. The test checks the
+content of the anonymized archive and that it holds none of the addresses of the
+proxy. The CI workflow keeps both archives with the logs.
+
+If a deployment fails, the test keeps the anonymized recordings of the server
+as `<server>-<profile>-bmc-recording-failed-<id>.zip` (see
+`exportBMCRecordingsOnFailure`). It downloads them before the cleanup removes
+the server, since the removal deletes the recordings.
+
+The deployment test runs once for every profile of the proxy named in
+`OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES`. A profile changes how the proxy
+behaves, for example how it applies BIOS attributes or how it inserts the
+media. Each profile has its own subtest, for example
+`TestE2E_WithTokenSeed_DeployServer/generic`.
+
+Up to `OPERATIONS_CENTER_E2E_TEST_REDFISH_PARALLEL` deployments run at the
+same time, 4 by default. Each deployment has its own instance, from IncusOS01
+to IncusOS04 by default, its own Redfish proxy on its own port and its own
+token seed. A further profile waits for a deployment to end and then uses its
+instance again. The host needs the resources for these instances, each with
+`OPERATIONS_CENTER_E2E_TEST_CPU_COUNT` CPUs,
+`OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE` memory and
+`OPERATIONS_CENTER_E2E_TEST_DISK_SIZE` disk. Every round of parallel
+deployments gets the timeout of one test. The debug output of a failed
+deployment holds the debug output of all the deployments.
+`redfishProfileDefinitions` lists the profiles the test knows. For each profile,
+it defines the BIOS profile, the additional flags of the deployment and the
+deployment states that must or must not appear in the history of the
+deployment. The BIOS profile only matches the model that the proxy reports
+for the profile, for example `Incus (generic)`. The test checks this model
+before the deployment starts. A proxy without support for the profile fails
+fast this way.
+
+The profiles `hpe-ilo5`, `dell-idrac9` and `lenovo-xcc` are drawn from
+recordings of real servers. Together with `generic`, these are the default.
+Their expected deployment states are the states of the recorded deployments.
+
+The profile `stream-media` mounts the media through FUSE. The proxy reads the
+media from Operations Center with range requests, while the server reads it.
+The end 2 end test host needs `/dev/fuse` and the `fuse3` package. Since
+`incusd` reads the mounted media, `/etc/fuse.conf` must contain
+`user_allow_other`, if the tests do not run as root. The proxy mounts the media
+below `redfish-proxy-media/<instance>` in
+`OPERATIONS_CENTER_E2E_TEST_TMP_DIR`. The profiles `dell-idrac9` and
+`lenovo-xcc` also stream the media. Without FUSE, they download the whole media
+instead.
+
+The CI workflow runs the default profiles. The daily workflow runs the
+deployment test a second time with all the profiles.
+
+#### Comparing the recordings with the real servers
+
+The profiles `hpe-ilo5`, `dell-idrac9` and `lenovo-xcc` are drawn from
+recordings of real servers. Compare the recordings of the deployment test with
+these recordings after the test:
+
+```sh
+make e2e-test GO_TEST_RUN='^TestE2E_WithTokenSeed_DeployServer$'
+make e2e-compare-recordings
+```
+
+`make e2e-compare-recordings` runs `scripts/e2e/compare-recordings.sh`. The
+script compares every anonymized recording in
+`OPERATIONS_CENTER_E2E_TEST_TMP_DIR`, including the recordings of failed
+deployments. It takes the profile from the file name and skips a profile
+without a recording of a real server, like `generic`. It writes the report of a
+recording next to it, as `<server>-<profile>-bmc-recording.compare.md`, and
+prints the summary of each report.
+
+The report compares the deployment states, the Redfish operations of each
+state, the errors and retries and the profile values drawn from both
+recordings. See "Comparing a profile with its recording" in the `profiles`
+README of incus-redfish-proxy for how to read it.
+
+The recordings of the real servers are part of the incus-redfish-proxy module.
+The script takes them from the Go module cache, in the version that `go.mod`
+requires. So the reference always matches the profile the test ran with. The
+script runs the tool `redfish-recording-compare` of the same module with
+`go run`. To compare a single recording, pass it to the script:
+
+```sh
+scripts/e2e/compare-recordings.sh "$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/IncusOS01-hpe-ilo5-bmc-recording.zip"
+```
 
 ### Incus images
 

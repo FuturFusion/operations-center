@@ -283,6 +283,12 @@ clean-e2e-test:
 clean-e2e-test-soft:
 	@OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) scripts/e2e/clean.sh soft
 
+# Compares the BMC recordings of the end to end tests with the recordings of
+# the real servers the Redfish proxy profiles are drawn from.
+.PHONY: e2e-compare-recordings
+e2e-compare-recordings:
+	@GO=$(GO) OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) scripts/e2e/compare-recordings.sh
+
 # Removes the accumulated log files of previous test runs.
 .PHONY: clean-e2e-test-logs
 clean-e2e-test-logs:
