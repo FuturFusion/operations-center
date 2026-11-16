@@ -24,7 +24,7 @@ or for individual applications:
 ```shell
 operations-center provisioning server system update <server>
 operations-center provisioning server system update <server> --os
-operations-center provisioning server system update <server> --application incus
+operations-center provisioning server system update <server> --application incus-lts-7.0
 ```
 
 Without any flag, the operating system and every installed application are
@@ -52,7 +52,7 @@ updates the servers of the cluster one by one:
 ```shell
 operations-center provisioning cluster update <cluster> [--reboot]
 operations-center provisioning cluster update <cluster> --os [--reboot]
-operations-center provisioning cluster update <cluster> --application incus
+operations-center provisioning cluster update <cluster> --application incus-lts-7.0
 ```
 
 With `--reboot`, the update is followed by a rolling reboot of the servers,

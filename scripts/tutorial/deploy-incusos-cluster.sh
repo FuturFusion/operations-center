@@ -126,7 +126,7 @@ cat << EOF > "${INCUS_PRE_SEED_FILE}"
 applications:
   version: "1"
   applications:
-    - name: incus
+    - name: incus-lts-7.0
     - name: debug
 network:
   version: "1"

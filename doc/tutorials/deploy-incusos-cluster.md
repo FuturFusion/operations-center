@@ -593,7 +593,7 @@ Fill in the following details:
 * Connection URL: `<connection-url>` (use the connection URL of the first server)
 * Select the servers to be part of the cluster (select all servers you created
   previously)
-* Server type: `incus`
+* Server type: `Incus (7.0 LTS)`
 * Services configuration: leave empty for this tutorial
 * Application seed config (make sure, the config is valid YAML):
   ```yaml
