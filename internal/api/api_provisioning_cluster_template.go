@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -65,13 +64,7 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterConfigTemplateHandler) clusterTemplatesGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		clusterConfigTemplates, err := c.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)

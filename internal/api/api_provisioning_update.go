@@ -122,12 +122,6 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesGet(r *http.Request) response.Response {
-	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
 	apiFilter, err := api.UpdateFilterFromURLValues(r.URL.Query())
 	if err != nil {
 		return response.SmartError(err)
@@ -140,7 +134,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		Status:          apiFilter.Status,
 	}
 
-	if recursion == 1 {
+	if isRecursionRequest(r) {
 		updates, err := u.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
