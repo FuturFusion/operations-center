@@ -51,7 +51,7 @@ func TestNew_WithCacheUsage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			flasher := New("https://operations-center.local:7443", cert, tc.options(t)...)
+			flasher := New("https://operations-center.local:8443", cert, tc.options(t)...)
 
 			err := flasher.cache.checkFreeSpace(1)
 

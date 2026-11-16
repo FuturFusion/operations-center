@@ -13,7 +13,7 @@ Several global settings are available to be configured in Operations Center:
 | Configuration         | Description                                                              | Value(s)          | Default                       |
 | :---                  | :---                                                                     | :---              | :---                          |
 | `address`             | Address of Operations Center which is used by managed servers to connect | https:\/\/address | same as `rest_server_address` |
-| `rest_server_address` | Address/port over which the REST API will be served                      | address:port      | `*:7443`                      |
+| `rest_server_address` | Address/port over which the REST API will be served                      | address:port      | `*:8443`                      |
 
 ## Security settings
 

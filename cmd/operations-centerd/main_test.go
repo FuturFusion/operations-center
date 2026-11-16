@@ -55,8 +55,8 @@ func TestMain0RunDaemon(t *testing.T) {
 	// Create minimal config
 	minimalConfig := fmt.Sprintf(`---
 network:
-  address: "https://127.0.0.1:27443"
-  rest_server_address: "%s:27443"
+  address: "https://127.0.0.1:28443"
+  rest_server_address: "%s:28443"
 `, testingnet.LocalhostIP(t))
 	err = os.WriteFile(filepath.Join(tmpDir, "config.yml"), []byte(minimalConfig), 0o600)
 	require.NoError(t, err)
@@ -115,7 +115,7 @@ network:
 		},
 	}
 
-	resp, err := client.Get("https://localhost:27443")
+	resp, err := client.Get("https://localhost:28443")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

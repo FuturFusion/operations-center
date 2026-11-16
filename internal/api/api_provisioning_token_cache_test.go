@@ -66,7 +66,7 @@ func Test_tokenSeedImageGet_servedFromCache(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
+	imageFlasher := flasher.New("https://operations-center.local:8443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
 
 	repo := &repoMock.TokenRepoMock{
 		GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
@@ -184,7 +184,7 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	imageFlasher := flasher.New("https://operations-center.local:7443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
+	imageFlasher := flasher.New("https://operations-center.local:8443", cert, flasher.WithCacheRoot(fsroot.Open(t, cacheDir)), flasher.WithCacheUsage(ampleCacheUsage))
 
 	var lookups atomic.Int64
 

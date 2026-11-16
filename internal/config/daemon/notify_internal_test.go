@@ -52,15 +52,15 @@ func Test_notify_smoke(t *testing.T) {
 
 	require.NoError(t, UpdateNetwork(t.Context(), system.NetworkPut{
 		RestServerAddress:       "0.0.0.0",
-		OperationsCenterAddress: "https://localhost:7443",
+		OperationsCenterAddress: "https://localhost:8443",
 	}))
-	require.Equal(t, []string{"0.0.0.0:7443"}, networkEmits, "listeners got the un-normalized address")
+	require.Equal(t, []string{"0.0.0.0:8443"}, networkEmits, "listeners got the un-normalized address")
 
 	// Re-submitting the network config applies it again, so an operator can
 	// recover a listener which failed to pick up the previous update.
 	require.NoError(t, UpdateNetwork(t.Context(), system.NetworkPut{
-		RestServerAddress:       "0.0.0.0:7443",
-		OperationsCenterAddress: "https://localhost:7443",
+		RestServerAddress:       "0.0.0.0:8443",
+		OperationsCenterAddress: "https://localhost:8443",
 	}))
 	require.Len(t, networkEmits, 2)
 

@@ -476,7 +476,7 @@ foobar
 -----END CERTIFICATE-----`),
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
 				PublicConnectionURL: httpsServer.URL,
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
@@ -536,7 +536,7 @@ foobar
 				Name:                "one",
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
 				PublicConnectionURL: ":|\\", // invalid
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
@@ -570,8 +570,8 @@ foobar
 				Name:                "one",
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
-				PublicConnectionURL: "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
+				PublicConnectionURL: "https://127.0.0.1:8443",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -604,7 +604,7 @@ foobar
 				Name:                "one",
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
 				PublicConnectionURL: httpServer.URL,
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
@@ -638,7 +638,7 @@ foobar
 				Name:                "one",
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
 				PublicConnectionURL: httpServer.URL,
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
@@ -677,7 +677,7 @@ foobar
 -----END CERTIFICATE-----`),
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
-				ConnectionURL:       "https://127.0.0.1:7443",
+				ConnectionURL:       "https://127.0.0.1:8443",
 				PublicConnectionURL: httpsServer.URL,
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{

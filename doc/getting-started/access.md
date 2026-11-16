@@ -1,16 +1,55 @@
 # Accessing the system
 
-## Local access (command line)
+Operations Center runs as an application on
+[IncusOS](https://linuxcontainers.org/incus-os/docs/main/). IncusOS does not
+provide a local shell. You manage Operations Center over the network with the
+`operations-center` CLI tool or the web UI.
 
-By default, the `operations-center` CLI tool can be used to manage an Operations
-Center service running on the same system.
+The client certificates trusted by Operations Center are set in the IncusOS
+seed during the installation. See
+[Deploy an IncusOS cluster](../tutorials/deploy-incusos-cluster.md) for an
+example.
+
+## Remote access (command line)
+
+The CLI tool can connect to an Operations Center service over the network by
+registering a remote. Here is a sample registration of a remote named `m1` at
+address `https://192.0.2.100:443`:
+
+```shell
+$ operations-center remote add "m1" "https://192.0.2.100:443" --auth-type "tls"
+Server presented an untrusted TLS certificate with SHA256 fingerprint 80d569e9244a421f3a3d60d46631eb717f8a0a480f2f23ee729a4c1c016875f7. Is this the correct fingerprint? (yes/no) [default=no]: yes
+
+$ operations-center remote switch "m1"
+```
+
+Additionally, `--auth-type "oidc"` is available if configured on the Operations
+Center service.
+
+The first time the remote CLI tool is used, a certificate keypair will be
+generated that must be trusted by the Operations Center service:
+
+```text
+Received authentication mismatch: got "untrusted", expected "tls". Ensure the server trusts the client fingerprint "653f014cbd7a7135c21414884283a50f2dd8e117943e4593638d72824596b268"
+```
+
+This certificate should be added to the `trusted_tls_client_cert_fingerprints`
+list with `operations-center system security edit` from a client, that is
+already trusted, for the remote CLI to properly function.
+
+Alternatively, the full X509 PEM encoded certificate (`~/.config/operations-center/client.crt`)
+can be added to the `trusted_tls_client_certificates` list. Operations Center
+derives the fingerprint from it on load and additionally passes the certificate
+on to the servers and clusters it deploys, so the same client also gets access to
+those. Removing the certificate from the list revokes the access to Operations
+Center. The certificate is not withdrawn from the systems it has already been
+passed on to, this has to be done on the respective system.
+See [system settings](../reference/settings.md#security-settings) for details.
 
 ## Network settings (command line)
 
-To enable `operations-center` to communicate over the network, you can assign a
-network address and port. If no port is specified, Operations Center will use
-port `7443` by default if run stand alone and `8443` if run as application
-on top of IncusOS.
+You can change the network address and port of Operations Center. If no port
+is specified, Operations Center uses port `8443` by default.
 
 ```shell
 $ operations-center system network edit
@@ -56,42 +95,6 @@ openfga:
     store_id: ""
 
 ```
-
-## Remote access (command line)
-
-The CLI tool can connect to an Operations Center service over the network by
-registering a remote. Here is a sample registration of a remote named `m1` at
-address `https://192.0.2.100:443`:
-
-```shell
-$ operations-center remote add "m1" "https://192.0.2.100:443" --auth-type "tls"
-Server presented an untrusted TLS certificate with SHA256 fingerprint 80d569e9244a421f3a3d60d46631eb717f8a0a480f2f23ee729a4c1c016875f7. Is this the correct fingerprint? (yes/no) [default=no]: yes
-
-$ operations-center remote switch "m1"
-```
-
-Additionally, `--auth-type "oidc"` is available if configured on the Operations
-Center service.
-
-The first time the remote CLI tool is used, a certificate keypair will be
-generated that must be trusted by the Operations Center service:
-
-```text
-Received authentication mismatch: got "untrusted", expected "tls". Ensure the server trusts the client fingerprint "653f014cbd7a7135c21414884283a50f2dd8e117943e4593638d72824596b268"
-```
-
-This certificate should be added to the `trusted_tls_client_cert_fingerprints`
-list with the local CLI tool using `operations-center system security edit` for
-the remote CLI to properly function.
-
-Alternatively, the full X509 PEM encoded certificate (`~/.config/operations-center/client.crt`)
-can be added to the `trusted_tls_client_certificates` list. Operations Center
-derives the fingerprint from it on load and additionally passes the certificate
-on to the servers and clusters it deploys, so the same client also gets access to
-those. Removing the certificate from the list revokes the access to Operations
-Center. The certificate is not withdrawn from the systems it has already been
-passed on to, this has to be done on the respective system.
-See [system settings](../reference/settings.md#security-settings) for details.
 
 ## From the web
 

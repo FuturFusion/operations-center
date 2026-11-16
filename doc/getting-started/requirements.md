@@ -6,8 +6,7 @@ most modern systems.
 Minimum system requirements:
 
 - Modern Intel/AMD (`x86_64`) or ARM (`aarch64`) system running
-  [IncusOS](https://linuxcontainers.org/incus-os/docs/main/) or a Linux
-  distribution.
+  [IncusOS](https://linuxcontainers.org/incus-os/docs/main/).
 
 Network requirements:
 

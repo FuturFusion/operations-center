@@ -31,17 +31,17 @@ func TestUpdateNetwork(t *testing.T) {
 			name: ":",
 			cfg: system.NetworkPut{
 				RestServerAddress:       ":",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "[::]:7443",
+			want:      "[::]:8443",
 		},
 		{
 			name: ":1234",
 			cfg: system.NetworkPut{
 				RestServerAddress:       ":1234",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
@@ -51,68 +51,68 @@ func TestUpdateNetwork(t *testing.T) {
 			name: "ipv4 - 0.0.0.0",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "0.0.0.0",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "0.0.0.0:7443",
+			want:      "0.0.0.0:8443",
 		},
 		{
 			name: "ipv4 - 0.0.0.0:",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "0.0.0.0:",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "0.0.0.0:7443",
+			want:      "0.0.0.0:8443",
 		},
 		{
 			name: "ipv6 - ::",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "::",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "[::]:7443",
+			want:      "[::]:8443",
 		},
 		{
 			name: "ipv6 - [::]",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "[::]",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "[::]:7443",
+			want:      "[::]:8443",
 		},
 		{
 			name: "ipv6 - [::]:",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "[::]:",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "[::]:7443",
+			want:      "[::]:8443",
 		},
 		{
 			name: "ipv6 - abcd::0",
 			cfg: system.NetworkPut{
 				RestServerAddress:       "abcd::0",
-				OperationsCenterAddress: "https://localhost:7443",
+				OperationsCenterAddress: "https://localhost:8443",
 			},
 
 			assertErr: require.NoError,
-			want:      "[abcd::]:7443",
+			want:      "[abcd::]:8443",
 		},
 
 		// Errors
 		{
 			name: "error - OperationsCenterAddress not set",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "127.0.0.1:7443",
+				RestServerAddress:       "127.0.0.1:8443",
 				OperationsCenterAddress: "",
 			},
 
@@ -142,7 +142,7 @@ func TestUpdateNetwork(t *testing.T) {
 		{
 			name: "error - no ip with port",
 			cfg: system.NetworkPut{
-				RestServerAddress:       "a.b.c.d:7443",
+				RestServerAddress:       "a.b.c.d:8443",
 				OperationsCenterAddress: "",
 			},
 

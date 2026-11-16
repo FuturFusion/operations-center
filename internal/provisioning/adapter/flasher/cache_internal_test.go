@@ -45,7 +45,7 @@ func testFlasher(t *testing.T) *Flasher {
 	}
 
 	return &Flasher{
-		serverURL: "https://operations-center.local:7443",
+		serverURL: "https://operations-center.local:8443",
 		cache:     cache,
 	}
 }
@@ -222,7 +222,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		before := fingerprintID(t, flasher, "fingerprint")
 
-		flasher.UpdateServerURL("https://operations-center.example:7443")
+		flasher.UpdateServerURL("https://operations-center.example:8443")
 
 		require.NotEqual(t, before, fingerprintID(t, flasher, "fingerprint"))
 	})
@@ -380,7 +380,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
 		t.Parallel()
 
-		flasher := &Flasher{serverURL: "https://operations-center.local:7443"}
+		flasher := &Flasher{serverURL: "https://operations-center.local:8443"}
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
@@ -517,7 +517,7 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
 		t.Parallel()
 
-		flasher := &Flasher{serverURL: "https://operations-center.local:7443"}
+		flasher := &Flasher{serverURL: "https://operations-center.local:8443"}
 
 		_, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
 		require.Error(t, err)
