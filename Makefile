@@ -108,7 +108,7 @@ license-check:
 ifeq ($(shell command -v go-licenses),)
 	(cd / ; $(GO) install -v -x github.com/google/go-licenses@latest)
 endif
-	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/rootless-containers/proto/go-proto ./...
+	$(GO) tool go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/rootless-containers/proto/go-proto ./...
 
 .PHONY: lint
 lint:

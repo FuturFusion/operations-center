@@ -53,6 +53,7 @@ require (
 	github.com/cowsql/go-cowsql v1.22.1-0.20261014181424-288c15e22ea5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dop251/goja v0.0.0-20230122112309-96b1610dd4f7 // indirect
@@ -80,6 +81,8 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/cel-go v0.31.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-licenses/v2 v2.0.1 // indirect
+	github.com/google/licenseclassifier/v2 v2.0.0 // indirect
 	github.com/google/renameio/v2 v2.0.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a // indirect
@@ -141,6 +144,7 @@ require (
 	github.com/openfga/cli v0.8.2 // indirect
 	github.com/openfga/language/pkg/go v0.3.2 // indirect
 	github.com/openfga/mapper v0.1.1 // indirect
+	github.com/otiai10/copy v1.10.0 // indirect
 	github.com/pandatix/go-abnf v0.5.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -155,6 +159,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/schollz/progressbar/v3 v3.19.1 // indirect
+	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/shopspring/decimal v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -205,6 +210,7 @@ require (
 	google.golang.org/grpc v1.85.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/klog/v2 v2.140.0 // indirect
 	oss.terrastruct.com/d2 v0.5.1 // indirect
 	oss.terrastruct.com/util-go v0.0.0-20230604222829-11c3c60fec14 // indirect
 )
@@ -259,6 +265,7 @@ require (
 tool (
 	github.com/fe3dback/go-arch-lint
 	github.com/go-swagger/go-swagger
+	github.com/google/go-licenses/v2
 	github.com/lxc/incus/v7/cmd/generate-database
 	github.com/openfga/cli/cmd/fga
 	github.com/vektra/mockery/v3
