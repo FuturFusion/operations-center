@@ -237,7 +237,7 @@ func mustObserveServers(t *testing.T, names []string) map[string]observedServer 
 	err := json.Unmarshal([]byte(instancesResp.OutputTrimmed()), &instances)
 	require.NoError(t, err)
 
-	recordsResp := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -c '[ .[] | select(.server_type == "incus") ]'`, cpuArch)
+	recordsResp := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -c '[ .[] | select(.server_type == "incus-lts-7.0") ]'`, cpuArch)
 
 	var records []serverRecord
 	err = json.Unmarshal([]byte(recordsResp.OutputTrimmed()), &records)

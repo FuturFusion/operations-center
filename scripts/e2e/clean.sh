@@ -116,7 +116,7 @@ clean_operations_center() {
   ignore_errors "$missing|has never been deployed|has been cancelled|failed in state" "$oc" provisioning server deploy-status IncusOS01 --wait
 
   step "Remove servers"
-  for name in $(list "$oc" provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'); do
+  for name in $(list "$oc" provisioning server list -f json | jq -r '.[] | select(.server_type | startswith("incus")) | .name'); do
     ignore_missing "$oc" provisioning server remove "$name"
   done
 

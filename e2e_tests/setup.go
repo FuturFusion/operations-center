@@ -220,7 +220,7 @@ func cleanupIncusOS(t *testing.T, names []string) func() {
 			}
 		}
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type | startswith("incus")) | .name'`, cpuArch)
 		if !resp.Success() {
 			t.Error(resp.Error())
 		}

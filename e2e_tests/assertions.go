@@ -406,7 +406,7 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	seed := mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
 	require.True(t, gjson.Get(seed, "public").Bool(), "expect created token seed to be public")
 	require.Equal(t, "CRUD seed", gjson.Get(seed, "description").String(), "expect created token seed to have the given description")
-	require.JSONEq(t, `["incus","debug"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect created token seed to contain the applications of the seed file")
+	require.JSONEq(t, `["incus-lts-7.0","debug"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect created token seed to contain the applications of the seed file")
 
 	// Edit seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/token_seed_put.yaml`, cpuArch, token, tmpDir)
@@ -414,7 +414,7 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	seed = mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test -f json`, cpuArch, token).Output()
 	require.False(t, gjson.Get(seed, "public").Bool(), "expect edited token seed to be private")
 	require.Equal(t, "E2E test token seed", gjson.Get(seed, "description").String(), "expect edited token seed to have the new description")
-	require.JSONEq(t, `["incus"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect edited token seed to contain the new applications")
+	require.JSONEq(t, `["incus-lts-7.0"]`, gjson.Get(seed, "seeds.applications.applications.#.name").Raw, "expect edited token seed to contain the new applications")
 	require.Equal(t, "Europe/Zurich", gjson.Get(seed, "seeds.network.time.timezone").String(), "expect edited token seed to contain the new timezone")
 
 	// Rename seed.
@@ -539,7 +539,7 @@ func assertInventory(t *testing.T, clusterName string, names []string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "%s" and .server_type == "incus" and .server_status == "ready") ] | length == %d'`, cpuArch, clusterName, len(names))
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "%s" and .server_type == "incus-lts-7.0" and .server_status == "ready") ] | length == %d'`, cpuArch, clusterName, len(names))
 	require.NoError(t, resp.err, "expect %d incus servers in ready state", len(names))
 	if !resp.Success() {
 		t.Errorf("expect %d incus servers in ready state", len(names))
@@ -675,7 +675,7 @@ func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []str
 
 	printServerList(t)
 
-	servers := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == %q and .server_type == "incus" and .server_status == "ready" and (.name as $n | %s | index($n) ) ) ] | .[].name'`, cpuArch, clusterName, asJSON(t, clusterMembers))
+	servers := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == %q and .server_type == "incus-lts-7.0" and .server_status == "ready" and (.name as $n | %s | index($n) ) ) ] | .[].name'`, cpuArch, clusterName, asJSON(t, clusterMembers))
 	serverNames := strings.Split(servers.OutputTrimmed(), "\n")
 	if len(clusterMembers) != len(serverNames) {
 		t.Fatalf("expected cluster %q to have a server %v for each name %v", clusterName, serverNames, clusterMembers)
@@ -769,7 +769,7 @@ func assertRemovedServerToReappear(ctx context.Context, t *testing.T, hostname s
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .cluster == "" and .server_type == "incus" and .server_status == "ready") ] | length == 1'`, 5*time.Minute, cpuArch, hostname)
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .cluster == "" and .server_type == "incus-lts-7.0" and .server_status == "ready") ] | length == 1'`, 5*time.Minute, cpuArch, hostname)
 	require.NoErrorf(t, err, "expect the not clustered server %q", hostname)
 	if !ok {
 		fmt.Println("====[ Server List ]====")
