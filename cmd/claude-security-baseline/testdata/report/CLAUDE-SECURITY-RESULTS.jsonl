@@ -1,0 +1,4 @@
+{"id": "F1", "title": "TLS chain is not verified", "file": "internal/tls.go", "line": 10, "cwe_id": "CWE-295", "severity": "HIGH", "claudeSecurityPluginFindingId": "v3:aaa"}
+{"id": "F2", "title": "Password returned to viewers", "file": "internal/api.go", "line": 20, "cwe_id": "CWE-522", "severity": "MEDIUM", "claudeSecurityPluginFindingId": "v3:bbb"}
+{"id": "F3", "title": "Password | returned in list", "file": "internal/api.go", "line": 30, "cwe_id": "CWE-522", "severity": "MEDIUM", "claudeSecurityPluginFindingId": "v3:bbb"}
+{"id": "F4", "title": "Certificate pinned on first use", "file": "internal/tls.go", "line": 40, "cwe_id": "CWE-295", "severity": "LOW", "claudeSecurityPluginFindingId": "v3:ddd"}
