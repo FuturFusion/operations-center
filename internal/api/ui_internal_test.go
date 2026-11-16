@@ -1,11 +1,13 @@
 package api
 
 import (
+	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"testing/fstest"
 
@@ -170,8 +172,108 @@ func TestRegisterUIHandlers_symlinkOutsideOfUIDir(t *testing.T) {
 	serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/assets/secret.txt", nil))
 
 	// Assert
-	require.NotEqual(t, http.StatusOK, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code, "a symlink to the outside falls back to index.html")
+	require.Equal(t, uiIndexContent, rec.Body.String())
 	require.NotContains(t, rec.Body.String(), "secret-file-content", "a symlink must not serve files outside of the web UI directory")
+}
+
+// errFS is a file system, which fails to open errPath with err. It does not
+// embed fstest.MapFS, because http.FS uses its Stat method to map errors.
+type errFS struct {
+	files fstest.MapFS
+
+	errPath string
+	err     error
+}
+
+// Open is part of the fs.FS interface.
+func (e errFS) Open(name string) (fs.File, error) {
+	if name == e.errPath {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: e.err}
+	}
+
+	return e.files.Open(name)
+}
+
+func TestRegisterUIHandlers_openError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+
+		openErr error
+
+		wantStatusCode int
+		wantBody       string
+	}{
+		{
+			name: "not exist falls back to index",
+
+			openErr: fs.ErrNotExist,
+
+			wantStatusCode: http.StatusOK,
+			wantBody:       uiIndexContent,
+		},
+		{
+			name: "path escape falls back to index",
+
+			openErr: errors.New(osRootPathEscapeMsg),
+
+			wantStatusCode: http.StatusOK,
+			wantBody:       uiIndexContent,
+		},
+		{
+			name: "error - permission denied",
+
+			openErr: fs.ErrPermission,
+
+			wantStatusCode: http.StatusForbidden,
+			wantBody:       "403 Forbidden\n",
+		},
+		{
+			name: "error - input output error",
+
+			openErr: syscall.EIO,
+
+			wantStatusCode: http.StatusInternalServerError,
+			wantBody:       "500 Internal Server Error\n",
+		},
+		{
+			name: "error - too many levels of symbolic links",
+
+			openErr: syscall.ELOOP,
+
+			wantStatusCode: http.StatusInternalServerError,
+			wantBody:       "500 Internal Server Error\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			embeddedUI := errFS{
+				files: fstest.MapFS{
+					"index.html":    &fstest.MapFile{Data: []byte(uiIndexContent)},
+					"assets/app.js": &fstest.MapFile{Data: []byte(uiAssetContent)},
+				},
+				errPath: "assets/app.js",
+				err:     tc.openErr,
+			}
+
+			serveMux := http.NewServeMux()
+			registerUIHandlers(t.Context(), newRouter(serveMux), embeddedUI, nil)
+
+			// Run test
+			rec := httptest.NewRecorder()
+			serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/assets/app.js", nil))
+
+			// Assert
+			require.Equal(t, tc.wantStatusCode, rec.Code)
+			require.Equal(t, tc.wantBody, rec.Body.String())
+		})
+	}
 }
 
 func TestDaemon_openUIRoot(t *testing.T) {

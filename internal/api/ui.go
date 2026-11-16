@@ -31,11 +31,23 @@ const uiPathSegment = "ui"
 // Open is part of the http.FileSystem interface.
 func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
 	fsFile, err := httpFS.FileSystem.Open(name)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) || isPathEscapeError(err) {
 		return httpFS.FileSystem.Open("index.html")
 	}
 
 	return fsFile, err
+}
+
+// osRootPathEscapeMsg is the message of the unexported error os.Root returns
+// for paths, which point outside of the root.
+const osRootPathEscapeMsg = "path escapes from parent"
+
+// isPathEscapeError reports if err is the os.Root error for a symlink, which
+// points outside of the root. The error is not exported, so compare the
+// message.
+func isPathEscapeError(err error) bool {
+	var pathErr *fs.PathError
+	return errors.As(err, &pathErr) && pathErr.Err != nil && pathErr.Err.Error() == osRootPathEscapeMsg
 }
 
 // openUIRoot opens the "ui" directory below the usr share dir as root. It
