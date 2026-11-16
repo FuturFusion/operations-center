@@ -71,6 +71,16 @@ type backup struct {
 
 var _ system.BackupRepo = backup{}
 
+// NewBackup returns a backup repo for the state of Operations Center in varRoot.
+func NewBackup(varRoot *os.Root) backup {
+	return backup{
+		varRoot: varRoot,
+		usage: func() (file.UsageInformation, error) {
+			return file.UsageInformationForPath(varRoot.Name())
+		},
+	}
+}
+
 func (b backup) Create(ctx context.Context, options system.BackupOptions, snapshotDatabase func(ctx context.Context, dir string) error) (io.ReadCloser, error) {
 	// Check upfront, errors can not be reported once the archive is streamed.
 	for _, entry := range backupEntries {

@@ -48,6 +48,10 @@ func New(root *os.Root, signatureVerificationRootCA string) *localfs {
 	}
 }
 
+func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+	return file.UsageInformationForPath(l.root.Name())
+}
+
 // updateFilename returns the name of filename relative to the root.
 // Names, which leave the directory of the update, are rejected.
 func updateFilename(update provisioning.Update, filename string) (string, error) {
