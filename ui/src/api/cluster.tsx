@@ -52,6 +52,9 @@ export const createCluster = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -81,6 +84,9 @@ export const renameCluster = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -96,6 +102,9 @@ export const updateCluster = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -111,6 +120,9 @@ export const updateClusterRolling = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:update`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -125,6 +137,9 @@ export const rebootClusterRolling = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:reboot`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -138,6 +153,9 @@ export const cancelClusterOperation = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:cancel-operation`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -151,6 +169,9 @@ export const resyncClusterInventory = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:resync-inventory`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
@@ -165,6 +186,9 @@ export const bulkClusterAction = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:bulk-update`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -180,6 +204,9 @@ export const updateClusterCert = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/certificate`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -238,6 +265,9 @@ export const clusterAddServers = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:add-servers`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
@@ -253,6 +283,9 @@ export const clusterRemoveServer = (
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:remove-servers`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: body,
     })
       .then((response) => response.json())
