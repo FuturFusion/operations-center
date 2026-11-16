@@ -14179,6 +14179,9 @@ paths:
 
                 Without `wait`, the refresh runs in the background.
                 The status code is 202.
+
+                If no update source is configured, the request fails.
+                The status code is 400.
             operationId: updates_refresh_post
             parameters:
                 - description: If set, refresh operation is executed synchronously and waited for the result.
