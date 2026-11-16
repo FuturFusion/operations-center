@@ -16,9 +16,18 @@ export const ServerTypeString = {
 };
 
 export const IncusServerTypeString = {
-  incus: "Incus",
   "incus-lts-7.0": "Incus (7.0 LTS)",
+  incus: "Incus",
 };
+
+// Reports whether the server type is one of the Incus kinds.
+export const isIncusServerType = (serverType: string): boolean => {
+  return serverType in IncusServerTypeString;
+};
+
+// The Incus flavor preselected for new deployments. IncusOS builds provide
+// both flavors, HypervisorOS builds provide the 7.0 LTS flavor only.
+export const DefaultIncusServerType = ServerType.IncusLTS70;
 
 export type ServerTypeKey = keyof typeof ServerTypeString;
 

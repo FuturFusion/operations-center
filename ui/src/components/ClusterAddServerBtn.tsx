@@ -9,8 +9,8 @@ import { useServers } from "context/useServers";
 import { Cluster } from "types/cluster";
 import { useQueryClient } from "@tanstack/react-query";
 import { Form } from "react-bootstrap";
-import { ServerType } from "util/server";
 import { errorMessage } from "util/response";
+import { isIncusServerType } from "util/server";
 
 interface Props {
   cluster: Cluster;
@@ -32,7 +32,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
   };
 
   const filteredServers = useMemo(
-    () => servers?.filter((s) => s.server_type === ServerType.Incus),
+    () => servers?.filter((s) => isIncusServerType(s.server_type)),
     [servers],
   );
 
