@@ -2131,6 +2131,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 	tests := []struct {
 		name                 string
 		ctx                  context.Context
+		source               string
 		filterExpression     string
 		fileFilterExpression string
 
@@ -2165,6 +2166,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - no updates, no state in the DB",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: ``,
 
@@ -2173,6 +2175,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - one update, filtered",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `"stable" in upstream_channels`,
 			fileFilterExpression: `true`,
 
@@ -2191,6 +2194,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - one update, already present in DB",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2218,6 +2222,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// The file, which is downloaded has a valid sha256 checksum, one file is
 			// filtered.
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `"stable" in upstream_channels`,
 			fileFilterExpression: `applies_to_architecture(architecture, "x86_64")`,
 
@@ -2312,6 +2317,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - one update, which gets omitted, cleanup state in DB",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2381,6 +2387,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - one update, which refreshes the current state from the db",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2466,8 +2473,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 		// Error cases
 		{
-			name: "error - source.GetLatest",
-			ctx:  t.Context(),
+			name:   "error - source.GetLatest",
+			ctx:    t.Context(),
+			source: "https://updates.example.com",
 
 			sourceGetLatestErr: boom.Error,
 
@@ -2476,6 +2484,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			ctx:              t.Context(),
+			source:           "https://updates.example.com",
 			filterExpression: `fromBase64("~invalid") == ""`, // invalid, returns runtime error during evauluation of the expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2495,6 +2504,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - file filter expression run - invalid",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `fromBase64("~invalid") == ""`, // invalid, returns runtime error during evauluation of the expression.
 
@@ -2517,6 +2527,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - serverSvc.GetAll",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2527,6 +2538,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - repo.GetAll",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2537,6 +2549,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - filesRepo.Delete",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2561,6 +2574,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - repo.DeleteByUUID",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2585,6 +2599,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toRefreshUpdates - filesRepo.PruneFiles",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2622,6 +2637,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toRefreshUpdates - repo.Upsert",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2659,6 +2675,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toRefreshUpdates - filesRepo.Exist",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2698,6 +2715,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toRefreshUpdates - filesRepo.UsageInformation",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2745,6 +2763,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				cancel(boom.Error)
 				return ctx
 			}(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2788,6 +2807,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toRefreshUpdates - downloadFile",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -2839,6 +2859,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.UsageInformation",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2868,6 +2889,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.UsageInformation - invalid total size",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2899,6 +2921,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - not enough space available global",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2930,6 +2953,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - Validate",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2962,6 +2986,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - repo.Upsert pending",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -2995,6 +3020,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - not enough space available before download",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3034,6 +3060,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				cancel(boom.Error)
 				return ctx
 			}(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3067,6 +3094,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - source.GetUpdateFileByFilename",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3108,6 +3136,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.Put",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3166,6 +3195,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.Put - invalid sha256",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3223,6 +3253,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.Put - commit",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3283,6 +3314,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - filesRepo.Put - cancel",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3343,6 +3375,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - repo.Upsert",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3402,6 +3435,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - toDownloadUpdates - repo.AssignChannels",
 			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
 
@@ -3452,6 +3486,88 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				{},
 			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - no update source - cleanup state in DB",
+			ctx:                  t.Context(),
+			source:               "",
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        uuidgen.FromPattern(t, "03"),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: dateTime1, // delete, since it is the older one.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
+				},
+				{
+					UUID:        uuidgen.FromPattern(t, "04"),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: dateTime3,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
+				},
+				{
+					UUID:        uuidgen.FromPattern(t, "05"),
+					Status:      api.UpdateStatusPending,
+					PublishedAt: dateTime3, // delete, since it is in pending for longer than grace period.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
+				},
+			},
+			// 03 and 05 are deleted.
+			repoUpdateFilesDelete: queue.Errs{nil, nil},
+			repoDeleteByUUID:      queue.Errs{nil, nil},
+			// 04 is refreshed.
+			repoUpdateFilesPruneFiles: queue.Errs{nil},
+			repoUpsert:                queue.Errs{nil},
+			// Fails the test, if the source is queried.
+			sourceGetLatestErr: boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, provisioning.ErrUpdateSourceNotConfigured, a...)
+			},
+		},
+		{
+			name:                 "error - no update source - repo.DeleteByUUID",
+			ctx:                  t.Context(),
+			source:               "",
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        uuidgen.FromPattern(t, "05"),
+					Status:      api.UpdateStatusPending,
+					PublishedAt: dateTime3, // delete, since it is in pending for longer than grace period.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
+				},
+			},
+			repoUpdateFilesDelete: queue.Errs{nil},
+			repoDeleteByUUID:      queue.Errs{boom.Error},
+			// Fails the test, if the source is queried.
+			sourceGetLatestErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -3528,6 +3644,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.NoError(t, err)
 
 			err = config.UpdateUpdates(t.Context(), system.UpdatesPut{
+				Source:                      tc.source,
 				SignatureVerificationRootCA: string(certPEM),
 				FilterExpression:            tc.filterExpression,
 				FileFilterExpression:        tc.fileFilterExpression,

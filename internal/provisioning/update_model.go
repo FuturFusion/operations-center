@@ -19,6 +19,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// ErrUpdateSourceNotConfigured reports that updates can not be fetched from
+// the update source, because no update source is configured.
+var ErrUpdateSourceNotConfigured = domain.NewErrorf(domain.ErrOperationNotPermitted, "", "No update source is configured. Refresh of updates is not possible").
+	WithHintf(`Set "updates.source" in the system configuration.`)
+
 //
 //generate-expr: Update
 
