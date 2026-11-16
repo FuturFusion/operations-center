@@ -1363,6 +1363,13 @@ func (d *Daemon) setupBackgroundTasks(
 			EntityType: "update",
 			Entity:     "-",
 		}
+		if errors.Is(err, provisioning.ErrUpdateSourceNotConfigured) {
+			warningSvc.RemoveStale(ctx, scope, nil)
+			slog.InfoContext(ctx, "Refresh updates completed without download, no update source configured")
+
+			return
+		}
+
 		if err != nil {
 			warningSvc.Emit(
 				ctx,
