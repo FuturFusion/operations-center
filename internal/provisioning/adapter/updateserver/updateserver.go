@@ -254,6 +254,11 @@ func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signature
 }
 
 func (u *updateServer) SourceConnectionTest(ctx context.Context, newBaseURL string, newSignatureVerificationRootCA string, newAuthenticationByQueryParam bool) error {
+	// An empty source disables the refresh from the update server. There is nothing to test.
+	if newBaseURL == "" {
+		return nil
+	}
+
 	u.configUpdateMu.Lock()
 	baseURL, signatureVerificationRootCA, authenticationByQueryParam := u.baseURL, u.signatureVerificationRootCA, u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
