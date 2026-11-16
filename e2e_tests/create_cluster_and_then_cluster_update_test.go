@@ -137,7 +137,7 @@ func updateClusterApplication(ctx context.Context, t *testing.T, clusterName str
 	resp := run(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application does-not-exist`, cpuArch, clusterName)
 	require.False(t, resp.Success(), "Update cluster application: the update of an unknown application was accepted")
 
-	resp = run(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application incus-lts-7.0 --reboot`, cpuArch, clusterName)
+	resp = run(t, `../bin/operations-center.linux.%s provisioning cluster update %s --application %s --reboot`, cpuArch, clusterName, incusApplication)
 	require.False(t, resp.Success(), "Update cluster application: the update of an application with reboot was accepted")
 
 	// The newly assigned update is only picked up with the next poll of the servers.

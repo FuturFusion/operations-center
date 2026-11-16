@@ -72,7 +72,7 @@ metrics_components:
 applications:
   version: "1"
   applications:
-    - name: incus-lts-7.0
+    - name: ` + incusApplication + `
     - name: debug
 network:
   version: "1"
@@ -95,7 +95,7 @@ seeds:
   applications:
     version: "1"
     applications:
-      - name: incus-lts-7.0
+      - name: ` + incusApplication + `
   network:
     version: "1"
     interfaces:
@@ -117,7 +117,7 @@ seeds:
 applications:
   version: "1"
   applications:
-    - name: incus-lts-7.0
+    - name: ` + incusApplication + `
     - name: debug
 network:
   version: "1"
@@ -137,7 +137,7 @@ network:
 applications:
   version: "1"
   applications:
-    - name: incus-lts-7.0
+    - name: ` + incusApplication + `
     - name: debug
 install:
   version: "1"

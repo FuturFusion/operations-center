@@ -239,5 +239,5 @@ func assertServerDeployed(t *testing.T, name string) {
 	require.NotContains(t, resp.Output(), "boot-media", "expect the installation media to be detached")
 
 	// The installed server has taken over the pre-registered one.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus-lts-7.0") ] | length == 1'`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == %q) ] | length == 1'`, cpuArch, incusApplication)
 }

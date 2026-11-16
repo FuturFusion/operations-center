@@ -262,7 +262,7 @@ func mustCreateCluster(t *testing.T, tmpDir string, channelName string, serverNa
 	servers := strings.Join(serverNames, " --server-names ")
 
 	t.Log("Create cluster")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, incusOSClusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --server-type %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, incusOSClusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, incusApplication, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 }
 
 func clusterCleanup(t *testing.T) func() {
@@ -737,8 +737,10 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 	return incusOSPreseededISOFilename
 }
 
+// incusOSPreseededISOName contains the Incus application the ISO is seeded
+// with, since the ISO is cached across runs, while the application may change.
 func incusOSPreseededISOName(token string) string {
-	return fmt.Sprintf("IncusOS-preseeded-%s.iso", token)
+	return fmt.Sprintf("IncusOS-preseeded-%s-%s.iso", incusApplication, token)
 }
 
 func generateIncusOSPreseededISO(t *testing.T, tmpDir string, token string, incusOSPreseededISOFilename string) {
@@ -778,7 +780,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 }
 
 func incusOSPreseededISOFromTokenSeedName(token string) string {
-	return fmt.Sprintf("IncusOS-preseeded-from-token-seed-%s.iso", token[:8])
+	return fmt.Sprintf("IncusOS-preseeded-from-token-seed-%s-%s.iso", incusApplication, token[:8])
 }
 
 func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseededISOFilename string) {
