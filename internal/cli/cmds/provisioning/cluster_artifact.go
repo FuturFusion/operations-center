@@ -267,7 +267,7 @@ func (c *cmdClusterArtifactGetArchive) run(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("target file %q already exists", targetFilename)
 	}
 
-	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,7 @@ func (c *cmdClusterArtifactGetFile) run(cmd *cobra.Command, args []string) error
 		return fmt.Errorf("target file %q already exists", targetFilename)
 	}
 
-	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}

@@ -637,7 +637,7 @@ func (c *cmdIncusImageVersionGetFile) run(cmd *cobra.Command, args []string) err
 		return fmt.Errorf("target file %q already exists", targetFilename)
 	}
 
-	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}
