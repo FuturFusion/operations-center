@@ -32,7 +32,8 @@ func Test_GetImageIncusSources(t *testing.T) {
 			assertFunc: func(t *testing.T, result []api.ImageSource) {
 				t.Helper()
 
-				require.Empty(t, result)
+				require.Len(t, result, 1, "a fresh database has the local source")
+				require.Equal(t, "local", result[0].Name)
 			},
 		},
 		{
@@ -49,9 +50,9 @@ func Test_GetImageIncusSources(t *testing.T) {
 			assertFunc: func(t *testing.T, result []api.ImageSource) {
 				t.Helper()
 
-				require.Len(t, result, 1)
-				require.Equal(t, "sourceOne", result[0].Name)
-				require.Equal(t, "https://images.example.com", result[0].URL)
+				require.Len(t, result, 2, "the local source and the added source")
+				require.Equal(t, "source_one", result[1].Name)
+				require.Equal(t, "https://images.example.com", result[1].URL)
 			},
 		},
 		{
@@ -102,13 +103,13 @@ func Test_GetImageIncusSource(t *testing.T) {
 				seedImageIncusSource(t, d)
 			},
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T, result api.ImageSource) {
 				t.Helper()
 
-				require.Equal(t, "sourceOne", result.Name)
+				require.Equal(t, "source_one", result.Name)
 				require.Equal(t, "https://images.example.com", result.URL)
 				require.Equal(t, `architecture == "amd64"`, result.FilterExpression)
 			},
@@ -118,7 +119,7 @@ func Test_GetImageIncusSource(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -174,7 +175,7 @@ func Test_CreateImageIncusSource(t *testing.T) {
 			dbSeedFunc: noop,
 
 			imageSource: api.ImageSourcePost{
-				Name: "newSource",
+				Name: "new_source",
 				ImageSourcePut: api.ImageSourcePut{
 					URL:              "https://images.example.com",
 					FilterExpression: `architecture == "amd64"`,
@@ -185,7 +186,7 @@ func Test_CreateImageIncusSource(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				imageSource, err := d.socketClient.GetImageIncusSource(t.Context(), "newSource")
+				imageSource, err := d.socketClient.GetImageIncusSource(t.Context(), "new_source")
 				require.NoError(t, err)
 				require.Equal(t, "https://images.example.com", imageSource.URL)
 			},
@@ -228,7 +229,10 @@ func Test_CreateImageIncusSource(t *testing.T) {
 			dbSeedFunc: noop,
 
 			imageSource: api.ImageSourcePost{
-				Name: "withoutFilterExpression",
+				Name: "without_filter_expression",
+				ImageSourcePut: api.ImageSourcePut{
+					URL: "https://images.example.com",
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -242,8 +246,9 @@ func Test_CreateImageIncusSource(t *testing.T) {
 			dbSeedFunc: noop,
 
 			imageSource: api.ImageSourcePost{
-				Name: "invalidFilterExpression",
+				Name: "invalid_filter_expression",
 				ImageSourcePut: api.ImageSourcePut{
+					URL:              "https://images.example.com",
 					FilterExpression: "this is not a valid expression",
 				},
 			},
@@ -259,7 +264,7 @@ func Test_CreateImageIncusSource(t *testing.T) {
 			dbSeedFunc: noop,
 
 			imageSource: api.ImageSourcePost{
-				Name: "newSource", // already exists
+				Name: "new_source", // already exists
 				ImageSourcePut: api.ImageSourcePut{
 					FilterExpression: "true",
 				},
@@ -305,7 +310,7 @@ func Test_UpdateImageIncusSource(t *testing.T) {
 				seedImageIncusSource(t, d)
 			},
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 			imageSource: api.ImageSourcePut{
 				URL:              "https://updated.example.com",
 				FilterExpression: `architecture == "arm64"`,
@@ -315,7 +320,7 @@ func Test_UpdateImageIncusSource(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				imageSource, err := d.socketClient.GetImageIncusSource(t.Context(), "sourceOne")
+				imageSource, err := d.socketClient.GetImageIncusSource(t.Context(), "source_one")
 				require.NoError(t, err)
 				require.Equal(t, "https://updated.example.com", imageSource.URL)
 				require.Equal(t, `architecture == "arm64"`, imageSource.FilterExpression)
@@ -326,7 +331,7 @@ func Test_UpdateImageIncusSource(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -353,8 +358,10 @@ func Test_UpdateImageIncusSource(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg:   "sourceOne",
-			imageSource: api.ImageSourcePut{},
+			tcNameArg: "source_one",
+			imageSource: api.ImageSourcePut{
+				URL: "https://images.example.com",
+			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Empty filter expression is not permitted")
@@ -397,13 +404,13 @@ func Test_DeleteImageIncusSource(t *testing.T) {
 				seedImageIncusSource(t, d)
 			},
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				_, err := d.socketClient.GetImageIncusSource(t.Context(), "sourceOne")
+				_, err := d.socketClient.GetImageIncusSource(t.Context(), "source_one")
 				require.ErrorIs(t, err, domain.ErrNotFound)
 			},
 		},
@@ -412,7 +419,7 @@ func Test_DeleteImageIncusSource(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -464,7 +471,7 @@ func Test_RefreshImageIncusSource(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "sourceOne",
+			tcNameArg: "source_one",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -498,7 +505,7 @@ func seedImageIncusSource(t *testing.T, d testDaemon) {
 	t.Helper()
 
 	_, err := imageEntities.CreateIncusImageSource(t.Context(), d.db, image.IncusImageSource{
-		Name:             "sourceOne",
+		Name:             "source_one",
 		URL:              "https://images.example.com",
 		FilterExpression: `architecture == "amd64"`,
 	})
