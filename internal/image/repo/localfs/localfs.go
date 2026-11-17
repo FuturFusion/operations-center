@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -33,7 +32,7 @@ func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, err
 // root. Every path element must be a single file name. This keeps the path
 // inside the root.
 func imagePath(img *image.IncusImage, elements ...string) (string, error) {
-	for _, element := range append([]string{img.OperatingSystem, img.Release, img.Architecture, img.Variant}, elements...) {
+	for _, element := range append([]string{img.Source, img.OperatingSystem, img.Release, img.Architecture, img.Variant}, elements...) {
 		err := image.ValidateIncusImageFilename(element)
 		if err != nil {
 			return "", err
@@ -49,16 +48,7 @@ func (l localfs) Exists(ctx context.Context, img *image.IncusImage, versionIdent
 		return false, err
 	}
 
-	_, err = l.root.Stat(name)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
+	return file.ExistsIn(l.root, name)
 }
 
 func (l localfs) Get(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (io.ReadCloser, int64, error) {
