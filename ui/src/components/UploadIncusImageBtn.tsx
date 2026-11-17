@@ -11,7 +11,7 @@ import { useNotification } from "context/notificationContext";
 import { IncusImage } from "types/image_incus";
 import { errorMessage } from "util/response";
 
-const architectures = ["amd64", "arm64", "armhf", "riscv64"];
+const architectures = ["amd64", "arm64", "armhf", "loong64", "riscv64"];
 
 type UploadMode = "full" | "metadata";
 
