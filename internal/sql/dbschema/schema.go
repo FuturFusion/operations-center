@@ -295,7 +295,7 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 			return fmt.Errorf("failed to get post update table row counts: %w", err)
 		}
 
-		err = ensureDBRows(preUpdateCounts, postUpdateCounts)
+		err = ensureDBRows(preUpdateCounts, postUpdateCounts, rowDecreaseAllowed[current+1])
 		if err != nil {
 			return fmt.Errorf("DB update caused unexpected row decrease: %w", err)
 		}
@@ -387,14 +387,15 @@ func getTableRowCounts(ctx context.Context, tx *sql.Tx) (tableCounts map[string]
 	return tableCounts, nil
 }
 
-func ensureDBRows(before map[string]int, after map[string]int) error {
+func ensureDBRows(before map[string]int, after map[string]int, decreaseAllowed map[string]struct{}) error {
 	for tableName, beforeCount := range maps.OrderedByKey(before) {
 		afterCount, ok := after[tableName]
 		if !ok {
 			return fmt.Errorf("no after counts for table %q, before count is %d", tableName, beforeCount)
 		}
 
-		if beforeCount > afterCount {
+		_, ok = decreaseAllowed[tableName]
+		if beforeCount > afterCount && !ok {
 			return fmt.Errorf("number of rows for table %q decreased from %d to %d", tableName, beforeCount, afterCount)
 		}
 	}
