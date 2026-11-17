@@ -37,6 +37,12 @@ func TestValidateIncusImageArchitecture(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:         "success - loong64",
+			architecture: "loong64",
+
+			assertErr: require.NoError,
+		},
+		{
 			name:         "success - riscv64",
 			architecture: "riscv64",
 
