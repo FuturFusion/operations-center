@@ -30,6 +30,12 @@ var _ system.CertificateRepo = &CertificateRepoMock{}
 //			UpdateServerKeyPairFunc: func(ctx context.Context, certificatePEM []byte, keyPEM []byte) error {
 //				panic("mock out the UpdateServerKeyPair method")
 //			},
+//			ValidateClientKeyPairFunc: func(ctx context.Context, dir string) error {
+//				panic("mock out the ValidateClientKeyPair method")
+//			},
+//			ValidateServerKeyPairFunc: func(ctx context.Context, dir string) error {
+//				panic("mock out the ValidateServerKeyPair method")
+//			},
 //		}
 //
 //		// use mockedCertificateRepo in code that requires system.CertificateRepo
@@ -45,6 +51,12 @@ type CertificateRepoMock struct {
 
 	// UpdateServerKeyPairFunc mocks the UpdateServerKeyPair method.
 	UpdateServerKeyPairFunc func(ctx context.Context, certificatePEM []byte, keyPEM []byte) error
+
+	// ValidateClientKeyPairFunc mocks the ValidateClientKeyPair method.
+	ValidateClientKeyPairFunc func(ctx context.Context, dir string) error
+
+	// ValidateServerKeyPairFunc mocks the ValidateServerKeyPair method.
+	ValidateServerKeyPairFunc func(ctx context.Context, dir string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -67,10 +79,26 @@ type CertificateRepoMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM []byte
 		}
+		// ValidateClientKeyPair holds details about calls to the ValidateClientKeyPair method.
+		ValidateClientKeyPair []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Dir is the dir argument value.
+			Dir string
+		}
+		// ValidateServerKeyPair holds details about calls to the ValidateServerKeyPair method.
+		ValidateServerKeyPair []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Dir is the dir argument value.
+			Dir string
+		}
 	}
-	lockGetServerCertificate sync.RWMutex
-	lockGetServerKeyPair     sync.RWMutex
-	lockUpdateServerKeyPair  sync.RWMutex
+	lockGetServerCertificate  sync.RWMutex
+	lockGetServerKeyPair      sync.RWMutex
+	lockUpdateServerKeyPair   sync.RWMutex
+	lockValidateClientKeyPair sync.RWMutex
+	lockValidateServerKeyPair sync.RWMutex
 }
 
 // GetServerCertificate calls GetServerCertificateFunc.
@@ -174,5 +202,77 @@ func (mock *CertificateRepoMock) UpdateServerKeyPairCalls() []struct {
 	mock.lockUpdateServerKeyPair.RLock()
 	calls = mock.calls.UpdateServerKeyPair
 	mock.lockUpdateServerKeyPair.RUnlock()
+	return calls
+}
+
+// ValidateClientKeyPair calls ValidateClientKeyPairFunc.
+func (mock *CertificateRepoMock) ValidateClientKeyPair(ctx context.Context, dir string) error {
+	if mock.ValidateClientKeyPairFunc == nil {
+		panic("CertificateRepoMock.ValidateClientKeyPairFunc: method is nil but CertificateRepo.ValidateClientKeyPair was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Dir string
+	}{
+		Ctx: ctx,
+		Dir: dir,
+	}
+	mock.lockValidateClientKeyPair.Lock()
+	mock.calls.ValidateClientKeyPair = append(mock.calls.ValidateClientKeyPair, callInfo)
+	mock.lockValidateClientKeyPair.Unlock()
+	return mock.ValidateClientKeyPairFunc(ctx, dir)
+}
+
+// ValidateClientKeyPairCalls gets all the calls that were made to ValidateClientKeyPair.
+// Check the length with:
+//
+//	len(mockedCertificateRepo.ValidateClientKeyPairCalls())
+func (mock *CertificateRepoMock) ValidateClientKeyPairCalls() []struct {
+	Ctx context.Context
+	Dir string
+} {
+	var calls []struct {
+		Ctx context.Context
+		Dir string
+	}
+	mock.lockValidateClientKeyPair.RLock()
+	calls = mock.calls.ValidateClientKeyPair
+	mock.lockValidateClientKeyPair.RUnlock()
+	return calls
+}
+
+// ValidateServerKeyPair calls ValidateServerKeyPairFunc.
+func (mock *CertificateRepoMock) ValidateServerKeyPair(ctx context.Context, dir string) error {
+	if mock.ValidateServerKeyPairFunc == nil {
+		panic("CertificateRepoMock.ValidateServerKeyPairFunc: method is nil but CertificateRepo.ValidateServerKeyPair was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Dir string
+	}{
+		Ctx: ctx,
+		Dir: dir,
+	}
+	mock.lockValidateServerKeyPair.Lock()
+	mock.calls.ValidateServerKeyPair = append(mock.calls.ValidateServerKeyPair, callInfo)
+	mock.lockValidateServerKeyPair.Unlock()
+	return mock.ValidateServerKeyPairFunc(ctx, dir)
+}
+
+// ValidateServerKeyPairCalls gets all the calls that were made to ValidateServerKeyPair.
+// Check the length with:
+//
+//	len(mockedCertificateRepo.ValidateServerKeyPairCalls())
+func (mock *CertificateRepoMock) ValidateServerKeyPairCalls() []struct {
+	Ctx context.Context
+	Dir string
+} {
+	var calls []struct {
+		Ctx context.Context
+		Dir string
+	}
+	mock.lockValidateServerKeyPair.RLock()
+	calls = mock.calls.ValidateServerKeyPair
+	mock.lockValidateServerKeyPair.RUnlock()
 	return calls
 }

@@ -79,3 +79,31 @@ func (_d CertificateRepoWithPrometheus) UpdateServerKeyPair(ctx context.Context,
 	}()
 	return _d.base.UpdateServerKeyPair(ctx, certificatePEM, keyPEM)
 }
+
+// ValidateClientKeyPair implements system.CertificateRepo.
+func (_d CertificateRepoWithPrometheus) ValidateClientKeyPair(ctx context.Context, dir string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		certificateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "ValidateClientKeyPair", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ValidateClientKeyPair(ctx, dir)
+}
+
+// ValidateServerKeyPair implements system.CertificateRepo.
+func (_d CertificateRepoWithPrometheus) ValidateServerKeyPair(ctx context.Context, dir string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		certificateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "ValidateServerKeyPair", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ValidateServerKeyPair(ctx, dir)
+}
