@@ -727,7 +727,7 @@ func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("File %q for Update %q not found", sourceFilename, id)
 	}
 
-	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}
