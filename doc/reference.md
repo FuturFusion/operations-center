@@ -10,6 +10,7 @@ API </reference/api>
 Backup and restore </reference/backup>
 Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
+Incus images </reference/image>
 Inventory </reference/inventory>
 Metrics </reference/metrics>
 Server </reference/server>
