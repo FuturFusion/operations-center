@@ -12,6 +12,7 @@ import (
 
 type IncusImage struct {
 	ID          int64    `json:"-"`
+	Source      string   `json:"source" db:"primary=yes&join=incus_image_sources.name"`
 	Name        string   `json:"name" db:"primary=yes"`
 	Aliases     []string `json:"aliases" db:"marshal=json"`
 	Description string   `json:"description"`
@@ -23,13 +24,11 @@ type IncusImage struct {
 
 	Versions api.IncusImageVersions `json:"versions"`
 
-	Source *string `json:"source" db:"leftjoin=incus_image_sources.name"`
-
 	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
 
 func (i IncusImage) Validate() error {
-	err := ValidateIncusImageName(i.Name)
+	err := validateIncusImageKey(i.Source, i.Name)
 	if err != nil {
 		return err
 	}
@@ -70,6 +69,18 @@ func (i IncusImage) Validate() error {
 	}
 
 	return nil
+}
+
+func validateIncusImageKey(source string, name string) error {
+	// ValidateIncusImageSourceName rejects "local", because it is reserved.
+	if source != api.IncusImageSourceLocal {
+		err := ValidateIncusImageSourceName(source)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ValidateIncusImageName(name)
 }
 
 func ValidateIncusImageName(name string) error {
@@ -136,8 +147,10 @@ func validateFilePathElements(elements ...string) error {
 	return nil
 }
 
+// FilePath includes the source, so images of different sources never share files.
 func (i IncusImage) FilePath() string {
 	return filepath.Join(
+		i.Source,
 		strings.ToLower(i.OperatingSystem),
 		strings.ToLower(i.Release),
 		strings.ToLower(i.Architecture),
