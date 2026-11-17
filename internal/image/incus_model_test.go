@@ -33,6 +33,18 @@ func TestIncusImage_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "valid - operating system in name in lower case",
+			image: image.IncusImage{
+				Name:            "almalinux:10:amd64:cloud",
+				OperatingSystem: "Almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - empty name",
 			image: image.IncusImage{
 				Name: "", // empty name is invalid

@@ -456,9 +456,10 @@ func TestSourceService_RefreshAll(t *testing.T) {
 		name                             string
 		repoGetAll                       image.IncusImageSources
 		repoGetAllErr                    error
-		imageSourcerRefreshFromSourceErr error
+		imageSourcerRefreshFromSourceErr map[string]error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr            require.ErrorAssertionFunc
+		wantRefreshedSources []string
 	}{
 		{
 			name: "success",
@@ -468,13 +469,15 @@ func TestSourceService_RefreshAll(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:            require.NoError,
+			wantRefreshedSources: []string{"one"},
 		},
 		{
 			name:          "error - repo.GetAll",
 			repoGetAllErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:            boom.ErrorIs,
+			wantRefreshedSources: nil,
 		},
 		{
 			name: "error - imageSourcer.RefreshFromSource",
@@ -482,10 +485,19 @@ func TestSourceService_RefreshAll(t *testing.T) {
 				{
 					Name: "one",
 				},
+				{
+					Name: "two",
+				},
 			},
-			imageSourcerRefreshFromSourceErr: boom.Error,
+			imageSourcerRefreshFromSourceErr: map[string]error{
+				"one": boom.Error,
+			},
 
-			assertErr: boom.ErrorIs,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(tt, err, a...)
+				require.ErrorContains(tt, err, `Sync source "one" failed`, a...)
+			},
+			wantRefreshedSources: []string{"one", "two"},
 		},
 	}
 
@@ -500,9 +512,11 @@ func TestSourceService_RefreshAll(t *testing.T) {
 				},
 			}
 
+			var refreshedSources []string
 			incusImageSourcer := &mock.ImageIncusServiceMock{
 				RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
-					return tc.imageSourcerRefreshFromSourceErr
+					refreshedSources = append(refreshedSources, source.Name)
+					return tc.imageSourcerRefreshFromSourceErr[source.Name]
 				},
 			}
 
@@ -513,6 +527,7 @@ func TestSourceService_RefreshAll(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantRefreshedSources, refreshedSources, "a failing source must not stop the refresh of the other sources")
 		})
 	}
 }

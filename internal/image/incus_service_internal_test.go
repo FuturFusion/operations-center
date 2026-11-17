@@ -447,6 +447,12 @@ func Test_fixArchitectureMapping(t *testing.T) {
 			want: "arm64",
 		},
 		{
+			name:         "loongarch64 - loong64",
+			architecture: "loongarch64",
+
+			want: "loong64",
+		},
+		{
 			name:         "other",
 			architecture: "other",
 
@@ -461,6 +467,40 @@ func Test_fixArchitectureMapping(t *testing.T) {
 			got := fixArchitectureMapping(tc.architecture)
 
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_incusImageName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		operatingSystem string
+
+		want string
+	}{
+		{
+			name:            "operating system in lowercase",
+			operatingSystem: "almalinux",
+
+			want: "almalinux:10:amd64:cloud",
+		},
+		{
+			name:            "operating system in mixed case",
+			operatingSystem: "AlmaLinux",
+
+			want: "almalinux:10:amd64:cloud",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := incusImageName(tc.operatingSystem, "10", "amd64", "cloud")
+
+			require.Equal(t, tc.want, got, "name of the incus image")
 		})
 	}
 }
