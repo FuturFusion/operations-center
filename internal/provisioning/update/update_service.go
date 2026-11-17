@@ -567,14 +567,23 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 //     for removal.
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
+//
+// If no update source is configured, Refresh only cleans up the updates in the
+// repository and returns [provisioning.ErrUpdateSourceNotConfigured].
 func (s updateService) Refresh(ctx context.Context) error {
-	originUpdates, err := s.source.GetLatest(ctx, defaultFetchLimit)
-	if err != nil {
-		return fmt.Errorf("Failed to fetch latest updates: %w", err)
+	sourceConfigured := config.GetUpdates().Source != ""
+
+	var originUpdates provisioning.Updates
+	if sourceConfigured {
+		var err error
+		originUpdates, err = s.source.GetLatest(ctx, defaultFetchLimit)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch latest updates: %w", err)
+		}
 	}
 
 	// Filter updates from orign by filter expression.
-	originUpdates, err = s.filterUpdatesByFilterExpression(originUpdates)
+	originUpdates, err := s.filterUpdatesByFilterExpression(originUpdates)
 	if err != nil {
 		return err
 	}
@@ -641,6 +650,11 @@ func (s updateService) Refresh(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("Unable to refresh updates from source: %w", err)
+	}
+
+	// Without update source, there is nothing to download.
+	if !sourceConfigured {
+		return provisioning.ErrUpdateSourceNotConfigured
 	}
 
 	for _, update := range toRefreshUpdates {

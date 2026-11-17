@@ -280,6 +280,96 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 	}
 }
 
+func TestUpdateServer_SourceConnectionTest(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		newSource  func(svrURL string) string
+		statusCode int
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - empty source",
+			newSource: func(svrURL string) string {
+				return ""
+			},
+			statusCode: http.StatusInternalServerError,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - unchanged source",
+			newSource: func(svrURL string) string {
+				return svrURL + "/"
+			},
+			statusCode: http.StatusInternalServerError,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - new source reachable",
+			newSource: func(svrURL string) string {
+				return svrURL + "/new"
+			},
+			statusCode: http.StatusOK,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - new source returns wrong status code",
+			newSource: func(svrURL string) string {
+				return svrURL + "/new"
+			},
+			statusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "token", nil
+				},
+			}
+
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+
+			body, err := json.Marshal(updateserver.UpdatesIndex{Format: "1.0"})
+			require.NoError(t, err)
+
+			signedBody := signaturetest.SignContent(t, cert, key, body)
+
+			svr := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if !strings.HasSuffix(r.URL.Path, "/index.sjson") {
+						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+						return
+					}
+
+					w.WriteHeader(tc.statusCode)
+					_, _ = w.Write(signedBody)
+				}),
+			)
+			defer svr.Close()
+
+			s := updateserver.New(svr.URL, string(caCert), false, envMock)
+
+			// Run test
+			err = s.SourceConnectionTest(context.Background(), tc.newSource(svr.URL), string(caCert), false)
+
+			// Assert
+			tc.assertErr(t, err, "unexpected result of the source connection test")
+		})
+	}
+}
+
 func readAll(t *testing.T, r io.ReadCloser) []byte {
 	t.Helper()
 

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -253,6 +255,9 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //	Without `wait`, the refresh runs in the background.
 //	The status code is 202.
 //
+//	If no update source is configured, the request fails.
+//	The status code is 400.
+//
 //	---
 //	parameters:
 //	  - in: query
@@ -284,6 +289,11 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 		}
 	}
 
+	// Check before the refresh starts. A background refresh can not report errors to the user.
+	if config.GetUpdates().Source == "" {
+		return response.SmartError(provisioning.ErrUpdateSourceNotConfigured)
+	}
+
 	if wait {
 		err := u.service.Refresh(r.Context())
 		if err != nil {
@@ -299,9 +309,15 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 		ctx := context.Background()
 
 		err := u.service.Refresh(ctx)
-		if err != nil {
+		switch {
+		case errors.Is(err, provisioning.ErrUpdateSourceNotConfigured):
+			// The update source has been removed after the check above.
+			slog.InfoContext(ctx, "Refresh updates completed without download, no update source configured")
+
+		case err != nil:
 			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
-		} else {
+
+		default:
 			slog.InfoContext(ctx, "Refresh updates completed")
 		}
 	}()
