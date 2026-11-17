@@ -89,7 +89,7 @@ func TestSimplestreams_GetImageList(t *testing.T) {
 					Architecture:    "amd64",
 					OperatingSystem: "alpine",
 					Release:         "edge",
-					Source:          new("one"),
+					Source:          "one",
 					Variant:         "default",
 					Versions: api.IncusImageVersions{
 						"20260615": api.IncusImageVersion{
