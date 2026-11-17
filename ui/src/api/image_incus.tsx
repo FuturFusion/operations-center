@@ -1,19 +1,31 @@
 import { APIResponse } from "types/response";
 import { IncusImage } from "types/image_incus";
+import { localImageSourceName } from "util/image_source";
 import { processResponse } from "util/response";
 
-export const fetchIncusImages = (): Promise<IncusImage[]> => {
+const incusImagesURL = (source: string): string => {
+  return `/1.0/images/incus/${encodeURIComponent(source)}/images`;
+};
+
+export const fetchIncusImages = (source: string): Promise<IncusImage[]> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus?recursion=1`)
+    fetch(`${incusImagesURL(source)}?recursion=1`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
 };
 
-export const fetchIncusImage = (name: string): Promise<IncusImage> => {
+const incusImageURL = (source: string, name: string): string => {
+  return `${incusImagesURL(source)}/${encodeURIComponent(name)}`;
+};
+
+export const fetchIncusImage = (
+  source: string,
+  name: string,
+): Promise<IncusImage> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}`)
+    fetch(incusImageURL(source, name))
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -21,11 +33,12 @@ export const fetchIncusImage = (name: string): Promise<IncusImage> => {
 };
 
 export const updateIncusImage = (
+  source: string,
   name: string,
   body: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}`, {
+    fetch(incusImageURL(source, name), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -38,9 +51,12 @@ export const updateIncusImage = (
   });
 };
 
-export const deleteIncusImage = (name: string): Promise<APIResponse<null>> => {
+export const deleteIncusImage = (
+  source: string,
+  name: string,
+): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}`, {
+    fetch(incusImageURL(source, name), {
       method: "DELETE",
     })
       .then((response) => response.json())
@@ -59,7 +75,7 @@ export interface IncusImageMetadata {
 
 const uploadIncusImage = (body: FormData): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus`, {
+    fetch(incusImagesURL(localImageSourceName), {
       method: "POST",
       body: body,
     })
@@ -98,11 +114,12 @@ export const uploadIncusImageWithMetadata = (
 };
 
 export const deleteIncusImageVersion = (
+  source: string,
   name: string,
   version: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}/${version}`, {
+    fetch(`${incusImageURL(source, name)}/${encodeURIComponent(version)}`, {
       method: "DELETE",
     })
       .then((response) => response.json())
@@ -112,12 +129,15 @@ export const deleteIncusImageVersion = (
 };
 
 export const downloadIncusImageFile = (
+  source: string,
   name: string,
   version: string,
   filename: string,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}/${version}/${filename}`)
+    fetch(
+      `${incusImageURL(source, name)}/${encodeURIComponent(version)}/${encodeURIComponent(filename)}`,
+    )
       .then(async (response) => {
         if (!response.ok) {
           const r = await response.json();

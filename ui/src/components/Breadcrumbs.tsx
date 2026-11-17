@@ -2,8 +2,6 @@ import { Link, useLocation, matchPath } from "react-router";
 import { routes } from "util/routes";
 
 const breadcrumbPathMap: Record<string, string> = {
-  "/ui/images": "/ui/images-view",
-  "/ui/images/sources": "/ui/images-view/sources",
   "/ui/provisioning/clusters": "/ui/provisioning/clusters-view",
   "/ui/provisioning/cluster-templates":
     "/ui/provisioning/clusters-view/templates",
@@ -14,9 +12,6 @@ const breadcrumbPathMap: Record<string, string> = {
 };
 
 const customLabels: Record<string, string> = {
-  "/ui/images-view": "Images",
-  "/ui/images-view/images": "Images",
-  "/ui/images-view/sources": "Sources",
   "/ui/provisioning/clusters-view": "Clusters",
   "/ui/provisioning/clusters-view/clusters": "Clusters",
   "/ui/provisioning/clusters-view/templates": "Cluster templates",
@@ -27,6 +22,15 @@ const customLabels: Record<string, string> = {
   "/ui/provisioning/updates-view/images": "Images",
   "/ui/provisioning/updates-view/channels": "Channels",
 };
+
+// Use these labels instead of the path element.
+const pathLabels: Record<string, string> = {
+  "/ui/images/incus": "Images",
+};
+
+// Omit these paths unless they are the last element. The image detail shows
+// the source as parent, not the images tab of the source.
+const skippedPaths = ["/ui/images/incus/:source/images"];
 
 const Breadcrumbs = () => {
   const location = useLocation();
@@ -71,17 +75,27 @@ const Breadcrumbs = () => {
             return "";
           }
 
+          if (
+            !last &&
+            skippedPaths.some((path) => matchPath({ path: path }, to))
+          ) {
+            return "";
+          }
+
           const matchedItems = match.path.split("/").filter((x) => x);
           const lastMatched = matchedItems[matchedItems.length - 1];
-          const routeName =
+          const isNameParam =
             (lastMatched.startsWith(":") &&
               lastMatched != ":activeTab" &&
               lastMatched != ":subTab") ||
             (lastMatched === ":subTab" &&
               (to.includes("/ui/os/applications") ||
-                to.includes("/ui/os/services")))
+                to.includes("/ui/os/services")));
+          const routeName =
+            pathLabels[to] ??
+            (isNameParam
               ? pathnames[index]
-              : formatBreadcrumb(pathnames[index]);
+              : formatBreadcrumb(pathnames[index]));
 
           return (
             <span>

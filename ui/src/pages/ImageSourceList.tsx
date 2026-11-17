@@ -2,6 +2,7 @@ import Button from "react-bootstrap/Button";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { fetchImageSources } from "api/image_incus_source";
+import Breadcrumbs from "components/Breadcrumbs";
 import DataTable from "components/DataTable";
 import ImageSourceActions from "components/ImageSourceActions";
 import { formatDate } from "util/date";
@@ -39,7 +40,7 @@ const ImageSourceList = () => {
         {
           content: (
             <Link
-              to={`/ui/images/sources/${item.name}`}
+              to={`/ui/images/incus/${item.name}`}
               className="data-table-link"
             >
               {item.name}
@@ -67,26 +68,25 @@ const ImageSourceList = () => {
   });
 
   return (
-    <>
-      <div className="d-flex flex-column">
+    <div className="d-flex flex-column">
+      <Breadcrumbs />
+      <div className="scroll-container flex-grow-1 p-3">
         <div className="mx-2 mx-md-4">
           <div className="row">
             <div className="col-12">
               <Button
                 variant="success"
                 className="float-end"
-                onClick={() => navigate("/ui/images/sources/create")}
+                onClick={() => navigate("/ui/images/incus/create")}
               >
                 Create source
               </Button>
             </div>
           </div>
         </div>
-        <div className="flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
-        </div>
+        <DataTable headers={headers} rows={rows} />
       </div>
-    </>
+    </div>
   );
 };
 

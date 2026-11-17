@@ -20,9 +20,9 @@ import ClusterCreate from "pages/ClusterCreate";
 import ClusterDetail from "pages/ClusterDetail";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
-import ImageServer from "pages/ImageServer";
 import ImageSourceCreate from "pages/ImageSourceCreate";
 import ImageSourceDetail from "pages/ImageSourceDetail";
+import ImageSourceList from "pages/ImageSourceList";
 import IncusImageDetail from "pages/IncusImageDetail";
 import IncusOS from "pages/IncusOS";
 import Server from "pages/Server";
@@ -127,20 +127,20 @@ export const routes = [
     component: TokenSeedDetail,
   },
 
-  { path: "/ui/images-view", component: ImageServer },
-  { path: "/ui/images-view/:activeTab", component: ImageServer },
-
-  { path: "/ui/images/incus/:name", component: IncusImageDetail },
+  { path: "/ui/images/incus", component: ImageSourceList },
+  { path: "/ui/images/incus/create", component: ImageSourceCreate },
+  { path: "/ui/images/incus/:source", component: ImageSourceDetail },
   {
-    path: "/ui/images/incus/:name/:activeTab",
+    path: "/ui/images/incus/:source/:activeTab",
+    component: ImageSourceDetail,
+  },
+  {
+    path: "/ui/images/incus/:source/images/:name",
     component: IncusImageDetail,
   },
-
-  { path: "/ui/images/sources/create", component: ImageSourceCreate },
-  { path: "/ui/images/sources/:name", component: ImageSourceDetail },
   {
-    path: "/ui/images/sources/:name/:activeTab",
-    component: ImageSourceDetail,
+    path: "/ui/images/incus/:source/images/:name/:activeTab",
+    component: IncusImageDetail,
   },
 
   { path: "/ui/provisioning/updates-view", component: Update },

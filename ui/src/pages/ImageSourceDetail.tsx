@@ -13,6 +13,8 @@ import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ImageSourceConfiguration from "pages/ImageSourceConfiguration";
 import ImageSourceOverview from "pages/ImageSourceOverview";
+import IncusImageList from "pages/IncusImageList";
+import { localImageSourceName } from "util/image_source";
 import { errorMessage } from "util/response";
 
 const ImageSourceDetail = () => {
@@ -20,7 +22,11 @@ const ImageSourceDetail = () => {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
   const navigate = useNavigate();
-  const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
+  const { source: name, activeTab } = useParams<{
+    source: string;
+    activeTab: string;
+  }>();
+  const isLocal = name == localImageSourceName;
 
   const tabs = [
     {
@@ -29,10 +35,19 @@ const ImageSourceDetail = () => {
       content: <ImageSourceOverview />,
     },
     {
-      key: "configuration",
-      title: "Configuration",
-      content: <ImageSourceConfiguration />,
+      key: "images",
+      title: "Images",
+      content: <IncusImageList source={name || ""} />,
     },
+    ...(isLocal
+      ? []
+      : [
+          {
+            key: "configuration",
+            title: "Configuration",
+            content: <ImageSourceConfiguration />,
+          },
+        ]),
   ];
 
   const {
@@ -58,7 +73,7 @@ const ImageSourceDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Refresh of image source ${name} triggered`);
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
+          queryClient.invalidateQueries({ queryKey: ["incus-images", name] });
           return;
         }
         notify.error(errorMessage(response));
@@ -74,7 +89,7 @@ const ImageSourceDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Image source ${name} deleted`);
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
-          navigate("/ui/images-view/sources");
+          navigate("/ui/images/incus");
           return;
         }
         notify.error(errorMessage(response));
@@ -92,11 +107,11 @@ const ImageSourceDetail = () => {
           defaultTab="overview"
           activeTab={activeTab}
           tabs={tabs}
-          onSelect={(key) => navigate(`/ui/images/sources/${name}/${key}`)}
+          onSelect={(key) => navigate(`/ui/images/incus/${name}/${key}`)}
         />
       </div>
       <div className="fixed-footer p-3">
-        {(!activeTab || activeTab == "overview") && (
+        {!isLocal && (!activeTab || activeTab == "overview") && (
           <div className="d-flex justify-content-end gap-2">
             <Button variant="secondary" onClick={handleRefresh}>
               Refresh
