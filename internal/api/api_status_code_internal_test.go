@@ -54,9 +54,9 @@ func Test_updateAndActionHandlers_statusOK(t *testing.T) {
 		{
 			name: "incus image put",
 			register: func(router Router, authorizer *authz.Authorizer) {
-				registerImageIncusHandler(router, router, authorizer, &imageMock.ImageIncusServiceMock{
-					GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
-						return &image.IncusImage{Name: name}, nil
+				registerIncusImageSourcesAndImagesHandler(router, router.SubGroup("/public"), authorizer, &imageMock.IncusImageSourceServiceMock{}, &imageMock.ImageIncusServiceMock{
+					GetByNameFunc: func(ctx context.Context, source string, name string) (*image.IncusImage, error) {
+						return &image.IncusImage{Source: source, Name: name}, nil
 					},
 					UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
 						return nil
@@ -64,20 +64,20 @@ func Test_updateAndActionHandlers_statusOK(t *testing.T) {
 				})
 			},
 			method:      http.MethodPut,
-			target:      "/one",
+			target:      "/local/images/one",
 			requestBody: `{"description": "some description"}`,
 		},
 		{
 			name: "image source put",
 			register: func(router Router, authorizer *authz.Authorizer) {
-				registerImageSourceHandler(router, authorizer, &imageMock.IncusImageSourceServiceMock{
+				registerIncusImageSourcesAndImagesHandler(router, router.SubGroup("/public"), authorizer, &imageMock.IncusImageSourceServiceMock{
 					GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
 						return &image.IncusImageSource{Name: name}, nil
 					},
 					UpdateFunc: func(ctx context.Context, source image.IncusImageSource) error {
 						return nil
 					},
-				})
+				}, &imageMock.ImageIncusServiceMock{})
 			},
 			method:      http.MethodPut,
 			target:      "/one",

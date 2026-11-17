@@ -1051,10 +1051,10 @@ func TestAuthentication(t *testing.T) {
 		},
 		{
 			// Forbidden instead of unsupported media type proves the exemption.
-			name:     "oidc http POST /1.0/images/incus as viewer with multipart/form-data",
+			name:     "oidc http POST /1.0/images/incus/local/images as viewer with multipart/form-data",
 			client:   oidcClient,
 			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/images/incus",
+			resource: tcpBaseURL + "/1.0/images/incus/local/images",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 				"Content-Type":  "multipart/form-data; boundary=x",
@@ -1065,7 +1065,21 @@ func TestAuthentication(t *testing.T) {
 			wantBodyContains: "",
 		},
 		{
-			name:     "oidc http POST /1.0/images/incus as admin with empty multipart/form-data",
+			name:     "oidc http POST /1.0/images/incus/local/images as admin with empty multipart/form-data",
+			client:   oidcClient,
+			method:   http.MethodPost,
+			resource: tcpBaseURL + "/1.0/images/incus/local/images",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessTokens[admin],
+				"Content-Type":  "multipart/form-data; boundary=x",
+			},
+			body: bytes.NewBufferString("--x--\r\n"),
+
+			wantStatusCode:   http.StatusBadRequest,
+			wantBodyContains: "The multipart request has no parts, the metadata tarball is required",
+		},
+		{
+			name:     "oidc http POST /1.0/images/incus as admin with multipart/form-data",
 			client:   oidcClient,
 			method:   http.MethodPost,
 			resource: tcpBaseURL + "/1.0/images/incus",
@@ -1075,8 +1089,8 @@ func TestAuthentication(t *testing.T) {
 			},
 			body: bytes.NewBufferString("--x--\r\n"),
 
-			wantStatusCode:   http.StatusBadRequest,
-			wantBodyContains: "The multipart request has no parts, the metadata tarball is required",
+			wantStatusCode:   http.StatusUnsupportedMediaType,
+			wantBodyContains: "Unsupported Content-Type",
 		},
 	}
 
