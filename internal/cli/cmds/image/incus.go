@@ -35,11 +35,44 @@ type CmdIncusImage struct {
 func (c *CmdIncusImage) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "incus"
-	cmd.Short = "Interact with Incus images"
+	cmd.Short = "Interact with Incus image sources and their images"
 	cmd.Long = `Description:
-  Interact with Incus images
+  Interact with Incus image sources and their images
 
-  Manage Incus images.
+  Manage Incus image sources. The images of a source are managed with the
+  "image" sub command. The source "local" holds the manually uploaded images.
+`
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	addImageSourceCommands(cmd, c.OCClient)
+
+	imagesCmd := cmdIncusImages{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(imagesCmd.Command())
+
+	return cmd
+}
+
+// Incus images of a source.
+type cmdIncusImages struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdIncusImages) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "image"
+	cmd.Short = "Interact with the Incus images of an image source"
+	cmd.Long = `Description:
+  Interact with the Incus images of an image source
+
+  Manage the Incus images of an image source. Only the images of the source
+  "local" can be added, changed and removed. The images of the other sources
+  follow the filter expression of their source.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -48,59 +81,52 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 
 	// List
 	incusImageListCmd := cmdIncusImagesList{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageListCmd.Command())
 
 	// Show
 	incusImageShowCmd := cmdIncusImageShow{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageShowCmd.Command())
 
 	// Add
 	incusImageAddCmd := cmdIncusImageAdd{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageAddCmd.Command())
 
 	// Edit
 	incusImageEditCmd := cmdIncusImageEdit{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageEditCmd.Command())
 
 	// Remove
 	incusImageRemoveCmd := cmdIncusImageRemove{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageRemoveCmd.Command())
 
 	// Remove version
 	incusImageVersionRemoveCmd := cmdIncusImageVersionRemove{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageVersionRemoveCmd.Command())
 
 	// Get File
 	incusImageVersionGetFileCmd := cmdIncusImageVersionGetFile{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(incusImageVersionGetFileCmd.Command())
-
-	// Sources
-	SourceCmd := CmdSource{
-		ocClient: c.OCClient,
-	}
-
-	cmd.AddCommand(SourceCmd.Command())
 
 	return cmd
 }
@@ -114,10 +140,10 @@ type cmdIncusImagesList struct {
 
 func (c *cmdIncusImagesList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "list"
-	cmd.Short = "List available Incus images"
+	cmd.Use = "list <source>"
+	cmd.Short = "List the Incus images of an image source"
 	cmd.Long = `Description:
-  List the available Incus images
+  List the Incus images of an image source
 `
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
@@ -130,7 +156,7 @@ func (c *cmdIncusImagesList) Command() *cobra.Command {
 
 func (c *cmdIncusImagesList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 0, 0)
+	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
@@ -139,7 +165,7 @@ func (c *cmdIncusImagesList) validateArgsAndFlags(cmd *cobra.Command, args []str
 }
 
 func (c *cmdIncusImagesList) run(cmd *cobra.Command, args []string) error {
-	incusImages, err := c.ocClient.GetIncusImages(cmd.Context())
+	incusImages, err := c.ocClient.GetIncusImages(cmd.Context(), args[0])
 	if err != nil {
 		return err
 	}
@@ -171,7 +197,7 @@ type cmdIncusImageShow struct {
 
 func (c *cmdIncusImageShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <source> <name>"
 	cmd.Short = "Show information about an Incus image"
 	cmd.Long = `Description:
   Show information about an Incus image.
@@ -187,7 +213,7 @@ func (c *cmdIncusImageShow) Command() *cobra.Command {
 
 func (c *cmdIncusImageShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
@@ -201,9 +227,10 @@ func (c *cmdIncusImageShow) validateArgsAndFlags(cmd *cobra.Command, args []stri
 }
 
 func (c *cmdIncusImageShow) run(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	source := args[0]
+	name := args[1]
 
-	incusImage, err := c.ocClient.GetIncusImage(cmd.Context(), name)
+	incusImage, err := c.ocClient.GetIncusImage(cmd.Context(), source, name)
 	if err != nil {
 		return err
 	}
@@ -267,7 +294,7 @@ func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd.Use = "add <metadata tarball> <file> [<file> ...]"
 	cmd.Short = "Add an Incus image version"
 	cmd.Long = `Description:
-  Add an Incus image version.
+  Add an Incus image version to the image source "local".
 
   The required metadata is either provided through a metadata tarball, which
   is the first positional argument, or through the respective flags (e.g.
@@ -405,10 +432,13 @@ type cmdIncusImageEdit struct {
 
 func (c *cmdIncusImageEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "edit <name>"
+	cmd.Use = "edit <source> <name>"
 	cmd.Short = "Edit Incus image"
 	cmd.Long = `Description:
   Edit the Incus image
+
+  Changes the description and the aliases of an Incus image. Only the images
+  of the source "local" can be changed.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -431,7 +461,7 @@ func (c *cmdIncusImageEdit) helpTemplate() string {
 
 func (c *cmdIncusImageEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
@@ -440,7 +470,8 @@ func (c *cmdIncusImageEdit) validateArgsAndFlags(cmd *cobra.Command, args []stri
 }
 
 func (c *cmdIncusImageEdit) run(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	source := args[0]
+	name := args[1]
 
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
@@ -455,7 +486,7 @@ func (c *cmdIncusImageEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = c.ocClient.UpdateIncusImage(cmd.Context(), name, newdata)
+		err = c.ocClient.UpdateIncusImage(cmd.Context(), source, name, newdata)
 		if err != nil {
 			return err
 		}
@@ -463,7 +494,7 @@ func (c *cmdIncusImageEdit) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	serverConfig, err := c.ocClient.GetIncusImage(cmd.Context(), name)
+	serverConfig, err := c.ocClient.GetIncusImage(cmd.Context(), source, name)
 	if err != nil {
 		return err
 	}
@@ -486,7 +517,7 @@ func (c *cmdIncusImageEdit) run(cmd *cobra.Command, args []string) error {
 		newdata := api.IncusImagePut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateIncusImage(cmd.Context(), name, newdata)
+			err = c.ocClient.UpdateIncusImage(cmd.Context(), source, name, newdata)
 		}
 
 		// Respawn the editor
@@ -520,12 +551,14 @@ type cmdIncusImageRemove struct {
 
 func (c *cmdIncusImageRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove <name>"
+	cmd.Use = "remove <source> <name>"
 	cmd.Short = "Remove an Incus image"
 	cmd.Long = `Description:
   Remove an Incus image
 
-  Removes an Incus image from the operations center.
+  Removes an Incus image from the operations center. Only the images of the
+  source "local" can be removed. For the other sources, change the filter
+  expression of the source.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -536,7 +569,7 @@ func (c *cmdIncusImageRemove) Command() *cobra.Command {
 
 func (c *cmdIncusImageRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
@@ -545,9 +578,10 @@ func (c *cmdIncusImageRemove) validateArgsAndFlags(cmd *cobra.Command, args []st
 }
 
 func (c *cmdIncusImageRemove) run(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	source := args[0]
+	name := args[1]
 
-	err := c.ocClient.DeleteIncusImage(cmd.Context(), name)
+	err := c.ocClient.DeleteIncusImage(cmd.Context(), source, name)
 	if err != nil {
 		return err
 	}
@@ -562,12 +596,14 @@ type cmdIncusImageVersionRemove struct {
 
 func (c *cmdIncusImageVersionRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove-version <name> <version>"
-	cmd.Short = "Remove an Incus image version version"
+	cmd.Use = "remove-version <source> <name> <version>"
+	cmd.Short = "Remove an Incus image version"
 	cmd.Long = `Description:
   Remove an Incus image version
 
-  Removes an Incus image version from the operations center.
+  Removes an Incus image version from the operations center. Only the
+  versions of images of the source "local" can be removed. For the other
+  sources, change the filter expression of the source.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -578,7 +614,7 @@ func (c *cmdIncusImageVersionRemove) Command() *cobra.Command {
 
 func (c *cmdIncusImageVersionRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 2, 2)
+	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
 		return err
 	}
@@ -587,10 +623,11 @@ func (c *cmdIncusImageVersionRemove) validateArgsAndFlags(cmd *cobra.Command, ar
 }
 
 func (c *cmdIncusImageVersionRemove) run(cmd *cobra.Command, args []string) error {
-	name := args[0]
-	version := args[1]
+	source := args[0]
+	name := args[1]
+	version := args[2]
 
-	err := c.ocClient.DeleteIncusImageVersion(cmd.Context(), name, version)
+	err := c.ocClient.DeleteIncusImageVersion(cmd.Context(), source, name, version)
 	if err != nil {
 		return err
 	}
@@ -605,7 +642,7 @@ type cmdIncusImageVersionGetFile struct {
 
 func (c *cmdIncusImageVersionGetFile) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "file <name> <version> <filename> <target-filename>"
+	cmd.Use = "file <source> <name> <version> <filename> <target-filename>"
 	cmd.Short = "Get Incus image version file"
 	cmd.Long = `Description:
   Get a file of an Incus image version.
@@ -619,7 +656,7 @@ func (c *cmdIncusImageVersionGetFile) Command() *cobra.Command {
 
 func (c *cmdIncusImageVersionGetFile) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 4, 4)
+	exit, err := validate.Args(cmd, args, 5, 5)
 	if exit {
 		return err
 	}
@@ -628,10 +665,11 @@ func (c *cmdIncusImageVersionGetFile) validateArgsAndFlags(cmd *cobra.Command, a
 }
 
 func (c *cmdIncusImageVersionGetFile) run(cmd *cobra.Command, args []string) error {
-	name := args[0]
-	version := args[1]
-	filename := args[2]
-	targetFilename := args[3]
+	source := args[0]
+	name := args[1]
+	version := args[2]
+	filename := args[3]
+	targetFilename := args[4]
 
 	if file.PathExists(targetFilename) {
 		return fmt.Errorf("target file %q already exists", targetFilename)
@@ -644,7 +682,7 @@ func (c *cmdIncusImageVersionGetFile) run(cmd *cobra.Command, args []string) err
 
 	defer targetFile.Close()
 
-	fileReader, err := c.ocClient.GetIncusImageVersionFile(cmd.Context(), name, version, filename)
+	fileReader, err := c.ocClient.GetIncusImageVersionFile(cmd.Context(), source, name, version, filename)
 	if err != nil {
 		return err
 	}
