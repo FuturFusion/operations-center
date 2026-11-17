@@ -55,7 +55,7 @@ func (_d ImageIncusServiceWithPrometheus) AddVersion(ctx context.Context, mr *mu
 }
 
 // DeleteByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ImageIncusServiceWithPrometheus) DeleteByName(ctx context.Context, source string, name string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -65,7 +65,7 @@ func (_d ImageIncusServiceWithPrometheus) DeleteByName(ctx context.Context, name
 
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByName(ctx, name)
+	return _d.base.DeleteByName(ctx, source, name)
 }
 
 // DeleteBySource implements image.ImageIncusService.
@@ -83,7 +83,7 @@ func (_d ImageIncusServiceWithPrometheus) DeleteBySource(ctx context.Context, so
 }
 
 // DeleteVersionByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) DeleteVersionByName(ctx context.Context, name string, version string) (err error) {
+func (_d ImageIncusServiceWithPrometheus) DeleteVersionByName(ctx context.Context, source string, name string, version string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -93,7 +93,7 @@ func (_d ImageIncusServiceWithPrometheus) DeleteVersionByName(ctx context.Contex
 
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteVersionByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteVersionByName(ctx, name, version)
+	return _d.base.DeleteVersionByName(ctx, source, name, version)
 }
 
 // GetAll implements image.ImageIncusService.
@@ -110,8 +110,8 @@ func (_d ImageIncusServiceWithPrometheus) GetAll(ctx context.Context) (incusImag
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllNames implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) GetAllNames(ctx context.Context) (strings []string, err error) {
+// GetAllBySource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) GetAllBySource(ctx context.Context, source string) (incusImages image.IncusImages, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -119,13 +119,13 @@ func (_d ImageIncusServiceWithPrometheus) GetAllNames(ctx context.Context) (stri
 			result = "error"
 		}
 
-		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNames", result).Observe(time.Since(_since).Seconds())
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllBySource", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllNames(ctx)
+	return _d.base.GetAllBySource(ctx, source)
 }
 
 // GetByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+func (_d ImageIncusServiceWithPrometheus) GetByName(ctx context.Context, source string, name string) (incusImage *image.IncusImage, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -135,11 +135,11 @@ func (_d ImageIncusServiceWithPrometheus) GetByName(ctx context.Context, name st
 
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByName(ctx, name)
+	return _d.base.GetByName(ctx, source, name)
 }
 
 // GetVersionFileByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Context, source string, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -149,7 +149,7 @@ func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Conte
 
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetVersionFileByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetVersionFileByName(ctx, name, version, filename)
+	return _d.base.GetVersionFileByName(ctx, source, name, version, filename)
 }
 
 // RefreshFromSource implements image.ImageIncusService.

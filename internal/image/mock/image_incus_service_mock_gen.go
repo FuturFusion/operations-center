@@ -26,25 +26,25 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			AddVersionFunc: func(ctx context.Context, mr *multipart.Reader) (string, error) {
 //				panic("mock out the AddVersion method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string) error {
+//			DeleteByNameFunc: func(ctx context.Context, source string, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
 //			DeleteBySourceFunc: func(ctx context.Context, sourceName string) error {
 //				panic("mock out the DeleteBySource method")
 //			},
-//			DeleteVersionByNameFunc: func(ctx context.Context, name string, version string) error {
+//			DeleteVersionByNameFunc: func(ctx context.Context, source string, name string, version string) error {
 //				panic("mock out the DeleteVersionByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (image.IncusImages, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-//				panic("mock out the GetAllNames method")
+//			GetAllBySourceFunc: func(ctx context.Context, source string) (image.IncusImages, error) {
+//				panic("mock out the GetAllBySource method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
+//			GetByNameFunc: func(ctx context.Context, source string, name string) (*image.IncusImage, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			GetVersionFileByNameFunc: func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
+//			GetVersionFileByNameFunc: func(ctx context.Context, source string, name string, version string, filename string) (io.ReadCloser, int64, error) {
 //				panic("mock out the GetVersionFileByName method")
 //			},
 //			RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
@@ -67,25 +67,25 @@ type ImageIncusServiceMock struct {
 	AddVersionFunc func(ctx context.Context, mr *multipart.Reader) (string, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string) error
+	DeleteByNameFunc func(ctx context.Context, source string, name string) error
 
 	// DeleteBySourceFunc mocks the DeleteBySource method.
 	DeleteBySourceFunc func(ctx context.Context, sourceName string) error
 
 	// DeleteVersionByNameFunc mocks the DeleteVersionByName method.
-	DeleteVersionByNameFunc func(ctx context.Context, name string, version string) error
+	DeleteVersionByNameFunc func(ctx context.Context, source string, name string, version string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (image.IncusImages, error)
 
-	// GetAllNamesFunc mocks the GetAllNames method.
-	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+	// GetAllBySourceFunc mocks the GetAllBySource method.
+	GetAllBySourceFunc func(ctx context.Context, source string) (image.IncusImages, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*image.IncusImage, error)
+	GetByNameFunc func(ctx context.Context, source string, name string) (*image.IncusImage, error)
 
 	// GetVersionFileByNameFunc mocks the GetVersionFileByName method.
-	GetVersionFileByNameFunc func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error)
+	GetVersionFileByNameFunc func(ctx context.Context, source string, name string, version string, filename string) (io.ReadCloser, int64, error)
 
 	// RefreshFromSourceFunc mocks the RefreshFromSource method.
 	RefreshFromSourceFunc func(ctx context.Context, source image.IncusImageSource) error
@@ -109,6 +109,8 @@ type ImageIncusServiceMock struct {
 		DeleteByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Source is the source argument value.
+			Source string
 			// Name is the name argument value.
 			Name string
 		}
@@ -123,6 +125,8 @@ type ImageIncusServiceMock struct {
 		DeleteVersionByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Source is the source argument value.
+			Source string
 			// Name is the name argument value.
 			Name string
 			// Version is the version argument value.
@@ -133,15 +137,19 @@ type ImageIncusServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllNames holds details about calls to the GetAllNames method.
-		GetAllNames []struct {
+		// GetAllBySource holds details about calls to the GetAllBySource method.
+		GetAllBySource []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Source is the source argument value.
+			Source string
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Source is the source argument value.
+			Source string
 			// Name is the name argument value.
 			Name string
 		}
@@ -149,6 +157,8 @@ type ImageIncusServiceMock struct {
 		GetVersionFileByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Source is the source argument value.
+			Source string
 			// Name is the name argument value.
 			Name string
 			// Version is the version argument value.
@@ -183,7 +193,7 @@ type ImageIncusServiceMock struct {
 	lockDeleteBySource           sync.RWMutex
 	lockDeleteVersionByName      sync.RWMutex
 	lockGetAll                   sync.RWMutex
-	lockGetAllNames              sync.RWMutex
+	lockGetAllBySource           sync.RWMutex
 	lockGetByName                sync.RWMutex
 	lockGetVersionFileByName     sync.RWMutex
 	lockRefreshFromSource        sync.RWMutex
@@ -228,21 +238,23 @@ func (mock *ImageIncusServiceMock) AddVersionCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *ImageIncusServiceMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *ImageIncusServiceMock) DeleteByName(ctx context.Context, source string, name string) error {
 	if mock.DeleteByNameFunc == nil {
 		panic("ImageIncusServiceMock.DeleteByNameFunc: method is nil but ImageIncusService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Source string
+		Name   string
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:    ctx,
+		Source: source,
+		Name:   name,
 	}
 	mock.lockDeleteByName.Lock()
 	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
 	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name)
+	return mock.DeleteByNameFunc(ctx, source, name)
 }
 
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
@@ -250,12 +262,14 @@ func (mock *ImageIncusServiceMock) DeleteByName(ctx context.Context, name string
 //
 //	len(mockedImageIncusService.DeleteByNameCalls())
 func (mock *ImageIncusServiceMock) DeleteByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx    context.Context
+	Source string
+	Name   string
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Source string
+		Name   string
 	}
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
@@ -300,23 +314,25 @@ func (mock *ImageIncusServiceMock) DeleteBySourceCalls() []struct {
 }
 
 // DeleteVersionByName calls DeleteVersionByNameFunc.
-func (mock *ImageIncusServiceMock) DeleteVersionByName(ctx context.Context, name string, version string) error {
+func (mock *ImageIncusServiceMock) DeleteVersionByName(ctx context.Context, source string, name string, version string) error {
 	if mock.DeleteVersionByNameFunc == nil {
 		panic("ImageIncusServiceMock.DeleteVersionByNameFunc: method is nil but ImageIncusService.DeleteVersionByName was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
+		Source  string
 		Name    string
 		Version string
 	}{
 		Ctx:     ctx,
+		Source:  source,
 		Name:    name,
 		Version: version,
 	}
 	mock.lockDeleteVersionByName.Lock()
 	mock.calls.DeleteVersionByName = append(mock.calls.DeleteVersionByName, callInfo)
 	mock.lockDeleteVersionByName.Unlock()
-	return mock.DeleteVersionByNameFunc(ctx, name, version)
+	return mock.DeleteVersionByNameFunc(ctx, source, name, version)
 }
 
 // DeleteVersionByNameCalls gets all the calls that were made to DeleteVersionByName.
@@ -325,11 +341,13 @@ func (mock *ImageIncusServiceMock) DeleteVersionByName(ctx context.Context, name
 //	len(mockedImageIncusService.DeleteVersionByNameCalls())
 func (mock *ImageIncusServiceMock) DeleteVersionByNameCalls() []struct {
 	Ctx     context.Context
+	Source  string
 	Name    string
 	Version string
 } {
 	var calls []struct {
 		Ctx     context.Context
+		Source  string
 		Name    string
 		Version string
 	}
@@ -371,54 +389,60 @@ func (mock *ImageIncusServiceMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllNames calls GetAllNamesFunc.
-func (mock *ImageIncusServiceMock) GetAllNames(ctx context.Context) ([]string, error) {
-	if mock.GetAllNamesFunc == nil {
-		panic("ImageIncusServiceMock.GetAllNamesFunc: method is nil but ImageIncusService.GetAllNames was just called")
+// GetAllBySource calls GetAllBySourceFunc.
+func (mock *ImageIncusServiceMock) GetAllBySource(ctx context.Context, source string) (image.IncusImages, error) {
+	if mock.GetAllBySourceFunc == nil {
+		panic("ImageIncusServiceMock.GetAllBySourceFunc: method is nil but ImageIncusService.GetAllBySource was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx    context.Context
+		Source string
 	}{
-		Ctx: ctx,
+		Ctx:    ctx,
+		Source: source,
 	}
-	mock.lockGetAllNames.Lock()
-	mock.calls.GetAllNames = append(mock.calls.GetAllNames, callInfo)
-	mock.lockGetAllNames.Unlock()
-	return mock.GetAllNamesFunc(ctx)
+	mock.lockGetAllBySource.Lock()
+	mock.calls.GetAllBySource = append(mock.calls.GetAllBySource, callInfo)
+	mock.lockGetAllBySource.Unlock()
+	return mock.GetAllBySourceFunc(ctx, source)
 }
 
-// GetAllNamesCalls gets all the calls that were made to GetAllNames.
+// GetAllBySourceCalls gets all the calls that were made to GetAllBySource.
 // Check the length with:
 //
-//	len(mockedImageIncusService.GetAllNamesCalls())
-func (mock *ImageIncusServiceMock) GetAllNamesCalls() []struct {
-	Ctx context.Context
+//	len(mockedImageIncusService.GetAllBySourceCalls())
+func (mock *ImageIncusServiceMock) GetAllBySourceCalls() []struct {
+	Ctx    context.Context
+	Source string
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx    context.Context
+		Source string
 	}
-	mock.lockGetAllNames.RLock()
-	calls = mock.calls.GetAllNames
-	mock.lockGetAllNames.RUnlock()
+	mock.lockGetAllBySource.RLock()
+	calls = mock.calls.GetAllBySource
+	mock.lockGetAllBySource.RUnlock()
 	return calls
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *ImageIncusServiceMock) GetByName(ctx context.Context, name string) (*image.IncusImage, error) {
+func (mock *ImageIncusServiceMock) GetByName(ctx context.Context, source string, name string) (*image.IncusImage, error) {
 	if mock.GetByNameFunc == nil {
 		panic("ImageIncusServiceMock.GetByNameFunc: method is nil but ImageIncusService.GetByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Source string
+		Name   string
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:    ctx,
+		Source: source,
+		Name:   name,
 	}
 	mock.lockGetByName.Lock()
 	mock.calls.GetByName = append(mock.calls.GetByName, callInfo)
 	mock.lockGetByName.Unlock()
-	return mock.GetByNameFunc(ctx, name)
+	return mock.GetByNameFunc(ctx, source, name)
 }
 
 // GetByNameCalls gets all the calls that were made to GetByName.
@@ -426,12 +450,14 @@ func (mock *ImageIncusServiceMock) GetByName(ctx context.Context, name string) (
 //
 //	len(mockedImageIncusService.GetByNameCalls())
 func (mock *ImageIncusServiceMock) GetByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx    context.Context
+	Source string
+	Name   string
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Source string
+		Name   string
 	}
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
@@ -440,17 +466,19 @@ func (mock *ImageIncusServiceMock) GetByNameCalls() []struct {
 }
 
 // GetVersionFileByName calls GetVersionFileByNameFunc.
-func (mock *ImageIncusServiceMock) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
+func (mock *ImageIncusServiceMock) GetVersionFileByName(ctx context.Context, source string, name string, version string, filename string) (io.ReadCloser, int64, error) {
 	if mock.GetVersionFileByNameFunc == nil {
 		panic("ImageIncusServiceMock.GetVersionFileByNameFunc: method is nil but ImageIncusService.GetVersionFileByName was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
+		Source   string
 		Name     string
 		Version  string
 		Filename string
 	}{
 		Ctx:      ctx,
+		Source:   source,
 		Name:     name,
 		Version:  version,
 		Filename: filename,
@@ -458,7 +486,7 @@ func (mock *ImageIncusServiceMock) GetVersionFileByName(ctx context.Context, nam
 	mock.lockGetVersionFileByName.Lock()
 	mock.calls.GetVersionFileByName = append(mock.calls.GetVersionFileByName, callInfo)
 	mock.lockGetVersionFileByName.Unlock()
-	return mock.GetVersionFileByNameFunc(ctx, name, version, filename)
+	return mock.GetVersionFileByNameFunc(ctx, source, name, version, filename)
 }
 
 // GetVersionFileByNameCalls gets all the calls that were made to GetVersionFileByName.
@@ -467,12 +495,14 @@ func (mock *ImageIncusServiceMock) GetVersionFileByName(ctx context.Context, nam
 //	len(mockedImageIncusService.GetVersionFileByNameCalls())
 func (mock *ImageIncusServiceMock) GetVersionFileByNameCalls() []struct {
 	Ctx      context.Context
+	Source   string
 	Name     string
 	Version  string
 	Filename string
 } {
 	var calls []struct {
 		Ctx      context.Context
+		Source   string
 		Name     string
 		Version  string
 		Filename string
