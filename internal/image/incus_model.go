@@ -106,6 +106,9 @@ func fixArchitectureMapping(architecture string) string {
 	case "aarch64":
 		return "arm64"
 
+	case "loongarch64":
+		return "loong64"
+
 	default:
 		return architecture
 	}
