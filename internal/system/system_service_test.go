@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1665,7 +1664,9 @@ func TestSystemService_Restore(t *testing.T) {
 	tests := []struct {
 		name               string
 		servers            provisioning.Servers
-		validBackup        bool
+		serverKeyPairErr   error
+		clientKeyPairErr   error
+		schemaVersion      int
 		backupRepoExtract  error
 		wantDiscardCalls   int
 		wantStageCalls     int
@@ -1675,7 +1676,7 @@ func TestSystemService_Restore(t *testing.T) {
 	}{
 		{
 			name:               "success",
-			validBackup:        true,
+			schemaVersion:      1,
 			wantStageCalls:     1,
 			wantRestartRequest: true,
 
@@ -1699,11 +1700,35 @@ func TestSystemService_Restore(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:             "error - invalid backup is discarded",
+			name:             "error - invalid server certificate is discarded",
+			serverKeyPairErr: boom.Error,
+			schemaVersion:    1,
 			wantDiscardCalls: 1,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrInvalidArgument, a...)
+				require.ErrorContains(tt, err, "invalid server certificate", a...)
+			},
+		},
+		{
+			name:             "error - invalid client certificate is discarded",
+			clientKeyPairErr: boom.Error,
+			schemaVersion:    1,
+			wantDiscardCalls: 1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrInvalidArgument, a...)
+				require.ErrorContains(tt, err, "invalid client certificate", a...)
+			},
+		},
+		{
+			name:             "error - invalid database is discarded",
+			schemaVersion:    0,
+			wantDiscardCalls: 1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrInvalidArgument, a...)
+				require.ErrorContains(tt, err, "invalid database", a...)
 			},
 		},
 	}
@@ -1714,14 +1739,6 @@ func TestSystemService_Restore(t *testing.T) {
 
 			// Setup
 			dir := t.TempDir()
-
-			if tc.validBackup {
-				err := incustls.FindOrGenCert(filepath.Join(dir, config.ServerCertificateFilename), filepath.Join(dir, config.ServerKeyFilename), false, false)
-				require.NoError(t, err)
-
-				err = incustls.FindOrGenCert(filepath.Join(dir, config.ClientCertificateFilename), filepath.Join(dir, config.ClientKeyFilename), true, false)
-				require.NoError(t, err)
-			}
 
 			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
@@ -1743,7 +1760,16 @@ func TestSystemService_Restore(t *testing.T) {
 
 			databaseRepo := &repoMock.DatabaseRepoMock{
 				SchemaVersionFunc: func(ctx context.Context, dir string) (int, int, error) {
-					return 1, 1, nil
+					return tc.schemaVersion, 1, nil
+				},
+			}
+
+			certificateRepo := &repoMock.CertificateRepoMock{
+				ValidateServerKeyPairFunc: func(ctx context.Context, dir string) error {
+					return tc.serverKeyPairErr
+				},
+				ValidateClientKeyPairFunc: func(ctx context.Context, dir string) error {
+					return tc.clientKeyPairErr
 				},
 			}
 
@@ -1761,7 +1787,7 @@ func TestSystemService_Restore(t *testing.T) {
 
 			restartRequested := false
 
-			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, nil, func() {
+			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, certificateRepo, func() {
 				restartRequested = true
 			})
 
