@@ -2,6 +2,7 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -123,12 +124,14 @@ func (s *incusSourceService) RefreshAll(ctx context.Context) error {
 		return fmt.Errorf("Sync sources failed to sources: %w", err)
 	}
 
+	// A failing source must not block the refresh of the other sources.
+	var errs []error
 	for _, source := range sources {
 		err = s.incusImageSource.RefreshFromSource(ctx, source)
 		if err != nil {
-			return fmt.Errorf("Sync source %q failed: %w", source.Name, err)
+			errs = append(errs, fmt.Errorf("Sync source %q failed: %w", source.Name, err))
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }

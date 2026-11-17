@@ -33,6 +33,18 @@ func TestIncusImage_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "valid - properties in name in lower case",
+			image: image.IncusImage{
+				Name:            "almalinux:10-beta:amd64:cloud",
+				OperatingSystem: "Almalinux",
+				Release:         "10-Beta",
+				Architecture:    "amd64",
+				Variant:         "Cloud",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - empty name",
 			image: image.IncusImage{
 				Name: "", // empty name is invalid
@@ -170,6 +182,18 @@ func TestIncusImage_Validate(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - name not in lower case",
+			image: image.IncusImage{
+				Name:            "Almalinux:10:amd64:cloud",
+				OperatingSystem: "Almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+			},
+
+			assertErr: errassert.ValidationErrorContains(`Invalid incus image, name needs to match "os:release:architecture:variant" in lower case`),
 		},
 		{
 			name: "error - name properties mismatch",

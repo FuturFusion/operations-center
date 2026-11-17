@@ -1,7 +1,6 @@
 package image
 
 import (
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -57,8 +56,8 @@ func (i IncusImage) Validate() error {
 		return err
 	}
 
-	if i.Name != strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":") {
-		return domain.NewValidationErrf(`Invalid incus image, name needs to match "os:release:architecture:variant"`)
+	if i.Name != incusImageName(i.OperatingSystem, i.Release, i.Architecture, i.Variant) {
+		return domain.NewValidationErrf(`Invalid incus image, name needs to match "os:release:architecture:variant" in lower case`)
 	}
 
 	set := make(map[string]bool, len(i.Aliases))
@@ -132,10 +131,6 @@ func validateFilePathElements(elements ...string) error {
 	}
 
 	return nil
-}
-
-func (i IncusImage) Path() string {
-	return path.Join(i.OperatingSystem, i.Release, i.Architecture, i.Variant)
 }
 
 func (i IncusImage) FilePath() string {
