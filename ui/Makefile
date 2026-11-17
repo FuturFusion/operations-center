@@ -26,4 +26,4 @@ node_modules/.make-install-stamp: package.json yarn.lock
 
 .PHONY: clean
 clean:
-	rm -rf dist node_modules/.make-install-stamp
+	rm -rf dist node_modules/.make-install-stamp node_modules/.tmp
