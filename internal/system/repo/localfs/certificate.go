@@ -2,6 +2,7 @@ package localfs
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 
@@ -55,6 +56,40 @@ func (c certificate) UpdateServerKeyPair(_ context.Context, certificatePEM []byt
 	err = file.WriteFileAtomicIn(c.varRoot, config.ServerKeyFilename, keyPEM, 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to write %q: %w", config.ServerKeyFilename, err)
+	}
+
+	return nil
+}
+
+func (c certificate) ValidateServerKeyPair(_ context.Context, dir string) error {
+	return validateKeyPair(dir, config.ServerCertificateFilename, config.ServerKeyFilename)
+}
+
+func (c certificate) ValidateClientKeyPair(_ context.Context, dir string) error {
+	return validateKeyPair(dir, config.ClientCertificateFilename, config.ClientKeyFilename)
+}
+
+func validateKeyPair(dir string, certificateFilename string, keyFilename string) error {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return fmt.Errorf("Failed to open %q: %w", dir, err)
+	}
+
+	defer root.Close()
+
+	certificatePEM, err := root.ReadFile(certificateFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", certificateFilename, err)
+	}
+
+	keyPEM, err := root.ReadFile(keyFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", keyFilename, err)
+	}
+
+	_, err = tls.X509KeyPair(certificatePEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("Failed to validate key pair %q and %q: %w", certificateFilename, keyFilename, err)
 	}
 
 	return nil
