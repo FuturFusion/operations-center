@@ -40,10 +40,10 @@ type systemService struct {
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
 		fsEnv interface {
-			VarDir() string
 			CacheDir() string
 		},
 		cfg system.SecurityACME,
+		current *x509.Certificate,
 		force bool,
 	) (*system.CertificatePost, error)
 }
@@ -240,9 +240,19 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 }
 
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
+	certificatePEM, err := s.certificateRepo.GetServerCertificate(ctx)
+	if err != nil {
+		return false, fmt.Errorf("Failed to read the server certificate: %w", err)
+	}
+
+	current, err := certificate.Decode(certificatePEM)
+	if err != nil {
+		return false, fmt.Errorf("Failed to parse certificate: %w", err)
+	}
+
 	cfg := config.GetSecurity().ACME
 
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, force)
+	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, current, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}

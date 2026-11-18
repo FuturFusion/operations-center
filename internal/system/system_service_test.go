@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"testing"
 
@@ -881,6 +882,9 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			}
 
 			certificateRepo := &repoMock.CertificateRepoMock{
+				GetServerCertificateFunc: func(ctx context.Context) ([]byte, error) {
+					return keyPair.certificatePEM, nil
+				},
 				GetServerKeyPairFunc: func(ctx context.Context) ([]byte, []byte, error) {
 					return keyPair.certificatePEM, keyPair.keyPEM, nil
 				},
@@ -912,10 +916,10 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 					func(
 						ctx context.Context,
 						fsEnv interface {
-							VarDir() string
 							CacheDir() string
 						},
 						cfg systemapi.SecurityACME,
+						current *x509.Certificate,
 						force bool,
 					) (*systemapi.CertificatePost, error) {
 						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
