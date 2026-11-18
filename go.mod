@@ -50,7 +50,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/containerd/log v0.2.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.5 // indirect
-	github.com/cowsql/go-cowsql v1.22.1-0.20261014181424-288c15e22ea5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -220,6 +219,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/brianvoe/gofakeit/v7 v7.18.1
+	github.com/cowsql/go-cowsql v1.22.1-0.20261107003926-0a717107e2cc
 	github.com/dsnet/golib/memfile v1.0.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/expr-lang/expr v1.17.8

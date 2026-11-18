@@ -70,14 +70,14 @@ PRAGMA temp_store = MEMORY;
 `)
 	die(err)
 
-	_, err = dbschema.Ensure(ctx, db, *flagDBDir)
+	_, err = dbschema.Ensure(ctx, db.DB, *flagDBDir)
 	die(err)
 
 	dbWithTransaction := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction.(transaction.Preparer), false)
 	die(err)
 
-	err = seed.DB(ctx, db, seed.Config{
+	err = seed.DB(ctx, db.DB, seed.Config{
 		ClustersCount:           *flagClustersCount,
 		ServersMin:              *flagServersMin,
 		ServersMax:              *flagServersMax,

@@ -115,7 +115,7 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 				require.NoError(t, err, "closing the database should succeed")
 			})
 
-			_, err = dbschema.Ensure(t.Context(), db, tmpDir)
+			_, err = dbschema.Ensure(t.Context(), db.DB, tmpDir)
 			require.NoError(t, err, "creating the schema should succeed")
 
 			tc.setup(t, db)

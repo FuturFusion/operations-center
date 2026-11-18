@@ -2456,7 +2456,7 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 
 	// The listeners act on the new name, so they must only learn about it, once
 	// the rename is committed. They must not use the transaction.
-	return transaction.AfterCommit(ctx, func() error {
+	return transaction.AfterCommit(ctx, func(ctx context.Context) error {
 		s.clusterUpdateProgress.reset(oldName)
 
 		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{

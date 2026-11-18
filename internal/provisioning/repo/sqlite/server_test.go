@@ -228,11 +228,11 @@ func TestServerDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	stmts, err := entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	ctx = entities.WithPreparedStmts(ctx, stmts)
@@ -385,11 +385,11 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	stmts, err := entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	ctx = entities.WithPreparedStmts(ctx, stmts)
@@ -489,11 +489,11 @@ func TestServerDatabaseActions_preRegisteredWithoutCertificate(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
-	stmts, err := entities.PrepareStmts(tx, false)
+	stmts, err := entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	ctx = entities.WithPreparedStmts(ctx, stmts)

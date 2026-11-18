@@ -1120,12 +1120,12 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
 
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	serverDB := sqlite.NewServer(tx)

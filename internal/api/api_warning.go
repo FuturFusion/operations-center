@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -190,33 +191,27 @@ func (t *warningHandler) warningPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		currentWarning, err := t.service.GetByUUID(ctx, UUID)
+		if err != nil {
+			return fmt.Errorf("Failed to get warning %q: %w", UUID.String(), err)
 		}
-	}()
 
-	currentWarning, err := t.service.GetByUUID(ctx, UUID)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get warning %q: %w", UUID.String(), err))
-	}
+		// Validate ETag
+		err = response.EtagCheck(r, currentWarning)
+		if err != nil {
+			return err
+		}
 
-	// Validate ETag
-	err = response.EtagCheck(r, currentWarning)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
+		_, err = t.service.UpdateStatusByUUID(ctx, UUID, warningPut.Status)
+		if err != nil {
+			return fmt.Errorf("Failed updating warning %q: %w", UUID.String(), err)
+		}
 
-	_, err = t.service.UpdateStatusByUUID(ctx, UUID, warningPut.Status)
+		return nil
+	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating warning %q: %w", UUID.String(), err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)
