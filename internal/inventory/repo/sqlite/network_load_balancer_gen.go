@@ -37,7 +37,6 @@ func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 	)
 	INSERT INTO network_load_balancers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
@@ -45,7 +44,7 @@ func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 			return inventory.NetworkLoadBalancer{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -54,11 +53,12 @@ func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkLoadBalancer(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -268,7 +268,6 @@ func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.Netw
 	)
 	UPDATE network_load_balancers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
@@ -276,7 +275,7 @@ func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.Netw
 			return inventory.NetworkLoadBalancer{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -285,11 +284,12 @@ func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.Netw
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkLoadBalancer(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 

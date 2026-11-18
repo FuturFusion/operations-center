@@ -37,7 +37,6 @@ func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inve
 	)
 	INSERT INTO storage_pools (uuid, cluster_id, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StoragePool)
@@ -45,18 +44,19 @@ func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inve
 			return inventory.StoragePool{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("name", in.Name),
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.StoragePool{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.StoragePool{}, sqlite.MapErr(err)
 		}
 
-		return scanStoragePool(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -246,7 +246,6 @@ func (r storagePool) UpdateByUUID(ctx context.Context, in inventory.StoragePool)
 	)
 	UPDATE storage_pools SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StoragePool)
@@ -254,18 +253,19 @@ func (r storagePool) UpdateByUUID(ctx context.Context, in inventory.StoragePool)
 			return inventory.StoragePool{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("name", in.Name),
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.StoragePool{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.StoragePool{}, sqlite.MapErr(err)
 		}
 
-		return scanStoragePool(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 

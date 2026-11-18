@@ -37,7 +37,6 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 	)
 	INSERT INTO network_forwards (uuid, cluster_id, project_name, network_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkForward)
@@ -45,7 +44,7 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 			return inventory.NetworkForward{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -54,11 +53,12 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkForward{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkForward{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkForward(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -268,7 +268,6 @@ func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkFo
 	)
 	UPDATE network_forwards SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkForward)
@@ -276,7 +275,7 @@ func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkFo
 			return inventory.NetworkForward{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -285,11 +284,12 @@ func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkFo
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.NetworkForward{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.NetworkForward{}, sqlite.MapErr(err)
 		}
 
-		return scanNetworkForward(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 

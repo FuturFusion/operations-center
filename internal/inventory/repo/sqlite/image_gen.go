@@ -37,7 +37,6 @@ func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image,
 	)
 	INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Image)
@@ -45,7 +44,7 @@ func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image,
 			return inventory.Image{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -53,11 +52,12 @@ func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image,
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.Image{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.Image{}, sqlite.MapErr(err)
 		}
 
-		return scanImage(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -257,7 +257,6 @@ func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.
 	)
 	UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Image)
@@ -265,7 +264,7 @@ func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.
 			return inventory.Image{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("project_name", in.ProjectName),
@@ -273,11 +272,12 @@ func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.Image{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.Image{}, sqlite.MapErr(err)
 		}
 
-		return scanImage(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 

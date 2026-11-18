@@ -37,7 +37,6 @@ func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Pr
 	)
 	INSERT INTO projects (uuid, cluster_id, name, object, last_updated)
 	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Project)
@@ -45,18 +44,19 @@ func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Pr
 			return inventory.Project{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("name", in.Name),
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.Project{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.Project{}, sqlite.MapErr(err)
 		}
 
-		return scanProject(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
@@ -246,7 +246,6 @@ func (r project) UpdateByUUID(ctx context.Context, in inventory.Project) (invent
 	)
 	UPDATE projects SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
 	WHERE uuid=:uuid
-	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.Project)
@@ -254,18 +253,19 @@ func (r project) UpdateByUUID(ctx context.Context, in inventory.Project) (invent
 			return inventory.Project{}, err
 		}
 
-		row := r.db.QueryRowContext(ctx, sqlStmt,
+		_, err = r.db.ExecContext(ctx, sqlStmt,
 			sql.Named("uuid", in.UUID),
 			sql.Named("cluster_name", in.Cluster),
 			sql.Named("name", in.Name),
 			sql.Named("object", marshaledObject),
 			sql.Named("last_updated", in.LastUpdated),
 		)
-		if row.Err() != nil {
-			return inventory.Project{}, sqlite.MapErr(row.Err())
+		if err != nil {
+			return inventory.Project{}, sqlite.MapErr(err)
 		}
 
-		return scanProject(row)
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
 	})
 }
 
