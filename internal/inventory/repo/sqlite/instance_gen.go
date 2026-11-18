@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -36,11 +35,11 @@ func (r instance) Create(ctx context.Context, in inventory.Instance) (inventory.
 	  SELECT id AS cluster_id , (
 	    SELECT servers.id FROM clusters
 	      LEFT JOIN servers ON servers.cluster_id = clusters.id
-	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
 	INSERT INTO instances (uuid, cluster_id, server_id, project_name, name, object, last_updated)
-	VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), ?4, ?5, ?6, ?7)
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.InstanceFull)
@@ -49,13 +48,13 @@ func (r instance) Create(ctx context.Context, in inventory.Instance) (inventory.
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("server_name", in.Server),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.Instance{}, sqlite.MapErr(err)
@@ -83,23 +82,23 @@ func (r instance) GetAllWithFilter(ctx context.Context, filter inventory.Instanc
 		var args []any
 
 		if filter.Cluster != nil {
-			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-			args = append(args, sql.Named("cluster_name", filter.Cluster))
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
 		}
 
 		if filter.Server != nil {
-			whereClause = append(whereClause, ` AND servers.name = :server_name`)
-			args = append(args, sql.Named("server_name", filter.Server))
+			whereClause = append(whereClause, ` AND servers.name = ?`)
+			args = append(args, filter.Server)
 		}
 
 		if filter.ProjectName != nil {
-			whereClause = append(whereClause, ` AND instances.project_name = :project`)
-			args = append(args, sql.Named("project", filter.ProjectName))
+			whereClause = append(whereClause, ` AND instances.project_name = ?`)
+			args = append(args, filter.ProjectName)
 		}
 
 		if filter.Name != nil {
-			whereClause = append(whereClause, ` AND instances.name = :name`)
-			args = append(args, sql.Named("name", filter.Name))
+			whereClause = append(whereClause, ` AND instances.name = ?`)
+			args = append(args, filter.Name)
 		}
 
 		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -144,23 +143,23 @@ ORDER BY instances.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = ?`)
+		args = append(args, filter.Server)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND instances.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND instances.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND instances.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND instances.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
@@ -205,10 +204,10 @@ func (r instance) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Instan
 	  instances
 	  INNER JOIN clusters ON instances.cluster_id = clusters.id
 	  INNER JOIN servers ON instances.server_id = servers.id
-	WHERE instances.uuid=:uuid;
+	WHERE instances.uuid=?1;
 	`
 
-		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
 		if row.Err() != nil {
 			return inventory.Instance{}, sqlite.MapErr(row.Err())
 		}
@@ -219,9 +218,9 @@ func (r instance) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Instan
 
 func (r instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		const sqlStmt = `DELETE FROM instances WHERE uuid=:uuid;`
+		const sqlStmt = `DELETE FROM instances WHERE uuid=?1;`
 
-		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
 		if err != nil {
 			return sqlite.MapErr(err)
 		}
@@ -274,11 +273,11 @@ func (r instance) UpdateByUUID(ctx context.Context, in inventory.Instance) (inve
 	  SELECT id AS cluster_id , (
 	    SELECT servers.id FROM clusters
 	      LEFT JOIN servers ON servers.cluster_id = clusters.id
-	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
-	UPDATE instances SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-	WHERE uuid=:uuid
+	UPDATE instances SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=?4, name=?5, object=?6, last_updated=?7
+	WHERE uuid=?1
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.InstanceFull)
@@ -287,13 +286,13 @@ func (r instance) UpdateByUUID(ctx context.Context, in inventory.Instance) (inve
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("server_name", in.Server),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.Instance{}, sqlite.MapErr(err)

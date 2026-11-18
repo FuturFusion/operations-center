@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -33,10 +32,10 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkForward, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
 	INSERT INTO network_forwards (uuid, cluster_id, project_name, network_name, name, object, last_updated)
-	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), ?3, ?4, ?5, ?6, ?7)
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkForward)
@@ -45,13 +44,13 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("network_name", in.NetworkName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.NetworkName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.NetworkForward{}, sqlite.MapErr(err)
@@ -78,23 +77,23 @@ func (r networkForward) GetAllWithFilter(ctx context.Context, filter inventory.N
 		var args []any
 
 		if filter.Cluster != nil {
-			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-			args = append(args, sql.Named("cluster_name", filter.Cluster))
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
 		}
 
 		if filter.ProjectName != nil {
-			whereClause = append(whereClause, ` AND network_forwards.project_name = :project`)
-			args = append(args, sql.Named("project", filter.ProjectName))
+			whereClause = append(whereClause, ` AND network_forwards.project_name = ?`)
+			args = append(args, filter.ProjectName)
 		}
 
 		if filter.NetworkName != nil {
-			whereClause = append(whereClause, ` AND network_forwards.network_name = :parent`)
-			args = append(args, sql.Named("parent", filter.NetworkName))
+			whereClause = append(whereClause, ` AND network_forwards.network_name = ?`)
+			args = append(args, filter.NetworkName)
 		}
 
 		if filter.Name != nil {
-			whereClause = append(whereClause, ` AND network_forwards.name = :name`)
-			args = append(args, sql.Named("name", filter.Name))
+			whereClause = append(whereClause, ` AND network_forwards.name = ?`)
+			args = append(args, filter.Name)
 		}
 
 		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -138,23 +137,23 @@ ORDER BY network_forwards.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND network_forwards.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND network_forwards.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.NetworkName != nil {
-		whereClause = append(whereClause, ` AND network_forwards.network_name = :parent`)
-		args = append(args, sql.Named("parent", filter.NetworkName))
+		whereClause = append(whereClause, ` AND network_forwards.network_name = ?`)
+		args = append(args, filter.NetworkName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND network_forwards.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND network_forwards.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
@@ -198,10 +197,10 @@ func (r networkForward) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.
 	FROM
 	  network_forwards
 	  INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-	WHERE network_forwards.uuid=:uuid;
+	WHERE network_forwards.uuid=?1;
 	`
 
-		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
 		if row.Err() != nil {
 			return inventory.NetworkForward{}, sqlite.MapErr(row.Err())
 		}
@@ -212,9 +211,9 @@ func (r networkForward) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.
 
 func (r networkForward) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		const sqlStmt = `DELETE FROM network_forwards WHERE uuid=:uuid;`
+		const sqlStmt = `DELETE FROM network_forwards WHERE uuid=?1;`
 
-		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
 		if err != nil {
 			return sqlite.MapErr(err)
 		}
@@ -264,10 +263,10 @@ func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkFo
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkForward, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	UPDATE network_forwards SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
-	WHERE uuid=:uuid
+	UPDATE network_forwards SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), project_name=?3, network_name=?4, name=?5, object=?6, last_updated=?7
+	WHERE uuid=?1
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkForward)
@@ -276,13 +275,13 @@ func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkFo
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("network_name", in.NetworkName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.NetworkName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.NetworkForward{}, sqlite.MapErr(err)

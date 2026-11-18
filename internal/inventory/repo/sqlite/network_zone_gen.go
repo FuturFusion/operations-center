@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -33,10 +32,10 @@ func (r networkZone) Create(ctx context.Context, in inventory.NetworkZone) (inve
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkZone, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
 	INSERT INTO network_zones (uuid, cluster_id, project_name, name, object, last_updated)
-	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), ?3, ?4, ?5, ?6)
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkZone)
@@ -45,12 +44,12 @@ func (r networkZone) Create(ctx context.Context, in inventory.NetworkZone) (inve
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.NetworkZone{}, sqlite.MapErr(err)
@@ -77,18 +76,18 @@ func (r networkZone) GetAllWithFilter(ctx context.Context, filter inventory.Netw
 		var args []any
 
 		if filter.Cluster != nil {
-			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-			args = append(args, sql.Named("cluster_name", filter.Cluster))
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
 		}
 
 		if filter.ProjectName != nil {
-			whereClause = append(whereClause, ` AND network_zones.project_name = :project`)
-			args = append(args, sql.Named("project", filter.ProjectName))
+			whereClause = append(whereClause, ` AND network_zones.project_name = ?`)
+			args = append(args, filter.ProjectName)
 		}
 
 		if filter.Name != nil {
-			whereClause = append(whereClause, ` AND network_zones.name = :name`)
-			args = append(args, sql.Named("name", filter.Name))
+			whereClause = append(whereClause, ` AND network_zones.name = ?`)
+			args = append(args, filter.Name)
 		}
 
 		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -132,18 +131,18 @@ ORDER BY network_zones.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND network_zones.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND network_zones.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND network_zones.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND network_zones.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
@@ -187,10 +186,10 @@ func (r networkZone) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Net
 	FROM
 	  network_zones
 	  INNER JOIN clusters ON network_zones.cluster_id = clusters.id
-	WHERE network_zones.uuid=:uuid;
+	WHERE network_zones.uuid=?1;
 	`
 
-		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
 		if row.Err() != nil {
 			return inventory.NetworkZone{}, sqlite.MapErr(row.Err())
 		}
@@ -201,9 +200,9 @@ func (r networkZone) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Net
 
 func (r networkZone) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		const sqlStmt = `DELETE FROM network_zones WHERE uuid=:uuid;`
+		const sqlStmt = `DELETE FROM network_zones WHERE uuid=?1;`
 
-		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
 		if err != nil {
 			return sqlite.MapErr(err)
 		}
@@ -253,10 +252,10 @@ func (r networkZone) UpdateByUUID(ctx context.Context, in inventory.NetworkZone)
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkZone, error) {
 		const sqlStmt = `
 	WITH _lookup AS (
-	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	UPDATE network_zones SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-	WHERE uuid=:uuid
+	UPDATE network_zones SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), project_name=?3, name=?4, object=?5, last_updated=?6
+	WHERE uuid=?1
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.NetworkZone)
@@ -265,12 +264,12 @@ func (r networkZone) UpdateByUUID(ctx context.Context, in inventory.NetworkZone)
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("name", in.Name),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.NetworkZone{}, sqlite.MapErr(err)

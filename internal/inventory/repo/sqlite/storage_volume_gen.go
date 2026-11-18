@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -36,11 +35,11 @@ func (r storageVolume) Create(ctx context.Context, in inventory.StorageVolume) (
 	  SELECT id AS cluster_id , (
 	    SELECT servers.id FROM clusters
 	      LEFT JOIN servers ON servers.cluster_id = clusters.id
-	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
 	INSERT INTO storage_volumes (uuid, cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
-	VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), ?4, ?5, ?6, ?7, ?8, ?9)
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
@@ -49,15 +48,15 @@ func (r storageVolume) Create(ctx context.Context, in inventory.StorageVolume) (
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("server_name", in.Server),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("storage_pool_name", in.StoragePoolName),
-			sql.Named("name", in.Name),
-			sql.Named("type", in.Type),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.StoragePoolName,
+			in.Name,
+			in.Type,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.StorageVolume{}, sqlite.MapErr(err)
@@ -85,28 +84,28 @@ func (r storageVolume) GetAllWithFilter(ctx context.Context, filter inventory.St
 		var args []any
 
 		if filter.Cluster != nil {
-			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-			args = append(args, sql.Named("cluster_name", filter.Cluster))
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
 		}
 
 		if filter.Server != nil {
-			whereClause = append(whereClause, ` AND servers.name = :server_name`)
-			args = append(args, sql.Named("server_name", filter.Server))
+			whereClause = append(whereClause, ` AND servers.name = ?`)
+			args = append(args, filter.Server)
 		}
 
 		if filter.ProjectName != nil {
-			whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
-			args = append(args, sql.Named("project", filter.ProjectName))
+			whereClause = append(whereClause, ` AND storage_volumes.project_name = ?`)
+			args = append(args, filter.ProjectName)
 		}
 
 		if filter.StoragePoolName != nil {
-			whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
-			args = append(args, sql.Named("parent", filter.StoragePoolName))
+			whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = ?`)
+			args = append(args, filter.StoragePoolName)
 		}
 
 		if filter.Name != nil {
-			whereClause = append(whereClause, ` AND storage_volumes.name = :name`)
-			args = append(args, sql.Named("name", filter.Name))
+			whereClause = append(whereClause, ` AND storage_volumes.name = ?`)
+			args = append(args, filter.Name)
 		}
 
 		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -151,28 +150,28 @@ ORDER BY storage_volumes.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = ?`)
+		args = append(args, filter.Server)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND storage_volumes.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.StoragePoolName != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
-		args = append(args, sql.Named("parent", filter.StoragePoolName))
+		whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = ?`)
+		args = append(args, filter.StoragePoolName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND storage_volumes.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
@@ -217,10 +216,10 @@ func (r storageVolume) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.S
 	  storage_volumes
 	  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
 	  LEFT JOIN servers ON storage_volumes.server_id = servers.id
-	WHERE storage_volumes.uuid=:uuid;
+	WHERE storage_volumes.uuid=?1;
 	`
 
-		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
 		if row.Err() != nil {
 			return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
 		}
@@ -231,9 +230,9 @@ func (r storageVolume) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.S
 
 func (r storageVolume) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		const sqlStmt = `DELETE FROM storage_volumes WHERE uuid=:uuid;`
+		const sqlStmt = `DELETE FROM storage_volumes WHERE uuid=?1;`
 
-		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
 		if err != nil {
 			return sqlite.MapErr(err)
 		}
@@ -286,11 +285,11 @@ func (r storageVolume) UpdateByUUID(ctx context.Context, in inventory.StorageVol
 	  SELECT id AS cluster_id , (
 	    SELECT servers.id FROM clusters
 	      LEFT JOIN servers ON servers.cluster_id = clusters.id
-	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id FROM clusters WHERE clusters.name = ?2
 	)
-	UPDATE storage_volumes SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
-	WHERE uuid=:uuid
+	UPDATE storage_volumes SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=?4, storage_pool_name=?5, name=?6, type=?7, object=?8, last_updated=?9
+	WHERE uuid=?1
 	`
 
 		marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
@@ -299,15 +298,15 @@ func (r storageVolume) UpdateByUUID(ctx context.Context, in inventory.StorageVol
 		}
 
 		_, err = r.db.ExecContext(ctx, sqlStmt,
-			sql.Named("uuid", in.UUID),
-			sql.Named("cluster_name", in.Cluster),
-			sql.Named("server_name", in.Server),
-			sql.Named("project_name", in.ProjectName),
-			sql.Named("storage_pool_name", in.StoragePoolName),
-			sql.Named("name", in.Name),
-			sql.Named("type", in.Type),
-			sql.Named("object", marshaledObject),
-			sql.Named("last_updated", in.LastUpdated),
+			in.UUID,
+			in.Cluster,
+			in.Server,
+			in.ProjectName,
+			in.StoragePoolName,
+			in.Name,
+			in.Type,
+			marshaledObject,
+			in.LastUpdated,
 		)
 		if err != nil {
 			return inventory.StorageVolume{}, sqlite.MapErr(err)
