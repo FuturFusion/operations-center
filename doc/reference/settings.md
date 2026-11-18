@@ -2,7 +2,7 @@
 
 With OpenFGA, all endpoints below `/1.0/system` require the `can_admin`
 entitlement on the server. The `admin` relation grants this entitlement. These
-endpoints include the security settings, backup and restore. The same applies
+endpoints include the security settings. The same applies
 to the IncusOS API below `/os` and to the SQL endpoint below `/internal/sql`.
 So only admins can use them.
 

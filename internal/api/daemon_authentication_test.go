@@ -1091,8 +1091,6 @@ func TestAuthentication(t *testing.T) {
 		{method: http.MethodGet, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPut, path: "/1.0/system/updates", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodPost, path: "/1.0/system/:clean-cache", wantAdminStatusCode: http.StatusOK},
-		{method: http.MethodPost, path: "/1.0/system/:backup", wantAdminStatusCode: http.StatusNotFound},
-		{method: http.MethodPost, path: "/1.0/system/:restore", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodGet, path: "/internal/sql", wantAdminStatusCode: http.StatusOK},
 		{method: http.MethodPost, path: "/internal/sql", wantAdminStatusCode: http.StatusBadRequest},
 		{method: http.MethodGet, path: "/os/1.0", wantAdminStatusCode: http.StatusBadRequest},
@@ -1145,10 +1143,10 @@ func TestAuthentication(t *testing.T) {
 	// runs before authentication and authorization.
 	contentTypeTests := []testCase{
 		{
-			name:     "oidc http POST /1.0/system/:restore as admin with text/plain",
+			name:     "oidc http POST /1.0/system/:clean-cache as admin with text/plain",
 			client:   oidcClient,
 			method:   http.MethodPost,
-			resource: tcpBaseURL + "/1.0/system/:restore",
+			resource: tcpBaseURL + "/1.0/system/:clean-cache",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 				"Content-Type":  "text/plain",

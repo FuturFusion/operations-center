@@ -13,7 +13,6 @@ func basicOperationsCenterInteractions(ctx context.Context, t *testing.T, tmpDir
 	assertOperationsCenterCliSystem(t)
 	assertOperationsCenterCliAdminDebugPprof(t, tmpDir)
 	assertOperationsCenterMetrics(t)
-	assertOperationsCenterCliSystemBackupRestore(ctx, t, tmpDir)
 	assertOperationsCenterCliProvisioningTokenSeed(t, tmpDir)
 	assertOperationsCenterCliProvisioningClusterTemplate(t, tmpDir)
 }
