@@ -270,6 +270,9 @@ const (
 
 	// Filename of the system config file.
 	ConfigFilename = "config.yml"
+
+	// Amount of time in seconds before an unresponsive cluster member is considered offline.
+	DefaultOfflineThresholdSeconds = 20
 )
 
 //go:embed default.yml
