@@ -361,7 +361,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	backupRepo := systemLocalfs.NewBackup(d.varRoot)
 
-	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+	d.systemSvc, err = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+	if err != nil {
+		return err
+	}
 
 	restored := backupRepo.IsRestoreApplied()
 	if restored {
@@ -1107,7 +1110,12 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) system.SystemService {
+func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) (system.SystemService, error) {
+	acmeRoot, err := d.openSubRoot(d.cacheRoot, "acme")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open acme directory: %w", err)
+	}
+
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
 			d.env, serverSvc, clusterSvc,
@@ -1121,8 +1129,16 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 			// Do not wrap with slog. This repo handles the private key of the server.
 			systemLocalfs.NewCertificate(d.varRoot),
 			d.requestRestart,
+			func(
+				ctx context.Context,
+				fsEnv interface{ VarDir() string },
+				cfg apisystem.SecurityACME,
+				force bool,
+			) (*apisystem.CertificatePost, error) {
+				return acme.UpdateCertificate(ctx, fsEnv, acmeRoot, cfg, force)
+			},
 		),
-	)
+	), nil
 }
 
 // requestRestart asks the daemon to restart. It does not block.

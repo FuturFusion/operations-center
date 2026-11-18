@@ -28,7 +28,6 @@ import (
 
 type environment interface {
 	VarDir() string
-	CacheDir() string
 	IsIncusOS() bool
 }
 
@@ -47,20 +46,20 @@ type systemService struct {
 	// restoreMu is held by a restore and never released after a successful one.
 	restoreMu sync.Mutex
 
-	acmeUpdateCertificateFunc func(
-		ctx context.Context,
-		fsEnv interface {
-			VarDir() string
-			CacheDir() string
-		},
-		cfg system.SecurityACME,
-		force bool,
-	) (*system.CertificatePost, error)
+	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc
 }
 
 var _ SystemService = &systemService{}
 
-type SystemServiceOption func(s *systemService)
+// ACMEUpdateCertificateFunc requests a certificate from the ACME server.
+type ACMEUpdateCertificateFunc func(
+	ctx context.Context,
+	fsEnv interface {
+		VarDir() string
+	},
+	cfg system.SecurityACME,
+	force bool,
+) (*system.CertificatePost, error)
 
 func NewSystemService(
 	env environment,
@@ -71,9 +70,9 @@ func NewSystemService(
 	backupRepo BackupRepo,
 	certificateRepo CertificateRepo,
 	requestRestart func(),
-	opts ...SystemServiceOption,
+	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc,
 ) *systemService {
-	systemSvc := &systemService{
+	return &systemService{
 		env:             env,
 		serverSvc:       serverSvc,
 		clusterSvc:      clusterSvc,
@@ -83,14 +82,8 @@ func NewSystemService(
 		certificateRepo: certificateRepo,
 		requestRestart:  requestRestart,
 
-		acmeUpdateCertificateFunc: acme.UpdateCertificate,
+		acmeUpdateCertificateFunc: acmeUpdateCertificateFunc,
 	}
-
-	for _, opt := range opts {
-		opt(systemSvc)
-	}
-
-	return systemSvc
 }
 
 func (s *systemService) GetCertificate(ctx context.Context) (system.Certificate, error) {
