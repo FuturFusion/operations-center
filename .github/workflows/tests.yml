@@ -71,7 +71,9 @@ jobs:
             dosfstools \
             mtools \
             systemd-repart \
-            sqlite3
+            sqlite3 \
+            libcowsql-dev \
+            libuv1-dev
 
       - name: Download go dependencies
         run: |
@@ -79,6 +81,8 @@ jobs:
 
       - name: Run build
         run: |
+          # The make targets prefer the raft and cowsql built from source over the libcowsql-dev package.
+          make deps
           make build
 
       - uses: opentofu/setup-opentofu@v2
