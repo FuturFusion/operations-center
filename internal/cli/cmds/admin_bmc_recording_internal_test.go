@@ -37,36 +37,96 @@ func TestAdminBMCRecordingCommands(t *testing.T) {
 func TestAdminBMCRecordingDownload(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		existing []byte
-		args     []string
+	noFile := func(*testing.T, string) {}
 
-		assertErr require.ErrorAssertionFunc
-		want      string
+	writeFile := func(content string) func(t *testing.T, target string) {
+		return func(t *testing.T, target string) {
+			t.Helper()
+
+			require.NoError(t, os.WriteFile(target, []byte(content), 0o600))
+		}
+	}
+
+	zipHandler := func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("zip content"))
+	}
+
+	fileContent := func(want string) func(t *testing.T, target string) {
+		return func(t *testing.T, target string) {
+			t.Helper()
+
+			got, err := os.ReadFile(target)
+			require.NoError(t, err)
+			require.Equal(t, want, string(got), "an existing file is only replaced with --force")
+		}
+	}
+
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T, target string)
+		handler http.HandlerFunc
+		args    []string
+
+		assertErr  require.ErrorAssertionFunc
+		wantQuery  string
+		assertFile func(t *testing.T, target string)
 	}{
 		{
-			name: "success - new file",
+			name:    "success - new file",
+			setup:   noFile,
+			handler: zipHandler,
+			args:    []string{"one", "20261027T081500Z"},
+
+			assertErr:  require.NoError,
+			wantQuery:  "anonymize=false&archive=zip",
+			assertFile: fileContent("zip content"),
+		},
+		{
+			name:    "success - anonymized",
+			setup:   noFile,
+			handler: zipHandler,
+			args:    []string{"one", "20261027T081500Z", "--anonymize"},
+
+			assertErr:  require.NoError,
+			wantQuery:  "anonymize=true&archive=zip",
+			assertFile: fileContent("zip content"),
+		},
+		{
+			name:    "error - existing file",
+			setup:   writeFile("old"),
+			handler: zipHandler,
+			args:    []string{"one", "20261027T081500Z"},
+
+			assertErr:  require.Error,
+			wantQuery:  "anonymize=false&archive=zip",
+			assertFile: fileContent("old"),
+		},
+		{
+			name:    "success - existing file replaced with force",
+			setup:   writeFile("old content that is longer"),
+			handler: zipHandler,
+			args:    []string{"one", "20261027T081500Z", "--force"},
+
+			assertErr:  require.NoError,
+			wantQuery:  "anonymize=false&archive=zip",
+			assertFile: fileContent("zip content"),
+		},
+		{
+			name:  "error - broken transfer removes the partial file",
+			setup: noFile,
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Length", "100")
+				_, _ = w.Write([]byte("zip con"))
+			},
 			args: []string{"one", "20261027T081500Z"},
 
-			assertErr: require.NoError,
-			want:      "zip content",
-		},
-		{
-			name:     "error - existing file",
-			existing: []byte("old"),
-			args:     []string{"one", "20261027T081500Z"},
-
 			assertErr: require.Error,
-			want:      "old",
-		},
-		{
-			name:     "success - existing file replaced with force",
-			existing: []byte("old content, that is longer"),
-			args:     []string{"one", "20261027T081500Z", "--force"},
+			wantQuery: "anonymize=false&archive=zip",
+			assertFile: func(t *testing.T, target string) {
+				t.Helper()
 
-			assertErr: require.NoError,
-			want:      "zip content",
+				require.NoFileExists(t, target, "a partial archive is removed")
+			},
 		},
 	}
 
@@ -75,8 +135,11 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			t.Parallel()
 
 			// Setup
+			var gotQuery string
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				_, _ = w.Write([]byte("zip content"))
+				gotQuery = r.URL.RawQuery
+				tc.handler(w, r)
 			}))
 			t.Cleanup(server.Close)
 
@@ -84,9 +147,7 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 			require.NoError(t, err)
 
 			target := filepath.Join(t.TempDir(), "recording.zip")
-			if tc.existing != nil {
-				require.NoError(t, os.WriteFile(target, tc.existing, 0o600))
-			}
+			tc.setup(t, target)
 
 			download := cmdAdminBMCRecordingDownload{ocClient: &ocClient}
 			cmd := download.Command()
@@ -98,10 +159,8 @@ func TestAdminBMCRecordingDownload(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-
-			got, err := os.ReadFile(target)
-			require.NoError(t, err)
-			require.Equal(t, tc.want, string(got), "an existing file is only replaced with --force")
+			require.Equal(t, tc.wantQuery, gotQuery, "the query carries the anonymize flag")
+			tc.assertFile(t, target)
 		})
 	}
 }
@@ -205,6 +264,44 @@ func TestAdminBMCRecordingSubcommands(t *testing.T) {
 			for _, want := range tc.wantOutput {
 				require.Contains(t, output.String(), want)
 			}
+		})
+	}
+}
+
+func TestAdminBMCRecordingDownloadDefaultFilename(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		anonymize bool
+
+		want string
+	}{
+		{
+			name: "as recorded",
+
+			want: "one-20261027T081500Z.zip",
+		},
+		{
+			name:      "anonymized",
+			anonymize: true,
+
+			want: "one-20261027T081500Z-anonymized.zip",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			download := cmdAdminBMCRecordingDownload{flagAnonymize: tc.anonymize}
+
+			// Run test
+			got := download.targetFilename("one", "20261027T081500Z")
+
+			// Assert
+			require.Equal(t, tc.want, got, "a raw and an anonymized export do not collide")
 		})
 	}
 }
