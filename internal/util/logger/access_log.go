@@ -1,7 +1,10 @@
 package logger
 
 import (
+	"bufio"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 )
 
@@ -35,6 +38,16 @@ type responseRecorder struct {
 	statusCode   int
 	responseSize int
 	w            http.ResponseWriter
+}
+
+// Hijack implements [http.Hijacker], the cowsql gateway hijacks the database connections.
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := r.w.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("Response writer does not support hijacking: %T", r.w)
+	}
+
+	return h.Hijack()
 }
 
 func (r *responseRecorder) Header() http.Header {

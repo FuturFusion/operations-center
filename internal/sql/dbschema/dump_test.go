@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
@@ -105,18 +106,13 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 			t.Parallel()
 
 			// Setup
-			tmpDir := t.TempDir()
-
-			db, err := dbdriver.Open(tmpDir)
+			db, err := cowsqltest.Open(t)
 			require.NoError(t, err, "opening the database should succeed")
 
 			t.Cleanup(func() {
 				err := db.Close()
 				require.NoError(t, err, "closing the database should succeed")
 			})
-
-			_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
-			require.NoError(t, err, "creating the schema should succeed")
 
 			tc.setup(t, db)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
@@ -77,4 +78,23 @@ PRAGMA temp_store = MEMORY;
 		StorageVolumesMax:       5,
 	})
 	require.NoError(t, err)
+
+	// populate-db copies the seeded rows into the global database.
+	global, err := cowsqltest.Open(t)
+	require.NoError(t, err)
+
+	err = dbschema.CopyData(ctx, db.DB, global.DB)
+	require.NoError(t, err)
+
+	for _, table := range []string{"clusters", "servers", "instances", "network_acls", "storage_volumes"} {
+		var want, got int
+		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&want)
+		require.NoError(t, err)
+
+		err = global.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&got)
+		require.NoError(t, err)
+
+		require.NotZero(t, want, table)
+		require.Equal(t, want, got, table)
+	}
 }

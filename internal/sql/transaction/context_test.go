@@ -367,6 +367,41 @@ func TestAfterCommit_withoutTransaction(t *testing.T) {
 	require.False(t, active, "the function runs outside of the committed transaction")
 }
 
+// Not parallel, since it registers the transactor of all transactions.
+func TestRegister_concurrent(t *testing.T) {
+	db, err := sqlite.Open(t.TempDir())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		transaction.Register(nil)
+
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	transactor := retryingTransactor{db: clusterTx.Enable(db)}
+	transaction.Register(transactor)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		// The daemon registers the global database while other goroutines already run transactions.
+		for range 100 {
+			transaction.Register(transactor)
+		}
+	}()
+
+	for range 100 {
+		err := transaction.Do(t.Context(), func(ctx context.Context) error {
+			return nil
+		})
+		require.NoError(t, err)
+	}
+
+	<-done
+}
+
 func TestIsActive(t *testing.T) {
 	t.Parallel()
 

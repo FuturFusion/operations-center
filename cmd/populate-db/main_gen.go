@@ -4,17 +4,24 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/pflag"
 
+	"github.com/FuturFusion/operations-center/internal/api/listener"
+	"github.com/FuturFusion/operations-center/internal/cluster"
+	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -23,7 +30,7 @@ func main() {
 
 	flagLogDebug := pflag.BoolP("debug", "d", false, "Show all debug messages")
 	flagLogVerbose := pflag.BoolP("verbose", "v", false, "Show all information messages")
-	flagDBDir := pflag.String("db-dir", "./", "directory path to store the local.db. Directory is created, if it does not exist.")
+	flagDBDir := pflag.String("db-dir", "./", "var dir of Operations Center to store the database in. Directory is created, if it does not exist.")
 	flagDBForceOverwrite := pflag.BoolP("force", "f", false, "if force flag is provided, an existing DB is overwritten")
 
 	flagClustersCount := pflag.Int("clusters", 2, "number of clusters to create")
@@ -66,26 +73,32 @@ func main() {
 	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug, false)
 	die(err)
 
-	err = os.MkdirAll(*flagDBDir, 0o700)
+	varRoot, err := file.MkdirAllOpenRoot(*flagDBDir, 0o750)
 	die(err)
 
-	dbFilename := filepath.Join(*flagDBDir, "local.db")
-	_, err = os.Stat(dbFilename)
+	_, err = varRoot.Stat("database")
 	if err == nil {
 		if !*flagDBForceOverwrite {
-			slog.ErrorContext(ctx, "DB file does already exist and --force is not provided", slog.String("db", dbFilename))
+			slog.ErrorContext(ctx, "Database does already exist and --force is not provided", slog.String("db", filepath.Join(*flagDBDir, "database")))
 			os.Exit(1)
 		}
 
-		err = os.Remove(dbFilename)
+		err = varRoot.RemoveAll("database")
 		die(err)
 	}
 
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		die(err)
 	}
 
-	db, err := dbdriver.Open(*flagDBDir)
+	// The data is generated in a scratch SQLite database and copied into the global database at once, since
+	// a commit of the global database per row is slow.
+	scratchDir, err := os.MkdirTemp("", "populate-db-")
+	die(err)
+
+	defer func() { _ = os.RemoveAll(scratchDir) }()
+
+	db, err := dbdriver.Open(scratchDir)
 	die(err)
 
 	// The main performance boost originates from `synchronous = 0`
@@ -98,7 +111,7 @@ PRAGMA temp_store = MEMORY;
 `)
 	die(err)
 
-	_, err = dbschema.EnsureLocal(ctx, db.DB, *flagDBDir, dbschema.Updates(), dbschema.FreshSchema())
+	_, err = dbschema.EnsureLocal(ctx, db.DB, scratchDir, dbschema.Updates(), dbschema.FreshSchema())
 	die(err)
 
 	dbWithTransaction := transaction.Enable(db)
@@ -141,6 +154,28 @@ PRAGMA temp_store = MEMORY;
 		StorageVolumesMax:       *flagStorageVolumesMax,
 	})
 	die(err)
+
+	// The global database is opened like the daemon does, so the daemon takes it over.
+	localDB, err := cluster.OpenLocalDB(ctx, varRoot)
+	die(err)
+
+	cert, err := cluster.FindOrGenCertInfo(varRoot, config.ServerCertificateFilename, config.ServerKeyFilename)
+	die(err)
+
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(varRoot.Name(), "database"))
+	membership, err := cluster.NewClusterMembershipService(ctx, varRoot, &listener.ListenerSet{}, localRepo, cert, cert, nil)
+	die(err)
+
+	globalDB, err := cluster.OpenGlobalDB(ctx, membership, false, "")
+	die(err)
+
+	err = dbschema.CopyData(ctx, db.DB, globalDB.DB)
+	die(err)
+
+	die(globalDB.Close())
+	die(membership.Stop(ctx))
+	die(localDB.Close())
+	die(db.Close())
 }
 
 // die is a convenience function to end the processing with a panic in the case of an error.
