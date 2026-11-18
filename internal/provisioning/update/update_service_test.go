@@ -28,7 +28,6 @@ import (
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
@@ -2142,7 +2141,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		repoAssignChannels queue.Errs
 
 		repoUpdateFilesExist            []queue.Item[bool]
-		repoUpdateFilesUsageInformation []queue.Item[file.UsageInformation]
+		repoUpdateFilesUsageInformation []queue.Item[domain.UsageInformation]
 		repoUpdateFilesPut              []queue.Item[struct {
 			commitErr error
 			cancelErr error
@@ -2269,7 +2268,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -2369,7 +2368,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -2430,7 +2429,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -2747,7 +2746,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpdateFilesExist: []queue.Item[bool]{
 				{},
 			},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Err: boom.Error,
@@ -2795,7 +2794,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpdateFilesExist: []queue.Item[bool]{
 				{},
 			},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -2836,7 +2835,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -2877,7 +2876,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Err: boom.Error,
@@ -2907,7 +2906,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(0, 0), // invalid total size
@@ -2939,7 +2938,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 0), // no space available
@@ -2971,7 +2970,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3004,7 +3003,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3038,7 +3037,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3078,7 +3077,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3112,7 +3111,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3157,7 +3156,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3215,7 +3214,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3271,7 +3270,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3332,7 +3331,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3393,7 +3392,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3453,7 +3452,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{},
-			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+			repoUpdateFilesUsageInformation: []queue.Item[domain.UsageInformation]{
 				// global check
 				{
 					Value: usageInfoGiB(50, 10),
@@ -3619,7 +3618,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				PruneFilesFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.repoUpdateFilesPruneFiles.PopOrNil(t)
 				},
-				UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
+				UsageInformationFunc: func(ctx context.Context) (domain.UsageInformation, error) {
 					return queue.Pop(t, &tc.repoUpdateFilesUsageInformation)
 				},
 			}
@@ -3683,9 +3682,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 	}
 }
 
-func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) file.UsageInformation {
+func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) domain.UsageInformation {
 	const GiB = 1024 * 1024 * 1024
-	return file.UsageInformation{
+	return domain.UsageInformation{
 		TotalSpaceBytes:     uint64(totalSpaceGiB) * GiB,
 		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
 		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,

@@ -23,6 +23,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/internal/util/file"
@@ -48,7 +49,7 @@ func New(root *os.Root, signatureVerificationRootCA string) *localfs {
 	}
 }
 
-func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+func (l localfs) UsageInformation(_ context.Context) (domain.UsageInformation, error) {
 	return file.UsageInformationForPath(l.root.Name())
 }
 

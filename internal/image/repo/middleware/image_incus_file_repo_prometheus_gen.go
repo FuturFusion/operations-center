@@ -11,8 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 // ImageIncusFileRepoWithPrometheus implements image.ImageIncusFileRepo interface with all methods wrapped
@@ -125,7 +125,7 @@ func (_d ImageIncusFileRepoWithPrometheus) Put(ctx context.Context, img *image.I
 }
 
 // UsageInformation implements image.ImageIncusFileRepo.
-func (_d ImageIncusFileRepoWithPrometheus) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
+func (_d ImageIncusFileRepoWithPrometheus) UsageInformation(ctx context.Context) (usageInformation domain.UsageInformation, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

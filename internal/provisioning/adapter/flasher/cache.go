@@ -39,11 +39,11 @@ const seedImageSizeUpperBound = 6 * 1024 * 1024 * 1024 // bytes, ~double the cur
 
 // cacheUsageFunc reports the space situation of the file system holding the
 // cache.
-type cacheUsageFunc = func() (file.UsageInformation, error)
+type cacheUsageFunc = func() (domain.UsageInformation, error)
 
 // WithCacheUsage replaces how the seed image cache determines the space
 // situation of its file system. Without it, the cache queries the file system.
-func WithCacheUsage(usage func() (file.UsageInformation, error)) Option {
+func WithCacheUsage(usage func() (domain.UsageInformation, error)) Option {
 	return func(f *Flasher) {
 		f.cacheUsage = usage
 	}
@@ -97,7 +97,7 @@ func newImageCache(root *os.Root) *imageCache {
 	return cache
 }
 
-func (c *imageCache) usageInformation() (file.UsageInformation, error) {
+func (c *imageCache) usageInformation() (domain.UsageInformation, error) {
 	return file.UsageInformationForPath(c.root.Name())
 }
 
