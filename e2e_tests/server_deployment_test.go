@@ -2,24 +2,65 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-const (
-	deployTokenSeedName = "incus-os-deploy"
+// deployBIOSProfileName is the name of the BIOS profile handed in with the
+// deployment.
+const deployBIOSProfileName = "incus-redfish-proxy"
 
-	// Config key and value set by the BIOS profile handed in with the deployment.
-	deployBIOSProfileName        = "incus-redfish-proxy"
-	deployBIOSProfileConfigKey   = "user.e2e.bios-profile"
-	deployBIOSProfileConfigValue = "applied"
-)
+// deployTokenSeedName returns the name of the token seed an instance is
+// deployed from. Each instance has its own, since the deployments can share
+// the token.
+func deployTokenSeedName(name string) string {
+	return "incus-os-deploy-" + strings.ToLower(name)
+}
+
+// serverDeployments deploys a server for every profile. Up to
+// redfishParallel deployments run at the same time. Each deployment runs a VM
+// with cpuCount CPUs, memorySize memory and diskSize disk. Each one has
+// its own instance and its own Redfish proxy. An instance name is used again,
+// once its deployment has ended.
+func serverDeployments(profiles []redfishProfile) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
+		t.Helper()
+
+		names := make(chan string, redfishParallel)
+		for i := range redfishParallel {
+			names <- fmt.Sprintf("IncusOS%02d", i+1)
+		}
+
+		var wg sync.WaitGroup
+
+		for _, profile := range profiles {
+			// Taking the name here starts the deployments in the order of the
+			// profiles.
+			name := <-names
+
+			wg.Go(func() {
+				defer func() { names <- name }()
+
+				t.Run(profile.name, func(t *testing.T) {
+					setupEmptyInstance(name)(ctx, t, tmpDir)
+					serverDeployment(name, profile)(ctx, t, tmpDir)
+				})
+			})
+		}
+
+		wg.Wait()
+	}
+}
 
 // setupEmptyInstance creates an Incus instance without any operating system,
 // which is the equivalent of a server as it is delivered.
@@ -30,8 +71,10 @@ func setupEmptyInstance(name string) func(ctx context.Context, t *testing.T, tmp
 		stop := timeTrack(t, "setupEmptyInstance "+name)
 		defer stop()
 
+		// The cleanups only touch this instance and this server, since other
+		// deployments run at the same time.
 		t.Cleanup(serverDeploymentCleanup(t, name, removeDeployMedia))
-		t.Cleanup(cleanupIncusOS(t, []string{name}))
+		t.Cleanup(serverDeploymentCleanup(t, name, removeEmptyInstance))
 		t.Cleanup(serverDeploymentCleanup(t, name, removeDeployedServer))
 
 		removeDeployedServer(ctx, t, name)
@@ -49,6 +92,16 @@ func setupEmptyInstance(name string) func(ctx context.Context, t *testing.T, tmp
 		mustRun(t, `incus init --empty --vm %s -c security.secureboot=true -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, name, cpuCount, memorySize, diskSize)
 		mustRun(t, `incus config device add %s vtpm tpm`, name)
 		mustRun(t, `incus config set %s systemd.credential.fully-enable-incus-agent=true`, name)
+	}
+}
+
+// removeEmptyInstance removes the instance of a deployment.
+func removeEmptyInstance(ctx context.Context, t *testing.T, name string) {
+	t.Helper()
+
+	err := removeInstanceWithContext(ctx, t, name)
+	if err != nil {
+		t.Logf("Failed to remove instance %q during cleanup: %v", name, err)
 	}
 }
 
@@ -103,7 +156,8 @@ func serverDeploymentCleanup(t *testing.T, name string, cleanup func(ctx context
 		}
 
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(2*time.Minute))
+		// Removing a running VM can take several minutes.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(7*time.Minute))
 		defer cancel()
 
 		cleanup(ctx, t, name)
@@ -111,26 +165,29 @@ func serverDeploymentCleanup(t *testing.T, name string, cleanup func(ctx context
 }
 
 // serverDeployment pre-registers the empty instance as a server and has
-// Operations Center deploy IncusOS on it through the BMC.
-func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDir string) {
+// Operations Center deploy IncusOS on it through the BMC. The BMC is a Redfish
+// proxy with the given profile.
+func serverDeployment(name string, profile redfishProfile) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t, "serverDeployment "+name)
+		stop := timeTrack(t, "serverDeployment "+name+" "+profile.name)
 		defer stop()
 
-		endpoint := startRedfishProxy(t, name)
+		endpoint := startRedfishProxy(t, name, profile.name, redfishProxyMediaDir(tmpDir, name))
+
+		t.Cleanup(exportBMCRecordingsOnFailure(t, name, profile.name, tmpDir))
 
 		// Setup
 		token := createProvisioningToken(t)
 
-		t.Cleanup(cleanupTokenSeed(t, token, deployTokenSeedName))
+		t.Cleanup(cleanupTokenSeed(t, token, deployTokenSeedName(name)))
 
-		createDeployTokenSeed(t, tmpDir, token)
+		createDeployTokenSeed(t, tmpDir, name, token)
 
-		biosProfileFilename := filepath.Join(tmpDir, "bios_profile.yaml")
+		biosProfileFilename := filepath.Join(tmpDir, name+"_bios_profile.yaml")
 
-		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAML(), 0o600)
+		err := os.WriteFile(biosProfileFilename, redfishProxyBIOSProfileYAML(profile), 0o600)
 		require.NoError(t, err)
 
 		// Run test
@@ -138,7 +195,7 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server pre-register %s --bmc-api-type redfish-v1-generic --bmc-endpoint %s --bmc-auto-pin-certificate --bmc-username e2e --bmc-password e2e`, time.Minute, cpuArch, name, endpoint)
 
 		// Assertions
-		assertServerPreRegistered(t, name, endpoint)
+		assertServerPreRegistered(t, name, endpoint, profile.virtualMediaID)
 
 		// Run test
 		//
@@ -147,7 +204,9 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		// recorded, so the recorder is covered against the Redfish proxy.
 		t.Log("Deploy the server")
 
-		resp := runWithTimeoutAndProgress(t, "Deployment "+name+": ", `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --record-bmc --wait`, 35*time.Minute, cpuArch, name, token, deployTokenSeedName, biosProfileFilename)
+		// The profiles of real servers wait for the POST of the server after
+		// every power on, which adds several minutes.
+		resp := runWithTimeoutAndProgress(t, "Deployment "+name+": ", `../bin/operations-center.linux.%s provisioning server deploy %s %s %s --bios-profiles %s --virtual-media-id %s --record-bmc --wait %s`, 45*time.Minute, cpuArch, name, token, deployTokenSeedName(name), biosProfileFilename, profile.virtualMediaID, strings.Join(profile.deployFlags, " "))
 		if !resp.Success() {
 			fmt.Println("====[ Deployment status ]====")
 			fmt.Println(run(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f yaml`, cpuArch, name).Output())
@@ -158,8 +217,8 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 		require.NoError(t, fmtRunErr(resp), "expect the deployment of the server to complete")
 
 		// Assertions
-		assertServerDeployed(t, name)
-		assertBMCRecording(t, name, endpoint, tmpDir)
+		assertServerDeployed(t, name, profile)
+		assertBMCRecording(t, name, profile, endpoint, tmpDir)
 		assertVirtualMediaRandomRead(t, name)
 
 		mustWaitIncusOSReady(ctx, t, []string{name})
@@ -170,26 +229,28 @@ func serverDeployment(name string) func(ctx context.Context, t *testing.T, tmpDi
 }
 
 // createDeployTokenSeed adds the public token seed the server is deployed from.
-func createDeployTokenSeed(t *testing.T, tmpDir string, token string) {
+func createDeployTokenSeed(t *testing.T, tmpDir string, name string, token string) {
 	t.Helper()
 
-	seedFilename := filepath.Join(tmpDir, "incusos_deploy_seed.yaml")
+	seedFilename := filepath.Join(tmpDir, name+"_incusos_deploy_seed.yaml")
 
 	err := os.WriteFile(seedFilename, deployIncusOSSeedFileYAMLTemplate, 0o600)
 	require.NoError(t, err)
 
-	resp := run(t, `../bin/operations-center.linux.%s provisioning token seed remove %s %s`, cpuArch, token, deployTokenSeedName)
+	seedName := deployTokenSeedName(name)
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning token seed remove %s %s`, cpuArch, token, seedName)
 	if resp.Success() {
-		t.Logf("Removed left over token seed %q of token %q", deployTokenSeedName, token)
+		t.Logf("Removed left over token seed %q of token %q", seedName, token)
 	}
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s %s %s --public --description "E2E test server deployment"`, cpuArch, token, deployTokenSeedName, seedFilename)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s %s %s --public --description "E2E test server deployment"`, cpuArch, token, seedName, seedFilename)
 }
 
 // assertServerPreRegistered verifies, that the server is known to Operations
 // Center, that the data of its BMC has been collected and that the BIOS
 // profiles shipped with Operations Center do not cover it.
-func assertServerPreRegistered(t *testing.T, name string, endpoint string) {
+func assertServerPreRegistered(t *testing.T, name string, endpoint string, virtualMediaID string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -202,7 +263,7 @@ func assertServerPreRegistered(t *testing.T, name string, endpoint string) {
 	assertBMCConfig(t, name, endpoint, "Off")
 
 	// The deployment addresses the virtual media device by its ID.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.bmc_data.virtual_media | has("manager:CD")'`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.bmc_data.virtual_media | has("%s")'`, cpuArch, name, virtualMediaID)
 
 	instanceUUID := mustRun(t, `incus config get %s volatile.uuid`, name).OutputTrimmed()
 	require.NotEmpty(t, instanceUUID, "expect the instance to have a UUID")
@@ -217,29 +278,62 @@ func assertServerPreRegistered(t *testing.T, name string, endpoint string) {
 }
 
 // assertServerDeployed verifies, that the deployment has completed with the
-// BIOS profile handed in and that it left the instance in the expected state.
-func assertServerDeployed(t *testing.T, name string) {
+// BIOS profile handed in that it took the code paths expected for the
+// profile of the Redfish proxy and that it left the instance in the expected
+// state.
+func assertServerDeployed(t *testing.T, name string, profile redfishProfile) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.state'`, cpuArch, name)
-	require.Equal(t, "completed", resp.OutputTrimmed(), "expect the deployment to be completed")
+	var deployment api.ServerDeploymentStatus
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.bios_profiles == ["%s"]'`, cpuArch, name, deployBIOSProfileName)
+	err := json.Unmarshal([]byte(mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json`, cpuArch, name).Output()), &deployment)
+	require.NoError(t, err, "expect the deployment status to be shown as JSON")
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.media_bytes_read > 0'`, cpuArch, name)
+	require.Equal(t, api.ServerDeploymentStateCompleted, deployment.State, "expect the deployment to be completed")
+	require.Equal(t, []string{deployBIOSProfileName}, deployment.BIOSProfiles, "expect the BIOS profile handed in to be applied")
 
-	resp = mustRun(t, `incus config get %s %s`, name, deployBIOSProfileConfigKey)
-	require.Equal(t, deployBIOSProfileConfigValue, resp.OutputTrimmed(), "expect the BIOS attribute of the profile to be applied")
+	states := make([]api.ServerDeploymentState, 0, len(deployment.History))
+	for _, step := range deployment.History {
+		states = append(states, step.State)
+	}
 
-	resp = mustRun(t, `incus config get %s security.secureboot`, name)
-	require.Equal(t, "true", resp.OutputTrimmed(), "expect secure boot to be enabled")
+	for _, state := range profile.requiredStates {
+		require.Contains(t, states, state, "expect the deployment to pass state %q with profile %q", state, profile.name)
+	}
+
+	for _, state := range profile.forbiddenStates {
+		require.NotContains(t, states, state, "expect the deployment to skip state %q with profile %q", state, profile.name)
+	}
+
+	mediaSize := mustDeployMediaSize(t, deployment.MediaURL)
+	switch profile.mediaRead {
+	case mediaReadWhole:
+		require.Equal(t, mediaSize, deployment.MediaBytesRead, "expect the Redfish proxy to download the whole media")
+
+	case mediaReadPartial:
+		require.Positive(t, deployment.MediaBytesRead, "expect the server to read the streamed media")
+		require.Less(t, deployment.MediaBytesRead, mediaSize, "expect the server to read only parts of the streamed media")
+
+	case mediaReadStreamedOrWhole:
+		require.Positive(t, deployment.MediaBytesRead, "expect the server to read the media")
+		require.LessOrEqual(t, deployment.MediaBytesRead, mediaSize, "expect the server to read at most the whole media")
+	}
+
+	for key, value := range profile.expectInstanceConfig {
+		resp := mustRun(t, `incus config get %s %s`, name, key)
+		require.Equal(t, value, resp.OutputTrimmed(), "expect the BIOS attribute of the profile to set %q on the instance", key)
+	}
+
+	resp := mustRun(t, `incus config get %s security.secureboot`, name)
+	require.Equal(t, profile.expectSecureBoot, resp.OutputTrimmed(), "expect security.secureboot of the instance")
 
 	resp = mustRun(t, `incus config device list %s`, name)
 	require.NotContains(t, resp.Output(), "boot-media", "expect the installation media to be detached")
 
-	// The installed server has taken over the pre-registered one.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus") ] | length == 1'`, cpuArch)
+	// The installed server has taken over the pre-registered one. Other
+	// deployments run at the same time, so only this server is counted.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .name == "%s") ] | length == 1'`, cpuArch, name)
 }

@@ -10,10 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FuturFusion/incus-redfish-proxy/redfishproxy"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -548,24 +550,179 @@ func Test_incusOSStartupError(t *testing.T) {
 func Test_redfishProxyBIOSProfileYAML(t *testing.T) {
 	t.Parallel()
 
-	// Setup
-	decoder := yaml.NewDecoder(bytes.NewReader(redfishProxyBIOSProfileYAML()))
-	decoder.KnownFields(true)
+	baseAttributes := map[string]any{deployBIOSProfileMarker: deployBIOSProfileConfigValue}
 
-	profile := api.BIOSProfile{}
+	tests := []struct {
+		profile string
 
-	// Run test
-	err := decoder.Decode(&profile)
+		wantAttributes         map[string]any
+		wantDeferredAttributes map[string]any
+	}{
+		{
+			profile: "generic",
 
-	// Assert
-	require.NoError(t, err, "expect the rendered BIOS profile to be valid YAML with known fields only")
+			wantAttributes:         baseAttributes,
+			wantDeferredAttributes: nil,
+		},
+		{
+			profile: "deferred-bios",
 
-	settings := profile.Deployment
-	require.Equal(t, strechedTimeout(5*time.Minute), time.Duration(*settings.AttachMediaCallTimeout), "attach_media_call_timeout")
-	require.Equal(t, strechedTimeout(config.ServerDeploymentStepCallTimeout), time.Duration(*settings.CallTimeout), "call_timeout")
-	require.Equal(t, strechedTimeout(config.ServerDeploymentStepTimeout), time.Duration(*settings.StepTimeout), "step_timeout")
-	require.Equal(t, strechedTimeout(config.ServerDeploymentMediaIdlePeriod), time.Duration(*settings.InstallMediaIdlePeriod), "install_media_idle_period")
-	require.Equal(t, strechedTimeout(config.ServerDeploymentRebootTimeout), time.Duration(*settings.RebootTimeout), "reboot_timeout")
+			wantAttributes:         map[string]any{deployBIOSProfileMarker: deployBIOSProfileConfigValue, "Mode": "Performance"},
+			wantDeferredAttributes: map[string]any{"ModeOption": "Enabled"},
+		},
+		{
+			profile: "no-secure-boot-write",
+
+			wantAttributes:         baseAttributes,
+			wantDeferredAttributes: nil,
+		},
+		{
+			profile: "oem-media",
+
+			wantAttributes:         baseAttributes,
+			wantDeferredAttributes: nil,
+		},
+		{
+			profile: "stream-media",
+
+			wantAttributes:         baseAttributes,
+			wantDeferredAttributes: nil,
+		},
+		{
+			profile: "hpe-ilo5",
+
+			wantAttributes:         nil,
+			wantDeferredAttributes: nil,
+		},
+		{
+			profile: "dell-idrac9",
+
+			wantAttributes:         map[string]any{"Protection": "Enabled", "ProtectionPolicy": "Custom", "Module": "On"},
+			wantDeferredAttributes: map[string]any{"ModuleAlgorithm": "SHA256"},
+		},
+		{
+			profile: "lenovo-xcc",
+
+			wantAttributes:         nil,
+			wantDeferredAttributes: nil,
+		},
+	}
+
+	tested := make([]string, 0, len(tests))
+	for _, tc := range tests {
+		tested = append(tested, tc.profile)
+	}
+
+	require.ElementsMatch(t, knownRedfishProfileNames(), tested, "expect every profile to be tested")
+
+	for _, tc := range tests {
+		t.Run(tc.profile, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			decoder := yaml.NewDecoder(bytes.NewReader(redfishProxyBIOSProfileYAML(redfishProfileDefinitions[tc.profile])))
+			decoder.KnownFields(true)
+
+			profile := api.BIOSProfile{}
+
+			// Run test
+			err := decoder.Decode(&profile)
+
+			// Assert
+			require.NoError(t, err, "expect the rendered BIOS profile to be valid YAML with known fields only")
+			require.NoError(t, provisioning.NewBIOSProfileFromAPI(profile).Validate(), "expect Operations Center to accept the rendered BIOS profile")
+
+			require.Len(t, profile.Match, 1, "expect a single match")
+			require.Regexp(t, profile.Match[0].Model, redfishProxyModel(tc.profile), "expect the match to accept the model of the profile")
+			require.NotRegexp(t, profile.Match[0].Model, "Incus", "expect the match to refuse the model of the proxy without the profile")
+			require.Equal(t, tc.wantAttributes, profile.Attributes, "attributes")
+			require.Equal(t, tc.wantDeferredAttributes, profile.DeferredAttributes, "deferred_attributes")
+
+			settings := profile.Deployment
+			require.Equal(t, strechedTimeout(5*time.Minute), time.Duration(*settings.AttachMediaCallTimeout), "attach_media_call_timeout")
+			require.Equal(t, strechedTimeout(config.ServerDeploymentStepCallTimeout), time.Duration(*settings.CallTimeout), "call_timeout")
+			require.Equal(t, strechedTimeout(config.ServerDeploymentStepTimeout), time.Duration(*settings.StepTimeout), "step_timeout")
+			require.Equal(t, strechedTimeout(config.ServerDeploymentMediaIdlePeriod), time.Duration(*settings.InstallMediaIdlePeriod), "install_media_idle_period")
+			require.Equal(t, strechedTimeout(config.ServerDeploymentRebootTimeout), time.Duration(*settings.RebootTimeout), "reboot_timeout")
+		})
+	}
+}
+
+func Test_redfishProfileDefinitions(t *testing.T) {
+	t.Parallel()
+
+	for name, profile := range redfishProfileDefinitions {
+		require.Equal(t, name, profile.name, "expect the key to be the name of the profile")
+		require.Contains(t, redfishproxy.Profiles(), name, "expect the Redfish proxy to embed profile %q", name)
+		require.Regexp(t, `^(manager|system):[^:]+$`, profile.virtualMediaID, "expect the virtual media ID of profile %q to name the kind of the device and its member ID", name)
+
+		for key, value := range profile.expectInstanceConfig {
+			require.Equal(t, value, profile.biosAttributes["incus.config."+key], "expect a BIOS attribute of profile %q to set the instance config key %q", name, key)
+		}
+	}
+}
+
+func Test_redfishProfiles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		names string
+
+		want      []string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:  "default",
+			names: defaultRedfishProfileNames,
+
+			want:      []string{"generic", "hpe-ilo5", "dell-idrac9", "lenovo-xcc"},
+			assertErr: require.NoError,
+		},
+		{
+			name:  "list in the given order with spaces and empty entries",
+			names: "stream-media, generic,,deferred-bios",
+
+			want:      []string{"stream-media", "generic", "deferred-bios"},
+			assertErr: require.NoError,
+		},
+		{
+			name:  "unknown profile",
+			names: "generic,unknown",
+
+			want: []string{},
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Unknown Redfish proxy profiles ["unknown"]`, a...)
+				require.ErrorContains(tt, err, `"generic"`, append([]any{"expect the known profiles in the error"}, a...)...)
+			},
+		},
+		{
+			name:  "empty",
+			names: " , ",
+
+			want:      []string{},
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Run test
+			profiles, err := redfishProfiles(tc.names)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			got := make([]string, 0, len(profiles))
+			for _, profile := range profiles {
+				got = append(got, profile.name)
+			}
+
+			require.Equal(t, tc.want, got, "names of the returned profiles")
+		})
+	}
 }
 
 func Test_cappedTestTimeout(t *testing.T) {
