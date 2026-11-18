@@ -8,6 +8,8 @@ export interface SystemNetwork {
 export interface SystemSecurity {
   trusted_tls_client_cert_fingerprints: string[];
   trusted_tls_client_certificates: string[];
+  trusted_tls_metrics_client_cert_fingerprints: string[];
+  trusted_tls_metrics_client_certificates: string[];
   trusted_https_proxies: string[];
   oidc: SystemSecurityOIDC;
   openfga: SystemSecurityOpenFGA;
