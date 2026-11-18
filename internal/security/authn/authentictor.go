@@ -10,10 +10,27 @@ type Auther interface {
 
 type Authenticator struct {
 	authers []Auther
+
+	starting bool
 }
 
-func New(authers []Auther) Authenticator {
-	return Authenticator{
+type Option func(a *Authenticator)
+
+// WithStarting flags the authenticator to indicate the daemon is still starting.
+func WithStarting() Option {
+	return func(a *Authenticator) {
+		a.starting = true
+	}
+}
+
+func New(authers []Auther, opts ...Option) Authenticator {
+	a := Authenticator{
 		authers: authers,
 	}
+
+	for _, opt := range opts {
+		opt(&a)
+	}
+
+	return a
 }
