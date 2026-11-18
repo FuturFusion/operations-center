@@ -16,6 +16,16 @@ const (
 	PreSecurityInfrastructure
 )
 
+type patchScope int
+
+const (
+	// scopeCluster patches change the database or the shared config and run once per cluster.
+	scopeCluster patchScope = iota
+
+	// scopeMember patches change the files of a member and run once on every member.
+	scopeMember
+)
+
 /*
 Patches are one-time actions that are sometimes needed to update:
 
@@ -31,8 +41,8 @@ done through the separate schema update mechanism.
 Only append to the patches list, never remove entries and never re-order them.
 */
 var patches = []patch{
-	{name: "rename_channels_to_upstream_channels", stage: PreSecurityInfrastructure, run: patchRenameChannelsToUpstreamChannels},
-	{name: "remove_var_lib_operations_center_terraform_dirs", stage: PreSecurityInfrastructure, run: patchRemoveVarLibOperationCenterTerraformDirs},
+	{name: "rename_channels_to_upstream_channels", stage: PreSecurityInfrastructure, scope: scopeCluster, run: patchRenameChannelsToUpstreamChannels},
+	{name: "remove_var_lib_operations_center_terraform_dirs", stage: PreSecurityInfrastructure, scope: scopeMember, run: patchRemoveVarLibOperationCenterTerraformDirs},
 }
 
 func patchRenameChannelsToUpstreamChannels(ctx context.Context, name string, _ *os.Root) error {

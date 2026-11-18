@@ -498,7 +498,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "")
+	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "", localDB)
 	if err != nil {
 		return err
 	}
@@ -667,7 +667,7 @@ func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clu
 	return svc, isClustered, nil
 }
 
-func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string) (dbdriver.DBTX, error) {
+func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string, localDB *clusterRepo.LocalDB) (dbdriver.DBTX, error) {
 	globalRepo, err := openCowsqlGlobalDB(ctx, isClustered, membership, clusterAddress)
 	if err != nil {
 		return nil, err
@@ -689,7 +689,7 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 
 	// Apply all patches that need to be run before daemon security infrastructure
 	// like certificates, authenticators and authorizers are initialized.
-	err = patches.Apply(ctx, dbtx, d.varRoot, patches.PreSecurityInfrastructure)
+	err = patches.Apply(ctx, dbtx, localDB, d.varRoot, patches.PreSecurityInfrastructure)
 	if err != nil {
 		return nil, err
 	}
