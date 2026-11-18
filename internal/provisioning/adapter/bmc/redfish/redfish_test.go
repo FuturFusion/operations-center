@@ -5649,6 +5649,8 @@ func TestRedfish_AttachMedia(t *testing.T) {
 
 		systemBodyAfterPatch string
 
+		taskMonitorStatusCodes []int
+
 		wantRequests    []mockRequest
 		wantTaskMonitor *provisioning.BMCTaskMonitor
 		assertErr       require.ErrorAssertionFunc
@@ -5711,6 +5713,64 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				URI: "/redfish/v1/TaskMonitor/1",
 			},
 			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device is set after the insert task finished",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusAccepted},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			taskMonitorStatusCodes: []int{http.StatusOK},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - boot device is not set if waiting for the insert task fails",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusAccepted},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+
+			taskMonitorStatusCodes: []int{http.StatusNotFound},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+			},
+			assertErr: errassert.Contains("Failed to wait for the BMC to attach the media"),
 		},
 		{
 			name:           "success - action info adds the transfer protocol",
@@ -6909,6 +6969,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				virtualMediaPatch:                   tc.virtualMediaPatch,
 				systemPatch:                         tc.systemPatch,
 				systemBodyAfterPatch:                tc.systemBodyAfterPatch,
+				taskMonitorStatusCodes:              tc.taskMonitorStatusCodes,
 			}, &gotRequests)
 
 			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
