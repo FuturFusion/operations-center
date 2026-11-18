@@ -70,6 +70,12 @@ jobs:
           cmd: install
           dir: ui
 
+      - name: Test UI
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: test
+          dir: ui
+
       - name: Build UI
         uses: borales/actions-yarn@v5
         with:
