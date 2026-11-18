@@ -37,6 +37,7 @@ type cmdServerDeploy struct {
 	flagBIOSProfiles               []string
 	flagSecureBootCertificates     []string
 	flagWait                       bool
+	flagRecordBMC                  bool
 }
 
 func (c *cmdServerDeploy) Command() *cobra.Command {
@@ -90,6 +91,8 @@ func (c *cmdServerDeploy) Command() *cobra.Command {
 	cmd.Flags().StringArrayVar(&c.flagBIOSProfiles, "bios-profiles", nil, "YAML file with the BIOS profiles to resolve the BIOS configuration from instead of the ones shipped with Operations Center (can be given multiple times)")
 	cmd.Flags().StringArrayVar(&c.flagSecureBootCertificates, "secure-boot-certificate", nil, "PEM file with an additional secure boot certificate kept by the provided BIOS profiles, requires --bios-profiles and --secure-boot-enrollment-media (can be given multiple times)")
 	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "Wait for the deployment to complete")
+	cmd.Flags().BoolVar(&c.flagRecordBMC, "record-bmc", false, "Record the BMC traffic of the deployment for development")
+	_ = cmd.Flags().MarkHidden("record-bmc")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -127,6 +130,11 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 		secureBootCertificates = append(secureBootCertificates, string(certificate))
 	}
 
+	var opts []client.DeployServerOption
+	if c.flagRecordBMC {
+		opts = append(opts, client.WithBMCRecording())
+	}
+
 	err = c.ocClient.DeployServer(cmd.Context(), name, api.ServerDeploymentPost{
 		TokenUUID:                  tokenUUID,
 		Seed:                       seed,
@@ -139,7 +147,7 @@ func (c *cmdServerDeploy) run(cmd *cobra.Command, args []string) error {
 		SecureBootEnrollmentMedia:  c.flagSecureBootEnrollmentMedia,
 		BIOSProfiles:               biosProfiles,
 		SecureBootCertificates:     secureBootCertificates,
-	})
+	}, opts...)
 	if err != nil {
 		return err
 	}
