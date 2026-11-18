@@ -60,15 +60,13 @@ func TestImageSourceDatabaseActions(t *testing.T) {
 	_, err = imageSource.Create(ctx, imageSourceB)
 	require.NoError(t, err)
 
-	// Ensure we have two entries
 	imageSources, err := imageSource.GetAll(ctx)
 	require.NoError(t, err)
-	require.Len(t, imageSources, 2)
+	require.Len(t, imageSources, 3, "the two added sources and the local source of a fresh database")
 
 	imageSourceIDs, err := imageSource.GetAllNames(ctx)
 	require.NoError(t, err)
-	require.Len(t, imageSourceIDs, 2)
-	require.ElementsMatch(t, []string{"linuxcontainers.org", "images.org"}, imageSourceIDs)
+	require.ElementsMatch(t, []string{"linuxcontainers.org", "images.org", "local"}, imageSourceIDs, "the names of the added sources and the local source")
 
 	// Should get back imageSourceA unchanged.
 	dbImageSourceA, err := imageSource.GetByName(ctx, imageSourceA.Name)
@@ -99,10 +97,9 @@ func TestImageSourceDatabaseActions(t *testing.T) {
 	_, err = imageSource.GetByName(ctx, imageSourceA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have one image sources remaining.
 	imageSources, err = imageSource.GetAll(ctx)
 	require.NoError(t, err)
-	require.Len(t, imageSources, 1)
+	require.Len(t, imageSources, 2, "one added source and the local source remain")
 
 	// Can't delete a image source that doesn't exist.
 	err = imageSource.DeleteByName(ctx, "three")

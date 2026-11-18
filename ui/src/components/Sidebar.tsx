@@ -158,7 +158,7 @@ const Sidebar = () => {
     },
     image_server: {
       id: "image_server",
-      to: "/ui/images-view",
+      to: "/ui/images/incus",
       menu: ["", ""],
     },
     warnings: {

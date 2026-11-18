@@ -391,8 +391,8 @@ CREATE TABLE incus_images (
   versions TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   aliases TEXT NOT NULL DEFAULT '',
-  incus_image_source_id INTEGER,
-  UNIQUE (operating_system, release, variant, architecture),
+  incus_image_source_id INTEGER NOT NULL,
+  UNIQUE (incus_image_source_id, name),
   FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
   CHECK (name <> '')
 );
@@ -461,4 +461,6 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (43, strftime("%s"));
+INSERT INTO incus_image_sources (name, url, filter_expression, last_updated) VALUES ('local', '', '', strftime('%Y-%m-%d %H:%M:%f+00:00'));
+
+INSERT INTO schema (version, updated_at) VALUES (44, strftime("%s"));

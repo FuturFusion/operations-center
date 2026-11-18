@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 )
 
 func TestImageSource_Validate(t *testing.T) {
@@ -56,6 +57,50 @@ func TestImageSource_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - name with invalid characters",
+			source: image.IncusImageSource{
+				Name:             "my-source",
+				URL:              "https://images.linuxcontainers.org",
+				FilterExpression: "true",
+			},
+			setupImageSourcers: returnMockImageSourcers,
+
+			assertErr: errassert.ValidationErrorContains("Invalid source, name \"my-source\" can only contain lower case letters, digits and underscores"),
+		},
+		{
+			name: "error - reserved name local",
+			source: image.IncusImageSource{
+				Name:             "local",
+				URL:              "https://images.linuxcontainers.org",
+				FilterExpression: "true",
+			},
+			setupImageSourcers: returnMockImageSourcers,
+
+			assertErr: errassert.ValidationErrorContains("Invalid source, name \"local\" is reserved"),
+		},
+		{
+			name: "error - reserved name create",
+			source: image.IncusImageSource{
+				Name:             "create",
+				URL:              "https://images.linuxcontainers.org",
+				FilterExpression: "true",
+			},
+			setupImageSourcers: returnMockImageSourcers,
+
+			assertErr: errassert.ValidationErrorContains("Invalid source, name \"create\" is reserved"),
+		},
+		{
+			name: "error - empty url",
+			source: image.IncusImageSource{
+				Name:             "name",
+				URL:              "", // empty
+				FilterExpression: "true",
+			},
+			setupImageSourcers: returnMockImageSourcers,
+
+			assertErr: errassert.ValidationErrorContains("Invalid source, URL can not be empty"),
+		},
+		{
 			name: "error - invalid url",
 			source: image.IncusImageSource{
 				Name:             "name",
@@ -68,6 +113,17 @@ func TestImageSource_Validate(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - url without http or https scheme",
+			source: image.IncusImageSource{
+				Name:             "name",
+				URL:              "ftp://images.example.com",
+				FilterExpression: "true",
+			},
+			setupImageSourcers: returnMockImageSourcers,
+
+			assertErr: errassert.ValidationErrorContains(`Invalid URL "ftp://images.example.com", the scheme needs to be http or https`),
 		},
 		{
 			name: "error - image source filter empty",

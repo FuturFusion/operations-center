@@ -9,11 +9,12 @@ import IncusImageFileLink from "components/IncusImageFileLink";
 import ModalWindow from "components/ModalWindow";
 import UploadIncusImageBtn from "components/UploadIncusImageBtn";
 import { useNotification } from "context/notificationContext";
+import { localImageSourceName } from "util/image_source";
 import { bytesToHumanReadable } from "util/util";
 import { errorMessage } from "util/response";
 
 const IncusImageVersions = () => {
-  const { name } = useParams() as { name: string };
+  const { source, name } = useParams() as { source: string; name: string };
   const [versionToDelete, setVersionToDelete] = useState("");
   const queryClient = useQueryClient();
   const { notify } = useNotification();
@@ -23,8 +24,8 @@ const IncusImageVersions = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["incus-images", name],
-    queryFn: () => fetchIncusImage(name),
+    queryKey: ["incus-images", source, name],
+    queryFn: () => fetchIncusImage(source, name),
   });
 
   if (isLoading) {
@@ -39,11 +40,11 @@ const IncusImageVersions = () => {
     const version = versionToDelete;
     setVersionToDelete("");
 
-    deleteIncusImageVersion(name, version)
+    deleteIncusImageVersion(source, name, version)
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Version ${version} of image ${name} deleted`);
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
+          queryClient.invalidateQueries({ queryKey: ["incus-images", source] });
           return;
         }
         notify.error(errorMessage(response));
@@ -53,6 +54,8 @@ const IncusImageVersions = () => {
       });
   };
 
+  // Only the images of the local source can be changed.
+  const isLocal = source == localImageSourceName;
   const headers = ["Filename", "Size", "Type", ""];
   const versions = Object.keys(image.versions ?? {})
     .sort()
@@ -61,13 +64,15 @@ const IncusImageVersions = () => {
   return (
     <>
       <div className="d-flex flex-column">
-        <div className="mx-2 mx-md-4 mb-3">
-          <div className="row">
-            <div className="col-12">
-              <UploadIncusImageBtn image={image} />
+        {isLocal && (
+          <div className="mx-2 mx-md-4 mb-3">
+            <div className="row">
+              <div className="col-12">
+                <UploadIncusImageBtn image={image} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
         {versions.map((version) => {
           const items = image.versions[version].items ?? {};
           const rows = Object.keys(items)
@@ -79,6 +84,7 @@ const IncusImageVersions = () => {
                   {
                     content: (
                       <IncusImageFileLink
+                        source={source}
                         name={name}
                         version={version}
                         filename={filename}
@@ -113,13 +119,15 @@ const IncusImageVersions = () => {
             <div className="mb-4">
               <div className="mx-2 mx-md-4 d-flex align-items-center">
                 <h5 className="flex-grow-1 my-0">{version}</h5>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setVersionToDelete(version)}
-                >
-                  Delete
-                </Button>
+                {isLocal && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setVersionToDelete(version)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </div>
               <DataTable headers={headers} rows={rows} />
             </div>

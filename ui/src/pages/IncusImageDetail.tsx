@@ -10,6 +10,7 @@ import { useNotification } from "context/notificationContext";
 import IncusImageOverview from "pages/IncusImageOverview";
 import IncusImageConfiguration from "pages/IncusImageConfiguration";
 import IncusImageVersions from "pages/IncusImageVersions";
+import { localImageSourceName } from "util/image_source";
 import { errorMessage } from "util/response";
 
 const IncusImageDetail = () => {
@@ -17,15 +18,22 @@ const IncusImageDetail = () => {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
   const navigate = useNavigate();
-  const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
+  const { source, name, activeTab } = useParams<{
+    source: string;
+    name: string;
+    activeTab: string;
+  }>();
+
+  // Only the images of the local source can be changed.
+  const isLocal = source == localImageSourceName;
 
   const {
     data: image = null,
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["incus-images", name],
-    queryFn: () => fetchIncusImage(name || ""),
+    queryKey: ["incus-images", source, name],
+    queryFn: () => fetchIncusImage(source || "", name || ""),
   });
 
   if (isLoading) {
@@ -37,12 +45,12 @@ const IncusImageDetail = () => {
   }
 
   const handleDelete = () => {
-    deleteIncusImage(name || "")
+    deleteIncusImage(source || "", name || "")
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Image ${name} deleted`);
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
-          navigate("/ui/images-view");
+          queryClient.invalidateQueries({ queryKey: ["incus-images", source] });
+          navigate(`/ui/images/incus/${source}/images`);
           return;
         }
         notify.error(errorMessage(response));
@@ -58,11 +66,15 @@ const IncusImageDetail = () => {
       title: "Overview",
       content: <IncusImageOverview />,
     },
-    {
-      key: "configuration",
-      title: "Configuration",
-      content: <IncusImageConfiguration />,
-    },
+    ...(isLocal
+      ? [
+          {
+            key: "configuration",
+            title: "Configuration",
+            content: <IncusImageConfiguration />,
+          },
+        ]
+      : []),
     {
       key: "versions",
       title: "Versions",
@@ -78,11 +90,13 @@ const IncusImageDetail = () => {
           defaultTab="overview"
           activeTab={activeTab}
           tabs={tabs}
-          onSelect={(key) => navigate(`/ui/images/incus/${name}/${key}`)}
+          onSelect={(key) =>
+            navigate(`/ui/images/incus/${source}/images/${name}/${key}`)
+          }
         />
       </div>
       <div className="fixed-footer p-3">
-        {(!activeTab || activeTab == "overview") && (
+        {isLocal && (!activeTab || activeTab == "overview") && (
           <div className="d-flex justify-content-end gap-2">
             <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
               Delete

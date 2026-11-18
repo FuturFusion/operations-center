@@ -1,3 +1,4 @@
+import { FC } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { fetchIncusImages } from "api/image_incus";
@@ -5,15 +6,23 @@ import DataTable from "components/DataTable";
 import IncusImageActions from "components/IncusImageActions";
 import UploadIncusImageBtn from "components/UploadIncusImageBtn";
 import { formatDate } from "util/date";
+import { localImageSourceName } from "util/image_source";
 
-const IncusImageList = () => {
+interface Props {
+  source: string;
+}
+
+const IncusImageList: FC<Props> = ({ source }) => {
+  // Only the images of the local source can be changed.
+  const isLocal = source == localImageSourceName;
+
   const {
     data: images = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["incus-images"],
-    queryFn: fetchIncusImages,
+    queryKey: ["incus-images", source],
+    queryFn: () => fetchIncusImages(source),
   });
 
   if (isLoading) {
@@ -32,7 +41,7 @@ const IncusImageList = () => {
     "Variant",
     "Description",
     "Last updated",
-    "Actions",
+    ...(isLocal ? ["Actions"] : []),
   ];
   const rows = images.map((item) => {
     return {
@@ -40,7 +49,7 @@ const IncusImageList = () => {
         {
           content: (
             <Link
-              to={`/ui/images/incus/${item.name}`}
+              to={`/ui/images/incus/${source}/images/${item.name}`}
               className="data-table-link"
             >
               {item.name}
@@ -72,9 +81,13 @@ const IncusImageList = () => {
           content: formatDate(item.last_updated),
           sortKey: item.last_updated,
         },
-        {
-          content: <IncusImageActions image={item} />,
-        },
+        ...(isLocal
+          ? [
+              {
+                content: <IncusImageActions image={item} />,
+              },
+            ]
+          : []),
       ],
     };
   });
@@ -82,13 +95,15 @@ const IncusImageList = () => {
   return (
     <>
       <div className="d-flex flex-column">
-        <div className="mx-2 mx-md-4">
-          <div className="row">
-            <div className="col-12">
-              <UploadIncusImageBtn />
+        {isLocal && (
+          <div className="mx-2 mx-md-4">
+            <div className="row">
+              <div className="col-12">
+                <UploadIncusImageBtn />
+              </div>
             </div>
           </div>
-        </div>
+        )}
         <div className="flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>

@@ -41,7 +41,7 @@ func TestDatabase_SnapshotAndSchemaVersion(t *testing.T) {
 	_, err = dbschema.Ensure(t.Context(), db, dir)
 	require.NoError(t, err)
 
-	_, err = db.ExecContext(t.Context(), `INSERT INTO incus_images (name, description, operating_system, release, architecture, variant, versions, last_updated) VALUES ('os:release:amd64:variant', '', 'os', 'release', 'amd64', 'variant', '{}', CURRENT_TIMESTAMP)`)
+	_, err = db.ExecContext(t.Context(), `INSERT INTO incus_images (name, description, operating_system, release, architecture, variant, versions, last_updated, incus_image_source_id) VALUES ('os:release:amd64:variant', '', 'os', 'release', 'amd64', 'variant', '{}', CURRENT_TIMESTAMP, (SELECT id FROM incus_image_sources WHERE name = 'local'))`)
 	require.NoError(t, err)
 
 	repo := NewDatabase(db)

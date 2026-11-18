@@ -1,7 +1,8 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useFormik } from "formik";
+import { FormikErrors, useFormik } from "formik";
 import { ImageSource } from "types/image_incus_source";
+import { validateImageSourceName } from "util/image_source";
 
 interface Props {
   source?: ImageSource;
@@ -16,9 +17,24 @@ const ImageSourceForm: FC<Props> = ({ source, onSubmit }) => {
     last_updated: "",
   };
 
+  const validateForm = (values: ImageSource): FormikErrors<ImageSource> => {
+    const errors: FormikErrors<ImageSource> = {};
+
+    // The name of an existing source cannot change.
+    if (!source) {
+      const nameError = validateImageSourceName(values.name);
+      if (nameError) {
+        errors.name = nameError;
+      }
+    }
+
+    return errors;
+  };
+
   const formik = useFormik({
     initialValues: formikInitialValues,
     enableReinitialize: true,
+    validate: validateForm,
     onSubmit: (values: ImageSource) => {
       onSubmit(values);
     },
@@ -37,7 +53,11 @@ const ImageSourceForm: FC<Props> = ({ source, onSubmit }) => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               disabled={!!source}
+              isInvalid={!!formik.errors.name && formik.touched.name}
             />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.name}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="url">
             <Form.Label>URL</Form.Label>

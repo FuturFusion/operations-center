@@ -2,6 +2,10 @@ package api
 
 import "time"
 
+// IncusImageSourceLocal is the name of the image source of manually uploaded
+// images. It always exists and can not be changed.
+const IncusImageSourceLocal = "local"
+
 // ImageSourcePut represents the fields available for update for an image source.
 //
 // swagger:model
@@ -10,17 +14,18 @@ type ImageSourcePut struct {
 	// Example: https://images.linuxcontainers.org
 	URL string `json:"url" yaml:"url"`
 
-	// FilterExression applied when fetching images from the image source.
-	// Only images matching the filter expression are fetched.
-	// Example: Architecture == "amd64"
+	// FilterExpression applied to each file when fetching images from the image
+	// source. Only files matching the filter expression are fetched.
+	// Example: architecture == "amd64"
 	FilterExpression string `json:"filter_expression" yaml:"filter_expression"`
 }
 
 type ImageSourcePost struct {
 	ImageSourcePut `yaml:",inline"`
 
-	// Name of the image source.
-	// Example: linuxcontainers.org
+	// Name of the image source. It can only contain lower case letters, digits
+	// and underscores. The names "local" and "create" are reserved.
+	// Example: linuxcontainers
 	Name string `json:"name" yaml:"name"`
 }
 

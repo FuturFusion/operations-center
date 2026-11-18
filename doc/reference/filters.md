@@ -1,12 +1,13 @@
 # Filtering
 
 Operations Center uses [expr-lang](https://expr-lang.org/) for filtering in
-various places, including filtering of results fetched from the inventory
-as well as selection of updates and update files.
+various places, including filtering of results fetched from the inventory,
+selection of updates and update files, and selection of Incus images.
 
 See [Inventory](inventory) for more information about filtering inventory
 results.
 See [Update](update) for more information about update configuration.
+See [Incus images](image) for more information about image sources.
 
 Expr is an expression language that uses a Go-like syntax with some more
 human-readable operators.
@@ -69,4 +70,26 @@ YAML representation shown over the API or in the
 
 Tip: to see the available fields of updates, run:
 `operations-center provisioning update list -f json | jq -r '. | first | keys | sort | .[]'`
+```
+
+### Filtering Incus Images
+
+The filter expression of an image source selects the files of the images,
+Operations Center fetches from the image source. The filter expression is
+evaluated for each file. A file is fetched, if the expression returns `true`.
+See [Incus images](image.md#filtering) for the available properties.
+
+| Expression                                                              | Description                                                      |
+| :---                                                                    | :---                                                             |
+| `true`                                                                  | Fetch all images of the image source                             |
+| `architecture == "amd64"`                                               | Only fetch images for the `amd64` architecture                   |
+| `architecture == "amd64" and file_type in ["incus.tar.xz", "squashfs"]` | Only fetch the files for containers on the `amd64` architecture  |
+| `lower(operating_system) == "debian" and release == "trixie"`           | Only fetch the images of Debian `trixie`                         |
+| `variant == "cloud"`                                                    | Only fetch the `cloud` variant of the images                     |
+| `size < 1024 * 1024 * 1024`                                             | Only fetch files smaller than 1 GiB                              |
+
+```{note}
+An image source does not accept an empty filter expression. Use `true` to
+fetch all images. For updates, an empty filter expression has the same effect
+as `true`.
 ```

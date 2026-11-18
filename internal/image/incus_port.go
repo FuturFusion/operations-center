@@ -11,12 +11,12 @@ import (
 type ImageIncusService interface {
 	AddVersion(ctx context.Context, mr *multipart.Reader) (name string, _ error)
 	GetAll(ctx context.Context) (IncusImages, error)
-	GetAllNames(ctx context.Context) ([]string, error)
-	GetByName(ctx context.Context, name string) (*IncusImage, error)
-	DeleteByName(ctx context.Context, name string) error
-	DeleteVersionByName(ctx context.Context, name string, version string) error
+	GetAllBySource(ctx context.Context, source string) (IncusImages, error)
+	GetByName(ctx context.Context, source string, name string) (*IncusImage, error)
+	DeleteByName(ctx context.Context, source string, name string) error
+	DeleteVersionByName(ctx context.Context, source string, name string, version string) error
 	DeleteBySource(ctx context.Context, sourceName string) error
-	GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error)
+	GetVersionFileByName(ctx context.Context, source string, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error)
 	Update(ctx context.Context, incusImage IncusImage) error
 	ValidateFilterExpression(ctx context.Context, filterExpression string) error
 	RefreshFromSource(ctx context.Context, source IncusImageSource) error
@@ -26,12 +26,11 @@ type ImageIncusRepo interface {
 	Create(ctx context.Context, newIncusImage IncusImage) (int64, error)
 	GetAll(ctx context.Context) (IncusImages, error)
 	GetAllWithFilter(ctx context.Context, filter IncusImageFilter) (IncusImages, error)
-	GetAllNames(ctx context.Context) ([]string, error)
-	ExistsByName(ctx context.Context, name string) (bool, error)
-	GetByName(ctx context.Context, name string) (*IncusImage, error)
+	ExistsByName(ctx context.Context, source string, name string) (bool, error)
+	GetByName(ctx context.Context, source string, name string) (*IncusImage, error)
 	Update(ctx context.Context, incusImage IncusImage) error
 	Upsert(ctx context.Context, incusImage IncusImage) error
-	DeleteByName(ctx context.Context, name string) error
+	DeleteByName(ctx context.Context, source string, name string) error
 }
 
 type (

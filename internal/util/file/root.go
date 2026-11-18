@@ -48,12 +48,23 @@ func MkdirAllOpenSubRoot(parent *os.Root, name string, perm os.FileMode) (*os.Ro
 
 // PathExistsIn works like PathExists, but resolves name in root.
 func PathExistsIn(root *os.Root, name string) bool {
+	exists, err := ExistsIn(root, name)
+	return exists || err != nil
+}
+
+// ExistsIn reports whether name exists in root. Unlike PathExistsIn, it
+// returns every error except a missing path.
+func ExistsIn(root *os.Root, name string) (bool, error) {
 	_, err := root.Lstat(name)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return false
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
 	}
 
-	return true
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // CreateTempIn works like os.CreateTemp, but creates the file in the directory

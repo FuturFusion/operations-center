@@ -47,7 +47,7 @@ type IncusImagePost struct {
 	Version string `json:"version" yaml:"version"`
 }
 
-var incusImageArchitectures = []string{"amd64", "arm64", "armhf", "riscv64"}
+var incusImageArchitectures = []string{"amd64", "arm64", "armhf", "loong64", "riscv64"}
 
 // ValidateIncusImageArchitecture checks that incus images support the
 // architecture.
@@ -86,7 +86,13 @@ type IncusImage struct {
 
 	IncusImagePut `yaml:",inline"`
 
-	// Name of the incus image in the format "os:release:architecture:variant".
+	// Source is the name of the image source of the incus image. Manually
+	// uploaded images have the source "local".
+	// Example: local
+	Source string `json:"source" yaml:"source"`
+
+	// Name of the incus image in the format "os:release:architecture:variant" in lower case.
+	// The name is unique per source.
 	// Example: almalinux:10:amd64:cloud
 	Name string `json:"name" yaml:"name"`
 

@@ -99,7 +99,7 @@ func (s *simplestreams) GetImageList(ctx context.Context, source image.IncusImag
 			Release:         product.Release,
 			Architecture:    product.Architecture,
 			Variant:         product.Variant,
-			Source:          &source.Name,
+			Source:          source.Name,
 			Versions:        product.Versions,
 		}
 

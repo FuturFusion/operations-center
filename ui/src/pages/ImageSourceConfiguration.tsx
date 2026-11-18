@@ -7,7 +7,7 @@ import { ImageSource } from "types/image_incus_source";
 import { errorMessage } from "util/response";
 
 const ImageSourceConfiguration = () => {
-  const { name } = useParams() as { name: string };
+  const { source: name } = useParams() as { source: string };
   const { notify } = useNotification();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -18,7 +18,7 @@ const ImageSourceConfiguration = () => {
         if (response.error_code == 0) {
           notify.success(`Image source ${name} updated`);
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
-          navigate(`/ui/images/sources/${name}/configuration`);
+          navigate(`/ui/images/incus/${name}/configuration`);
           return;
         }
         notify.error(errorMessage(response));

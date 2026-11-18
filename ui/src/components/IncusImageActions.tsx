@@ -25,11 +25,13 @@ const IncusImageActions: FC<Props> = ({ image }) => {
   const handleDelete = () => {
     setShowDeleteModal(false);
 
-    deleteIncusImage(image.name)
+    deleteIncusImage(image.source, image.name)
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Image ${image.name} deleted`);
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
+          queryClient.invalidateQueries({
+            queryKey: ["incus-images", image.source],
+          });
           return;
         }
         notify.error(errorMessage(response));
