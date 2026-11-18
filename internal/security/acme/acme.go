@@ -17,7 +17,7 @@ import (
 	"github.com/lxc/incus/v7/shared/tls"
 	"github.com/lxc/incus/v7/shared/validate"
 
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -47,13 +47,13 @@ func ValidateACMEConfig(s system.SecurityACME) error {
 	}
 
 	// The host and the email are used as directory names for the ACME account.
-	if !file.IsPathElement(u.Hostname()) {
+	if !pathutil.IsPathElement(u.Hostname()) {
 		return fmt.Errorf("ACME CA URL host %q is invalid", u.Hostname())
 	}
 
 	if s.Email != "" {
 		_, err := mail.ParseAddress(s.Email)
-		if err != nil || !file.IsPathElement(s.Email) {
+		if err != nil || !pathutil.IsPathElement(s.Email) {
 			return fmt.Errorf("ACME email %q is not a valid email address", s.Email)
 		}
 	}
@@ -105,13 +105,14 @@ func ACMEConfigChanged(oldCfg, newCfg system.SecurityACME) bool {
 	return false
 }
 
-// UpdateCertificate updates the certificate.
+// UpdateCertificate updates the certificate. The ACME account data is stored
+// in acmeRoot.
 func UpdateCertificate(
 	ctx context.Context,
 	fsEnv interface {
 		VarDir() string
-		CacheDir() string
 	},
+	acmeRoot *os.Root,
 	cfg system.SecurityACME,
 	force bool,
 ) (*system.CertificatePost, error) {
@@ -137,23 +138,15 @@ func UpdateCertificate(
 		return nil, nil
 	}
 
-	dir := filepath.Join(fsEnv.CacheDir(), "acme")
-	root, err := file.MkdirAllOpenRoot(dir, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create acme account path %q: %w", dir, err)
-	}
-
-	defer root.Close()
-
 	caURL, err := url.ParseRequestURI(cfg.CAURL)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse CA URL %q: %q", cfg.CAURL, err)
 	}
 
 	// Remove unrelated directories when done.
-	defer cleanupAccounts(root, caURL.Hostname(), cfg.Email)
+	defer cleanupAccounts(acmeRoot, caURL.Hostname(), cfg.Email)
 
-	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, dir, cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
+	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, acmeRoot.Name(), cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
 	if err != nil {
 		return nil, err
 	}

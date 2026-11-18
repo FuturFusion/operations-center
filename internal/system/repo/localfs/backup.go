@@ -26,6 +26,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -62,7 +63,7 @@ type backupManifest struct {
 }
 
 // usageFunc returns the space usage of the file system a backup is extracted to.
-type usageFunc func() (file.UsageInformation, error)
+type usageFunc func() (domain.UsageInformation, error)
 
 type backup struct {
 	varRoot *os.Root
@@ -75,7 +76,7 @@ var _ system.BackupRepo = backup{}
 func NewBackup(varRoot *os.Root) backup {
 	return backup{
 		varRoot: varRoot,
-		usage: func() (file.UsageInformation, error) {
+		usage: func() (domain.UsageInformation, error) {
 			return file.UsageInformationForPath(varRoot.Name())
 		},
 	}
@@ -563,7 +564,7 @@ func extractFile(r io.Reader, root *os.Root, filename string, mode fs.FileMode) 
 
 	src := &trackingReader{Reader: r}
 
-	_, err = file.SafeCopy(f, src)
+	_, err = iox.SafeCopy(f, src)
 	if src.err != nil {
 		return invalidBackupErr(src.err, "Failed to extract %q from backup", filepath.Base(filename))
 	}

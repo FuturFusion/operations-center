@@ -15,14 +15,13 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
 // usageWithAvailable reports a file system of 1 GiB with the given space available.
 func usageWithAvailable(available uint64) usageFunc {
-	return func() (file.UsageInformation, error) {
-		return file.UsageInformation{
+	return func() (domain.UsageInformation, error) {
+		return domain.UsageInformation{
 			TotalSpaceBytes:     1 << 30,
 			AvailableSpaceBytes: available,
 		}, nil

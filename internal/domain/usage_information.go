@@ -1,4 +1,4 @@
-package file
+package domain
 
 // UsageInformation describes the space situation of a file system.
 type UsageInformation struct {

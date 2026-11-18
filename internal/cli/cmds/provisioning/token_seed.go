@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -617,7 +618,7 @@ func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error
 
 	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := file.SafeCopy(writer, imageReader)
+	size, err := iox.SafeCopy(writer, imageReader)
 	if err != nil {
 		return err
 	}

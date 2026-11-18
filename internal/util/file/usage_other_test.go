@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
@@ -17,5 +18,5 @@ func TestUsageInformationForPath(t *testing.T) {
 	gotUI, err := file.UsageInformationForPath(t.TempDir())
 
 	require.ErrorIs(t, err, errors.ErrUnsupported, "usage information is only supported on Linux")
-	require.Equal(t, file.UsageInformation{}, gotUI)
+	require.Equal(t, domain.UsageInformation{}, gotUI)
 }

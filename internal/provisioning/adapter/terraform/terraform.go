@@ -23,6 +23,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 )
 
 var terraformProviders = map[string]struct {
@@ -211,7 +213,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					return fmt.Errorf("Failed to open template file %q: %w", templateFilename, err)
 				}
 
-				_, err = file.SafeCopy(targetFile, templateFile)
+				_, err = iox.SafeCopy(targetFile, templateFile)
 				if err != nil {
 					return fmt.Errorf("Failed to copy template content to target file %q: %w", targetFilename, err)
 				}
@@ -237,7 +239,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 // clusterConfigDir returns the directory of the Terraform configuration of the
 // cluster relative to the root.
 func clusterConfigDir(clusterName string) (string, error) {
-	if !file.IsPathElement(clusterName) {
+	if !pathutil.IsPathElement(clusterName) {
 		return "", domain.NewValidationErrf("Invalid cluster name %q for the Terraform configuration", clusterName)
 	}
 
@@ -248,7 +250,7 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 	// Since we override the INCUS_CONF directory with the operations center var dir,
 	// we need to store the server certificates in the "servercerts" folder
 	// as expected by Incus.
-	if !file.IsPathElement(clusterName) {
+	if !pathutil.IsPathElement(clusterName) {
 		return domain.NewValidationErrf("Invalid cluster name %q for the server certificate", clusterName)
 	}
 
