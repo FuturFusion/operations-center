@@ -1,4 +1,4 @@
-package api
+package patches
 
 import (
 	"os"
@@ -54,12 +54,8 @@ func Test_patchRemoveVarLibOperationCenterTerraformDirs(t *testing.T) {
 			tmpDir := t.TempDir()
 			tc.setup(t, tmpDir)
 
-			d := &Daemon{
-				varRoot: fsroot.Open(t, tmpDir),
-			}
-
 			// Run test
-			err := patchRemoveVarLibOperationCenterTerraformDirs(t.Context(), "test", d)
+			err := patchRemoveVarLibOperationCenterTerraformDirs(t.Context(), "test", fsroot.Open(t, tmpDir))
 
 			// Assert
 			require.NoError(t, err)

@@ -14,7 +14,7 @@ func SetupVersion(db *sql.DB, version int) error {
 	}
 
 	schema := newFromMap(selectedUpdates)
-	_, err := schema.ensure(context.Background(), db)
+	_, _, err := schema.ensure(context.Background(), db)
 	return err
 }
 

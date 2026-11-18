@@ -1,4 +1,4 @@
-package api
+package dbschema_test
 
 import (
 	"os"
@@ -115,13 +115,13 @@ VALUES (1, 'seed', '', 0, '{}', '2026-01-01 00:00:00+00:00')`)
 				require.NoError(t, err, "closing the database should succeed")
 			})
 
-			_, err = dbschema.Ensure(t.Context(), db.DB, tmpDir)
+			_, err = dbschema.EnsureLocal(t.Context(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 			require.NoError(t, err, "creating the schema should succeed")
 
 			tc.setup(t, db)
 
 			// Run test
-			got, err := dumpSchema(t.Context(), db, false)
+			got, err := dbschema.DumpSchema(t.Context(), db, false)
 
 			// Assert
 			require.NoError(t, err, "dumping the database should succeed")
@@ -272,7 +272,7 @@ func TestDumpSchemaRoundTrip(t *testing.T) {
 						require.NoError(t, err, "closing the source database should succeed")
 					})
 
-					_, err = dbschema.Ensure(t.Context(), source, sourceDir)
+					_, err = dbschema.EnsureLocal(t.Context(), source.DB, sourceDir, dbschema.Updates(), dbschema.FreshSchema())
 					require.NoError(t, err, "creating the schema should succeed")
 
 					_, err = source.ExecContext(t.Context(), `INSERT INTO tokens (uuid, uses_remaining, expire_at, description, channel_id, auto_remove)
@@ -286,7 +286,7 @@ VALUES ('b32d0079-c48b-4957-b1cb-bef54125c861', 1, '2026-01-01 00:00:00+00:00', 
 					_, err = source.ExecContext(t.Context(), `INSERT INTO "we""ird" VALUES (?)`, tc.value)
 					require.NoError(t, err, "inserting the value should succeed")
 
-					dump, err := dumpSchema(t.Context(), source, false)
+					dump, err := dbschema.DumpSchema(t.Context(), source, false)
 					require.NoError(t, err, "dumping the source database should succeed")
 
 					// Run test
@@ -328,108 +328,4 @@ func requireSQLite3(t *testing.T) {
 	}
 
 	require.NoError(t, err, "sqlite3 command line tool must be installed in CI")
-}
-
-func TestQuoteString(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		input string
-
-		want string
-	}{
-		{
-			name:  "plain",
-			input: "plain",
-
-			want: `'plain'`,
-		},
-		{
-			name:  "single quote",
-			input: "it's",
-
-			want: `'it''s'`,
-		},
-		{
-			name:  "newline",
-			input: "a\nb",
-
-			want: `replace('a\nb','\n',char(10))`,
-		},
-		{
-			name:  "carriage return",
-			input: "a\rb",
-
-			want: `replace('a\rb','\r',char(13))`,
-		},
-		{
-			name:  "newline and carriage return",
-			input: "a\r\nb",
-
-			want: `replace(replace('a\r\nb','\n',char(10)),'\r',char(13))`,
-		},
-		{
-			name:  "newline and literal newline marker",
-			input: `a\n` + "\n",
-
-			want: `replace('a\n\012','\012',char(10))`,
-		},
-		{
-			name:  "newline and both literal newline markers",
-			input: `a\n\012` + "\n",
-
-			want: `replace('a\n\012(\n0)','(\n0)',char(10))`,
-		},
-		{
-			name:  "carriage return and literal carriage return marker",
-			input: `a\r` + "\r",
-
-			want: `replace('a\r\015','\015',char(13))`,
-		},
-		{
-			name:  "carriage return and all literal carriage return markers",
-			input: `a\r\015(\r0)` + "\r",
-
-			want: `replace('a\r\015(\r0)(\r1)','(\r1)',char(13))`,
-		},
-		{
-			name:  "nul byte",
-			input: "a\x00b",
-
-			want: `CAST(X'610062' AS TEXT)`,
-		},
-		{
-			name:  "nul byte with single quote and newline",
-			input: "a\x00'\n",
-
-			want: `CAST(X'6100270A' AS TEXT)`,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			// Setup
-			db, err := dbdriver.Open(t.TempDir())
-			require.NoError(t, err, "opening the database should succeed")
-
-			t.Cleanup(func() {
-				err := db.Close()
-				require.NoError(t, err, "closing the database should succeed")
-			})
-
-			// Run test
-			got := quoteString(tc.input)
-
-			// Assert
-			require.Equal(t, tc.want, got, "literal should match the expected SQL")
-
-			var restored string
-			err = db.QueryRowContext(t.Context(), "SELECT "+got).Scan(&restored)
-			require.NoError(t, err, "SQLite should accept the literal")
-			require.Equal(t, tc.input, restored, "SQLite should evaluate the literal to the input")
-		})
-	}
 }

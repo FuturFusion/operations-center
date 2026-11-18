@@ -228,7 +228,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
@@ -385,7 +385,7 @@ func TestServerDatabaseActions_namesWithActiveDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
@@ -489,7 +489,7 @@ func TestServerDatabaseActions_preRegisteredWithoutCertificate(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.Ensure(ctx, db.DB, tmpDir)
+	_, err = dbschema.EnsureLocal(ctx, db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)
