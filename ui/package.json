@@ -10,7 +10,8 @@
     "lint": "yarn lint-eslint && yarn lint-prettier",
     "build": "yarn lint && tsc -b && vite build",
     "build-nolint": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
