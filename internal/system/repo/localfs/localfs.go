@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 )
 
 type localfs struct {
@@ -51,7 +51,7 @@ func (l localfs) CleanupAll(ctx context.Context) error {
 }
 
 func (l localfs) cleanupNamespace(ctx context.Context, namespace string) error {
-	if !file.IsPathElement(namespace) {
+	if !pathutil.IsPathElement(namespace) {
 		return fmt.Errorf("Invalid cache namespace %q", namespace)
 	}
 

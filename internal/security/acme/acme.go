@@ -18,6 +18,7 @@ import (
 	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -47,13 +48,13 @@ func ValidateACMEConfig(s system.SecurityACME) error {
 	}
 
 	// The host and the email are used as directory names for the ACME account.
-	if !file.IsPathElement(u.Hostname()) {
+	if !pathutil.IsPathElement(u.Hostname()) {
 		return fmt.Errorf("ACME CA URL host %q is invalid", u.Hostname())
 	}
 
 	if s.Email != "" {
 		_, err := mail.ParseAddress(s.Email)
-		if err != nil || !file.IsPathElement(s.Email) {
+		if err != nil || !pathutil.IsPathElement(s.Email) {
 			return fmt.Errorf("ACME email %q is not a valid email address", s.Email)
 		}
 	}

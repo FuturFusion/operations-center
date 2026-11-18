@@ -24,6 +24,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 )
 
 type clusterArtifact struct {
@@ -49,7 +50,7 @@ func New(db sqlite.DBTX, root *os.Root) *clusterArtifact {
 // must be a single file name, so the path cannot leave the root.
 func artifactPath(elements ...string) (string, error) {
 	for _, element := range elements {
-		if !file.IsPathElement(element) {
+		if !pathutil.IsPathElement(element) {
 			return "", domain.NewValidationErrf("Invalid cluster artifact, %q is not a valid file name", element)
 		}
 	}
