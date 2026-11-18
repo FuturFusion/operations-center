@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type networkIntegration struct {
@@ -29,83 +30,87 @@ func NewNetworkIntegration(db sqlite.DBTX) *networkIntegration {
 }
 
 func (r networkIntegration) Create(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO network_integrations (uuid, cluster_id, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.NetworkIntegration)
-	if err != nil {
-		return inventory.NetworkIntegration{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkIntegration, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO network_integrations (uuid, cluster_id, name, object, last_updated)
+	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
+	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
+	`
 
-	return scanNetworkIntegration(row)
+		marshaledObject, err := json.Marshal(in.Object.NetworkIntegration)
+		if err != nil {
+			return inventory.NetworkIntegration{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanNetworkIntegration(row)
+	})
 }
 
 func (r networkIntegration) GetAllWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error) {
-	const sqlStmt = `
-SELECT
-  network_integrations.id, network_integrations.uuid, clusters.name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-FROM network_integrations
-  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-WHERE true
-%s
-ORDER BY clusters.name, network_integrations.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkIntegrations, error) {
+		const sqlStmt = `
+	SELECT
+	  network_integrations.id, network_integrations.uuid, clusters.name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+	FROM network_integrations
+	  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, network_integrations.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+			args = append(args, sql.Named("cluster_name", filter.Cluster))
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND network_integrations.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND network_integrations.name = :name`)
+			args = append(args, sql.Named("name", filter.Name))
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var networkIntegrations inventory.NetworkIntegrations
-	for rows.Next() {
-		var networkIntegration inventory.NetworkIntegration
-		networkIntegration, err = scanNetworkIntegration(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		networkIntegrations = append(networkIntegrations, networkIntegration)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var networkIntegrations inventory.NetworkIntegrations
+		for rows.Next() {
+			var networkIntegration inventory.NetworkIntegration
+			networkIntegration, err = scanNetworkIntegration(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return networkIntegrations, nil
+			networkIntegrations = append(networkIntegrations, networkIntegration)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return networkIntegrations, nil
+	})
 }
 
 func (r networkIntegration) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkIntegrationFilter) (query string, args []any) {
@@ -134,124 +139,134 @@ ORDER BY network_integrations.id
 }
 
 func (r networkIntegration) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r networkIntegration) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkIntegration, error) {
-	const sqlStmt = `
-SELECT
-  network_integrations.id, network_integrations.uuid, clusters.name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-FROM
-  network_integrations
-  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-WHERE network_integrations.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkIntegration, error) {
+		const sqlStmt = `
+	SELECT
+	  network_integrations.id, network_integrations.uuid, clusters.name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+	FROM
+	  network_integrations
+	  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+	WHERE network_integrations.uuid=:uuid;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanNetworkIntegration(row)
+		return scanNetworkIntegration(row)
+	})
 }
 
 func (r networkIntegration) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM network_integrations WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM network_integrations WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r networkIntegration) DeleteWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM network_integrations WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM network_integrations WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r networkIntegration) UpdateByUUID(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE network_integrations SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.NetworkIntegration)
-	if err != nil {
-		return inventory.NetworkIntegration{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkIntegration, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE network_integrations SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
+	WHERE uuid=:uuid
+	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
+	`
 
-	return scanNetworkIntegration(row)
+		marshaledObject, err := json.Marshal(in.Object.NetworkIntegration)
+		if err != nil {
+			return inventory.NetworkIntegration{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanNetworkIntegration(row)
+	})
 }
 
 func scanNetworkIntegration(row interface{ Scan(dest ...any) error }) (inventory.NetworkIntegration, error) {

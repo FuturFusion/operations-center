@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type image struct {
@@ -29,89 +30,93 @@ func NewImage(db sqlite.DBTX) *image {
 }
 
 func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Image)
-	if err != nil {
-		return inventory.Image{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Image, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.Image{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
+	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
+	`
 
-	return scanImage(row)
+		marshaledObject, err := json.Marshal(in.Object.Image)
+		if err != nil {
+			return inventory.Image{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.Image{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanImage(row)
+	})
 }
 
 func (r image) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
-	const sqlStmt = `
-SELECT
-  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
-FROM images
-  INNER JOIN clusters ON images.cluster_id = clusters.id
-WHERE true
-%s
-ORDER BY clusters.name, images.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Images, error) {
+		const sqlStmt = `
+	SELECT
+	  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
+	FROM images
+	  INNER JOIN clusters ON images.cluster_id = clusters.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, images.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+			args = append(args, sql.Named("cluster_name", filter.Cluster))
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND images.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND images.project_name = :project`)
+			args = append(args, sql.Named("project", filter.ProjectName))
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND images.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND images.name = :name`)
+			args = append(args, sql.Named("name", filter.Name))
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var images inventory.Images
-	for rows.Next() {
-		var image inventory.Image
-		image, err = scanImage(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		images = append(images, image)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var images inventory.Images
+		for rows.Next() {
+			var image inventory.Image
+			image, err = scanImage(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return images, nil
+			images = append(images, image)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return images, nil
+	})
 }
 
 func (r image) selectStmtGetAllUUIDWithFilter(filter inventory.ImageFilter) (query string, args []any) {
@@ -145,125 +150,135 @@ ORDER BY images.id
 }
 
 func (r image) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r image) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
-	const sqlStmt = `
-SELECT
-  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
-FROM
-  images
-  INNER JOIN clusters ON images.cluster_id = clusters.id
-WHERE images.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Image, error) {
+		const sqlStmt = `
+	SELECT
+	  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
+	FROM
+	  images
+	  INNER JOIN clusters ON images.cluster_id = clusters.id
+	WHERE images.uuid=:uuid;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.Image{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return inventory.Image{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanImage(row)
+		return scanImage(row)
+	})
 }
 
 func (r image) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM images WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM images WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r image) DeleteWithFilter(ctx context.Context, filter inventory.ImageFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM images WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM images WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Image)
-	if err != nil {
-		return inventory.Image{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Image, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.Image{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+	WHERE uuid=:uuid
+	RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
+	`
 
-	return scanImage(row)
+		marshaledObject, err := json.Marshal(in.Object.Image)
+		if err != nil {
+			return inventory.Image{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.Image{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanImage(row)
+	})
 }
 
 func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error) {

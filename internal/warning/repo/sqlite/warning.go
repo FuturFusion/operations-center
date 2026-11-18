@@ -25,43 +25,51 @@ func NewWarning(db sqlite.DBTX) warning.WarningRepo {
 
 // DeleteByUUID implements warning.WarningRepo.
 func (w *warningDB) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteWarning(ctx, transaction.GetDBTX(ctx, w.db), id)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteWarning(ctx, transaction.GetDBTX(ctx, w.db), id)
+	})
 }
 
 // GetAll implements warning.WarningRepo.
 func (w *warningDB) GetAll(ctx context.Context) (warning.Warnings, error) {
-	return entities.GetWarnings(ctx, transaction.GetDBTX(ctx, w.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (warning.Warnings, error) {
+		return entities.GetWarnings(ctx, transaction.GetDBTX(ctx, w.db))
+	})
 }
 
 // GetByUUID implements warning.WarningRepo.
 func (w *warningDB) GetByUUID(ctx context.Context, id uuid.UUID) (*warning.Warning, error) {
-	return entities.GetWarning(ctx, transaction.GetDBTX(ctx, w.db), id)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*warning.Warning, error) {
+		return entities.GetWarning(ctx, transaction.GetDBTX(ctx, w.db), id)
+	})
 }
 
 // GetByScopeAndType implements warning.WarningRepo.
 func (w *warningDB) GetByScopeAndType(ctx context.Context, scope api.WarningScope, wType api.WarningType) (warning.Warnings, error) {
-	if wType == "" || (scope.EntityType == "" && scope.Entity != "") {
-		return nil, fmt.Errorf("Invalid scope. Requires warning type and entity type")
-	}
-
-	filter := warning.WarningFilter{Type: &wType}
-	if scope.Scope != "" {
-		filter.Scope = &scope.Scope
-	}
-
-	if scope.EntityType != "" {
-		filter.EntityType = &scope.EntityType
-		if scope.Entity != "" {
-			filter.Entity = &scope.Entity
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (warning.Warnings, error) {
+		if wType == "" || (scope.EntityType == "" && scope.Entity != "") {
+			return nil, fmt.Errorf("Invalid scope. Requires warning type and entity type")
 		}
-	}
 
-	warnings, err := entities.GetWarnings(ctx, transaction.GetDBTX(ctx, w.db), filter)
-	if err != nil {
-		return nil, err
-	}
+		filter := warning.WarningFilter{Type: &wType}
+		if scope.Scope != "" {
+			filter.Scope = &scope.Scope
+		}
 
-	return warnings, nil
+		if scope.EntityType != "" {
+			filter.EntityType = &scope.EntityType
+			if scope.Entity != "" {
+				filter.Entity = &scope.Entity
+			}
+		}
+
+		warnings, err := entities.GetWarnings(ctx, transaction.GetDBTX(ctx, w.db), filter)
+		if err != nil {
+			return nil, err
+		}
+
+		return warnings, nil
+	})
 }
 
 // Update implements warning.WarningRepo.
@@ -73,5 +81,7 @@ func (w *warningDB) Update(ctx context.Context, id uuid.UUID, warn warning.Warni
 
 // Upsert implements warning.WarningRepo.
 func (w *warningDB) Upsert(ctx context.Context, warn warning.Warning) (int64, error) {
-	return entities.CreateOrReplaceWarning(ctx, transaction.GetDBTX(ctx, w.db), warn)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateOrReplaceWarning(ctx, transaction.GetDBTX(ctx, w.db), warn)
+	})
 }

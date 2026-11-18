@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type storageBucket struct {
@@ -29,106 +30,110 @@ func NewStorageBucket(db sqlite.DBTX) *storageBucket {
 }
 
 func (r storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (inventory.StorageBucket, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO storage_buckets (uuid, cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
-	if err != nil {
-		return inventory.StorageBucket{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("storage_pool_name", in.StoragePoolName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageBucket, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO storage_buckets (uuid, cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated)
+	VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :object, :last_updated)
+	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
+	`
 
-	return scanStorageBucket(row)
+		marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
+		if err != nil {
+			return inventory.StorageBucket{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("server_name", in.Server),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("storage_pool_name", in.StoragePoolName),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanStorageBucket(row)
+	})
 }
 
 func (r storageBucket) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (inventory.StorageBuckets, error) {
-	const sqlStmt = `
-SELECT
-  storage_buckets.id, storage_buckets.uuid, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-FROM storage_buckets
-  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-  LEFT JOIN servers ON storage_buckets.server_id = servers.id
-WHERE true
-%s
-ORDER BY clusters.name, servers.name, storage_buckets.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageBuckets, error) {
+		const sqlStmt = `
+	SELECT
+	  storage_buckets.id, storage_buckets.uuid, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+	FROM storage_buckets
+	  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+	  LEFT JOIN servers ON storage_buckets.server_id = servers.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, servers.name, storage_buckets.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+			args = append(args, sql.Named("cluster_name", filter.Cluster))
+		}
 
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
-	}
+		if filter.Server != nil {
+			whereClause = append(whereClause, ` AND servers.name = :server_name`)
+			args = append(args, sql.Named("server_name", filter.Server))
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
+			args = append(args, sql.Named("project", filter.ProjectName))
+		}
 
-	if filter.StoragePoolName != nil {
-		whereClause = append(whereClause, ` AND storage_buckets.storage_pool_name = :parent`)
-		args = append(args, sql.Named("parent", filter.StoragePoolName))
-	}
+		if filter.StoragePoolName != nil {
+			whereClause = append(whereClause, ` AND storage_buckets.storage_pool_name = :parent`)
+			args = append(args, sql.Named("parent", filter.StoragePoolName))
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND storage_buckets.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND storage_buckets.name = :name`)
+			args = append(args, sql.Named("name", filter.Name))
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var storageBuckets inventory.StorageBuckets
-	for rows.Next() {
-		var storageBucket inventory.StorageBucket
-		storageBucket, err = scanStorageBucket(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		storageBuckets = append(storageBuckets, storageBucket)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var storageBuckets inventory.StorageBuckets
+		for rows.Next() {
+			var storageBucket inventory.StorageBucket
+			storageBucket, err = scanStorageBucket(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return storageBuckets, nil
+			storageBuckets = append(storageBuckets, storageBucket)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return storageBuckets, nil
+	})
 }
 
 func (r storageBucket) selectStmtGetAllUUIDWithFilter(filter inventory.StorageBucketFilter) (query string, args []any) {
@@ -173,132 +178,142 @@ ORDER BY storage_buckets.id
 }
 
 func (r storageBucket) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r storageBucket) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.StorageBucket, error) {
-	const sqlStmt = `
-SELECT
-  storage_buckets.id, storage_buckets.uuid, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-FROM
-  storage_buckets
-  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-  LEFT JOIN servers ON storage_buckets.server_id = servers.id
-WHERE storage_buckets.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageBucket, error) {
+		const sqlStmt = `
+	SELECT
+	  storage_buckets.id, storage_buckets.uuid, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+	FROM
+	  storage_buckets
+	  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+	  LEFT JOIN servers ON storage_buckets.server_id = servers.id
+	WHERE storage_buckets.uuid=:uuid;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanStorageBucket(row)
+		return scanStorageBucket(row)
+	})
 }
 
 func (r storageBucket) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM storage_buckets WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM storage_buckets WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r storageBucket) DeleteWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM storage_buckets WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM storage_buckets WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r storageBucket) UpdateByUUID(ctx context.Context, in inventory.StorageBucket) (inventory.StorageBucket, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE storage_buckets SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
-	if err != nil {
-		return inventory.StorageBucket{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("storage_pool_name", in.StoragePoolName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageBucket, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE storage_buckets SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
+	WHERE uuid=:uuid
+	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
+	`
 
-	return scanStorageBucket(row)
+		marshaledObject, err := json.Marshal(in.Object.StorageBucketFull)
+		if err != nil {
+			return inventory.StorageBucket{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("server_name", in.Server),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("storage_pool_name", in.StoragePoolName),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanStorageBucket(row)
+	})
 }
 
 func scanStorageBucket(row interface{ Scan(dest ...any) error }) (inventory.StorageBucket, error) {

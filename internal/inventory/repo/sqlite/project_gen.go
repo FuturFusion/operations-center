@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type project struct {
@@ -29,83 +30,87 @@ func NewProject(db sqlite.DBTX) *project {
 }
 
 func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Project, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO projects (uuid, cluster_id, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Project)
-	if err != nil {
-		return inventory.Project{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Project, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.Project{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO projects (uuid, cluster_id, name, object, last_updated)
+	VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
+	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
+	`
 
-	return scanProject(row)
+		marshaledObject, err := json.Marshal(in.Object.Project)
+		if err != nil {
+			return inventory.Project{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.Project{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanProject(row)
+	})
 }
 
 func (r project) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (inventory.Projects, error) {
-	const sqlStmt = `
-SELECT
-  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
-FROM projects
-  INNER JOIN clusters ON projects.cluster_id = clusters.id
-WHERE true
-%s
-ORDER BY clusters.name, projects.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Projects, error) {
+		const sqlStmt = `
+	SELECT
+	  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
+	FROM projects
+	  INNER JOIN clusters ON projects.cluster_id = clusters.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, projects.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+			args = append(args, sql.Named("cluster_name", filter.Cluster))
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND projects.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND projects.name = :name`)
+			args = append(args, sql.Named("name", filter.Name))
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var projects inventory.Projects
-	for rows.Next() {
-		var project inventory.Project
-		project, err = scanProject(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		projects = append(projects, project)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var projects inventory.Projects
+		for rows.Next() {
+			var project inventory.Project
+			project, err = scanProject(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return projects, nil
+			projects = append(projects, project)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return projects, nil
+	})
 }
 
 func (r project) selectStmtGetAllUUIDWithFilter(filter inventory.ProjectFilter) (query string, args []any) {
@@ -134,124 +139,134 @@ ORDER BY projects.id
 }
 
 func (r project) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r project) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Project, error) {
-	const sqlStmt = `
-SELECT
-  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
-FROM
-  projects
-  INNER JOIN clusters ON projects.cluster_id = clusters.id
-WHERE projects.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Project, error) {
+		const sqlStmt = `
+	SELECT
+	  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
+	FROM
+	  projects
+	  INNER JOIN clusters ON projects.cluster_id = clusters.id
+	WHERE projects.uuid=:uuid;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.Project{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return inventory.Project{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanProject(row)
+		return scanProject(row)
+	})
 }
 
 func (r project) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM projects WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM projects WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r project) DeleteWithFilter(ctx context.Context, filter inventory.ProjectFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM projects WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM projects WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r project) UpdateByUUID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE projects SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.Project)
-	if err != nil {
-		return inventory.Project{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.Project, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.Project{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE projects SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
+	WHERE uuid=:uuid
+	RETURNING id, :uuid, :cluster_name, name, object, last_updated;
+	`
 
-	return scanProject(row)
+		marshaledObject, err := json.Marshal(in.Object.Project)
+		if err != nil {
+			return inventory.Project{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("name", in.Name),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.Project{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanProject(row)
+	})
 }
 
 func scanProject(row interface{ Scan(dest ...any) error }) (inventory.Project, error) {

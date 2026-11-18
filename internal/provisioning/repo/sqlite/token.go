@@ -24,19 +24,27 @@ func NewToken(db sqlite.DBTX) *token {
 }
 
 func (t token) Create(ctx context.Context, in provisioning.Token) (int64, error) {
-	return entities.CreateToken(ctx, transaction.GetDBTX(ctx, t.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateToken(ctx, transaction.GetDBTX(ctx, t.db), in)
+	})
 }
 
 func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
-	return entities.GetTokens(ctx, transaction.GetDBTX(ctx, t.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.Tokens, error) {
+		return entities.GetTokens(ctx, transaction.GetDBTX(ctx, t.db))
+	})
 }
 
 func (t token) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
-	return entities.GetTokenNames(ctx, transaction.GetDBTX(ctx, t.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		return entities.GetTokenNames(ctx, transaction.GetDBTX(ctx, t.db))
+	})
 }
 
 func (t token) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
-	return entities.GetToken(ctx, transaction.GetDBTX(ctx, t.db), id)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.Token, error) {
+		return entities.GetToken(ctx, transaction.GetDBTX(ctx, t.db), id)
+	})
 }
 
 func (t token) Update(ctx context.Context, in provisioning.Token) error {
@@ -46,37 +54,47 @@ func (t token) Update(ctx context.Context, in provisioning.Token) error {
 }
 
 func (t token) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteToken(ctx, transaction.GetDBTX(ctx, t.db), id)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteToken(ctx, transaction.GetDBTX(ctx, t.db), id)
+	})
 }
 
 func (t token) CreateTokenSeed(ctx context.Context, in provisioning.TokenSeed) (int64, error) {
-	return entities.CreateTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), in)
+	})
 }
 
 func (t token) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error) {
-	return entities.GetTokenSeeds(ctx, transaction.GetDBTX(ctx, t.db), entities.TokenSeedFilter{
-		Token: &id,
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.TokenSeeds, error) {
+		return entities.GetTokenSeeds(ctx, transaction.GetDBTX(ctx, t.db), entities.TokenSeedFilter{
+			Token: &id,
+		})
 	})
 }
 
 func (t token) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error) {
-	tokenSeeds, err := entities.GetTokenSeeds(ctx, transaction.GetDBTX(ctx, t.db), entities.TokenSeedFilter{
-		Token: &id,
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		tokenSeeds, err := entities.GetTokenSeeds(ctx, transaction.GetDBTX(ctx, t.db), entities.TokenSeedFilter{
+			Token: &id,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		names := make([]string, 0, len(tokenSeeds))
+		for _, tokenSeed := range tokenSeeds {
+			names = append(names, tokenSeed.Name)
+		}
+
+		return names, nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	names := make([]string, 0, len(tokenSeeds))
-	for _, tokenSeed := range tokenSeeds {
-		names = append(names, tokenSeed.Name)
-	}
-
-	return names, nil
 }
 
 func (t token) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
-	return entities.GetTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), id, name)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.TokenSeed, error) {
+		return entities.GetTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), id, name)
+	})
 }
 
 func (t token) UpdateTokenSeed(ctx context.Context, in provisioning.TokenSeed) error {
@@ -99,5 +117,7 @@ func (t token) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string
 }
 
 func (t token) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
-	return entities.DeleteTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), name, id)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), name, id)
+	})
 }

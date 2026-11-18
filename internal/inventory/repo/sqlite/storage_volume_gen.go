@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type storageVolume struct {
@@ -29,107 +30,111 @@ func NewStorageVolume(db sqlite.DBTX) *storageVolume {
 }
 
 func (r storageVolume) Create(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO storage_volumes (uuid, cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
-	if err != nil {
-		return inventory.StorageVolume{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("storage_pool_name", in.StoragePoolName),
-		sql.Named("name", in.Name),
-		sql.Named("type", in.Type),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageVolume, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO storage_volumes (uuid, cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
+	VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
+	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
+	`
 
-	return scanStorageVolume(row)
+		marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
+		if err != nil {
+			return inventory.StorageVolume{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("server_name", in.Server),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("storage_pool_name", in.StoragePoolName),
+			sql.Named("name", in.Name),
+			sql.Named("type", in.Type),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanStorageVolume(row)
+	})
 }
 
 func (r storageVolume) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
-	const sqlStmt = `
-SELECT
-  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
-FROM storage_volumes
-  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-  LEFT JOIN servers ON storage_volumes.server_id = servers.id
-WHERE true
-%s
-ORDER BY clusters.name, servers.name, storage_volumes.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageVolumes, error) {
+		const sqlStmt = `
+	SELECT
+	  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+	FROM storage_volumes
+	  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+	  LEFT JOIN servers ON storage_volumes.server_id = servers.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, servers.name, storage_volumes.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+			args = append(args, sql.Named("cluster_name", filter.Cluster))
+		}
 
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
-	}
+		if filter.Server != nil {
+			whereClause = append(whereClause, ` AND servers.name = :server_name`)
+			args = append(args, sql.Named("server_name", filter.Server))
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
+			args = append(args, sql.Named("project", filter.ProjectName))
+		}
 
-	if filter.StoragePoolName != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
-		args = append(args, sql.Named("parent", filter.StoragePoolName))
-	}
+		if filter.StoragePoolName != nil {
+			whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
+			args = append(args, sql.Named("parent", filter.StoragePoolName))
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND storage_volumes.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND storage_volumes.name = :name`)
+			args = append(args, sql.Named("name", filter.Name))
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var storageVolumes inventory.StorageVolumes
-	for rows.Next() {
-		var storageVolume inventory.StorageVolume
-		storageVolume, err = scanStorageVolume(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		storageVolumes = append(storageVolumes, storageVolume)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var storageVolumes inventory.StorageVolumes
+		for rows.Next() {
+			var storageVolume inventory.StorageVolume
+			storageVolume, err = scanStorageVolume(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return storageVolumes, nil
+			storageVolumes = append(storageVolumes, storageVolume)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return storageVolumes, nil
+	})
 }
 
 func (r storageVolume) selectStmtGetAllUUIDWithFilter(filter inventory.StorageVolumeFilter) (query string, args []any) {
@@ -174,133 +179,143 @@ ORDER BY storage_volumes.id
 }
 
 func (r storageVolume) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r storageVolume) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.StorageVolume, error) {
-	const sqlStmt = `
-SELECT
-  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
-FROM
-  storage_volumes
-  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-  LEFT JOIN servers ON storage_volumes.server_id = servers.id
-WHERE storage_volumes.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageVolume, error) {
+		const sqlStmt = `
+	SELECT
+	  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+	FROM
+	  storage_volumes
+	  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+	  LEFT JOIN servers ON storage_volumes.server_id = servers.id
+	WHERE storage_volumes.uuid=:uuid;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanStorageVolume(row)
+		return scanStorageVolume(row)
+	})
 }
 
 func (r storageVolume) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM storage_volumes WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM storage_volumes WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r storageVolume) DeleteWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM storage_volumes WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM storage_volumes WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r storageVolume) UpdateByUUID(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id , (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE storage_volumes SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
-	if err != nil {
-		return inventory.StorageVolume{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("server_name", in.Server),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("storage_pool_name", in.StoragePoolName),
-		sql.Named("name", in.Name),
-		sql.Named("type", in.Type),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.StorageVolume, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id , (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+	  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 	)
-	if row.Err() != nil {
-		return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE storage_volumes SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
+	WHERE uuid=:uuid
+	RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
+	`
 
-	return scanStorageVolume(row)
+		marshaledObject, err := json.Marshal(in.Object.StorageVolumeFull)
+		if err != nil {
+			return inventory.StorageVolume{}, err
+		}
+
+		row := r.db.QueryRowContext(ctx, sqlStmt,
+			sql.Named("uuid", in.UUID),
+			sql.Named("cluster_name", in.Cluster),
+			sql.Named("server_name", in.Server),
+			sql.Named("project_name", in.ProjectName),
+			sql.Named("storage_pool_name", in.StoragePoolName),
+			sql.Named("name", in.Name),
+			sql.Named("type", in.Type),
+			sql.Named("object", marshaledObject),
+			sql.Named("last_updated", in.LastUpdated),
+		)
+		if row.Err() != nil {
+			return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
+		}
+
+		return scanStorageVolume(row)
+	})
 }
 
 func scanStorageVolume(row interface{ Scan(dest ...any) error }) (inventory.StorageVolume, error) {
