@@ -28,7 +28,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -153,7 +153,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	hash256 := sha256.New()
-	incusTarXZReader := file.NewTeeReadCloser(io.NopCloser(bytes.NewReader(incusTarXZ)), hash256)
+	incusTarXZReader := iox.NewTeeReadCloser(io.NopCloser(bytes.NewReader(incusTarXZ)), hash256)
 
 	commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, "incus.tar.xz", incusTarXZReader)
 	defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
@@ -209,7 +209,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		}
 
 		hash256 := sha256.New()
-		partReader := file.NewTeeReadCloser(content, hash256)
+		partReader := iox.NewTeeReadCloser(content, hash256)
 
 		commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, filename, partReader)
 		defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
@@ -410,13 +410,13 @@ func versionItemFromPart(part *multipart.Part) (filename string, fileType string
 
 	switch extension {
 	case ".squashfs":
-		return "root.squashfs", "squashfs", file.NewReadCloser(content, part), nil
+		return "root.squashfs", "squashfs", iox.NewReadCloser(content, part), nil
 
 	case ".qcow2":
-		return "disk.qcow2", "disk-kvm.img", file.NewReadCloser(content, part), nil
+		return "disk.qcow2", "disk-kvm.img", iox.NewReadCloser(content, part), nil
 
 	case ".tar.xz":
-		return "root.tar.xz", "root.tar.xz", file.NewReadCloser(content, part), nil
+		return "root.tar.xz", "root.tar.xz", iox.NewReadCloser(content, part), nil
 	}
 
 	return "", "", nil, domain.NewValidationErrf("Unsupported image file %q, expected a squashfs image, a qcow2 disk or an xz compressed tarball", part.FileName())
@@ -437,7 +437,7 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 			return fmt.Errorf("Failed to get file %q from incus image %q, version %q: %w", "incus.tar.xz", img.Name, versionIdentifier, err)
 		}
 
-		_, err = file.SafeCopy(hash256, r)
+		_, err = iox.SafeCopy(hash256, r)
 		if err != nil {
 			return fmt.Errorf("Failed to read file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
@@ -447,7 +447,7 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 			return fmt.Errorf("Failed to get file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
 
-		_, err = file.SafeCopy(hash256, r)
+		_, err = iox.SafeCopy(hash256, r)
 		if err != nil {
 			return fmt.Errorf("Failed to read file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
@@ -931,7 +931,7 @@ func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem)
 
 	if item.file.HashSha256 != "" {
 		h = sha256.New()
-		teeStream = file.NewTeeReadCloser(stream, h)
+		teeStream = iox.NewTeeReadCloser(stream, h)
 	}
 
 	commit, cancel, _, err := s.filesRepo.Put(ctx, item.image, item.versionIdentifier, item.filename, teeStream)

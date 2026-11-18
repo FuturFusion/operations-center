@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -103,7 +104,7 @@ func (c *CmdBackup) run(cmd *cobra.Command, args []string) (err error) {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	progress, writer := render.ProgressWriter(targetFile, "Fetching backup: %s", quiet)
 
-	size, err := file.SafeCopy(writer, backupReader)
+	size, err := iox.SafeCopy(writer, backupReader)
 	if err != nil {
 		return err
 	}
