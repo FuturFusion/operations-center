@@ -61,8 +61,15 @@ type serverService struct {
 	secureBootCertificate provisioning.SecureBootCertificateSourcePort
 	secureBootCatalog     provisioning.SecureBootCertificateCatalogPort
 
+	bmcRecording provisioning.BMCRecordingRepo
+
 	deploymentControlLoopMu   sync.Mutex
 	deploymentControlLoopRuns map[string]*deploymentRun
+
+	// bmcRecordingSessions holds the open recordings by server name. A run only
+	// lives for a tick, so the sessions are kept here. Guarded by
+	// deploymentControlLoopMu.
+	bmcRecordingSessions map[string]bmcRecordingSession
 
 	httpClient *http.Client
 
@@ -139,6 +146,14 @@ func WithSecureBootMediaPort(media provisioning.SecureBootMediaPort, source prov
 		s.secureBootMedia = media
 		s.secureBootCertificate = source
 		s.secureBootCatalog = catalog
+	}
+}
+
+// WithBMCRecordingRepo enables the recording of the BMC exchanges of a
+// deployment.
+func WithBMCRecordingRepo(repo provisioning.BMCRecordingRepo) Option {
+	return func(s *serverService) {
+		s.bmcRecording = repo
 	}
 }
 
@@ -225,6 +240,7 @@ func New(
 		httpClient:       &http.Client{},
 
 		deploymentControlLoopRuns: map[string]*deploymentRun{},
+		bmcRecordingSessions:      map[string]bmcRecordingSession{},
 
 		serverCertificate: serverCertificate,
 
@@ -1227,11 +1243,15 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server name cannot be empty")
 	}
 
+	var deployment *provisioning.ServerDeployment
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server for delete: %w", err)
 		}
+
+		deployment = server.StatusInternal.Deployment
 
 		if server.Cluster != nil {
 			return domain.NewErrorf(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember, "Server %q is a member of cluster %q and can not be deleted", name, *server.Cluster).
@@ -1245,6 +1265,8 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to delete server %q: %w", name, err)
 	}
+
+	s.deleteBMCRecordings(ctx, name, deployment)
 
 	return nil
 }
