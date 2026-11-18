@@ -34,6 +34,7 @@ filename: >-
 structname: "{{ .InterfaceName }}WithSlog"
 pkgname: middleware
 packages:
+  github.com/FuturFusion/operations-center/internal/cluster:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/image:
   github.com/FuturFusion/operations-center/internal/provisioning:

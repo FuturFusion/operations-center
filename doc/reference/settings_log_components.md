@@ -12,6 +12,13 @@ api:
 
 - `api`
 
+cluster:
+
+- `cluster.config_repo`
+- `cluster.global_raft_repo`
+- `cluster.local_raft_repo`
+- `cluster.membership_service`
+
 config:
 
 - `config`

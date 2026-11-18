@@ -88,6 +88,9 @@ components:
       - cmd/operations-centerd
       - internal/api/**
       - internal/cluster
+      # The decorators of the cluster interfaces, which are part of the daemon.
+      - internal/cluster/middleware
+      - internal/cluster/repo/middleware
       - ui/**
       - internal/security/authn/**
       - internal/security/authz/**

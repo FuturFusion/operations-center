@@ -34,6 +34,8 @@ import (
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	clusterServiceMiddleware "github.com/FuturFusion/operations-center/internal/cluster/middleware"
+	clusterRepoMiddleware "github.com/FuturFusion/operations-center/internal/cluster/repo/middleware"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
 	clusterEntities "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -678,12 +680,13 @@ func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clu
 	}
 
 	// A standalone member uses the server certificate as the cluster certificate.
+	// The raft repos aren't wrapped with slog, they run every transaction of the daemon.
 	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.varRoot, d.listeners, localRepo, localCert, localCert, tasks)
 	if err != nil {
 		return nil, false, err
 	}
 
-	return svc, isClustered, nil
+	return clusterServiceMiddleware.NewMembershipServiceWithSlog(svc), isClustered, nil
 }
 
 func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership clusteringSvc.MembershipService, clusterAddress string, localDB *clusterRepo.LocalDB) (dbdriver.DBTX, error) {
@@ -701,7 +704,9 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 
 	slog.InfoContext(ctx, "Cluster database startup completed")
 
-	configRepo := clusterRepo.NewConfigRepo(globalRepo)
+	configRepo := clusterRepoMiddleware.NewConfigRepoWithSlog(
+		clusterRepo.NewConfigRepo(globalRepo),
+	)
 	err = membership.Enable(ctx, clusterAddress, configRepo, globalRepo)
 	if err != nil {
 		return nil, err
