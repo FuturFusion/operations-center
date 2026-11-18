@@ -2149,6 +2149,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		}]
 		repoUpdateFilesDelete     queue.Errs
 		repoUpdateFilesPruneFiles queue.Errs
+		wantNoFilesDeleted        bool
 
 		sourceGetLatestUpdates        provisioning.Updates
 		sourceGetLatestErr            error
@@ -2593,6 +2594,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoDeleteByUUID: queue.Errs{
 				boom.Error,
 			},
+			wantNoFilesDeleted: true,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -3564,8 +3566,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesDelete: queue.Errs{nil},
-			repoDeleteByUUID:      queue.Errs{boom.Error},
+			// The files are only deleted once the records are gone.
+			repoDeleteByUUID: queue.Errs{boom.Error},
 			// Fails the test, if the source is queried.
 			sourceGetLatestErr: boom.Error,
 
@@ -3614,6 +3616,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					return commitFunc, cancelFunc, err
 				},
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					if tc.wantNoFilesDeleted {
+						t.Error("The files of an update are deleted, although the deletion of its record failed")
+					}
+
 					return tc.repoUpdateFilesDelete.PopOrNil(t)
 				},
 				PruneFilesFunc: func(ctx context.Context, update provisioning.Update) error {
