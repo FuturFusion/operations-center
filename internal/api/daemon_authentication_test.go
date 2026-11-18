@@ -1251,9 +1251,13 @@ func TestAuthentication(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err = config.UpdateNetwork(ctx, system.NetworkPut{
+	err = config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 	security := system.SecurityPut{
@@ -1276,13 +1280,10 @@ func TestAuthentication(t *testing.T) {
 	require.NoError(t, err, "the security config with metrics only certificates must be accepted")
 
 	// The daemon command applies the metrics settings at startup.
-	metrics.Apply(config.GetSettings().MetricsEnabled, config.GetSettings().MetricsComponents)
+	metrics.Apply(config.GetLocalSettings().MetricsEnabled, config.GetLocalSettings().MetricsComponents)
 	t.Cleanup(func() { metrics.Apply(false, nil) })
 
-	d := restapi.NewDaemon(
-		ctx,
-		env,
-	)
+	d := restapi.NewDaemon(ctx, env)
 
 	err = d.Start(ctx)
 	t.Cleanup(func() {

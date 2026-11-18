@@ -72,7 +72,7 @@ var registerComponentsValidation = sync.OnceFunc(func() {
 })
 
 // validateComponentLevels rejects log levels configured for unknown components.
-func validateComponentLevels(_ context.Context, settings apisystem.Settings) error {
+func validateComponentLevels(_ context.Context, settings apisystem.SettingsLocal) error {
 	err := logger.ValidateComponentLevelsKnown(settings.LogLevels)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "settings.log_levels" property is invalid: %v`, err)
@@ -82,7 +82,7 @@ func validateComponentLevels(_ context.Context, settings apisystem.Settings) err
 }
 
 // validateMetricsComponents rejects metrics enabled for unknown components.
-func validateMetricsComponents(_ context.Context, settings apisystem.Settings) error {
+func validateMetricsComponents(_ context.Context, settings apisystem.SettingsLocal) error {
 	err := metrics.ValidateComponentsKnown(settings.MetricsComponents)
 	if err != nil {
 		return domain.NewValidationErrf(`Invalid config, "settings.metrics_components" property is invalid: %v`, err)

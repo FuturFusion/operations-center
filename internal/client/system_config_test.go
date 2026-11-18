@@ -46,7 +46,7 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			networkConfig: currentConfig.NetworkPut,
+			networkConfig: system.NetworkPut{NetworkLocalPut: currentConfig.NetworkLocalPut, NetworkGlobalPut: currentConfig.NetworkGlobalPut},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -57,8 +57,10 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			client: d.socketClient,
 
 			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-address",
+				NetworkLocalPut: system.NetworkLocalPut{
+					RestServerAddress: "not-an-address",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -70,8 +72,10 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 			client: d.socketClient,
 
 			networkConfig: system.NetworkPut{
-				OperationsCenterAddress: currentConfig.OperationsCenterAddress,
-				RestServerAddress:       "not-an-ip:8443",
+				NetworkLocalPut: system.NetworkLocalPut{
+					RestServerAddress: "not-an-ip:8443",
+				},
+				NetworkGlobalPut: currentConfig.NetworkGlobalPut,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -147,7 +151,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 		name   string
 		client client.OperationsCenterClient
 
-		settingsConfig system.SettingsPut
+		settingsConfig system.SettingsLocalPut
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T)
@@ -156,9 +160,8 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "success",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
-				LogLevel:                    "DEBUG",
-				ServerRegistrationScriptlet: "",
+			settingsConfig: system.SettingsLocalPut{
+				LogLevel: "DEBUG",
 			},
 
 			assertErr: require.NoError,
@@ -174,7 +177,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - not authorized",
 			client: d.unauthorizedHTTPClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevel: "INFO",
 			},
 
@@ -187,7 +190,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "success - log levels per component",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				// A level less verbose than the default keeps the rest of the
 				// test suite quiet.
 				LogLevels: map[string]string{"provisioning": "ERROR"},
@@ -208,7 +211,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, invalid log level",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevel: "not-a-log-level",
 			},
 
@@ -221,7 +224,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, invalid component name",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevels: map[string]string{"Provisioning": "DEBUG"},
 			},
 
@@ -234,7 +237,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			name:   "error - validation, unknown component",
 			client: d.socketClient,
 
-			settingsConfig: system.SettingsPut{
+			settingsConfig: system.SettingsLocalPut{
 				LogLevels: map[string]string{"provisionning": "DEBUG"},
 			},
 
@@ -247,7 +250,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemSettingsConfig(t.Context(), tc.settingsConfig)
+			err := tc.client.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{SettingsLocalPut: tc.settingsConfig})
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)

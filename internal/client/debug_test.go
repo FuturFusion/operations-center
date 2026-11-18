@@ -19,7 +19,7 @@ func Test_GetPprof(t *testing.T) {
 	tests := []struct {
 		name     string
 		client   client.OperationsCenterClient
-		settings system.SettingsPut
+		settings system.SettingsLocalPut
 
 		assertErr require.ErrorAssertionFunc
 		wantBody  string
@@ -27,7 +27,7 @@ func Test_GetPprof(t *testing.T) {
 		{
 			name:     "success",
 			client:   d.authorizedHTTPClient,
-			settings: system.SettingsPut{PprofEnabled: true},
+			settings: system.SettingsLocalPut{PprofEnabled: true},
 
 			assertErr: require.NoError,
 			wantBody:  "goroutine profile:",
@@ -35,7 +35,7 @@ func Test_GetPprof(t *testing.T) {
 		{
 			name:     "error - not authenticated",
 			client:   d.unauthorizedHTTPClient,
-			settings: system.SettingsPut{PprofEnabled: true},
+			settings: system.SettingsLocalPut{PprofEnabled: true},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated, a...)
@@ -44,7 +44,7 @@ func Test_GetPprof(t *testing.T) {
 		{
 			name:     "error - pprof disabled",
 			client:   d.authorizedHTTPClient,
-			settings: system.SettingsPut{},
+			settings: system.SettingsLocalPut{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "The pprof debug endpoints are disabled", a...)
@@ -55,7 +55,7 @@ func Test_GetPprof(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			err := d.socketClient.UpdateSystemSettingsConfig(t.Context(), tc.settings)
+			err := d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{SettingsLocalPut: tc.settings})
 			require.NoError(t, err)
 
 			t.Cleanup(func() {

@@ -73,9 +73,13 @@ func TestOpenFGAOutage(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err = config.UpdateNetwork(ctx, system.NetworkPut{
+	err = config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 	err = config.UpdateSecurity(ctx, system.SecurityPut{
