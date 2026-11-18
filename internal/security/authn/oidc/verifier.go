@@ -23,6 +23,8 @@ import (
 
 var Component = logger.RegisterComponent("security.authn.oidc")
 
+const defaultRetryInterval = 10 * time.Second
+
 // Verifier holds all information needed to verify an access token offline.
 type Verifier struct {
 	state *verifierState
@@ -33,6 +35,8 @@ type Verifier struct {
 	audience  string
 	claim     string
 	cookieKey []byte
+
+	retryInterval time.Duration
 }
 
 // verifierState is held through a pointer, so copies of Verifier share it.
@@ -381,7 +385,7 @@ func (o *Verifier) getAccessTokenVerifierCached(ctx context.Context) (*op.Access
 // until it succeeds or ctx is cancelled, e.g. if the OIDC issuer was not
 // reachable when the verifier was created.
 func (o *Verifier) retryGetAccessTokenVerifier(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(o.retryInterval)
 	defer ticker.Stop()
 
 	for {
@@ -457,7 +461,7 @@ func NewVerifier(ctx context.Context, issuer string, clientid string, scope stri
 		scopes = defaultOidcScopes
 	}
 
-	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim, state: &verifierState{}}
+	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim, state: &verifierState{}, retryInterval: defaultRetryInterval}
 	verifier.state.accessTokenVerifier, err = getAccessTokenVerifier(ctx, issuer)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to initialize OIDC verifier, retrying in background", slog.String("issuer", issuer), logger.Err(err))
