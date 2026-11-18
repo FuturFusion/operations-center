@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -134,6 +135,101 @@ func TestRedfish_ConnectionTest(t *testing.T) {
 			}
 
 			require.Equal(t, wantCert, cert)
+		})
+	}
+}
+
+type fakeBMCRecorder struct {
+	mu        sync.Mutex
+	exchanges []api.BMCRecordingExchange
+}
+
+func (f *fakeBMCRecorder) Record(_ context.Context, exchange api.BMCRecordingExchange) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.exchanges = append(f.exchanges, exchange)
+}
+
+func (f *fakeBMCRecorder) Stats() provisioning.BMCRecordingStats {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return provisioning.BMCRecordingStats{Exchanges: int64(len(f.exchanges))}
+}
+
+func (f *fakeBMCRecorder) requests() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	requests := make([]string, 0, len(f.exchanges))
+	for _, exchange := range f.exchanges {
+		requests = append(requests, fmt.Sprintf("%s %s %s %d", exchange.DeploymentState, exchange.Method, exchange.URL, exchange.Status))
+	}
+
+	return requests
+}
+
+func TestRedfish_ConnectionTest_recording(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		newScope func(recorder *fakeBMCRecorder) func(ctx context.Context) context.Context
+
+		wantRequests func(svrURL string) []string
+	}{
+		{
+			name: "with a scope, the exchanges are recorded",
+			newScope: func(recorder *fakeBMCRecorder) func(ctx context.Context) context.Context {
+				return func(ctx context.Context) context.Context {
+					return provisioning.ContextWithBMCRecordingScope(ctx, provisioning.BMCRecordingScope{
+						Recorder: recorder,
+						State:    api.ServerDeploymentStateRefreshBMCData,
+					})
+				}
+			},
+
+			wantRequests: func(svrURL string) []string {
+				return []string{"refresh-bmc-data GET " + svrURL + "/redfish/v1/ 200"}
+			},
+		},
+		{
+			name: "without a scope, nothing is recorded",
+			newScope: func(*fakeBMCRecorder) func(ctx context.Context) context.Context {
+				return func(ctx context.Context) context.Context { return ctx }
+			},
+
+			wantRequests: func(string) []string {
+				return []string{}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			svr := httptest.NewTLSServer(newMockRedfishHandler(mockRedfishServer{serviceRootStatusCode: http.StatusOK}, nil))
+			defer svr.Close()
+
+			recorder := &fakeBMCRecorder{}
+			ctx := tc.newScope(recorder)(t.Context())
+
+			client := redfish.New(redfish.WithRequestRetryDelay(time.Millisecond))
+
+			// Run test
+			_, err := client.ConnectionTest(ctx, provisioning.Server{
+				BMCConfig: api.BMCConfig{
+					Endpoint:    svr.URL,
+					Certificate: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: svr.Certificate().Raw})),
+				},
+			})
+
+			// Assert
+			require.NoError(t, err)
+			require.Equal(t, tc.wantRequests(svr.URL), recorder.requests())
 		})
 	}
 }

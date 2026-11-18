@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func newTestRetryTransport(t *testing.T, next http.RoundTripper) (*retryTransport, *[]time.Duration) {
@@ -435,6 +437,346 @@ func Test_parseRetryAfter(t *testing.T) {
 
 			require.Equal(t, tc.wantOK, ok)
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func newObservedRequest(method string, body string) func(t *testing.T) *http.Request {
+	return func(t *testing.T) *http.Request {
+		t.Helper()
+
+		var reader io.Reader
+		if body != "" {
+			reader = strings.NewReader(body)
+		}
+
+		req, err := http.NewRequestWithContext(t.Context(), method, "https://bmc.example.com/redfish/v1", reader)
+		require.NoError(t, err)
+
+		req.Header.Set("Authorization", "Basic YWRtaW46c2VjcmV0")
+
+		return req
+	}
+}
+
+type observedResponse struct {
+	status int
+	body   string
+	err    error
+}
+
+func readAllAndClose(t *testing.T, resp *http.Response) {
+	t.Helper()
+
+	_, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+}
+
+func TestRetryTransport_RoundTripObserve(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 27, 8, 15, 0, 0, time.UTC)
+	redactedAuthorization := map[string][]string{"Authorization": {"<redacted>"}}
+	responseHeaders := map[string][]string{"Content-Type": {"application/json"}, "X-Auth-Token": {"<redacted>"}}
+
+	exchange := func(attempt int, method string, status int, body string) api.BMCRecordingExchange {
+		return api.BMCRecordingExchange{
+			Timestamp:       now,
+			Attempt:         attempt,
+			Method:          method,
+			URL:             "https://bmc.example.com/redfish/v1",
+			RequestHeaders:  redactedAuthorization,
+			Status:          status,
+			ResponseHeaders: responseHeaders,
+			ResponseBody:    body,
+			ResponseSize:    int64(len(body)),
+		}
+	}
+
+	tests := []struct {
+		name       string
+		newRequest func(t *testing.T) *http.Request
+		bodyLimit  int
+		responses  []observedResponse
+		consume    func(t *testing.T, resp *http.Response)
+
+		assertErr     require.ErrorAssertionFunc
+		wantSent      []string
+		wantExchanges []api.BMCRecordingExchange
+	}{
+		{
+			name:       "a read produces one exchange",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			responses:  []observedResponse{{status: http.StatusOK, body: `{"Id":"1"}`}},
+			consume:    readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{""},
+			wantExchanges: []api.BMCRecordingExchange{
+				exchange(0, http.MethodGet, http.StatusOK, `{"Id":"1"}`),
+			},
+		},
+		{
+			name:       "a retried read produces one exchange per attempt",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			responses: []observedResponse{
+				{status: http.StatusServiceUnavailable, body: "busy"},
+				{status: http.StatusOK, body: "ok"},
+			},
+			consume: readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{"", ""},
+			wantExchanges: []api.BMCRecordingExchange{
+				exchange(0, http.MethodGet, http.StatusServiceUnavailable, "busy"),
+				exchange(1, http.MethodGet, http.StatusOK, "ok"),
+			},
+		},
+		{
+			name:       "a write has its password redacted in the recording only",
+			newRequest: newObservedRequest(http.MethodPatch, `{"UserName":"admin","Password":"secret"}`),
+			responses: []observedResponse{
+				{status: http.StatusServiceUnavailable, body: "busy"},
+				{status: http.StatusOK, body: "ok"},
+			},
+			consume: readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{`{"UserName":"admin","Password":"secret"}`},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodPatch, http.StatusServiceUnavailable, "busy")
+					e.RequestBody = `{"Password":"<redacted>","UserName":"admin"}`
+					e.RequestSize = 40
+
+					return e
+				}(),
+			},
+		},
+		{
+			name:       "a request body above the limit is sent in full and recorded truncated",
+			newRequest: newObservedRequest(http.MethodPost, "0123456789abcdef"),
+			bodyLimit:  8,
+			responses:  []observedResponse{{status: http.StatusOK}},
+			consume:    readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{"0123456789abcdef"},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodPost, http.StatusOK, "")
+					e.RequestBody = "01234567"
+					e.RequestSize = 16
+					e.RequestTruncated = true
+
+					return e
+				}(),
+			},
+		},
+		{
+			name: "a request body without GetBody is sent in full",
+			newRequest: func(t *testing.T) *http.Request {
+				t.Helper()
+
+				req := newObservedRequest(http.MethodPost, "0123456789abcdef")(t)
+				req.GetBody = nil
+
+				return req
+			},
+			bodyLimit: 8,
+			responses: []observedResponse{{status: http.StatusOK}},
+			consume:   readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{"0123456789abcdef"},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodPost, http.StatusOK, "")
+					e.RequestBody = "01234567"
+					e.RequestSize = 16
+					e.RequestTruncated = true
+
+					return e
+				}(),
+			},
+		},
+		{
+			name:       "a response body above the limit is recorded truncated",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			bodyLimit:  8,
+			responses:  []observedResponse{{status: http.StatusOK, body: "0123456789abcdef"}},
+			consume:    readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{""},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodGet, http.StatusOK, "01234567")
+					e.ResponseSize = 16
+					e.ResponseTruncated = true
+
+					return e
+				}(),
+			},
+		},
+		{
+			name:       "a truncated text body cut inside a character stays text",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			bodyLimit:  4,
+			responses:  []observedResponse{{status: http.StatusOK, body: "abcé"}},
+			consume:    readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{""},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodGet, http.StatusOK, "abc")
+					e.ResponseSize = 5
+					e.ResponseTruncated = true
+
+					return e
+				}(),
+			},
+		},
+		{
+			name:       "a binary response body is recorded base64 encoded",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			responses:  []observedResponse{{status: http.StatusOK, body: "\xff\xfe\x00"}},
+			consume:    readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{""},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodGet, http.StatusOK, "//4A")
+					e.ResponseBodyEncoding = api.BMCRecordingBodyEncodingBase64
+					e.ResponseSize = 3
+
+					return e
+				}(),
+			},
+		},
+		{
+			name:       "a transport error of a read is recorded for the attempt",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			responses: []observedResponse{
+				{err: io.EOF},
+				{status: http.StatusOK, body: "ok"},
+			},
+			consume: readAllAndClose,
+
+			assertErr: require.NoError,
+			wantSent:  []string{"", ""},
+			wantExchanges: []api.BMCRecordingExchange{
+				{
+					Timestamp:      now,
+					Attempt:        0,
+					Method:         http.MethodGet,
+					URL:            "https://bmc.example.com/redfish/v1",
+					RequestHeaders: redactedAuthorization,
+					TransportError: "EOF",
+				},
+				exchange(1, http.MethodGet, http.StatusOK, "ok"),
+			},
+		},
+		{
+			name:       "a transport error of a write is recorded",
+			newRequest: newObservedRequest(http.MethodPost, "{}"),
+			responses:  []observedResponse{{err: timeoutError{}}},
+			consume:    func(*testing.T, *http.Response) {},
+
+			assertErr: require.Error,
+			wantSent:  []string{"{}"},
+			wantExchanges: []api.BMCRecordingExchange{
+				{
+					Timestamp:      now,
+					Attempt:        0,
+					Method:         http.MethodPost,
+					URL:            "https://bmc.example.com/redfish/v1",
+					RequestHeaders: redactedAuthorization,
+					RequestBody:    "{}",
+					RequestSize:    2,
+					TransportError: timeoutError{}.Error(),
+				},
+			},
+		},
+		{
+			name:       "a body closed before EOF is recorded once and truncated",
+			newRequest: newObservedRequest(http.MethodGet, ""),
+			responses:  []observedResponse{{status: http.StatusOK, body: "0123456789"}},
+			consume: func(t *testing.T, resp *http.Response) {
+				t.Helper()
+
+				_, err := io.ReadFull(resp.Body, make([]byte, 4))
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+				require.NoError(t, resp.Body.Close(), "a second close is harmless")
+			},
+
+			assertErr: require.NoError,
+			wantSent:  []string{""},
+			wantExchanges: []api.BMCRecordingExchange{
+				func() api.BMCRecordingExchange {
+					e := exchange(0, http.MethodGet, http.StatusOK, "0123")
+					e.ResponseSize = 4
+					e.ResponseTruncated = true
+
+					return e
+				}(),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			var sent []string
+
+			transport, _ := newTestRetryTransport(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				body := ""
+				if req.Body != nil {
+					content, err := io.ReadAll(req.Body)
+					require.NoError(t, err)
+
+					body = string(content)
+				}
+
+				sent = append(sent, body)
+				response := tc.responses[len(sent)-1]
+
+				if response.err != nil {
+					return nil, response.err
+				}
+
+				return &http.Response{
+					StatusCode: response.status,
+					Header:     http.Header{"Content-Type": {"application/json"}, "X-Auth-Token": {"token"}},
+					Body:       io.NopCloser(strings.NewReader(response.body)),
+				}, nil
+			}))
+			transport.now = func() time.Time { return now }
+
+			if tc.bodyLimit > 0 {
+				transport.bodyLimit = tc.bodyLimit
+			}
+
+			var exchanges []api.BMCRecordingExchange
+
+			transport.observe = func(exchange api.BMCRecordingExchange) {
+				exchanges = append(exchanges, exchange)
+			}
+
+			// Run test
+			resp, err := transport.RoundTrip(tc.newRequest(t)) //nolint:bodyclose // Closed by consume.
+			tc.assertErr(t, err)
+			tc.consume(t, resp)
+
+			// Assert
+			require.Equal(t, tc.wantSent, sent, "the BMC receives the original request bodies")
+			require.Equal(t, tc.wantExchanges, exchanges)
 		})
 	}
 }
