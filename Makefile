@@ -363,3 +363,20 @@ clean-e2e-test-logs:
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/unit_tests_*.log
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/debug_output_*.log
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/*_journal_*.log
+
+# The upgrade test of the cluster tests starts the daemon of a release, the latest tag unless given.
+CLUSTER_TEST_LEGACY_VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null)
+CLUSTER_TEST_LEGACY_BINARY = $(CURDIR)/bin/legacy-$(CLUSTER_TEST_LEGACY_VERSION)/operations-centerd
+CLUSTER_TEST_RUN ?= .
+CLUSTER_TEST_TIMEOUT ?= 30m
+
+.PHONY: cluster-test
+cluster-test: bld $(CLUSTER_TEST_LEGACY_BINARY)
+	OPERATIONS_CENTER_CLUSTER_TEST=1 OPERATIONS_CENTER_CLUSTER_TEST_LEGACY_BINARY=$(CLUSTER_TEST_LEGACY_BINARY) $(GO) test ./cluster_tests/ -v -count 1 -timeout $(CLUSTER_TEST_TIMEOUT) -run "$(CLUSTER_TEST_RUN)"
+
+$(CLUSTER_TEST_LEGACY_BINARY):
+	@if [ -z "$(CLUSTER_TEST_LEGACY_VERSION)" ]; then \
+		echo "No release tag found, set CLUSTER_TEST_LEGACY_VERSION."; \
+		exit 1; \
+	fi
+	GOBIN=$(dir $@) GOFLAGS= $(GO) install github.com/FuturFusion/operations-center/cmd/operations-centerd@$(CLUSTER_TEST_LEGACY_VERSION)
