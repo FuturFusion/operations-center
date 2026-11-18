@@ -15,7 +15,9 @@ import (
 func Test_startingAuthorizer(t *testing.T) {
 	t.Parallel()
 
-	var authorizer authz.Authorizer = startingAuthorizer{}
+	replaceable := authz.NewReplaceable(startingAuthorizer{})
+
+	var authorizer authz.Authorizer = replaceable
 
 	authenticator := authn.New([]authn.Auther{dummyAuthenticator{}})
 
@@ -35,6 +37,6 @@ func Test_startingAuthorizer(t *testing.T) {
 	// A trusted request while the security configuration is not loaded yet is asked to retry, not refused.
 	require.Equal(t, http.StatusTooEarly, get())
 
-	authorizer = noopAuthorizer{}
+	replaceable.Replace(noopAuthorizer{})
 	require.Equal(t, http.StatusOK, get())
 }

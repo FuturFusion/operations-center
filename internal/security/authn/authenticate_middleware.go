@@ -60,6 +60,9 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// The whole request uses one configuration, also if it is replaced meanwhile.
+			current := a.current.Load()
+
 			var username, protocol string
 			var trusted bool
 			var err error
@@ -98,7 +101,7 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			}
 
 			// Authentication
-			for _, auther := range a.authers {
+			for _, auther := range current.authers {
 				trusted, username, protocol, err = auther.Auth(w, r)
 				if err != nil {
 					slog.WarnContext(logCtx, "Authentication failed", logger.Err(err), slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
@@ -116,7 +119,7 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				}
 			}
 
-			if cfg.isAuthenticationRequired(r) && !trusted && a.starting {
+			if cfg.isAuthenticationRequired(r) && !trusted && current.starting {
 				renderStarting(logCtx, w, r)
 				return
 			}
