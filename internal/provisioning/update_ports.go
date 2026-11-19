@@ -28,6 +28,8 @@ type UpdateService interface {
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
+	GetArchive(ctx context.Context, id uuid.UUID) (_ io.ReadCloser, size int, _ error)
+	Download(ctx context.Context, version string, channels []string) (uuid.UUID, error)
 	CleanupAll(ctx context.Context) error
 	Prune(ctx context.Context) error
 	Refresh(ctx context.Context) error
@@ -68,4 +70,6 @@ type UpdateFilesRepo interface {
 type UpdateSourcePort interface {
 	GetLatest(ctx context.Context, limit int) (Updates, error)
 	GetUpdateFileByFilenameUnverified(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
+	GetUpdateManifest(ctx context.Context, update Update) ([]byte, error)
+	GetByVersion(ctx context.Context, version string) (Update, error)
 }

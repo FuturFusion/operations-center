@@ -69,6 +69,20 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateAddCmd.Command())
 
+	// Download
+	updateDownloadCmd := cmdUpdateDownload{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateDownloadCmd.Command())
+
+	// Export
+	updateExportCmd := cmdUpdateExport{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateExportCmd.Command())
+
 	// Assign Channels
 	updateAssignChannelsCmd := cmdUpdateAssignChannels{
 		ocClient: c.OCClient,
@@ -352,7 +366,10 @@ func (c *cmdUpdateAdd) Command() *cobra.Command {
 	cmd.Use = "add <filename>"
 	cmd.Short = "Add an update"
 	cmd.Long = `Description:
-  Add an update.
+  Add an update from a tar archive.
+
+  The archive contains the signed manifest "update.sjson" and the files of the
+  update. Use "export" to create such an archive from another Operations Center.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -383,6 +400,132 @@ func (c *cmdUpdateAdd) run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
 	}
+
+	return nil
+}
+
+// Download update.
+type cmdUpdateDownload struct {
+	ocClient *client.OperationsCenterClient
+
+	flagChannels []string
+}
+
+func (c *cmdUpdateDownload) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "download <version>"
+	cmd.Short = "Download an update with a specific version"
+	cmd.Long = `Description:
+  Download an update with a specific version from the update source.
+
+  The update source might provide versions, which are no longer listed. The
+  update is assigned to the given channels, or to the default channel.
+
+  A refresh removes updates, which are neither in use by a server nor among
+  the most recent updates of a channel. Assign an older version to a separate
+  channel to keep it.
+`
+
+	cmd.Flags().StringSliceVar(&c.flagChannels, "channel", []string{}, "channel the update should be assigned to")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateDownload) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateDownload) run(cmd *cobra.Command, args []string) error {
+	version := args[0]
+
+	err := c.ocClient.DownloadUpdate(cmd.Context(), api.UpdateDownloadPost{
+		Version:  version,
+		Channels: c.flagChannels,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to download update %q: %w", version, err)
+	}
+
+	return nil
+}
+
+// Export update.
+type cmdUpdateExport struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateExport) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "export <uuid> <target-filename>"
+	cmd.Short = "Export an update"
+	cmd.Long = `Description:
+  Export an update as tar archive.
+
+  Use "add" to add the archive to another Operations Center.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateExport) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateExport) run(cmd *cobra.Command, args []string) (err error) {
+	id := args[0]
+	targetFilename := args[1]
+
+	archive, err := c.ocClient.GetUpdateArchive(cmd.Context(), id)
+	if err != nil {
+		return fmt.Errorf("Failed to export update %q: %w", id, err)
+	}
+
+	defer archive.Close()
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		closeErr := targetFile.Close()
+		var removeErr error
+		if err != nil {
+			removeErr = os.Remove(targetFilename)
+		}
+
+		err = errors.Join(err, closeErr, removeErr)
+	}()
+
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	format := fmt.Sprintf("Exporting update %s: %%s", id)
+
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
+
+	size, err := file.SafeCopy(writer, archive)
+	if err != nil {
+		return fmt.Errorf("Failed to export update %q: %w", id, err)
+	}
+
+	progress.Done(fmt.Sprintf("Successfully written %s to %q ", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
 }

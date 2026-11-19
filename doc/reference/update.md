@@ -130,3 +130,48 @@ and the files inside those.
 
 It's possible to skip files that are not needed, for example, architectures
 not used, can be left out of the tar file.
+
+### Download a specific version
+
+A refresh only downloads the most recent updates. To download an older
+version, request it by its version:
+
+```shell
+operations-center provisioning update download 202610272234 --channel legacy
+```
+
+This only works, as long as the update source still provides the version. The
+update source keeps only a limited number of versions. If the update source no
+longer provides the version, export the update from another Operations Center.
+See [Export an update](#export-an-update).
+
+Without `--channel`, the update is assigned to the default channel. A refresh
+removes updates, which are neither in use by a server nor among the most recent
+updates of a channel. Assign an older version to a separate channel to keep it.
+
+### Export an update
+
+An update can be exported from one Operations Center and added to another
+Operations Center. This makes an update available, even if the update source
+no longer provides it. For example, use this to deploy the same version as in
+another environment:
+
+```shell
+operations-center provisioning update export <uuid> update.tar
+operations-center provisioning update add update.tar
+```
+
+Run `export` against the Operations Center, which has the update. Run `add`
+against the Operations Center, which needs the update.
+
+The archive has the format described in
+[Prepare manual updates](#prepare-manual-updates). It contains the signed
+manifest `update.sjson` and the files of the update. Both Operations Center
+instances need the same `signature_verification_root_ca` in the
+[Update settings](settings.md#update-settings).
+
+Operations Center stores the signed manifest when it downloads an update from
+the update source. Updates downloaded by Operations Center versions without
+this feature do not have the manifest. A refresh fetches the missing manifest,
+as long as the update source still provides the update. Otherwise, the export
+of the update fails.

@@ -2,6 +2,7 @@ package update
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -12,6 +13,8 @@ import (
 	"hash"
 	"io"
 	"log/slog"
+	"path"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -564,6 +567,323 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	return s.filesRepo.Get(ctx, *update, filename)
 }
 
+var updateVersionPattern = regexp.MustCompile(`^[0-9]+$`)
+
+// Download downloads the update with the given version from the update
+// source. The source can provide versions, which are no longer in its index.
+// The update is assigned to channels. Without channels, the update is
+// assigned to the default channel.
+func (s updateService) Download(ctx context.Context, version string, channels []string) (_ uuid.UUID, err error) {
+	if !updateVersionPattern.MatchString(version) {
+		return uuid.Nil, domain.NewValidationErrf("Invalid version %q, a version only contains digits", version)
+	}
+
+	if config.GetUpdates().Source == "" {
+		return uuid.Nil, provisioning.ErrUpdateSourceNotConfigured
+	}
+
+	if len(channels) == 0 {
+		channels = []string{config.GetUpdates().UpdatesDefaultChannel}
+	}
+
+	update, err := s.source.GetByVersion(ctx, version)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	// An explicit request overrules the update filter expression. The file
+	// filter expression still applies, it selects the architectures.
+	updates, err := s.filterUpdateFileByFilterExpression(provisioning.Updates{update})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	update = updates[0]
+	update.Channels = channels
+	update.Status = api.UpdateStatusPending
+
+	err = update.Validate()
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Validate update: %w", err)
+	}
+
+	err = s.isSpaceAvailable(ctx, []provisioning.Update{update})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := s.repo.GetByUUID(ctx, update.UUID)
+		if err == nil {
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "Update %q with version %q is already present", update.UUID.String(), version).
+				WithHintf("Assign the present update to the channels instead.").
+				WithDetail("update", update.UUID.String()).
+				WithDetail("version", version)
+		}
+
+		if !errors.Is(err, domain.ErrNotFound) {
+			return fmt.Errorf("Failed to get update %q: %w", update.UUID.String(), err)
+		}
+
+		err = s.repo.Upsert(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to move update in pending state: %w", err)
+		}
+
+		// Assign the channels first. An unknown channel fails before the download.
+		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewErrorf(domain.ErrNotFound, "", "Update %q can not be assigned to the channels %v, at least one of them does not exist", update.UUID.String(), update.Channels).
+					WithHintf("Create the channel first or assign the update to an existing channel.").
+					WithDetail("update", update.UUID.String()).
+					WithDetail("channels", strings.Join(update.Channels, ", ")).
+					WithCause(err)
+			}
+
+			return fmt.Errorf("Failed to assign channels %v to update %q: %w", update.Channels, update.UUID.String(), err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		s.removeFailedDownload(ctx, update)
+	}()
+
+	for _, updateFile := range update.Files {
+		err = s.downloadFile(ctx, update, updateFile)
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
+
+	err = s.fetchManifest(ctx, update)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Failed to store manifest of update %q: %w", update.UUID.String(), err)
+	}
+
+	update.Status = api.UpdateStatusReady
+
+	err = s.repo.Upsert(ctx, update)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
+	}
+
+	return update.UUID, nil
+}
+
+// removeFailedDownload removes a partly downloaded update. A refresh would
+// remove it too, but only after the pending grace period.
+func (s updateService) removeFailedDownload(ctx context.Context, update provisioning.Update) {
+	// The request context might be canceled already.
+	ctx = context.WithoutCancel(ctx)
+
+	err := s.filesRepo.Delete(ctx, update)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to remove files of failed update download", slog.String("update", update.UUID.String()), logger.Err(err))
+	}
+
+	err = s.repo.DeleteByUUID(ctx, update.UUID)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to remove failed update download", slog.String("update", update.UUID.String()), logger.Err(err))
+	}
+}
+
+// GetArchive returns the update as tar archive and the exact size of the
+// archive. CreateFromArchive accepts this archive, so an update can be moved
+// to another Operations Center.
+func (s updateService) GetArchive(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if update.Status != api.UpdateStatusReady {
+		return nil, 0, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Update %q is not ready", id.String()).
+			WithHintf("Wait for the download of the update to complete.").
+			WithDetail("update", id.String()).
+			WithDetail("status", update.Status.String())
+	}
+
+	filenames := make([]string, 0, len(update.Files)+1)
+	filenames = append(filenames, provisioning.UpdateManifestFilename)
+	for _, updateFile := range update.Files {
+		filenames = append(filenames, updateFile.Filename)
+	}
+
+	// Check all files before the first byte is sent. An error after this
+	// point only truncates the archive.
+	for _, filename := range filenames {
+		ok, err := s.filesRepo.Exists(ctx, *update, filename)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to check file %q of update %q: %w", filename, id.String(), err)
+		}
+
+		if ok {
+			continue
+		}
+
+		if filename == provisioning.UpdateManifestFilename {
+			return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Update %q has no signed manifest", id.String()).
+				WithHintf("Refresh the updates, while the update source still provides the update. Updates downloaded by older versions of Operations Center do not have the manifest.").
+				WithDetail("update", id.String())
+		}
+
+		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "File %q of update %q is missing", filename, id.String()).
+			WithHintf("Refresh the updates to download the missing files.").
+			WithDetail("update", id.String()).
+			WithDetail("file", filename)
+	}
+
+	// Open all files up front. The sizes give the exact archive size, so the
+	// client detects a truncated archive.
+	entries, err := s.openArchiveEntries(ctx, *update, filenames)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	size, err := archiveSize(entries)
+	if err != nil {
+		closeArchiveEntries(entries)
+		return nil, 0, err
+	}
+
+	pr, pw := io.Pipe()
+	go func() {
+		defer closeArchiveEntries(entries)
+
+		pw.CloseWithError(writeArchive(entries, pw))
+	}()
+
+	return pr, size, nil
+}
+
+type archiveEntry struct {
+	header *tar.Header
+	// content is nil for directories.
+	content io.ReadCloser
+}
+
+func (s updateService) openArchiveEntries(ctx context.Context, update provisioning.Update, filenames []string) ([]archiveEntry, error) {
+	entries := make([]archiveEntry, 0, len(filenames)+4)
+	dirs := make(map[string]bool, 4)
+	for _, filename := range filenames {
+		// CreateFromArchive does not create missing parent directories.
+		entries = appendArchiveDirs(entries, dirs, path.Dir(filename), update.PublishedAt)
+
+		rc, size, err := s.filesRepo.Get(ctx, update, filename)
+		if err != nil {
+			closeArchiveEntries(entries)
+			return nil, fmt.Errorf("Failed to open file %q of update %q: %w", filename, update.UUID.String(), err)
+		}
+
+		entries = append(entries, archiveEntry{
+			header: &tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     filename,
+				Mode:     0o644,
+				Size:     int64(size),
+				ModTime:  update.PublishedAt,
+			},
+			content: rc,
+		})
+	}
+
+	return entries, nil
+}
+
+func appendArchiveDirs(entries []archiveEntry, dirs map[string]bool, dir string, modTime time.Time) []archiveEntry {
+	if dir == "." || dir == "/" || dirs[dir] {
+		return entries
+	}
+
+	entries = appendArchiveDirs(entries, dirs, path.Dir(dir), modTime)
+	dirs[dir] = true
+
+	return append(entries, archiveEntry{
+		header: &tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     dir + "/",
+			Mode:     0o755,
+			ModTime:  modTime,
+		},
+	})
+}
+
+func closeArchiveEntries(entries []archiveEntry) {
+	for _, entry := range entries {
+		if entry.content != nil {
+			_ = entry.content.Close()
+		}
+	}
+}
+
+// tarBlockSize is the block size of the tar format. Headers and file
+// contents are padded to this size.
+const tarBlockSize = 512
+
+// archiveSize returns the exact size of the archive that writeArchive writes
+// for the given entries.
+func archiveSize(entries []archiveEntry) (int, error) {
+	var size int64
+	for _, entry := range entries {
+		// The tar writer adds extra header blocks for long names or large
+		// files. Let it encode the header to get its exact size.
+		var counter byteCounter
+		err := tar.NewWriter(&counter).WriteHeader(entry.header)
+		if err != nil {
+			return 0, fmt.Errorf("Failed to encode archive header for %q: %w", entry.header.Name, err)
+		}
+
+		size += counter.n
+		size += (entry.header.Size + tarBlockSize - 1) / tarBlockSize * tarBlockSize
+	}
+
+	// The archive ends with two zero blocks.
+	size += 2 * tarBlockSize
+
+	return int(size), nil
+}
+
+type byteCounter struct {
+	n int64
+}
+
+func (c *byteCounter) Write(p []byte) (int, error) {
+	c.n += int64(len(p))
+	return len(p), nil
+}
+
+func writeArchive(entries []archiveEntry, w io.Writer) error {
+	tw := tar.NewWriter(w)
+
+	for _, entry := range entries {
+		err := tw.WriteHeader(entry.header)
+		if err != nil {
+			return fmt.Errorf("Failed to write archive header for %q: %w", entry.header.Name, err)
+		}
+
+		if entry.content == nil {
+			continue
+		}
+
+		_, err = file.SafeCopy(tw, entry.content)
+		if err != nil {
+			return fmt.Errorf("Failed to add file %q to archive: %w", entry.header.Name, err)
+		}
+	}
+
+	return tw.Close()
+}
+
 // Refresh refreshes the updates from an origin.
 //
 // This operations is performed in the following steps:
@@ -582,6 +902,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 //     for removal.
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
+//   - Store the signed manifest of each update from the origin, if it is missing. The export of an update needs it.
 //
 // If no update source is configured, Refresh only cleans up the updates in the
 // repository and returns [provisioning.ErrUpdateSourceNotConfigured].
@@ -678,6 +999,11 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return provisioning.ErrUpdateSourceNotConfigured
 	}
 
+	inOrigin := make(map[uuid.UUID]bool, len(originUpdates))
+	for _, update := range originUpdates {
+		inOrigin[update.UUID] = true
+	}
+
 	for _, update := range toRefreshUpdates {
 		// Make sure, we do have enough space left in the files repository before downloading the files.
 		refreshUpdate := provisioning.Update{
@@ -713,6 +1039,12 @@ func (s updateService) Refresh(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		// Updates downloaded by older versions of Operations Center miss the
+		// manifest. Fetch it, while the origin still provides the update.
+		if inOrigin[update.UUID] {
+			s.storeManifest(ctx, update)
 		}
 	}
 
@@ -759,6 +1091,8 @@ func (s updateService) Refresh(ctx context.Context) error {
 				return err
 			}
 		}
+
+		s.storeManifest(ctx, update)
 
 		update.Status = api.UpdateStatusReady
 
@@ -1135,6 +1469,45 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []p
 	}
 
 	return nil
+}
+
+// storeManifest stores the signed manifest of the update, if it is missing.
+// Only the export of the update needs the manifest, so a failure does not
+// fail the refresh.
+func (s updateService) storeManifest(ctx context.Context, update provisioning.Update) {
+	err := s.fetchManifest(ctx, update)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to store manifest of update", slog.String("update", update.UUID.String()), slog.String("version", update.Version), logger.Err(err))
+	}
+}
+
+func (s updateService) fetchManifest(ctx context.Context, update provisioning.Update) (err error) {
+	ok, err := s.filesRepo.Exists(ctx, update, provisioning.UpdateManifestFilename)
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		return nil
+	}
+
+	manifest, err := s.source.GetUpdateManifest(ctx, update)
+	if err != nil {
+		return err
+	}
+
+	commit, cancel, err := s.filesRepo.Put(ctx, update, provisioning.UpdateManifestFilename, io.NopCloser(bytes.NewReader(manifest)))
+	defer func() {
+		cancelErr := cancel()
+		if cancelErr != nil {
+			err = errors.Join(err, cancelErr)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+
+	return commit()
 }
 
 func (s updateService) downloadFile(ctx context.Context, update provisioning.Update, updateFile provisioning.UpdateFile) (err error) {

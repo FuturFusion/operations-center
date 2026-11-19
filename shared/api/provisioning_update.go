@@ -84,6 +84,20 @@ type UpdatePut struct {
 	Channels []string `json:"channels" yaml:"channels"`
 }
 
+// UpdateDownloadPost defines the update to download from the update source.
+//
+// swagger:model
+type UpdateDownloadPost struct {
+	// Version of the update.
+	// Example: 202610272234
+	Version string `json:"version" yaml:"version"`
+
+	// Channels holds the name of the channels the update is assigned to.
+	// Without channels, the update is assigned to the default channel.
+	// Example: ["legacy"]
+	Channels []string `json:"channels" yaml:"channels"`
+}
+
 // Update defines an update.
 //
 // swagger:model

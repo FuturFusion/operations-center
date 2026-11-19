@@ -33,6 +33,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			CreateFromArchiveFunc: func(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
 //				panic("mock out the CreateFromArchive method")
 //			},
+//			DownloadFunc: func(ctx context.Context, version string, channels []string) (uuid.UUID, error) {
+//				panic("mock out the Download method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -44,6 +47,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			},
 //			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 //				panic("mock out the GetAllWithFilter method")
+//			},
+//			GetArchiveFunc: func(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+//				panic("mock out the GetArchive method")
 //			},
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
@@ -88,6 +94,9 @@ type UpdateServiceMock struct {
 	// CreateFromArchiveFunc mocks the CreateFromArchive method.
 	CreateFromArchiveFunc func(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
 
+	// DownloadFunc mocks the Download method.
+	DownloadFunc func(ctx context.Context, version string, channels []string) (uuid.UUID, error)
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Updates, error)
 
@@ -99,6 +108,9 @@ type UpdateServiceMock struct {
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error)
+
+	// GetArchiveFunc mocks the GetArchive method.
+	GetArchiveFunc func(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error)
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
@@ -144,6 +156,15 @@ type UpdateServiceMock struct {
 			// TarReader is the tarReader argument value.
 			TarReader *tar.Reader
 		}
+		// Download holds details about calls to the Download method.
+		Download []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Version is the version argument value.
+			Version string
+			// Channels is the channels argument value.
+			Channels []string
+		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
@@ -167,6 +188,13 @@ type UpdateServiceMock struct {
 			Ctx context.Context
 			// Filter is the filter argument value.
 			Filter provisioning.UpdateFilter
+		}
+		// GetArchive holds details about calls to the GetArchive method.
+		GetArchive []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// GetByUUID holds details about calls to the GetByUUID method.
 		GetByUUID []struct {
@@ -247,10 +275,12 @@ type UpdateServiceMock struct {
 	}
 	lockCleanupAll                      sync.RWMutex
 	lockCreateFromArchive               sync.RWMutex
+	lockDownload                        sync.RWMutex
 	lockGetAll                          sync.RWMutex
 	lockGetAllUUIDs                     sync.RWMutex
 	lockGetAllUUIDsWithFilter           sync.RWMutex
 	lockGetAllWithFilter                sync.RWMutex
+	lockGetArchive                      sync.RWMutex
 	lockGetByUUID                       sync.RWMutex
 	lockGetChangelog                    sync.RWMutex
 	lockGetChangelogByChannel           sync.RWMutex
@@ -328,6 +358,46 @@ func (mock *UpdateServiceMock) CreateFromArchiveCalls() []struct {
 	mock.lockCreateFromArchive.RLock()
 	calls = mock.calls.CreateFromArchive
 	mock.lockCreateFromArchive.RUnlock()
+	return calls
+}
+
+// Download calls DownloadFunc.
+func (mock *UpdateServiceMock) Download(ctx context.Context, version string, channels []string) (uuid.UUID, error) {
+	if mock.DownloadFunc == nil {
+		panic("UpdateServiceMock.DownloadFunc: method is nil but UpdateService.Download was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Version  string
+		Channels []string
+	}{
+		Ctx:      ctx,
+		Version:  version,
+		Channels: channels,
+	}
+	mock.lockDownload.Lock()
+	mock.calls.Download = append(mock.calls.Download, callInfo)
+	mock.lockDownload.Unlock()
+	return mock.DownloadFunc(ctx, version, channels)
+}
+
+// DownloadCalls gets all the calls that were made to Download.
+// Check the length with:
+//
+//	len(mockedUpdateService.DownloadCalls())
+func (mock *UpdateServiceMock) DownloadCalls() []struct {
+	Ctx      context.Context
+	Version  string
+	Channels []string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Version  string
+		Channels []string
+	}
+	mock.lockDownload.RLock()
+	calls = mock.calls.Download
+	mock.lockDownload.RUnlock()
 	return calls
 }
 
@@ -464,6 +534,42 @@ func (mock *UpdateServiceMock) GetAllWithFilterCalls() []struct {
 	mock.lockGetAllWithFilter.RLock()
 	calls = mock.calls.GetAllWithFilter
 	mock.lockGetAllWithFilter.RUnlock()
+	return calls
+}
+
+// GetArchive calls GetArchiveFunc.
+func (mock *UpdateServiceMock) GetArchive(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+	if mock.GetArchiveFunc == nil {
+		panic("UpdateServiceMock.GetArchiveFunc: method is nil but UpdateService.GetArchive was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetArchive.Lock()
+	mock.calls.GetArchive = append(mock.calls.GetArchive, callInfo)
+	mock.lockGetArchive.Unlock()
+	return mock.GetArchiveFunc(ctx, id)
+}
+
+// GetArchiveCalls gets all the calls that were made to GetArchive.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetArchiveCalls())
+func (mock *UpdateServiceMock) GetArchiveCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetArchive.RLock()
+	calls = mock.calls.GetArchive
+	mock.lockGetArchive.RUnlock()
 	return calls
 }
 
