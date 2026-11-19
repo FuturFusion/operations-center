@@ -280,10 +280,6 @@ linters:
       # Baseline. Remove each entry when the violation is fixed.
       - linters:
           - depguard
-        path: '^internal/provisioning/cluster/cluster_service\.go$'
-        text: "net/http"
-      - linters:
-          - depguard
         path: '^internal/provisioning/server/server_service\.go$'
         text: "net/http"
       - linters:
