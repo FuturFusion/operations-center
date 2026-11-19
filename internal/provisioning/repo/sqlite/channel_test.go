@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
 func TestUpdateChannelDatabaseActions(t *testing.T) {
@@ -113,4 +115,18 @@ func TestUpdateChannelDatabaseActions(t *testing.T) {
 	// Can't add a duplicate channel.
 	_, err = channel.Create(ctx, channelB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Can't delete a channel, which is still referenced by a token.
+	_, err = sqlite.NewToken(tx).Create(ctx, provisioning.Token{
+		UUID:          uuidgen.FromPattern(t, "1"),
+		UsesRemaining: 1,
+		ExpireAt:      time.Now().Add(1 * time.Minute),
+		Description:   "token",
+		Channel:       channelB.Name,
+	})
+	require.NoError(t, err)
+
+	err = channel.DeleteByName(ctx, channelB.Name)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+	require.ErrorContains(t, err, "Channel is still referenced by another entity", "expect the error to name the referenced channel as the cause")
 }
