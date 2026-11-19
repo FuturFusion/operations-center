@@ -36,6 +36,7 @@ pprof_enabled: false
 metrics_enabled: true
 metrics_components:
   - runtime
+  - api
 `)
 
 	operationsCenterSeedTemplate = []byte(`{
