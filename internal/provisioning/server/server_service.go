@@ -75,8 +75,9 @@ type serverService struct {
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
 
-	now                    func() time.Time
-	initialConnectionDelay time.Duration
+	now                       func() time.Time
+	initialConnectionDelay    time.Duration
+	signalLifecycleEventDelay time.Duration
 
 	selfUpdateSignal signals.Signal[provisioning.Server]
 
@@ -93,6 +94,12 @@ type Option func(s *serverService)
 func WithNow(nowFunc func() time.Time) Option {
 	return func(s *serverService) {
 		s.now = nowFunc
+	}
+}
+
+func WithSignalLifecycleEventDelay(delay time.Duration) Option {
+	return func(s *serverService) {
+		s.signalLifecycleEventDelay = delay
 	}
 }
 
@@ -228,8 +235,9 @@ func New(
 
 		serverCertificate: serverCertificate,
 
-		now:                    time.Now,
-		initialConnectionDelay: 1 * time.Second,
+		now:                       time.Now,
+		initialConnectionDelay:    1 * time.Second,
+		signalLifecycleEventDelay: provisioning.DefaultSignalLifecycleEventDelay,
 
 		selfUpdateSignal: signals.New[provisioning.Server](),
 
@@ -421,7 +429,7 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 	})
 
 	if deploymentInProgress {
-		newServer.SignalLifecycleEvent()
+		newServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	return newServer, nil
@@ -1412,7 +1420,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1468,7 +1476,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1540,7 +1548,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1622,7 +1630,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1665,7 +1673,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		return err
 	}
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1840,7 +1848,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -2111,7 +2119,7 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 		return fmt.Errorf("Failed to update servers in maintenance state: %w", err)
 	}
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -2259,7 +2267,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			}
 
 			if signalLifecycle {
-				updateServer.SignalLifecycleEvent()
+				updateServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 			}
 
 			return nil
@@ -2571,7 +2579,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	}
 
 	if signalLifecycle {
-		updatedServer.SignalLifecycleEvent()
+		updatedServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	if updateServerConfiguration && updatedServer.Cluster != nil {

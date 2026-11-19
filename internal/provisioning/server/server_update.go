@@ -118,7 +118,7 @@ func (s *serverService) recordStepFailure(ctx context.Context, name string, step
 		return
 	}
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 }
 
 func rewindIncusInMaintenance(server *provisioning.Server, previousInMaintenance api.InMaintenanceState) {

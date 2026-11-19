@@ -60,6 +60,8 @@ type clusterService struct {
 
 	now func() time.Time
 
+	signalLifecycleEventDelay time.Duration
+
 	lifecycleEventHandlerBackoffStart time.Duration
 	lifecycleEventHandlerBackoffLimit time.Duration
 
@@ -96,6 +98,12 @@ func WithCreateClusterConnectionTestTimeout(timeout time.Duration) Option {
 func WithCreateClusterCertificateNotBeforeDelay(delay time.Duration) Option {
 	return func(s *clusterService) {
 		s.createClusterCertificateNotBeforeDelay = delay
+	}
+}
+
+func WithSignalLifecycleEventDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.signalLifecycleEventDelay = delay
 	}
 }
 
@@ -170,6 +178,8 @@ func New(
 		createClusterCertificateNotBeforeDelay: 5 * time.Second,
 
 		now: time.Now,
+
+		signalLifecycleEventDelay: provisioning.DefaultSignalLifecycleEventDelay,
 
 		lifecycleEventHandlerBackoffStart: 200 * time.Millisecond,
 		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
@@ -3033,7 +3043,7 @@ func (s *clusterService) LaunchClusterReboot(ctx context.Context, name string) e
 
 	// Kick the control loop right away instead of waiting for the next tick of the
 	// periodic cluster update control loop.
-	servers[0].SignalLifecycleEvent()
+	servers[0].SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -3224,7 +3234,7 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 
 	if emitLifecycleSignal {
 		// Use last server as the triggering server, since it was most likely the last one that was updated.
-		servers[len(servers)-1].SignalLifecycleEvent()
+		servers[len(servers)-1].SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	return nil
