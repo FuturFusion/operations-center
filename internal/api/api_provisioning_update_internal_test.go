@@ -105,3 +105,119 @@ func Test_updateHandler_updatesRefreshPost(t *testing.T) {
 		})
 	}
 }
+
+func Test_updateHandler_updatesDelete(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		target               string
+		serviceCleanupErr    error
+		serviceCleanupAllErr error
+
+		wantCleanupCalls        int
+		wantCleanupAllCalls     int
+		wantStatusCode          int
+		wantResponseBodyContain string
+	}{
+		{
+			name:                 "success - default",
+			target:               "/",
+			serviceCleanupErr:    nil,
+			serviceCleanupAllErr: nil,
+
+			wantCleanupCalls:        1,
+			wantCleanupAllCalls:     0,
+			wantStatusCode:          http.StatusOK,
+			wantResponseBodyContain: `"status":"Success"`,
+		},
+		{
+			name:                 "success - force=false",
+			target:               "/?force=false",
+			serviceCleanupErr:    nil,
+			serviceCleanupAllErr: nil,
+
+			wantCleanupCalls:        1,
+			wantCleanupAllCalls:     0,
+			wantStatusCode:          http.StatusOK,
+			wantResponseBodyContain: `"status":"Success"`,
+		},
+		{
+			name:                 "success - force=true",
+			target:               "/?force=true",
+			serviceCleanupErr:    nil,
+			serviceCleanupAllErr: nil,
+
+			wantCleanupCalls:        0,
+			wantCleanupAllCalls:     1,
+			wantStatusCode:          http.StatusOK,
+			wantResponseBodyContain: `"status":"Success"`,
+		},
+		{
+			name:                 "error - invalid force",
+			target:               "/?force=invalid",
+			serviceCleanupErr:    nil,
+			serviceCleanupAllErr: nil,
+
+			wantCleanupCalls:        0,
+			wantCleanupAllCalls:     0,
+			wantStatusCode:          http.StatusBadRequest,
+			wantResponseBodyContain: `"error_code":400`,
+		},
+		{
+			name:                 "error - service.Cleanup",
+			target:               "/",
+			serviceCleanupErr:    boom.Error,
+			serviceCleanupAllErr: nil,
+
+			wantCleanupCalls:        1,
+			wantCleanupAllCalls:     0,
+			wantStatusCode:          http.StatusInternalServerError,
+			wantResponseBodyContain: `"error_code":500`,
+		},
+		{
+			name:                 "error - service.CleanupAll",
+			target:               "/?force=true",
+			serviceCleanupErr:    nil,
+			serviceCleanupAllErr: boom.Error,
+
+			wantCleanupCalls:        0,
+			wantCleanupAllCalls:     1,
+			wantStatusCode:          http.StatusInternalServerError,
+			wantResponseBodyContain: `"error_code":500`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			service := &provisioningMock.UpdateServiceMock{
+				CleanupFunc: func(ctx context.Context) error {
+					return tc.serviceCleanupErr
+				},
+				CleanupAllFunc: func(ctx context.Context) error {
+					return tc.serviceCleanupAllErr
+				},
+			}
+
+			handler := &updateHandler{
+				service: service,
+			}
+
+			req := httptest.NewRequest(http.MethodDelete, tc.target, http.NoBody)
+			rec := httptest.NewRecorder()
+
+			// Run test
+			err := handler.updatesDelete(req).Render(rec)
+
+			// Assert
+			require.NoError(t, err, "rendering the response must not fail")
+			require.Len(t, service.CleanupCalls(), tc.wantCleanupCalls, "unexpected number of cleanup calls")
+			require.Len(t, service.CleanupAllCalls(), tc.wantCleanupAllCalls, "unexpected number of cleanup all calls")
+			require.Equal(t, tc.wantStatusCode, rec.Code, "unexpected status code")
+			require.Contains(t, rec.Body.String(), tc.wantResponseBodyContain, "unexpected response body")
+		})
+	}
+}

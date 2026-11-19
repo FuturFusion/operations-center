@@ -218,11 +218,24 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 
 // swagger:operation DELETE /1.0/provisioning/updates updates updates_delete
 //
-//	Remove all updates
+//	Remove updates
 //
-//	Remove all updates and free up all disk space occupied by updates.
+//	Remove updates and free up the disk space occupied by them.
+//
+//	By default, protected updates are kept. An update is protected, if a
+//	server runs its version or if it is assigned to a channel other than the
+//	default channel.
+//
+//	With `force=true`, all updates are removed, including the protected ones.
+//	Use this only if the disk is full and the default cleanup fails.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: If set, all updates are removed, including the protected ones.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -235,7 +248,22 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
-	err := u.service.CleanupAll(r.Context())
+	var force bool
+
+	if r.FormValue("force") != "" {
+		var err error
+		force, err = strconv.ParseBool(r.FormValue("force"))
+		if err != nil {
+			return response.BadRequest(err)
+		}
+	}
+
+	cleanup := u.service.Cleanup
+	if force {
+		cleanup = u.service.CleanupAll
+	}
+
+	err := cleanup(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}

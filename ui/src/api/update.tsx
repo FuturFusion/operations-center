@@ -116,9 +116,11 @@ export const refreshUpdates = (): Promise<APIResponse<null>> => {
   });
 };
 
-export const cleanupUpdates = (): Promise<APIResponse<object>> => {
+export const cleanupUpdates = (
+  force: boolean,
+): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/updates`, {
+    fetch(`/1.0/provisioning/updates?force=${force}`, {
       method: "DELETE",
     })
       .then((response) => response.json())

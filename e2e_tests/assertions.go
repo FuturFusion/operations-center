@@ -314,7 +314,17 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 func assertOperationsCenterCliUpdateCleanupAndRefresh(ctx context.Context, t *testing.T) {
 	t.Helper()
 
+	// Updates in use by a server or assigned to a channel other than the
+	// default channel "stable" are protected.
+	protectedCmd := `../bin/operations-center.linux.%s provisioning update list -f json | jq -r --argjson inuse "$(../bin/operations-center.linux.%s provisioning server list -f json | jq -c '[ .[].version_data.os.version ]')" '[ .[] | select((.version as $v | $inuse | index($v)) or (((.channels // []) - ["stable"]) | length > 0)) | .uuid ] | sort | .[]'`
+	protectedUpdates := strings.Fields(mustRun(t, protectedCmd, cpuArch, cpuArch).Output())
+
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update cleanup`, cpuArch)
+
+	remainingUpdates := strings.Fields(mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[].uuid ] | sort | .[]'`, cpuArch).Output())
+	require.Equal(t, protectedUpdates, remainingUpdates, "expect cleanup to keep exactly the protected updates")
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning update cleanup --force`, cpuArch)
 
 	// assert no updates
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -e -r '. | length == 0'`, cpuArch)
