@@ -18,6 +18,10 @@ type section int
 // sectionChanged notifies only about the sections that actually changed.
 const sectionChanged section = -1
 
+// sectionLoaded notifies only about the sections that changed by loading the
+// stored config. Loading does not change the config, so it triggers no ACME renewal.
+const sectionLoaded section = -2
+
 const (
 	sectionNetwork section = iota
 	sectionSecurity
@@ -150,5 +154,5 @@ func (s *store[T]) replace(ctx context.Context, cfg T, persist persistFunc[T]) {
 
 	s.current.Store(&cfg)
 
-	s.notify(logger.DetachedContext(ctx), sectionChanged, oldCfg, cfg)
+	s.notify(logger.DetachedContext(ctx), sectionLoaded, oldCfg, cfg)
 }

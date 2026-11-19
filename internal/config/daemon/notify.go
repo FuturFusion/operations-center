@@ -77,7 +77,8 @@ func notifyShared(ctx context.Context, updated section, oldCfg, newCfg SharedCon
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, newCfg.Security.TrustedHTTPSProxies)
 	}
 
-	if isACMEChanged(oldCfg, newCfg) {
+	// The certificate already matches the stored ACME config.
+	if updated != sectionLoaded && isACMEChanged(oldCfg, newCfg) {
 		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, newCfg.Security.ACME)
 	}
 

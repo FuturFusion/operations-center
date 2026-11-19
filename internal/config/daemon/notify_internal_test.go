@@ -287,3 +287,83 @@ func Test_notify_securityUpdate(t *testing.T) {
 		})
 	}
 }
+
+func Test_notify_loadSharedACME(t *testing.T) {
+	acme := system.SecurityACME{
+		Domain:   "example.com",
+		Email:    "admin@example.com",
+		AgreeTOS: true,
+	}
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T, stored SharedConfig) error
+
+		wantACMEEmits     int
+		wantSecurityEmits int
+	}{
+		{
+			name: "load of a stored ACME config",
+			run: func(t *testing.T, stored SharedConfig) error {
+				t.Helper()
+
+				return LoadShared(t.Context(), stored, persistChange)
+			},
+
+			wantACMEEmits:     0,
+			wantSecurityEmits: 1,
+		},
+		{
+			name: "update of the ACME config after the load",
+			run: func(t *testing.T, stored SharedConfig) error {
+				t.Helper()
+
+				err := LoadShared(t.Context(), ProvisionalShared(), persistChange)
+				require.NoError(t, err, "the provisional config must load")
+
+				return UpdateSecurity(t.Context(), system.SecurityPut{
+					ACME:                             acme,
+					TrustedTLSClientCertFingerprints: stored.Security.TrustedTLSClientCertFingerprints,
+				})
+			},
+
+			wantACMEEmits:     1,
+			wantSecurityEmits: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+
+			stored := ProvisionalShared()
+			stored.Security.ACME = acme
+			stored.Security.TrustedTLSClientCertFingerprints = []string{testFingerprint}
+
+			var acmeEmits, securityEmits int
+
+			lifecycle.SecurityACMEUpdateSignal.AddListener(func(_ context.Context, _ system.SecurityACME) {
+				acmeEmits++
+			}, t.Name())
+			t.Cleanup(func() { lifecycle.SecurityACMEUpdateSignal.RemoveListener(t.Name()) })
+
+			lifecycle.SecurityUpdateSignal.AddListener(func(_ context.Context, _ system.Security) {
+				securityEmits++
+			}, t.Name())
+			t.Cleanup(func() { lifecycle.SecurityUpdateSignal.RemoveListener(t.Name()) })
+
+			// Run test
+			err := tc.run(t, stored)
+
+			// Assert
+			require.NoError(t, err)
+			require.Equal(t, tc.wantACMEEmits, acmeEmits, "expect an ACME renewal only for an update of the ACME config")
+			require.Equal(t, tc.wantSecurityEmits, securityEmits, "expect the security listeners to get the changed config")
+		})
+	}
+}
+
+func persistChange(_ context.Context, change SharedChange) (SharedConfig, error) {
+	return change.cfg, nil
+}
