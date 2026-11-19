@@ -249,6 +249,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster with name %q already exists", newCluster.Name)
 		}
 
+		// Do retries this function. Start each attempt with no servers.
+		servers = make([]provisioning.Server, 0, len(newCluster.ServerNames))
+
 		// Validate all listed servers are already known and do have configuration
 		// valid for clustering.
 		incusVersions := make([]string, 0, len(newCluster.ServerNames))
