@@ -45,7 +45,7 @@ func Test_newBMCHTTPClient_boundsEveryRequest(t *testing.T) {
 				},
 			}
 
-			httpClient, err := newBMCHTTPClient(server, 0, responseHeaderTimeout)
+			httpClient, err := newBMCHTTPClient(server, 0, responseHeaderTimeout, nil)
 			require.NoError(t, err)
 
 			retry, ok := httpClient.Transport.(*retryTransport)

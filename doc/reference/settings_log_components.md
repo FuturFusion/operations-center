@@ -104,6 +104,7 @@ provisioning:
 
 - `provisioning.adapter.scriptlet.scriptlet_client_port`
 - `provisioning.bios_profile_port`
+- `provisioning.bmc_recording_repo`
 - `provisioning.bmc_server_client_port`
 - `provisioning.channel_repo`
 - `provisioning.channel_service`

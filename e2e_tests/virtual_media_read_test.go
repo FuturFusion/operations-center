@@ -45,12 +45,7 @@ func assertVirtualMediaRandomRead(t *testing.T, name string) {
 	// Setup
 	mediaURL := mustRun(t, `../bin/operations-center.linux.%s provisioning server deploy-status %s -f json | jq -r -e '.media_url'`, cpuArch, name).OutputTrimmed()
 
-	// No client certificate is presented, since a BMC has none either.
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec // self signed certificate of the Operations Center under test.
-		},
-	}
+	client := deployMediaClient()
 
 	header, _ := mustRequestMedia(t, client, http.MethodHead, mediaURL, http.Header{}, http.StatusOK)
 	require.Equal(t, "bytes", header.Get("Accept-Ranges"), "expect the installation media to be served with support for byte ranges")
@@ -158,6 +153,29 @@ func assertVirtualMediaRandomRead(t *testing.T, name string) {
 
 	// Assertions
 	require.Equal(t, fmt.Sprintf("bytes */%d", size), header.Get("Content-Range"), "expect a range past the end of the image to be answered with the size of the image")
+}
+
+// deployMediaClient returns a client for the installation media. It presents
+// no client certificate, since a BMC has none either.
+func deployMediaClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec // self signed certificate of the Operations Center under test.
+		},
+	}
+}
+
+// mustDeployMediaSize returns the size of the installation media, as Operations
+// Center serves it.
+func mustDeployMediaSize(t *testing.T, mediaURL string) int64 {
+	t.Helper()
+
+	header, _ := mustRequestMedia(t, deployMediaClient(), http.MethodHead, mediaURL, http.Header{}, http.StatusOK)
+
+	size, err := strconv.ParseInt(header.Get("Content-Length"), 10, 64)
+	require.NoError(t, err, "expect the installation media to be served with its size")
+
+	return size
 }
 
 // mustRequestMedia requests the installation media and returns the header and

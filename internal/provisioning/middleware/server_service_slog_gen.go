@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -660,6 +661,38 @@ func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name
 	return _d._base.CancelDeploymentByName(ctx, name, skipCleanup)
 }
 
+// DeleteBMCRecording implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) DeleteBMCRecording(ctx context.Context, name string, id string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteBMCRecording")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method DeleteBMCRecording returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method DeleteBMCRecording finished")
+		}
+	}()
+	return _d._base.DeleteBMCRecording(ctx, name, id)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -1040,6 +1073,141 @@ func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
+// GetBMCRecording implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetBMCRecording(ctx context.Context, name string, id string) (bMCRecordingManifest *api.BMCRecordingManifest, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetBMCRecording")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCRecordingManifest", bMCRecordingManifest),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetBMCRecording returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetBMCRecording finished")
+		}
+	}()
+	return _d._base.GetBMCRecording(ctx, name, id)
+}
+
+// GetBMCRecordingArchive implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetBMCRecordingArchive(ctx context.Context, name string, id string, anonymize bool) (readCloser io.ReadCloser, size int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("id", id),
+			slog.Bool("anonymize", anonymize),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetBMCRecordingArchive")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetBMCRecordingArchive returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetBMCRecordingArchive finished")
+		}
+	}()
+	return _d._base.GetBMCRecordingArchive(ctx, name, id, anonymize)
+}
+
+// GetBMCRecordingFile implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetBMCRecordingFile(ctx context.Context, name string, id string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("id", id),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetBMCRecordingFile")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int64("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetBMCRecordingFile returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetBMCRecordingFile finished")
+		}
+	}()
+	return _d._base.GetBMCRecordingFile(ctx, name, id, filename)
+}
+
+// GetBMCRecordings implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetBMCRecordings(ctx context.Context, name string) (bMCRecordingManifests []api.BMCRecordingManifest, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetBMCRecordings")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCRecordingManifests", bMCRecordingManifests),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetBMCRecordings returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetBMCRecordings finished")
+		}
+	}()
+	return _d._base.GetBMCRecordings(ctx, name)
 }
 
 // GetByName implements provisioning.ServerService.
