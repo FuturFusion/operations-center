@@ -1,6 +1,6 @@
 import { FC, ReactNode } from "react";
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { useNotification } from "context/notificationContext";
 import { NotificationProvider } from "context/notificationProvider";
 
@@ -12,10 +12,6 @@ const renderNotifications = () => renderHook(useNotification, { wrapper });
 
 beforeEach(() => {
   vi.useFakeTimers();
-});
-
-afterEach(() => {
-  vi.useRealTimers();
 });
 
 test("info and success are dismissed after a delay", () => {

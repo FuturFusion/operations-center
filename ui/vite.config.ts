@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    // Reuses the jsdom environment across test files, which is created once per worker instead of per file.
+    pool: 'vmThreads',
     setupFiles: './src/test/setup.ts',
   },
 })
