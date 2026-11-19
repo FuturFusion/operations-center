@@ -119,7 +119,10 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 			return err
 		}
 
-		_, _ = fmt.Fprintf(w, "%s", out)
+		_, err = w.Write(out)
+		if err != nil {
+			return err
+		}
 
 	default:
 		// TODO: should this go to stderr?
