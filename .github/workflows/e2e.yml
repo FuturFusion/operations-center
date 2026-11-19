@@ -88,6 +88,8 @@ jobs:
         run: |
           sudo apt install -y linux-headers-$(uname -r)
           sudo --preserve-env=DEBIAN_FRONTEND apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
+          # Build dependencies of raft and cowsql.
+          sudo --preserve-env=DEBIAN_FRONTEND apt install -y autoconf automake libtool pkg-config libuv1-dev liblz4-dev libsqlite3-dev
 
           sudo systemctl enable systemd-timesyncd
           sudo systemctl restart systemd-timesyncd
@@ -116,9 +118,12 @@ jobs:
       - name: Build binaries
         run: |
           go version
-          mkdir -p ./bin
-          CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
-          go build -o ./bin/operations-centerd ./cmd/operations-centerd
+          make deps
+          make bld UI=0
+
+          # The E2E tests don't use 'make e2e-test' directly.
+          deps_path="$(go env GOPATH)/deps"
+          echo "LD_LIBRARY_PATH=${deps_path}/raft/.libs/:${deps_path}/cowsql/.libs/" >> "$GITHUB_ENV"
 
       - name: Run End-to-End Tests
         env:
