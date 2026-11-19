@@ -402,7 +402,10 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 		log := slog.With(slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 
 		for i := range 10 {
-			time.Sleep(s.initialConnectionDelay)
+			err = s.waitInitialConnectionDelay(ctx)
+			if err != nil {
+				break
+			}
 
 			err = s.PollServer(ctx, newServer, true)
 			if err == nil {
@@ -1066,7 +1069,10 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 			for i := range 10 {
-				time.Sleep(s.initialConnectionDelay)
+				err = s.waitInitialConnectionDelay(ctx)
+				if err != nil {
+					break
+				}
 
 				err = s.PollServer(ctx, *server, true)
 				if err == nil {
@@ -3787,4 +3793,14 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 	})
 
 	return nil, nil
+}
+
+func (s *serverService) waitInitialConnectionDelay(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+
+	case <-time.After(s.initialConnectionDelay):
+		return nil
+	}
 }
