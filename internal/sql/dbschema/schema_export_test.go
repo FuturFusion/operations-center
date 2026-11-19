@@ -5,6 +5,8 @@ import (
 	"database/sql"
 )
 
+const CopyRowsPerTx = copyRowsPerTx
+
 func SetupVersion(db *sql.DB, version int) error {
 	selectedUpdates := make(map[int]update, version)
 	for k, v := range updates {
@@ -14,7 +16,7 @@ func SetupVersion(db *sql.DB, version int) error {
 	}
 
 	schema := newFromMap(selectedUpdates)
-	_, err := schema.ensure(context.Background(), db)
+	_, _, err := schema.ensure(context.Background(), db)
 	return err
 }
 

@@ -101,7 +101,7 @@ func Test_debugHandler_pprof(t *testing.T) {
 					return false
 				},
 			}, nil)
-			err := config.UpdateSettings(context.Background(), apisystem.SettingsPut{
+			err := config.UpdateLocalSettings(context.Background(), apisystem.SettingsLocalPut{
 				LogLevel:     "WARN",
 				PprofEnabled: tc.pprofEnabled,
 			})

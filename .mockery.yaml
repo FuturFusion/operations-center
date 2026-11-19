@@ -35,6 +35,7 @@ filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
 structname: "{{ .InterfaceName }}Mock"
 pkgname: mock
 packages:
+  github.com/FuturFusion/operations-center/internal/cluster:
   github.com/FuturFusion/operations-center/internal/environment:
   github.com/FuturFusion/operations-center/internal/image:
   github.com/FuturFusion/operations-center/internal/inventory:

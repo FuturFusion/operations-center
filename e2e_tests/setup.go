@@ -572,6 +572,7 @@ func stageLocalOperationsCenterExecutable(t *testing.T, name string) {
 	mustRun(t, `incus exec %s -- bash -c "systemctl stop operations-center || true"`, name)
 	mustRun(t, `incus exec %s -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`, name)
 	mustRun(t, `incus file push ../bin/operations-centerd %s/root/dev/operations-centerd`, name)
+	mustRun(t, `../scripts/e2e/sideload-libs.sh ../bin/operations-centerd %s /root/dev/lib`, name)
 }
 
 // startLocalOperationsCenterExecutable bind mounts the staged local build over

@@ -5,6 +5,7 @@ workdir: .
 exclude:
   # E2E tests
   - e2e_tests/**
+  - cluster_tests/**
 
   # Mocks for tests only
   - internal/*/mock/**
@@ -86,6 +87,10 @@ components:
     in:
       - cmd/operations-centerd
       - internal/api/**
+      - internal/cluster
+      # The decorators of the cluster interfaces, which are part of the daemon.
+      - internal/cluster/middleware
+      - internal/cluster/repo/middleware
       - ui/**
       - internal/security/authn/**
       - internal/security/authz/**
@@ -116,7 +121,9 @@ components:
       - internal/*/adapter/**
       - internal/*/repo/**
       - internal/sql/sqlite/**
+      - internal/sql/cowsql/**
       - internal/sql/dbschema
+      - internal/sql/patches
       - internal/*/middleware/**
       - internal/*/*/middleware/**
 

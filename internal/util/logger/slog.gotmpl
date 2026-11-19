@@ -123,6 +123,7 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{
 					{{- end}}
 				)
 			}
+		{{else}}
 		{{end -}}
 		log.DebugContext(ctx, "=> calling {{$method.Name}}")
 		defer func() {

@@ -4,7 +4,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type networkLoadBalancer struct {
@@ -29,95 +29,99 @@ func NewNetworkLoadBalancer(db sqlite.DBTX) *networkLoadBalancer {
 }
 
 func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO network_load_balancers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
-	if err != nil {
-		return inventory.NetworkLoadBalancer{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("network_name", in.NetworkName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkLoadBalancer, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO network_load_balancers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
+	VALUES (?1, (SELECT cluster_id FROM _lookup), ?3, ?4, ?5, ?6, ?7)
+	`
 
-	return scanNetworkLoadBalancer(row)
+		marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.NetworkName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func (r networkLoadBalancer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (inventory.NetworkLoadBalancers, error) {
-	const sqlStmt = `
-SELECT
-  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-FROM network_load_balancers
-  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-WHERE true
-%s
-ORDER BY clusters.name, network_load_balancers.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkLoadBalancers, error) {
+		const sqlStmt = `
+	SELECT
+	  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+	FROM network_load_balancers
+	  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+	WHERE true
+	%s
+	ORDER BY clusters.name, network_load_balancers.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
+		}
 
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND network_load_balancers.project_name = ?`)
+			args = append(args, filter.ProjectName)
+		}
 
-	if filter.NetworkName != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.network_name = :parent`)
-		args = append(args, sql.Named("parent", filter.NetworkName))
-	}
+		if filter.NetworkName != nil {
+			whereClause = append(whereClause, ` AND network_load_balancers.network_name = ?`)
+			args = append(args, filter.NetworkName)
+		}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND network_load_balancers.name = ?`)
+			args = append(args, filter.Name)
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var networkLoadBalancers inventory.NetworkLoadBalancers
-	for rows.Next() {
-		var networkLoadBalancer inventory.NetworkLoadBalancer
-		networkLoadBalancer, err = scanNetworkLoadBalancer(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		networkLoadBalancers = append(networkLoadBalancers, networkLoadBalancer)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var networkLoadBalancers inventory.NetworkLoadBalancers
+		for rows.Next() {
+			var networkLoadBalancer inventory.NetworkLoadBalancer
+			networkLoadBalancer, err = scanNetworkLoadBalancer(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return networkLoadBalancers, nil
+			networkLoadBalancers = append(networkLoadBalancers, networkLoadBalancer)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return networkLoadBalancers, nil
+	})
 }
 
 func (r networkLoadBalancer) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkLoadBalancerFilter) (query string, args []any) {
@@ -133,149 +137,159 @@ ORDER BY network_load_balancers.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND network_load_balancers.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 
 	if filter.NetworkName != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.network_name = :parent`)
-		args = append(args, sql.Named("parent", filter.NetworkName))
+		whereClause = append(whereClause, ` AND network_load_balancers.network_name = ?`)
+		args = append(args, filter.NetworkName)
 	}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND network_load_balancers.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND network_load_balancers.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
 }
 
 func (r networkLoadBalancer) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r networkLoadBalancer) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkLoadBalancer, error) {
-	const sqlStmt = `
-SELECT
-  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-FROM
-  network_load_balancers
-  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-WHERE network_load_balancers.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkLoadBalancer, error) {
+		const sqlStmt = `
+	SELECT
+	  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+	FROM
+	  network_load_balancers
+	  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+	WHERE network_load_balancers.uuid=?1;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
+		if row.Err() != nil {
+			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
+		}
 
-	return scanNetworkLoadBalancer(row)
+		return scanNetworkLoadBalancer(row)
+	})
 }
 
 func (r networkLoadBalancer) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM network_load_balancers WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM network_load_balancers WHERE uuid=?1;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r networkLoadBalancer) DeleteWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM network_load_balancers WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM network_load_balancers WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE network_load_balancers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
-	if err != nil {
-		return inventory.NetworkLoadBalancer{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-		sql.Named("project_name", in.ProjectName),
-		sql.Named("network_name", in.NetworkName),
-		sql.Named("name", in.Name),
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.NetworkLoadBalancer, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
-	}
+	UPDATE network_load_balancers SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), project_name=?3, network_name=?4, name=?5, object=?6, last_updated=?7
+	WHERE uuid=?1
+	`
 
-	return scanNetworkLoadBalancer(row)
+		marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+			in.ProjectName,
+			in.NetworkName,
+			in.Name,
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.NetworkLoadBalancer{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventory.NetworkLoadBalancer, error) {

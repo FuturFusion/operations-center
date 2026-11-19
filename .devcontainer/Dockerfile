@@ -55,6 +55,42 @@ curl -sLo /usr/local/share/terraform/plugins/terraform-provider-incus.zip https:
 unzip -d /usr/local/share/terraform/plugins/registry.opentofu.org/lxc/incus/${INCUS_TERRAFORM_PROVIDER_VERSION}/${TARGETOS}_${TARGETARCH} /usr/local/share/terraform/plugins/terraform-provider-incus.zip
 EOF
 
+# Install raft and cowsql, required by operations-centerd. Build both from
+# source, like "make deps" does. Install them to /usr/local, since /go is a
+# volume, which hides files written to it during the image build.
+RUN <<EOF
+set -eu
+apt update
+apt install -y \
+  autoconf \
+  automake \
+  liblz4-dev \
+  libsqlite3-dev \
+  libtool \
+  libuv1-dev \
+  pkg-config
+
+build_dir="$(mktemp -d)"
+
+git clone --depth=1 https://github.com/cowsql/raft "$build_dir/raft"
+cd "$build_dir/raft"
+autoreconf -i
+./configure
+make -j"$(nproc)"
+make install
+
+git clone --depth=1 https://github.com/cowsql/cowsql "$build_dir/cowsql"
+cd "$build_dir/cowsql"
+autoreconf -i
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure
+make -j"$(nproc)"
+make install
+
+ldconfig
+cd /
+rm -rf "$build_dir"
+EOF
+
 # Install tools for building UI.
 RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
     apt update && \

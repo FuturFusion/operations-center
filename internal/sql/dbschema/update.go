@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"maps"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -26,6 +27,66 @@ var freshSchema string
 
    Only append to the updates list, never remove entries and never re-order them.
 */
+
+// SchemaVersion is the current version of the cluster database schema.
+var SchemaVersion = len(updates)
+
+func Updates() map[int]update {
+	mapCopy := make(map[int]update, len(updates))
+	maps.Copy(mapCopy, updates)
+
+	return mapCopy
+}
+
+func FreshSchema() string {
+	return freshSchema
+}
+
+func createMembershipTables(ctx context.Context, tx *sql.Tx, version int) error {
+	stmt := `
+CREATE TABLE IF NOT EXISTS cluster_members (
+     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+     name TEXT NOT NULL,
+     description TEXT NOT NULL,
+     address TEXT NOT NULL,
+     schema INTEGER NOT NULL,
+     heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
+     state INTEGER NOT NULL DEFAULT 0,
+     certificate TEXT,
+     UNIQUE (name),
+     UNIQUE (address)
+);
+
+CREATE TABLE IF NOT EXISTS config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    node_id INTEGER,
+    data TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (node_id) REFERENCES cluster_members(id) ON DELETE CASCADE,
+    UNIQUE (node_id)
+);
+
+-- UNIQUE (node_id) doesn't cover NULL, the shared config row.
+CREATE UNIQUE INDEX IF NOT EXISTS config_shared ON config ((node_id IS NULL)) WHERE node_id IS NULL;
+`
+	_, err := tx.ExecContext(ctx, stmt)
+	if err != nil {
+		return MapDBError(err)
+	}
+
+	// Only an empty database gets the standalone member, so a removed first member stays removed.
+	var members int
+	err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM cluster_members`).Scan(&members)
+	if err != nil {
+		return MapDBError(err)
+	}
+
+	if members > 0 {
+		return nil
+	}
+
+	_, err = tx.ExecContext(ctx, `INSERT INTO cluster_members (id, name, address, schema, description) VALUES (1, 'none', '0.0.0.0', ?, '')`, version)
+	return MapDBError(err)
+}
 
 var updates = map[int]update{
 	1:  updateFromV0,
@@ -71,6 +132,12 @@ var updates = map[int]update{
 	41: updateFromV40,
 	42: updateFromV41,
 	43: updateFromV42,
+	44: updateFromV43,
+}
+
+func updateFromV43(ctx context.Context, tx *sql.Tx) error {
+	// v43..v44 add the member table of the database and the shared config.
+	return createMembershipTables(ctx, tx, 44)
 }
 
 func updateFromV42(ctx context.Context, tx *sql.Tx) error {
@@ -151,6 +218,7 @@ INSERT INTO servers_new
 DROP TABLE servers;
 ALTER TABLE servers_new RENAME TO servers;
 `)
+
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }

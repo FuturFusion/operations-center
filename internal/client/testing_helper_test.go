@@ -17,7 +17,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -88,9 +87,13 @@ func daemonSetup(t *testing.T) testDaemon {
 		SourcePollSkipFirst:       true,
 	})
 
-	err = config.UpdateNetwork(ctx, system.NetworkPut{
+	err = config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{
+		RestServerAddress: testingnet.LocalhostIP(t) + ":" + port,
+	})
+	require.NoError(t, err)
+
+	err = config.UpdateNetwork(ctx, system.NetworkGlobalPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 
@@ -99,10 +102,7 @@ func daemonSetup(t *testing.T) testDaemon {
 	})
 	require.NoError(t, err)
 
-	d := api.NewDaemon(
-		ctx,
-		env,
-	)
+	d := api.NewDaemon(ctx, env)
 
 	err = d.Start(ctx)
 	require.NoError(t, err)
@@ -123,19 +123,11 @@ func daemonSetup(t *testing.T) testDaemon {
 	unauthorizedHTTPClient, err := client.New("https://localhost:"+port, client.WithTrustedServerCertificate(serverCert)) // without client.WithClientCertificate(cert)
 	require.NoError(t, err)
 
-	db, err := dbdriver.Open(tmpDir)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
-		require.NoError(t, err)
-	})
-
 	return testDaemon{
 		socketClient:           socketClient,
 		authorizedHTTPClient:   authorizedHTTPClient,
 		unauthorizedHTTPClient: unauthorizedHTTPClient,
-		db:                     db,
+		db:                     d.GlobalDBTest(t),
 		varDir:                 tmpDir,
 	}
 }

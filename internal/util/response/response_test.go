@@ -237,3 +237,26 @@ func (c closeRecordingReadSeeker) Close() error {
 	*c.closed = true
 	return nil
 }
+
+func TestEmptySyncResponse_concurrent(t *testing.T) {
+	t.Parallel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		for range 100 {
+			_ = response.EmptySyncResponse.Render(httptest.NewRecorder())
+		}
+	}()
+
+	// The logging middleware reads the code of the response of another request meanwhile.
+	for range 100 {
+		rec := httptest.NewRecorder()
+		require.NoError(t, response.EmptySyncResponse.Render(rec))
+		require.Equal(t, http.StatusOK, response.EmptySyncResponse.Code())
+		require.Equal(t, http.StatusOK, rec.Code)
+	}
+
+	<-done
+}

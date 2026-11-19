@@ -15,8 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
-	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -386,21 +385,16 @@ func TestServerService_PollServerRunsRegistrationScriptletOnce(t *testing.T) {
 func newPollTestServerRepo(t *testing.T) provisioning.ServerRepo {
 	t.Helper()
 
-	tmpDir := t.TempDir()
-
-	db, err := dbdriver.Open(tmpDir)
+	db, err := cowsqltest.Open(t)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		require.NoError(t, db.Close())
 	})
 
-	_, err = dbschema.Ensure(t.Context(), db, tmpDir)
-	require.NoError(t, err)
-
 	tx := transaction.Enable(db)
 
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
 	require.NoError(t, err)
 
 	return sqlite.NewServer(tx)

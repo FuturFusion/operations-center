@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -19,6 +20,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestSystemConfigUpdate(t *testing.T) {
@@ -80,10 +82,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		SourcePollSkipFirst:       true,
 	})
 
-	d := restapi.NewDaemon(
-		ctx,
-		env,
-	)
+	d := restapi.NewDaemon(ctx, env)
 	err = d.Start(ctx)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
@@ -127,8 +126,8 @@ func TestSystemConfigUpdate(t *testing.T) {
 
 		t.Log(`2. Update network configuration, listen on the current port`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
-  "address": "https://127.0.0.1:%[2]s",
-  "rest_server_address": "%[1]s:%[2]s"
+  "rest_server_address": "%[1]s:%[2]s",
+  "address": "https://127.0.0.1:%[2]s"
 }
 `, testingnet.LocalhostIP(t), port)))
 		require.NoError(t, err)
@@ -137,6 +136,23 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		req, err = http.NewRequest(http.MethodGet, "http://unix.socket/1.0/provisioning/servers/operations-center", http.NoBody)
+		require.NoError(t, err)
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var serverResponse struct {
+			Metadata api.Server `json:"metadata"`
+		}
+
+		err = json.Unmarshal(body, &serverResponse)
+		require.NoError(t, err)
+		require.Equal(t, "https://127.0.0.1:"+port, serverResponse.Metadata.PublicConnectionURL, "expect the server record to follow the updated public address")
 
 		// Expect unauthorized over http without trusted credentials.
 		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%s/1.0/provisioning/tokens", port), http.NoBody)
@@ -334,7 +350,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		req.Header.Add("Content-Type", "application/json")
 		resp, err = socketClient.Do(req)
 		require.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
+		body, err = io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expect a validation error for an unreachable OIDC issuer")

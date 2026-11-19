@@ -71,7 +71,9 @@ jobs:
             dosfstools \
             mtools \
             systemd-repart \
-            sqlite3
+            sqlite3 \
+            libcowsql-dev \
+            libuv1-dev
 
       - name: Download go dependencies
         run: |
@@ -79,6 +81,8 @@ jobs:
 
       - name: Run build
         run: |
+          # The make targets prefer the raft and cowsql built from source over the libcowsql-dev package.
+          make deps
           make build
 
       - uses: opentofu/setup-opentofu@v2
@@ -96,3 +100,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make test
+
+      - name: Cluster tests
+        env:
+          # Required for github access with increased rate limiting during test
+          # of github repo to access GH releases.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The shallow checkout has no tags. The version is lastSQLiteRelease of cluster_tests/upgrade_test.go.
+          make cluster-test UI=0 CLUSTER_TEST_LEGACY_VERSION=v0.11.0

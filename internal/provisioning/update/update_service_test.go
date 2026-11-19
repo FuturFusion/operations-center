@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -28,12 +29,14 @@ import (
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/retrytx"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -428,6 +431,7 @@ func TestUpdateService_Prune(t *testing.T) {
 					return fileDetails.rc, fileDetails.size, err
 				},
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					require.False(t, transaction.IsActive(ctx), "expect the files to be removed after the transaction")
 					return tc.filesRepoDelete.PopOrNil(t)
 				},
 				DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
@@ -451,6 +455,59 @@ func TestUpdateService_Prune(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestUpdateService_Prune_retry(t *testing.T) {
+	// Setup
+	retrytx.Register(t)
+
+	pending := provisioning.Update{
+		UUID:   uuidgen.FromPattern(t, "1"),
+		Status: api.UpdateStatusPending,
+	}
+
+	ready := provisioning.Update{
+		UUID:   uuidgen.FromPattern(t, "2"),
+		Status: api.UpdateStatusReady,
+	}
+
+	repoDeleteByUUID := queue.Errs{
+		errors.New("database is locked"),
+		nil,
+	}
+
+	repo := &repoMock.UpdateRepoMock{
+		GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+			return provisioning.Updates{pending, ready}, nil
+		},
+		DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+			return repoDeleteByUUID.PopOrNil(t)
+		},
+	}
+
+	repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+		DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+			return nil
+		},
+		DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
+			return nil
+		},
+	}
+
+	updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
+	t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+	// Run test
+	err := updateSvc.Prune(t.Context())
+
+	// Assert
+	require.NoError(t, err)
+	require.Empty(t, repoDeleteByUUID, "expect the transaction to be retried once")
+	require.Len(t, repoUpdateFiles.DeleteCalls(), 1, "expect the files of the pending update to be removed once")
+	require.Equal(t, pending, repoUpdateFiles.DeleteCalls()[0].Update)
+	require.Len(t, repoUpdateFiles.DeleteUnknownCalls(), 1)
+	require.Equal(t, []uuid.UUID{ready.UUID}, repoUpdateFiles.DeleteUnknownCalls()[0].Known, "expect each known update once, even if the transaction is retried")
 }
 
 func TestUpdateService_GetAll(t *testing.T) {
@@ -2149,6 +2206,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		}]
 		repoUpdateFilesDelete     queue.Errs
 		repoUpdateFilesPruneFiles queue.Errs
+		wantNoFilesDeleted        bool
 
 		sourceGetLatestUpdates        provisioning.Updates
 		sourceGetLatestErr            error
@@ -2593,6 +2651,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoDeleteByUUID: queue.Errs{
 				boom.Error,
 			},
+			wantNoFilesDeleted: true,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -3564,8 +3623,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesDelete: queue.Errs{nil},
-			repoDeleteByUUID:      queue.Errs{boom.Error},
+			// The files are only deleted once the records are gone.
+			repoDeleteByUUID: queue.Errs{boom.Error},
 			// Fails the test, if the source is queried.
 			sourceGetLatestErr: boom.Error,
 
@@ -3614,6 +3673,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					return commitFunc, cancelFunc, err
 				},
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					if tc.wantNoFilesDeleted {
+						t.Error("The files of an update are deleted, although the deletion of its record failed")
+					}
+
 					return tc.repoUpdateFilesDelete.PopOrNil(t)
 				},
 				PruneFilesFunc: func(ctx context.Context, update provisioning.Update) error {

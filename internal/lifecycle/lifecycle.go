@@ -14,15 +14,17 @@ import (
 var (
 	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
 
-	NetworkUpdateSignal = signals.NewSync[apisystem.Network]()
+	NetworkUpdateSignal       = signals.NewSync[apisystem.NetworkLocal]()
+	SharedNetworkUpdateSignal = signals.NewSync[apisystem.NetworkGlobal]()
 
 	SecurityValidateSignal                  = signals.NewSync[apisystem.Security]()
 	SecurityUpdateSignal                    = signals.NewSync[apisystem.Security]()
 	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
 	SecurityACMEUpdateSignal                = signals.NewSync[apisystem.SecurityACME]()
 
-	SettingsValidateSignal = signals.NewSync[apisystem.Settings]()
-	SettingsUpdateSignal   = signals.NewSync[apisystem.Settings]()
+	SettingsValidateSignal       = signals.NewSync[apisystem.SettingsLocal]()
+	SharedSettingsValidateSignal = signals.NewSync[apisystem.SettingsGlobal]()
+	SharedSettingsUpdateSignal   = signals.NewSync[apisystem.SettingsGlobal]()
 
 	UpdatesValidateSignal = signals.NewSync[apisystem.Updates]()
 	UpdatesUpdateSignal   = signals.NewSync[apisystem.Updates]()

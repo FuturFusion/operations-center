@@ -1311,9 +1311,13 @@ func TestServerService_DeployByName(t *testing.T) {
 			}, nil)
 
 			if tc.operationsCenterAddress != "" {
-				err := config.UpdateNetwork(t.Context(), system.NetworkPut{
+				err := config.UpdateLocalNetwork(t.Context(), system.NetworkLocalPut{
+					RestServerAddress: "[::]:8443",
+				})
+				require.NoError(t, err)
+
+				err = config.UpdateNetwork(t.Context(), system.NetworkGlobalPut{
 					OperationsCenterAddress: tc.operationsCenterAddress,
-					RestServerAddress:       "[::]:8443",
 				})
 				require.NoError(t, err)
 			}

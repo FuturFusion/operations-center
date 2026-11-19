@@ -19,18 +19,66 @@ const (
 	testFingerprintNonCanonical = "01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF"
 )
 
+// testConfig has the shape of the configuration before the split, so validation cases can cover both parts at once.
+type testConfig struct {
+	Network  testNetwork
+	Security system.Security
+	Settings testSettings
+	Updates  system.Updates
+}
+
+type testNetwork struct {
+	NetworkPut testNetworkPut
+}
+
+type testNetworkPut struct {
+	RestServerAddress       string
+	OperationsCenterAddress string
+}
+
+type testSettings struct {
+	SettingsPut testSettingsPut
+}
+
+type testSettingsPut struct {
+	LogLevel          string
+	LogLevels         map[string]string
+	MetricsEnabled    bool
+	MetricsComponents []string
+}
+
+func (c testConfig) split() (localConfig, SharedConfig) {
+	local := localConfig{
+		Network: system.NetworkLocal{NetworkLocalPut: system.NetworkLocalPut{RestServerAddress: c.Network.NetworkPut.RestServerAddress}},
+		Settings: system.SettingsLocal{SettingsLocalPut: system.SettingsLocalPut{
+			LogLevel:          c.Settings.SettingsPut.LogLevel,
+			LogLevels:         c.Settings.SettingsPut.LogLevels,
+			MetricsEnabled:    c.Settings.SettingsPut.MetricsEnabled,
+			MetricsComponents: c.Settings.SettingsPut.MetricsComponents,
+		}},
+	}
+
+	shared := SharedConfig{
+		Network:  system.NetworkGlobal{NetworkGlobalPut: system.NetworkGlobalPut{OperationsCenterAddress: c.Network.NetworkPut.OperationsCenterAddress}},
+		Security: c.Security,
+		Updates:  c.Updates,
+	}
+
+	return local, shared
+}
+
 func Test_validate(t *testing.T) {
 	tests := []struct {
 		name      string
-		oldCfg    *config
-		cfg       config
+		oldCfg    *testConfig
+		cfg       testConfig
 		isIncusOS bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "empty",
-			cfg: config{
+			cfg: testConfig{
 				Updates: defaultUpdates,
 			},
 
@@ -40,18 +88,18 @@ func Test_validate(t *testing.T) {
 		// Network
 		{
 			name: "require network.rest_server_address to be not empty on IncusOS",
-			oldCfg: &config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			oldCfg: &testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:8443",
 						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "", // empty not allowed on IncusOS
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -66,9 +114,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address to be valid - multiple single colons",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:0:8443", // invalid multiple single colons
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -82,9 +130,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address to be valid - not an ip",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "localhost:8443", // invalid not an ip
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -98,9 +146,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address to be valid - invalid port",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:abc", // invalid port
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -114,9 +162,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address to be valid - port out of range",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:0", // invalid port out of range
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -130,9 +178,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address to be valid - port out of range",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:70000", // invalid port out of range
 						OperationsCenterAddress: "http://localhost:8443",
 					},
@@ -146,9 +194,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.rest_server_address if network.address is set",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						OperationsCenterAddress: "http://localhost:8443",
 					},
 				},
@@ -161,9 +209,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "require network.address if network.rest_server_address is set",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress: "127.0.0.1:8443",
 					},
 				},
@@ -176,9 +224,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid network.address",
-			cfg: config{
-				Network: system.Network{
-					NetworkPut: system.NetworkPut{
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
 						RestServerAddress:       "127.0.0.1:8443",
 						OperationsCenterAddress: ":|\\", // invalid
 					},
@@ -194,7 +242,7 @@ func Test_validate(t *testing.T) {
 		// Updates
 		{
 			name: "invalid updates.source",
-			cfg: config{
+			cfg: testConfig{
 				Updates: system.Updates{
 					UpdatesPut: system.UpdatesPut{
 						Source:                      ":|\\", // invalid
@@ -207,7 +255,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "empty updates.signature_verification_root_ca",
-			cfg: config{
+			cfg: testConfig{
 				Updates: system.Updates{
 					UpdatesPut: system.UpdatesPut{
 						SignatureVerificationRootCA: ``, // empty
@@ -219,7 +267,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid updates.signature_verification_root_ca",
-			cfg: config{
+			cfg: testConfig{
 				Updates: system.Updates{
 					UpdatesPut: system.UpdatesPut{
 						SignatureVerificationRootCA: `invalid`, // invalid
@@ -233,7 +281,7 @@ func Test_validate(t *testing.T) {
 		// Security
 		{
 			name: "invalid security.oidc.issuer",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						OIDC: system.SecurityOIDC{
@@ -248,7 +296,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid security.openfga.api_url",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						OpenFGA: system.SecurityOpenFGA{
@@ -263,7 +311,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid security.acme config",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						ACME: system.SecurityACME{
@@ -278,7 +326,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid security.trusted_https_proxies config",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedHTTPSProxies: []string{
@@ -293,7 +341,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "empty security.trusted_tls_client_cert_fingerprints",
-			oldCfg: &config{
+			oldCfg: &testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
@@ -301,7 +349,7 @@ func Test_validate(t *testing.T) {
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{}, // empty
@@ -315,7 +363,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "empty security.trusted_tls_client_cert_fingerprints on IncusOS",
-			oldCfg: &config{
+			oldCfg: &testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
@@ -323,7 +371,7 @@ func Test_validate(t *testing.T) {
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{}, // empty
@@ -337,7 +385,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "valid security.trusted_tls_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertificates: []string{testcert.ClientCertificate},
@@ -350,7 +398,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "security.trusted_tls_client_certificates is a valid fallback authentication method on IncusOS",
-			oldCfg: &config{
+			oldCfg: &testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
@@ -358,7 +406,7 @@ func Test_validate(t *testing.T) {
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{}, // empty
@@ -373,7 +421,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid security.trusted_tls_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertificates: []string{"not a certificate"}, // invalid
@@ -386,7 +434,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "valid security.trusted_tls_metrics_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertificates:            []string{testcert.ClientCertificate},
@@ -401,7 +449,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid security.trusted_tls_metrics_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSMetricsClientCertificates: []string{"not a certificate"},
@@ -414,7 +462,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and in security.trusted_tls_metrics_client_cert_fingerprints",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints:        []string{testFingerprintNonCanonical},
@@ -428,7 +476,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and non canonical in security.trusted_tls_metrics_client_cert_fingerprints",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints:        []string{testFingerprint},
@@ -442,7 +490,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "non canonical security.trusted_tls_metrics_client_cert_fingerprints",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprintNonCanonical},
@@ -455,7 +503,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "security.trusted_tls_metrics_client_cert_fingerprints with a truncated fingerprint",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSMetricsClientCertFingerprints: []string{testFingerprint[:40]},
@@ -468,7 +516,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "security.trusted_tls_metrics_client_cert_fingerprints with surrounding whitespace",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSMetricsClientCertFingerprints: []string{" " + testFingerprint + "\n"},
@@ -481,7 +529,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "security.trusted_tls_metrics_client_cert_fingerprints with an empty fingerprint",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSMetricsClientCertFingerprints: []string{""},
@@ -494,7 +542,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "certificate in security.trusted_tls_client_certificates and fingerprint in security.trusted_tls_metrics_client_cert_fingerprints",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertificates:            []string{testcert.ClientCertificate},
@@ -508,7 +556,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "fingerprint in security.trusted_tls_client_cert_fingerprints and certificate in security.trusted_tls_metrics_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints:    []string{testcert.ClientCertificateFingerprint},
@@ -522,7 +570,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "certificate in security.trusted_tls_client_certificates and in security.trusted_tls_metrics_client_certificates",
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertificates:        []string{testcert.ClientCertificate},
@@ -536,7 +584,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "security.trusted_tls_metrics_client_certificates is not a fallback authentication method on IncusOS",
-			oldCfg: &config{
+			oldCfg: &testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
@@ -544,7 +592,7 @@ func Test_validate(t *testing.T) {
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints:        []string{},
@@ -560,7 +608,7 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "change of security.trusted_tls_metrics_client_cert_fingerprints on IncusOS",
-			oldCfg: &config{
+			oldCfg: &testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
@@ -568,7 +616,7 @@ func Test_validate(t *testing.T) {
 				},
 				Updates: defaultUpdates,
 			},
-			cfg: config{
+			cfg: testConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints:        []string{"fingerprint"},
@@ -585,9 +633,9 @@ func Test_validate(t *testing.T) {
 		// Settings
 		{
 			name: "invalid log level",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						LogLevel: "invalid", // invalid log level.
 					},
 				},
@@ -599,9 +647,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "valid log levels per component",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						LogLevels: map[string]string{
 							"provisioning":             "DEBUG",
 							"provisioning.server_repo": "TRACE",
@@ -616,9 +664,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid log levels per component - invalid level",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						LogLevels: map[string]string{
 							"provisioning": "invalid", // invalid log level.
 						},
@@ -632,9 +680,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid log levels per component - empty level",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						LogLevels: map[string]string{
 							"provisioning": "", // empty log level.
 						},
@@ -648,9 +696,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid log levels per component - invalid component name",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						LogLevels: map[string]string{
 							"Provisioning.": "DEBUG", // invalid component name.
 						},
@@ -664,9 +712,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "valid metrics components",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						MetricsEnabled:    true,
 						MetricsComponents: []string{"runtime", "provisioning.server_service"},
 					},
@@ -679,9 +727,9 @@ func Test_validate(t *testing.T) {
 		},
 		{
 			name: "invalid metrics components - invalid component name",
-			cfg: config{
-				Settings: system.Settings{
-					SettingsPut: system.SettingsPut{
+			cfg: testConfig{
+				Settings: testSettings{
+					SettingsPut: testSettingsPut{
 						MetricsComponents: []string{"Runtime."}, // invalid component name.
 					},
 				},
@@ -697,12 +745,23 @@ func Test_validate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			oldCfg := config{}
+			oldCfg := testConfig{}
 			if tc.oldCfg != nil {
 				oldCfg = *tc.oldCfg
 			}
 
-			err := validate(oldCfg, tc.cfg, tc.isIncusOS)
+			oldLocal, oldShared := oldCfg.split()
+			newLocal, newShared := tc.cfg.split()
+
+			// The validation of a configuration update, see system.UpdateNetworkConfig.
+			err := validate(oldLocal, newLocal, tc.isIncusOS)
+			if err == nil {
+				err = validateShared(oldShared, newShared, tc.isIncusOS)
+			}
+
+			if err == nil {
+				err = validateSharedNetworkConfig(newLocal.Network, oldShared.Network, newShared.Network)
+			}
 
 			tc.assertErr(t, err)
 		})
@@ -712,8 +771,8 @@ func Test_validate(t *testing.T) {
 func Test_validateDelegated(t *testing.T) {
 	tests := []struct {
 		name                              string
-		oldCfg                            config
-		cfg                               config
+		oldCfg                            SharedConfig
+		cfg                               SharedConfig
 		updateValidateSignalListenerErr   error
 		settingsValidateSignalListenerErr error
 		securityValidateSignalListenerErr error
@@ -739,7 +798,7 @@ func Test_validateDelegated(t *testing.T) {
 		},
 		{
 			name: "security validation signal is not emitted if oidc and openfga are unchanged",
-			cfg: config{
+			cfg: SharedConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						TrustedHTTPSProxies: []string{"127.0.0.1"},
@@ -752,7 +811,7 @@ func Test_validateDelegated(t *testing.T) {
 		},
 		{
 			name: "security validation signal error on oidc change",
-			cfg: config{
+			cfg: SharedConfig{
 				Security: system.Security{
 					SecurityPut: system.SecurityPut{
 						OIDC: system.SecurityOIDC{
@@ -774,10 +833,10 @@ func Test_validateDelegated(t *testing.T) {
 			}, tc.name)
 			defer lifecycle.UpdatesValidateSignal.RemoveListener(tc.name)
 
-			lifecycle.SettingsValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.Settings) error {
+			lifecycle.SharedSettingsValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.SettingsGlobal) error {
 				return tc.settingsValidateSignalListenerErr
 			}, tc.name)
-			defer lifecycle.SettingsValidateSignal.RemoveListener(tc.name)
+			defer lifecycle.SharedSettingsValidateSignal.RemoveListener(tc.name)
 
 			lifecycle.SecurityValidateSignal.AddListenerWithErr(func(_ context.Context, _ system.Security) error {
 				return tc.securityValidateSignalListenerErr

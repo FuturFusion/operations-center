@@ -22,29 +22,37 @@ func NewChannel(db sqlite.DBTX) *channel {
 }
 
 func (c channel) Create(ctx context.Context, in provisioning.Channel) (int64, error) {
-	return entities.CreateChannel(ctx, transaction.GetDBTX(ctx, c.db), in)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		return entities.CreateChannel(ctx, transaction.GetDBTX(ctx, c.db), in)
+	})
 }
 
 func (c channel) GetAll(ctx context.Context) (provisioning.Channels, error) {
-	channels, err := entities.GetChannels(ctx, transaction.GetDBTX(ctx, c.db))
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (provisioning.Channels, error) {
+		channels, err := entities.GetChannels(ctx, transaction.GetDBTX(ctx, c.db))
+		if err != nil {
+			return nil, err
+		}
 
-	return channels, nil
+		return channels, nil
+	})
 }
 
 func (c channel) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetChannelNames(ctx, transaction.GetDBTX(ctx, c.db))
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
+		return entities.GetChannelNames(ctx, transaction.GetDBTX(ctx, c.db))
+	})
 }
 
 func (c channel) GetByName(ctx context.Context, name string) (*provisioning.Channel, error) {
-	channel, err := entities.GetChannel(ctx, transaction.GetDBTX(ctx, c.db), name)
-	if err != nil {
-		return nil, err
-	}
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*provisioning.Channel, error) {
+		channel, err := entities.GetChannel(ctx, transaction.GetDBTX(ctx, c.db), name)
+		if err != nil {
+			return nil, err
+		}
 
-	return channel, nil
+		return channel, nil
+	})
 }
 
 func (c channel) Update(ctx context.Context, in provisioning.Channel) error {
@@ -54,5 +62,7 @@ func (c channel) Update(ctx context.Context, in provisioning.Channel) error {
 }
 
 func (c channel) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteChannel(ctx, transaction.GetDBTX(ctx, c.db), name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		return entities.DeleteChannel(ctx, transaction.GetDBTX(ctx, c.db), name)
+	})
 }

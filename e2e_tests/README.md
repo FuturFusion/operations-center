@@ -227,6 +227,13 @@ go get -v ./...
 make build
 ```
 
+`operations-centerd` links against raft and cowsql, which `make e2e-test` builds
+if neither the system nor `make deps` provides them. The tests push the shared libraries of
+`bin/operations-centerd`, which IncusOS does not ship, next to it into the
+Operations Center VM (`scripts/e2e/sideload-libs.sh`). `make e2e-test` sets
+`LD_LIBRARY_PATH` for this. Running the tests without make requires it to be set
+as printed by `make deps`.
+
 ### Workload VMs on Intel hosts
 
 Some tests launch a workload VM on the cluster, which is nested three levels

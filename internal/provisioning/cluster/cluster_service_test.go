@@ -41,6 +41,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/retrytx"
 	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/internal/warning"
@@ -4338,6 +4339,79 @@ func TestClusterService_Create(t *testing.T) {
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
+}
+
+// Not parallel, since it registers the transactor of all transactions.
+func TestClusterService_Create_retry(t *testing.T) {
+	// Setup
+	config.InitTest(t, &envMock.EnvironmentMock{
+		IsIncusOSFunc: func() bool { return false },
+	}, nil)
+
+	retrytx.Register(t)
+
+	incusServer := func(id int64, name string) *provisioning.Server {
+		server := readyServerForClustering(id, name)
+		server.Type = api.ServerTypeIncus
+
+		return server
+	}
+
+	serverSvcGetByName := []queue.Item[*provisioning.Server]{
+		{Value: incusServer(1, "server1")},
+		{Value: incusServer(2, "server2")},
+		{Value: incusServer(1, "server1")},
+		{Value: incusServer(2, "server2")},
+	}
+
+	repoCreateErrs := []queue.Item[struct{}]{
+		{Err: errors.New("database is locked")},
+		{},
+	}
+
+	repo := &mock.ClusterRepoMock{
+		ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
+			return false, nil
+		},
+		CreateFunc: func(ctx context.Context, in provisioning.Cluster) (int64, error) {
+			return 1, queue.PopErr(t, &repoCreateErrs)
+		},
+		DeleteByNameFunc: func(ctx context.Context, name string) error {
+			return nil
+		},
+	}
+
+	var gotPingedServers []string
+
+	client := &adapterMock.ClusterClientPortMock{
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			gotPingedServers = append(gotPingedServers, endpoint.GetName())
+			return nil
+		},
+	}
+
+	serverSvc := &serviceMock.ServerServiceMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			return queue.Pop(t, &serverSvcGetByName)
+		},
+	}
+
+	clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
+
+	// Run test
+	_, err := clusterSvc.Create(t.Context(), provisioning.Cluster{
+		Name:          "one",
+		ConnectionURL: "https://cluster.one:8443",
+		ServerNames:   []string{"server1", "server2"},
+		ServerType:    api.ServerTypeIncus,
+		Channel:       "stable",
+	})
+
+	// Assert
+	require.ErrorContains(t, err, `Server "server1" does not have an IP address`, "expect the creation to stop, since the servers have no network interface with a role")
+	require.Equal(t, []string{"server1", "server2"}, gotPingedServers, "expect each server once, even if the transaction is retried")
+	require.Empty(t, serverSvcGetByName, "expect the servers to be read again by the retried transaction")
+	require.Empty(t, repoCreateErrs, "expect the transaction to be retried once")
 }
 
 type osServiceConfig struct {

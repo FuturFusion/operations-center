@@ -1,6 +1,7 @@
 package dbschema
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -24,3 +25,10 @@ func MapDBError(err error) error {
 
 	return err
 }
+
+// ErrGracefulAbort is a special error that can be returned by a Check function
+// to force Schema.Ensure to abort gracefully.
+//
+// Every change performed so by the Check will be committed, although
+// ErrGracefulAbort will be returned.
+var ErrGracefulAbort = errors.New("schema check gracefully aborted")

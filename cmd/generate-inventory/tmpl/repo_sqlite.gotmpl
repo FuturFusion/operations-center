@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type {{ .Name | camelcase }} struct {
@@ -27,124 +27,129 @@ func New{{ .Name | pascalcase }}(db sqlite.DBTX) *{{ .Name | camelcase }} {
 }
 
 func (r {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id {{ end -}}
-  FROM clusters WHERE clusters.name = :cluster_name
-)
-INSERT INTO {{ .PluralName }} (uuid, cluster_id, {{ if .ServerIDByLocation -}} server_id, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} :project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name {{- range .ExtraAttributes }}, :{{ .Name }} {{- end}}, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
-	if err != nil {
-		return inventory.{{ .Name | pascalcase }}{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-{{- if .ServerIDByLocation }}
-		sql.Named("server_name", in.Server),
-{{- end }}
-{{- if .HasProject }}
-		sql.Named("project_name", in.ProjectName),
-{{- end }}
-{{- if .HasParent }}
-		sql.Named("{{ .ParentName }}_name", in.{{ .ParentName | pascalcase }}Name),
-{{- end }}
-		sql.Named("name", in.Name),
-{{- range .ExtraAttributes }}
-		sql.Named("{{ .Name }}", in.{{ .Name | pascalcase }}),
-{{- end}}
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.{{ .Name | pascalcase }}, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id {{ end -}}
+	  FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
-	}
+	INSERT INTO {{ .PluralName }} (uuid, cluster_id, {{ if .ServerIDByLocation -}} server_id, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated)
+	{{- $n := 2 }}{{ if .ServerIDByLocation }}{{ $n = 3 }}{{ end }}
+	VALUES (?1, (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} {{ $n = add1 $n }}?{{ $n }}, {{ end -}}{{ if .HasParent }}{{ $n = add1 $n }}?{{ $n }}, {{ end -}} {{ $n = add1 $n }}?{{ $n }} {{- range .ExtraAttributes }}, {{ $n = add1 $n }}?{{ $n }} {{- end}}, {{ $n = add1 $n }}?{{ $n }}, {{ $n = add1 $n }}?{{ $n }})
+	`
 
-	return scan{{ .Name | pascalcase }}(row)
+		marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
+		if err != nil {
+			return inventory.{{ .Name | pascalcase }}{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+	{{- if .ServerIDByLocation }}
+			in.Server,
+	{{- end }}
+	{{- if .HasProject }}
+			in.ProjectName,
+	{{- end }}
+	{{- if .HasParent }}
+			in.{{ .ParentName | pascalcase }}Name,
+	{{- end }}
+			in.Name,
+	{{- range .ExtraAttributes }}
+			in.{{ .Name | pascalcase }},
+	{{- end}}
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func (r {{ .Name | camelcase }}) GetAllWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
-	const sqlStmt = `
-SELECT
-  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
-FROM {{ .PluralName }}
-  INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
-{{- if .ServerIDByLocation }}
-  {{ if .IsServerIDOptional }}LEFT{{ else }}INNER{{ end}} JOIN servers ON {{ .PluralName }}.server_id = servers.id
-{{- end }}
-WHERE true
-%s
-ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ .PluralName }}.name
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.{{ .PluralName | pascalcase }}, error) {
+		const sqlStmt = `
+	SELECT
+	  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+	FROM {{ .PluralName }}
+	  INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
+	{{- if .ServerIDByLocation }}
+	  {{ if .IsServerIDOptional }}LEFT{{ else }}INNER{{ end}} JOIN servers ON {{ .PluralName }}.server_id = servers.id
+	{{- end }}
+	WHERE true
+	%s
+	ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ .PluralName }}.name
+	`
 
-	var whereClause []string
-	var args []any
+		var whereClause []string
+		var args []any
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
-	}
+		if filter.Cluster != nil {
+			whereClause = append(whereClause, ` AND clusters.name = ?`)
+			args = append(args, filter.Cluster)
+		}
 
-{{ if .ServerIDByLocation }}
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
-	}
-{{ end }}
+	{{ if .ServerIDByLocation }}
+		if filter.Server != nil {
+			whereClause = append(whereClause, ` AND servers.name = ?`)
+			args = append(args, filter.Server)
+		}
+	{{ end }}
 
-{{ if .HasProject }}
-	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
-	}
-{{ end }}
+	{{ if .HasProject }}
+		if filter.ProjectName != nil {
+			whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = ?`)
+			args = append(args, filter.ProjectName)
+		}
+	{{ end }}
 
-{{ if .HasParent }}
-	if filter.{{ .ParentName | pascalcase }}Name != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = :parent`)
-		args = append(args, sql.Named("parent", filter.{{ .ParentName | pascalcase }}Name))
-	}
-{{ end }}
+	{{ if .HasParent }}
+		if filter.{{ .ParentName | pascalcase }}Name != nil {
+			whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = ?`)
+			args = append(args, filter.{{ .ParentName | pascalcase }}Name)
+		}
+	{{ end }}
 
-	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
-	}
+		if filter.Name != nil {
+			whereClause = append(whereClause, ` AND {{ .PluralName }}.name = ?`)
+			args = append(args, filter.Name)
+		}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+		sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var {{ .PluralName | camelcase }} inventory.{{ .PluralName | pascalcase }}
-	for rows.Next() {
-		var {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}
-		{{ .Name | camelcase }}, err = scan{{ .Name | pascalcase }}(rows)
+		rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		{{ .PluralName | camelcase }} = append({{ .PluralName | camelcase }}, {{ .Name | camelcase }})
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var {{ .PluralName | camelcase }} inventory.{{ .PluralName | pascalcase }}
+		for rows.Next() {
+			var {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}
+			{{ .Name | camelcase }}, err = scan{{ .Name | pascalcase }}(rows)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return {{ .PluralName | camelcase }}, nil
+			{{ .PluralName | camelcase }} = append({{ .PluralName | camelcase }}, {{ .Name | camelcase }})
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return {{ .PluralName | camelcase }}, nil
+	})
 }
 
 func (r {{ .Name | camelcase }}) selectStmtGetAllUUIDWithFilter(filter inventory.{{ .Name | pascalcase }}Filter) (query string, args []any) {
@@ -163,178 +168,189 @@ ORDER BY {{ .PluralName }}.id
 	var whereClause []string
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = ?`)
+		args = append(args, filter.Cluster)
 	}
 
 {{ if .ServerIDByLocation }}
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server_name`)
-		args = append(args, sql.Named("server_name", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = ?`)
+		args = append(args, filter.Server)
 	}
 {{ end }}
 
 {{ if .HasProject }}
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
-		args = append(args, sql.Named("project", filter.ProjectName))
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = ?`)
+		args = append(args, filter.ProjectName)
 	}
 {{ end }}
 
 {{ if .HasParent }}
 	if filter.{{ .ParentName | pascalcase }}Name != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = :parent`)
-		args = append(args, sql.Named("parent", filter.{{ .ParentName | pascalcase }}Name))
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = ?`)
+		args = append(args, filter.{{ .ParentName | pascalcase }}Name)
 	}
 {{ end }}
 
 	if filter.Name != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.name = :name`)
-		args = append(args, sql.Named("name", filter.Name))
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.name = ?`)
+		args = append(args, filter.Name)
 	}
 
 	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
 }
 
 func (r {{ .Name | camelcase }}) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
-	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]uuid.UUID, error) {
+		sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
+		rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		ids = append(ids, id)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			err := rows.Scan(&id)
+			if err != nil {
+				return nil, sqlite.MapErr(err)
+			}
 
-	return ids, nil
+			ids = append(ids, id)
+		}
+
+		if rows.Err() != nil {
+			return nil, sqlite.MapErr(rows.Err())
+		}
+
+		return ids, nil
+	})
 }
 
 func (r {{ .Name | camelcase }}) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.{{ .Name | pascalcase }}, error) {
-	const sqlStmt = `
-SELECT
-  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
-FROM
-  {{ .PluralName }}
-  INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
-{{- if .ServerIDByLocation }}
-  {{ if .IsServerIDOptional }}LEFT{{ else }}INNER{{ end}} JOIN servers ON {{ .PluralName }}.server_id = servers.id
-{{- end }}
-WHERE {{ .PluralName }}.uuid=:uuid;
-`
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.{{ .Name | pascalcase }}, error) {
+		const sqlStmt = `
+	SELECT
+	  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+	FROM
+	  {{ .PluralName }}
+	  INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
+	{{- if .ServerIDByLocation }}
+	  {{ if .IsServerIDOptional }}LEFT{{ else }}INNER{{ end}} JOIN servers ON {{ .PluralName }}.server_id = servers.id
+	{{- end }}
+	WHERE {{ .PluralName }}.uuid=?1;
+	`
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
-	}
+		row := r.db.QueryRowContext(ctx, sqlStmt, id)
+		if row.Err() != nil {
+			return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
+		}
 
-	return scan{{ .Name | pascalcase }}(row)
+		return scan{{ .Name | pascalcase }}(row)
+	})
 }
 
 func (r {{ .Name | camelcase }}) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE uuid=:uuid;`
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE uuid=?1;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, id)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r {{ .Name | camelcase }}) DeleteWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) error {
-	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	sqlStmt := fmt.Sprintf(`
-WITH _lookup AS (
-%s
-)
-DELETE FROM {{ .PluralName }} WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+		sqlStmt := fmt.Sprintf(`
+	WITH _lookup AS (
+	%s
+	)
+	DELETE FROM {{ .PluralName }} WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		result, err := r.db.ExecContext(ctx, sqlStmt, args...)
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return sqlite.MapErr(err)
+		}
 
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
+		if affectedRows == 0 {
+			return domain.ErrNotFound
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (r {{ .Name | camelcase }}) UpdateByUUID(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
-    SELECT servers.id FROM clusters
-      LEFT JOIN servers ON servers.cluster_id = clusters.id
-    WHERE clusters.name = :cluster_name AND servers.name = :server_name
-  ) AS server_id {{ end -}}
-  FROM clusters WHERE clusters.name = :cluster_name
-)
-UPDATE {{ .PluralName }} SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} server_id=(SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} project_name=:project_name, {{ end -}} {{ if .HasParent -}} {{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name {{- range .ExtraAttributes }}, {{ .Name }}=:{{ .Name }} {{- end}}, object=:object, last_updated=:last_updated
-WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
-`
-
-	marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
-	if err != nil {
-		return inventory.{{ .Name | pascalcase }}{}, err
-	}
-
-	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("cluster_name", in.Cluster),
-{{- if .ServerIDByLocation }}
-		sql.Named("server_name", in.Server),
-{{- end }}
-{{- if .HasProject }}
-		sql.Named("project_name", in.ProjectName),
-{{- end }}
-{{- if .HasParent }}
-		sql.Named("{{ .ParentName }}_name", in.{{ .ParentName | pascalcase }}Name),
-{{- end }}
-		sql.Named("name", in.Name),
-{{- range .ExtraAttributes }}
-		sql.Named("{{ .Name }}", in.{{ .Name | pascalcase }}),
-{{- end}}
-		sql.Named("object", marshaledObject),
-		sql.Named("last_updated", in.LastUpdated),
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) (inventory.{{ .Name | pascalcase }}, error) {
+		const sqlStmt = `
+	WITH _lookup AS (
+	  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
+	    SELECT servers.id FROM clusters
+	      LEFT JOIN servers ON servers.cluster_id = clusters.id
+	    WHERE clusters.name = ?2 AND servers.name = ?3
+	  ) AS server_id {{ end -}}
+	  FROM clusters WHERE clusters.name = ?2
 	)
-	if row.Err() != nil {
-		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
-	}
+	{{- $n := 2 }}{{ if .ServerIDByLocation }}{{ $n = 3 }}{{ end }}
+	UPDATE {{ .PluralName }} SET uuid=?1, cluster_id=(SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} server_id=(SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} {{ $n = add1 $n }}project_name=?{{ $n }}, {{ end -}} {{ if .HasParent -}} {{ $n = add1 $n }}{{ .ParentName }}_name=?{{ $n }}, {{ end -}} {{ $n = add1 $n }}name=?{{ $n }} {{- range .ExtraAttributes }}, {{ $n = add1 $n }}{{ .Name }}=?{{ $n }} {{- end}}, {{ $n = add1 $n }}object=?{{ $n }}, {{ $n = add1 $n }}last_updated=?{{ $n }}
+	WHERE uuid=?1
+	`
 
-	return scan{{ .Name | pascalcase }}(row)
+		marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
+		if err != nil {
+			return inventory.{{ .Name | pascalcase }}{}, err
+		}
+
+		_, err = r.db.ExecContext(ctx, sqlStmt,
+			in.UUID,
+			in.Cluster,
+	{{- if .ServerIDByLocation }}
+			in.Server,
+	{{- end }}
+	{{- if .HasProject }}
+			in.ProjectName,
+	{{- end }}
+	{{- if .HasParent }}
+			in.{{ .ParentName | pascalcase }}Name,
+	{{- end }}
+			in.Name,
+	{{- range .ExtraAttributes }}
+			in.{{ .Name | pascalcase }},
+	{{- end}}
+			marshaledObject,
+			in.LastUpdated,
+		)
+		if err != nil {
+			return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(err)
+		}
+
+		// cowsql doesn't support RETURNING.
+		return r.GetByUUID(ctx, in.UUID)
+	})
 }
 
 func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inventory.{{ .Name | pascalcase }}, error) {

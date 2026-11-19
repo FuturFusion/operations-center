@@ -174,10 +174,14 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 //   - Updates in ready state, where files are missing (most likely caused
 //     by a restore of the application's backuped state by IncusOS.
 func (s updateService) Prune(ctx context.Context) error {
-	var fileRepoErrs []error
 	var known []uuid.UUID
+	var removed []provisioning.Update
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
+		// Do retries this function. Start each attempt with empty lists.
+		known = nil
+		removed = nil
+
 		updates, err := s.repo.GetAll(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get all updates during prune: %w", err)
@@ -213,10 +217,8 @@ func (s updateService) Prune(ctx context.Context) error {
 				continue
 			}
 
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
-			}
+			// The files are removed after the transaction.
+			removed = append(removed, update)
 
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
@@ -226,12 +228,25 @@ func (s updateService) Prune(ctx context.Context) error {
 
 		return nil
 	})
-	if err == nil {
-		// Files of updates unknown to the database, e.g. after a restore, are removed.
-		err = s.filesRepo.DeleteUnknown(ctx, known)
+	if err != nil {
+		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
 
-	err = errors.Join(append([]error{err}, fileRepoErrs...)...)
+	var fileRepoErrs []error
+	for _, update := range removed {
+		err = s.filesRepo.Delete(ctx, update)
+		if err != nil {
+			fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
+		}
+	}
+
+	// Files of updates unknown to the database, e.g. after a restore, are removed.
+	err = s.filesRepo.DeleteUnknown(ctx, known)
+	if err != nil {
+		fileRepoErrs = append(fileRepoErrs, err)
+	}
+
+	err = errors.Join(fileRepoErrs...)
 	if err != nil {
 		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
@@ -601,6 +616,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 	toDownloadUpdates := make([]provisioning.Update, 0, len(originUpdates))
 	var toRefreshUpdates []provisioning.Update
+	var deleteUpdates []provisioning.Update
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.serverSvc.GetAll(ctx)
 		if err != nil {
@@ -620,26 +636,16 @@ func (s updateService) Refresh(ctx context.Context) error {
 		var toDeleteUpdates []provisioning.Update
 		toDeleteUpdates, toRefreshUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates, updateVersionsInUse)
 
-		// Remove updates marked for removal.
+		// Remove updates marked for removal, their files are removed after the transaction.
+		deleteUpdates = toDeleteUpdates
 		for _, update := range toDeleteUpdates {
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
-			}
-
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
 				return fmt.Errorf("Failed to remove update %s from repository: %w", update.UUID, err)
 			}
 		}
 
-		// Prune obsolete files from existing updates.
 		for _, update := range toRefreshUpdates {
-			err = s.filesRepo.PruneFiles(ctx, update)
-			if err != nil {
-				return fmt.Errorf("Failed to prune obsolete files for update %s: %w", update.UUID, err)
-			}
-
 			err = s.repo.Upsert(ctx, update)
 			if err != nil {
 				return fmt.Errorf("Failed to update update record %s in repository: %w", update.UUID, err)
@@ -650,6 +656,21 @@ func (s updateService) Refresh(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("Unable to refresh updates from source: %w", err)
+	}
+
+	for _, update := range deleteUpdates {
+		err = s.filesRepo.Delete(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
+		}
+	}
+
+	// Prune obsolete files from existing updates.
+	for _, update := range toRefreshUpdates {
+		err = s.filesRepo.PruneFiles(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to prune obsolete files for update %s: %w", update.UUID, err)
+		}
 	}
 
 	// Without update source, there is nothing to download.
