@@ -26,7 +26,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/archive"
-	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -36,15 +35,17 @@ type imageIncusService struct {
 	repo          ImageIncusRepo
 	filesRepo     ImageIncusFileRepo
 	simplestreams SimplestreamsPort
+	xz            XZPort
 }
 
 var _ ImageIncusService = &imageIncusService{}
 
-func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort) *imageIncusService {
+func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort, xz XZPort) *imageIncusService {
 	service := &imageIncusService{
 		repo:          repo,
 		filesRepo:     filesRepo,
 		simplestreams: simplestreams,
+		xz:            xz,
 	}
 
 	return service
@@ -68,12 +69,12 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	switch part.FormName() {
 	case "request_json":
-		imageMetadata, incusTarXZ, err = metadataFromRequestJSON(ctx, part)
+		imageMetadata, incusTarXZ, err = s.metadataFromRequestJSON(ctx, part)
 
 	default:
 		// Any other first part is required to be the metadata tarball, which is
 		// recognized by its content, not by its name.
-		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
+		imageMetadata, incusTarXZ, err = s.metadataFromIncusTarXZ(ctx, part)
 	}
 
 	if err != nil {
@@ -266,7 +267,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	return name, nil
 }
 
-func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+func (s *imageIncusService) metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
 	var requestMetadata api.IncusImagePost
 
 	err = json.NewDecoder(part).Decode(&requestMetadata)
@@ -293,7 +294,7 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to yaml encode "metadata.yaml": %w`, err)
 	}
 
-	incusTarXZWriter, err := xz.NewWriter(ctx, buf)
+	incusTarXZWriter, err := s.xz.NewWriter(ctx, buf)
 	if err != nil {
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create XZ writer: %w", err)
 	}
@@ -344,7 +345,7 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 // metadataFromIncusTarXZ reads the metadata of an image from the metadata
 // tarball in the given part. The metadata tarball is identified by its content,
 // the name it has been uploaded with is only used for error reporting.
-func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+func (s *imageIncusService) metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
 	const incusTarXZSizeLimit = 64 * 1024
 
 	name := part.FileName()
@@ -364,7 +365,7 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 		return incusapi.ImageMetadata{}, nil, domain.NewValidationErrf("The first part of the multipart request %q is not a valid metadata tarball, it exceeds the size limit of %d bytes", name, incusTarXZSizeLimit)
 	}
 
-	xzReader, err := xz.NewReader(ctx, bytes.NewReader(incusTarXZ))
+	xzReader, err := s.xz.NewReader(ctx, bytes.NewReader(incusTarXZ))
 	if err != nil {
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create xz reader for the metadata tarball %q: %w", name, err)
 	}

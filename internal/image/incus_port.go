@@ -53,3 +53,9 @@ type SimplestreamsPort interface {
 	GetImageList(ctx context.Context, source IncusImageSource) (IncusImages, error)
 	GetFile(ctx context.Context, source IncusImageSource, path string) (io.ReadCloser, error)
 }
+
+// XZPort compresses and decompresses content with xz.
+type XZPort interface {
+	NewReader(ctx context.Context, r io.Reader) (io.ReadCloser, error)
+	NewWriter(ctx context.Context, w io.Writer) (io.WriteCloser, error)
+}
