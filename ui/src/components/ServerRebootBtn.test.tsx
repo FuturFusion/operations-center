@@ -56,7 +56,9 @@ test("reboot fails with a network error", async () => {
   const { invalidate } = await rebootWith(networkError());
 
   const toast = screen.getByRole("alert");
-  expect(toast).toHaveTextContent(/Failed to fetch/);
+  expect(toast).toHaveTextContent(
+    "Error during server reboot: TypeError: Failed to fetch",
+  );
   expect(toast).toHaveClass("bg-danger");
   expect(invalidate).not.toHaveBeenCalled();
 });

@@ -39,7 +39,7 @@ const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
       .catch((e) => {
         setRebootInProgress(false);
         setShowModal(false);
-        notify.error(`Error during server sync: ${e}`);
+        notify.error(`Error during server reboot: ${e}`);
       });
   };
 
