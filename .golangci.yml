@@ -279,10 +279,6 @@ linters:
         text: "incus/v7/client"
       # Baseline. Remove each entry when the violation is fixed.
       - linters:
-          - depguard
-        path: '^internal/provisioning/server/server_service\.go$'
-        text: "net/http"
-      - linters:
           - forbidigo
         path: '^internal/system/system_service_backup\.go$'
         text: "Pure packages must"

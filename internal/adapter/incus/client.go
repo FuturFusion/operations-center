@@ -28,6 +28,7 @@ type Client struct {
 	clientCA      string
 	env           Environment
 	skipGetServer bool
+	httpClient    *http.Client
 }
 
 var (
@@ -59,6 +60,13 @@ func WithSkipGetServer(skipGetServer bool) Option {
 	}
 }
 
+// WithHTTPClient sets the HTTP client used to connect to public connection URLs.
+func WithHTTPClient(httpClient *http.Client) Option {
+	return func(c *Client) {
+		c.httpClient = httpClient
+	}
+}
+
 type transportWrapper struct {
 	transport *http.Transport
 }
@@ -75,6 +83,7 @@ func New(clientCert string, clientKey string, opts ...Option) Client {
 	c := Client{
 		clientCert: clientCert,
 		clientKey:  clientKey,
+		httpClient: &http.Client{},
 	}
 
 	for _, opt := range opts {

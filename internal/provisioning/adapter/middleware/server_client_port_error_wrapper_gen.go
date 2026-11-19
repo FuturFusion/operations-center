@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -74,6 +75,16 @@ func (_d ServerClientPortWithErrorWrapper) GetProviderConfig(ctx context.Context
 		}
 	}()
 	return _d._base.GetProviderConfig(ctx, server)
+}
+
+// GetPublicCertificate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithErrorWrapper) GetPublicCertificate(ctx context.Context, publicURL string) (certificate *x509.Certificate, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetPublicCertificate(ctx, publicURL)
 }
 
 // GetResources implements provisioning.ServerClientPort.
