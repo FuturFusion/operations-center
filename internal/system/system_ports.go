@@ -43,6 +43,12 @@ type CertificateRepo interface {
 	// It writes the certificate first. If it fails, only the certificate might
 	// be written.
 	UpdateServerKeyPair(ctx context.Context, certificatePEM []byte, keyPEM []byte) error
+
+	// ValidateServerKeyPair verifies, that dir holds a matching server certificate and key.
+	ValidateServerKeyPair(ctx context.Context, dir string) error
+
+	// ValidateClientKeyPair verifies, that dir holds a matching client certificate and key.
+	ValidateClientKeyPair(ctx context.Context, dir string) error
 }
 
 type CacheRepo interface {

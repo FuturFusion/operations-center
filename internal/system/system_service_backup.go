@@ -2,12 +2,10 @@ package system
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"path/filepath"
 
 	"github.com/lxc/incus/v7/shared/revert"
 
@@ -127,12 +125,12 @@ func clusterOperationInProgressErr(name string, operation string) error {
 
 // validateBackup verifies, that Operations Center can start with the backup in dir.
 func (s *systemService) validateBackup(ctx context.Context, dir string) error {
-	_, err := tls.LoadX509KeyPair(filepath.Join(dir, config.ServerCertificateFilename), filepath.Join(dir, config.ServerKeyFilename))
+	err := s.certificateRepo.ValidateServerKeyPair(ctx, dir)
 	if err != nil {
 		return invalidBackupErr(err, "Backup contains an invalid server certificate")
 	}
 
-	_, err = tls.LoadX509KeyPair(filepath.Join(dir, config.ClientCertificateFilename), filepath.Join(dir, config.ClientKeyFilename))
+	err = s.certificateRepo.ValidateClientKeyPair(ctx, dir)
 	if err != nil {
 		return invalidBackupErr(err, "Backup contains an invalid client certificate")
 	}
