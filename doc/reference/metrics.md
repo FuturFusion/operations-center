@@ -132,6 +132,7 @@ A server error is a response with a status code of 500 or higher.
 If a handler aborts before it starts the response, the metrics record the code 500 and a server error. The client receives no response.
 A response that aborts after it starts keeps its status code. The abort counts as an aborted response. The abort itself is not a server error.
 A handler aborts the response if it cannot write it, for example because the client closed the connection.
+The proxy to IncusOS records the code 499 if the client cancels the request before IncusOS answers.
 A handler can also crash, for example because of a bug. A crash always counts as a server error, also after the response started.
 Some handlers ignore a failed read or write, for example the download of an image. Then the request keeps its status code. It does not count as an aborted response.
 An aborted response does not always mean that the client closed the connection. A handler also aborts the response if it cannot read the data, for example from IncusOS or from a file.
