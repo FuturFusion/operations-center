@@ -46,6 +46,7 @@ components:
   # Pure utilities. No I/O. Every component may import them.
   util_pure:
     in:
+      - internal/environment
       - internal/security/tls
       - internal/sql/dump
       # not 100% pure, but accepted
@@ -53,21 +54,16 @@ components:
       - internal/util/certificate
       - internal/util/component
       - internal/util/expropts
+      - internal/util/iox
       - internal/util/logger
+      - internal/util/pathutil
       - internal/util/ptr
       - internal/util/structs
       - internal/version
-      # TODO: used in pure fashion, but should be cleaned up
-      - internal/util/archive/**
-      # TODO: used in pure fashion, but should be cleaned up
-      - internal/util/file
-      # TODO: not pure, needs to be refactored
-      - internal/security/acme
 
   util:
     in:
-      # TODO: internal/environment: needs refactor, since it exposes the interface and the implementation.
-      - internal/environment
+      - internal/environment/osenv
       - internal/security/signature/**
       - internal/util/**
 

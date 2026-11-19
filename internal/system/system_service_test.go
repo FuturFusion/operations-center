@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/system"
+	adapterMock "github.com/FuturFusion/operations-center/internal/system/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
@@ -86,7 +87,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, certificateRepo, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, certificateRepo, nil, nil)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -757,7 +758,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, certificateRepo, nil)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, nil, nil, nil, certificateRepo, nil, nil)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -916,19 +917,11 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				nil,
 				certificateRepo,
 				nil,
-				system.WithACMEUpdateCertificateFunc(
-					func(
-						ctx context.Context,
-						fsEnv interface {
-							VarDir() string
-							CacheDir() string
-						},
-						cfg systemapi.SecurityACME,
-						force bool,
-					) (*systemapi.CertificatePost, error) {
+				&adapterMock.ACMEPortMock{
+					UpdateCertificateFunc: func(ctx context.Context, cfg systemapi.SecurityACME, force bool) (*systemapi.CertificatePost, error) {
 						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
 					},
-				),
+				},
 			)
 
 			// Run test
@@ -1303,7 +1296,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.NetworkPut)
@@ -1347,7 +1340,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err := config.UpdateNetwork(t.Context(), networkConfig.NetworkPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1480,7 +1473,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1545,7 +1538,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SettingsPut)
@@ -1623,7 +1616,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1669,7 +1662,7 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, cacheRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())
@@ -1784,7 +1777,7 @@ func TestSystemService_Restore(t *testing.T) {
 
 			systemSvc := system.NewSystemService(env, serverSvc, clusterSvc, nil, databaseRepo, backupRepo, nil, func() {
 				restartRequested = true
-			})
+			}, nil)
 
 			// Run test
 			err := systemSvc.Restore(t.Context(), strings.NewReader("archive"))

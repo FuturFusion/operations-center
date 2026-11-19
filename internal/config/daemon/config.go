@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -42,7 +42,7 @@ type enver interface {
 var defaultStore atomic.Pointer[store]
 
 func init() {
-	defaultStore.Store(newStore(environment.New(ApplicationName, ApplicationEnvPrefix), saveToDisk, config{}))
+	defaultStore.Store(newStore(osenv.New(ApplicationName, ApplicationEnvPrefix), saveToDisk, config{}))
 }
 
 func Init(env enver) error {

@@ -246,3 +246,58 @@ func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 		})
 	}
 }
+
+func TestServerService_waitInitialConnectionDelay(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		delay time.Duration
+		ctx   func(t *testing.T) context.Context
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success - delay elapsed",
+			delay: 0,
+			ctx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				return t.Context()
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:  "error - context cancelled",
+			delay: time.Hour,
+			ctx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+
+				return ctx
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, context.Canceled, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			s := &serverService{initialConnectionDelay: tc.delay}
+
+			// Run test
+			err := s.waitInitialConnectionDelay(tc.ctx(t))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/image"
+	imageXZ "github.com/FuturFusion/operations-center/internal/image/adapter/xz"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
 	imageRepoMock "github.com/FuturFusion/operations-center/internal/image/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
@@ -83,7 +84,7 @@ func TestImageIncusHandler_incusImageVersionFileGet_pathTraversal(t *testing.T) 
 				},
 			}
 
-			service := image.NewIncusImage(repo, imageLocalfs.New(fsroot.Open(t, filepath.Join(varDir, "images"))), nil)
+			service := image.NewIncusImage(repo, imageLocalfs.New(fsroot.Open(t, filepath.Join(varDir, "images"))), nil, imageXZ.New())
 
 			mux := http.NewServeMux()
 			r := &router{mux: mux}

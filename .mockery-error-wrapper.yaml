@@ -10,7 +10,7 @@ formatter-options:
     local-prefix: github.com/FuturFusion/operations-center
     tab-indent: true
 include-auto-generated: true
-include-interface-regex: "(.*ServerClient|.+ClientPort)"
+include-interface-regex: "(.*ServerClient|.+ClientPort|InstanceServer)"
 dir: >-
   {{- $targetDir := "middleware" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
@@ -22,6 +22,9 @@ dir: >-
     {{- else -}}
       {{- $targetDir = "adapter/middleware" -}}
     {{- end -}}
+  {{- end -}}
+  {{- if eq .InterfaceName "InstanceServer" -}}
+    {{- $targetDir = "adapter/middleware" -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-

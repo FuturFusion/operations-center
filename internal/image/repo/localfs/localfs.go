@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 )
 
 type localfs struct {
@@ -25,7 +27,7 @@ func New(root *os.Root) *localfs {
 	}
 }
 
-func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+func (l localfs) UsageInformation(_ context.Context) (domain.UsageInformation, error) {
 	return file.UsageInformationForPath(l.root.Name())
 }
 
@@ -123,7 +125,7 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 		return nil, cancel, 0, err
 	}
 
-	size, err := file.SafeCopy(target, content)
+	size, err := iox.SafeCopy(target, content)
 	if err != nil {
 		return nil, cancel, 0, err
 	}

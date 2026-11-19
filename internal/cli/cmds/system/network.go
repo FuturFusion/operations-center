@@ -14,7 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -150,7 +150,7 @@ func (c *cmdNetworkEdit) validateArgsAndFlags(cmd *cobra.Command, args []string)
 
 func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	// If stdin isn't a terminal, read text from it.
-	if !termios.IsTerminal(environment.GetStdinFd()) {
+	if !termios.IsTerminal(osenv.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err

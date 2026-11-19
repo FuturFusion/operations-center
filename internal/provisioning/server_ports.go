@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"crypto/x509"
 
 	"github.com/google/uuid"
 
@@ -127,6 +128,7 @@ type ServerClientPort interface {
 	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, server Server, config ServerSystemLogging) error
 	IncusClient(ctx context.Context, endpoint Endpoint) (InstanceServer, error)
+	GetPublicCertificate(ctx context.Context, publicURL string) (*x509.Certificate, error)
 }
 
 type ServerScriptletPort interface {

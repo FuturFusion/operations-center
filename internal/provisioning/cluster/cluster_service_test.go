@@ -15929,7 +15929,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{},
 			},
 			incusClientDeleteStoragePoolVolumeErrs: queue.Errs{
-				incusapi.StatusErrorf(404, "Storage pool not found"),
+				domain.NewErrorf(domain.ErrNotFound, "", "Storage pool not found"),
 				boom.Error,
 			},
 
@@ -16069,7 +16069,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
 				{},
 			},
-			incusClientDeleteClusterMemberErr: incusapi.StatusErrorf(404, "Cluster member not found"),
+			incusClientDeleteClusterMemberErr: domain.NewErrorf(domain.ErrNotFound, "", "Cluster member not found"),
 
 			assertErr: require.NoError,
 			assertLog: log.Contains("Forceful server removal"),
@@ -24539,4 +24539,233 @@ func requireCallSignalHandler(t *testing.T, called *bool) func(ctx context.Conte
 	return func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
 		*called = true
 	}
+}
+
+func TestClusterService_Create_CancelWhileWaitingForCertificate(t *testing.T) {
+	// Setup
+	config.InitTest(t, &envMock.EnvironmentMock{
+		IsIncusOSFunc: func() bool { return false },
+	}, nil)
+
+	err := config.UpdateSecurity(t.Context(), system.SecurityPut{})
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+	})
+
+	oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
+	lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
+	t.Cleanup(func() {
+		lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	var joinClusterCalled bool
+
+	repo := &mock.ClusterRepoMock{
+		ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) { return false, nil },
+		CreateFunc:       func(ctx context.Context, in provisioning.Cluster) (int64, error) { return 0, nil },
+		UpdateFunc:       func(ctx context.Context, cluster provisioning.Cluster) error { return nil },
+		DeleteByNameFunc: func(ctx context.Context, name string) error { return nil },
+	}
+
+	client := &adapterMock.ClusterClientPortMock{
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error { return nil },
+		UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+			return nil
+		},
+		SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
+			return nil
+		},
+		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+			return "certificate", nil
+		},
+		GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
+			return []string{"one"}, nil
+		},
+		GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
+			// Cancel right before the wait for the certificate starts.
+			cancel()
+
+			return "token", nil
+		},
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) error {
+			joinClusterCalled = true
+
+			return nil
+		},
+		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+			return defaultTestOSData, nil
+		},
+		GetNodeSpecificConfigKeysFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+			return nil, nil
+		},
+		GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
+			return &x509.Certificate{}, nil
+		},
+		IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (incusclient.InstanceServer, error) {
+			return &adapterMock.InstanceServerMock{
+				GetCertificateFingerprintsFunc: func() ([]string, error) { return nil, nil },
+			}, nil
+		},
+	}
+
+	servers := []*provisioning.Server{
+		readyServerForClustering(1, "server1"),
+		readyServerForClustering(2, "server2"),
+	}
+
+	for _, server := range servers {
+		server.Type = api.ServerTypeIncus
+		server.OSData = defaultTestOSData
+	}
+
+	serverSvc := &serviceMock.ServerServiceMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			return servers[slices.IndexFunc(servers, func(s *provisioning.Server) bool { return s.Name == name })], nil
+		},
+		UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error {
+			return nil
+		},
+		UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+			return nil
+		},
+		PollServerFunc: func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
+			return nil
+		},
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+			return nil, nil
+		},
+	}
+
+	provisioner := &adapterMock.ClusterProvisioningPortMock{
+		InitFunc: func(ctx context.Context, clusterName string, provisioningConfig provisioning.ClusterProvisioningConfig) (string, func() error, error) {
+			return "", func() error { return nil }, nil
+		},
+		ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error { return nil },
+		SeedCertificateFunc: func(ctx context.Context, clusterName string, certificate string) error {
+			return nil
+		},
+	}
+
+	clusterSvc := provisioningCluster.New(
+		repo,
+		&mock.ClusterArtifactRepoMock{},
+		client,
+		serverSvc,
+		nil,
+		nil,
+		provisioner,
+		nil,
+		provisioningCluster.WithCreateRetryTimeout(0),
+		provisioningCluster.WithCreateClusterConnectionTestTimeout(0),
+		provisioningCluster.WithCreateClusterCertificateNotBeforeDelay(time.Hour),
+		provisioningCluster.WithMeshTunnelInterfaceDetectionTimeout(0),
+		provisioningCluster.WithMeshTunnelInterfaceDetectionRetryDelay(0),
+	)
+
+	// Run test
+	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
+		Name:        "one",
+		ServerNames: []string{"server1", "server2"},
+		ServerType:  api.ServerTypeIncus,
+	})
+
+	// Assert
+	require.ErrorIs(t, err, context.Canceled, "expect the wait for the certificate to stop on context cancellation")
+	require.False(t, joinClusterCalled, "expect no server to join after cancellation")
+}
+
+func TestClusterService_RemoveServer_CancelWhileWaitingForFactoryReset(t *testing.T) {
+	t.Parallel()
+
+	// Setup
+	ctx, cancel := context.WithCancel(logger.ContextWithTestLogger(t, &log.SyncBuffer{}, false, true))
+	defer cancel()
+
+	var deleteClusterMemberCalled bool
+
+	serverSvc := &serviceMock.ServerServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+			return provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: new(api.InMaintenanceEvacuated),
+					},
+				},
+				{Name: "serverTwo"},
+			}, nil
+		},
+		UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
+			return nil
+		},
+		FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
+			// Cancel right before the wait for the factory reset starts.
+			cancel()
+
+			return nil
+		},
+	}
+
+	var incusClient *adapterMock.InstanceServerMock
+	incusClient = &adapterMock.InstanceServerMock{
+		HasExtensionFunc: func(extension string) bool { return true },
+		GetClusterMemberFunc: func(name string) (*incusapi.ClusterMember, string, error) {
+			return &incusapi.ClusterMember{}, "", nil
+		},
+		UpdateClusterMemberFunc: func(name string, member incusapi.ClusterMemberPut, ETag string) error {
+			return nil
+		},
+		UseTargetFunc: func(name string) incusclient.InstanceServer { return incusClient },
+		GetServerFunc: func() (*incusapi.Server, string, error) {
+			return &incusapi.Server{}, "", nil
+		},
+		UpdateServerFunc: func(server incusapi.ServerPut, ETag string) error { return nil },
+		DeleteStoragePoolVolumeFunc: func(pool, volType, name string) error {
+			return nil
+		},
+		DeleteClusterMemberFunc: func(name string, force bool) error {
+			deleteClusterMemberCalled = true
+
+			return nil
+		},
+	}
+
+	client := &adapterMock.ClusterClientPortMock{
+		IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+			return incusClient, nil
+		},
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error { return nil },
+	}
+
+	inventorySvc := &inventoryServiceMock.InventoryAggregateServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
+			return inventory.InventoryAggregates{}, nil
+		},
+	}
+
+	clusterSvc := provisioningCluster.New(
+		&mock.ClusterRepoMock{},
+		nil,
+		client,
+		serverSvc,
+		nil,
+		nil,
+		nil,
+		inventorySvc,
+		provisioningCluster.WithRemoveServerFactoryResetWaitDelay(time.Hour),
+		provisioningCluster.WithRemoveServerDeleteClusterMemberRetryDelay(0),
+	)
+
+	// Run test
+	err := clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"}, false)
+
+	// Assert
+	require.ErrorIs(t, err, context.Canceled, "expect the wait for the factory reset to stop on context cancellation")
+	require.False(t, deleteClusterMemberCalled, "expect the server not to be removed after cancellation")
 }

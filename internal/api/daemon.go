@@ -30,9 +30,10 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
-	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
+	internalenvironment "github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
+	imageXZ "github.com/FuturFusion/operations-center/internal/image/adapter/xz"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
 	imageRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
@@ -69,7 +70,6 @@ import (
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	authnmiddleware "github.com/FuturFusion/operations-center/internal/security/authn/middleware"
 	authnoidc "github.com/FuturFusion/operations-center/internal/security/authn/oidc"
@@ -87,6 +87,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
+	systemACME "github.com/FuturFusion/operations-center/internal/system/adapter/acme"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
@@ -361,7 +362,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	backupRepo := systemLocalfs.NewBackup(d.varRoot)
 
-	d.systemSvc = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+	d.systemSvc, err = d.setupSystemService(dbWithTransaction, serverSvc, clusterSvc, backupRepo)
+	if err != nil {
+		return err
+	}
 
 	restored := backupRepo.IsRestoreApplied()
 	if restored {
@@ -809,6 +813,7 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 				imageFilesRepo,
 			),
 			simplestreams.New(),
+			imageXZ.New(),
 		),
 	)
 
@@ -1117,7 +1122,12 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) system.SystemService {
+func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.ServerService, clusterSvc provisioning.ClusterService, backupRepo system.BackupRepo) (system.SystemService, error) {
+	acmeRoot, err := d.openSubRoot(d.cacheRoot, "acme")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open acme directory: %w", err)
+	}
+
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
 			d.env, serverSvc, clusterSvc,
@@ -1131,8 +1141,10 @@ func (d *Daemon) setupSystemService(db dbdriver.DBTX, serverSvc provisioning.Ser
 			// Do not wrap with slog. This repo handles the private key of the server.
 			systemLocalfs.NewCertificate(d.varRoot),
 			d.requestRestart,
+			// Do not wrap with slog. The port handles the private key of the server and provider credentials.
+			systemACME.New(d.env, acmeRoot),
 		),
-	)
+	), nil
 }
 
 // requestRestart asks the daemon to restart. It does not block.
@@ -2176,7 +2188,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 
 func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.SecurityACME) (valid bool, _ error) {
 	// ACME renews late in the validity period. A fixed threshold warns before the renewal starts.
-	if server.Type == api.ServerTypeOperationsCenter && acme.IsEnabled(acmeCfg) {
+	if server.Type == api.ServerTypeOperationsCenter && config.IsACMEEnabled(acmeCfg) {
 		return certificate.ValidateLifetime(*server.Certificate, config.ACMECertificateExpiryWarningLifetimeRatio)
 	}
 

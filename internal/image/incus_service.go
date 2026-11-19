@@ -25,10 +25,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/archive"
-	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -36,15 +34,17 @@ type imageIncusService struct {
 	repo          ImageIncusRepo
 	filesRepo     ImageIncusFileRepo
 	simplestreams SimplestreamsPort
+	xz            XZPort
 }
 
 var _ ImageIncusService = &imageIncusService{}
 
-func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort) *imageIncusService {
+func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort, xz XZPort) *imageIncusService {
 	service := &imageIncusService{
 		repo:          repo,
 		filesRepo:     filesRepo,
 		simplestreams: simplestreams,
+		xz:            xz,
 	}
 
 	return service
@@ -68,12 +68,12 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	switch part.FormName() {
 	case "request_json":
-		imageMetadata, incusTarXZ, err = metadataFromRequestJSON(ctx, part)
+		imageMetadata, incusTarXZ, err = s.metadataFromRequestJSON(ctx, part)
 
 	default:
 		// Any other first part is required to be the metadata tarball, which is
 		// recognized by its content, not by its name.
-		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
+		imageMetadata, incusTarXZ, err = s.metadataFromIncusTarXZ(ctx, part)
 	}
 
 	if err != nil {
@@ -153,7 +153,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	hash256 := sha256.New()
-	incusTarXZReader := file.NewTeeReadCloser(io.NopCloser(bytes.NewReader(incusTarXZ)), hash256)
+	incusTarXZReader := iox.NewTeeReadCloser(io.NopCloser(bytes.NewReader(incusTarXZ)), hash256)
 
 	commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, "incus.tar.xz", incusTarXZReader)
 	defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
@@ -209,7 +209,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 		}
 
 		hash256 := sha256.New()
-		partReader := file.NewTeeReadCloser(content, hash256)
+		partReader := iox.NewTeeReadCloser(content, hash256)
 
 		commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, filename, partReader)
 		defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
@@ -266,7 +266,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	return name, nil
 }
 
-func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+func (s *imageIncusService) metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
 	var requestMetadata api.IncusImagePost
 
 	err = json.NewDecoder(part).Decode(&requestMetadata)
@@ -293,7 +293,7 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to yaml encode "metadata.yaml": %w`, err)
 	}
 
-	incusTarXZWriter, err := xz.NewWriter(ctx, buf)
+	incusTarXZWriter, err := s.xz.NewWriter(ctx, buf)
 	if err != nil {
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create XZ writer: %w", err)
 	}
@@ -344,7 +344,7 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 // metadataFromIncusTarXZ reads the metadata of an image from the metadata
 // tarball in the given part. The metadata tarball is identified by its content,
 // the name it has been uploaded with is only used for error reporting.
-func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+func (s *imageIncusService) metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
 	const incusTarXZSizeLimit = 64 * 1024
 
 	name := part.FileName()
@@ -364,7 +364,7 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 		return incusapi.ImageMetadata{}, nil, domain.NewValidationErrf("The first part of the multipart request %q is not a valid metadata tarball, it exceeds the size limit of %d bytes", name, incusTarXZSizeLimit)
 	}
 
-	xzReader, err := xz.NewReader(ctx, bytes.NewReader(incusTarXZ))
+	xzReader, err := s.xz.NewReader(ctx, bytes.NewReader(incusTarXZ))
 	if err != nil {
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create xz reader for the metadata tarball %q: %w", name, err)
 	}
@@ -403,20 +403,20 @@ func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusa
 // versionItemFromPart determines the canonical file name and the simplestreams
 // file type of an image version item from the content of the given part.
 func versionItemFromPart(part *multipart.Part) (filename string, fileType string, _ io.ReadCloser, err error) {
-	extension, content, err := archive.DetectType(part)
+	extension, content, err := iox.DetectType(part)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("Failed to read content: %w", err)
 	}
 
 	switch extension {
 	case ".squashfs":
-		return "root.squashfs", "squashfs", file.NewReadCloser(content, part), nil
+		return "root.squashfs", "squashfs", iox.NewReadCloser(content, part), nil
 
 	case ".qcow2":
-		return "disk.qcow2", "disk-kvm.img", file.NewReadCloser(content, part), nil
+		return "disk.qcow2", "disk-kvm.img", iox.NewReadCloser(content, part), nil
 
 	case ".tar.xz":
-		return "root.tar.xz", "root.tar.xz", file.NewReadCloser(content, part), nil
+		return "root.tar.xz", "root.tar.xz", iox.NewReadCloser(content, part), nil
 	}
 
 	return "", "", nil, domain.NewValidationErrf("Unsupported image file %q, expected a squashfs image, a qcow2 disk or an xz compressed tarball", part.FileName())
@@ -437,7 +437,7 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 			return fmt.Errorf("Failed to get file %q from incus image %q, version %q: %w", "incus.tar.xz", img.Name, versionIdentifier, err)
 		}
 
-		_, err = file.SafeCopy(hash256, r)
+		_, err = iox.SafeCopy(hash256, r)
 		if err != nil {
 			return fmt.Errorf("Failed to read file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
@@ -447,7 +447,7 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 			return fmt.Errorf("Failed to get file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
 
-		_, err = file.SafeCopy(hash256, r)
+		_, err = iox.SafeCopy(hash256, r)
 		if err != nil {
 			return fmt.Errorf("Failed to read file %q from incus image %q, version %q: %w", fileName, img.Name, versionIdentifier, err)
 		}
@@ -931,7 +931,7 @@ func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem)
 
 	if item.file.HashSha256 != "" {
 		h = sha256.New()
-		teeStream = file.NewTeeReadCloser(stream, h)
+		teeStream = iox.NewTeeReadCloser(stream, h)
 	}
 
 	commit, cancel, _, err := s.filesRepo.Put(ctx, item.image, item.versionIdentifier, item.filename, teeStream)

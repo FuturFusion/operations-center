@@ -2,11 +2,11 @@ package mock
 
 import (
 	"context"
-	"net/http"
 
 	incus "github.com/lxc/incus/v7/client"
 	"github.com/lxc/incus/v7/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -19,7 +19,7 @@ func IncusClientWithoutMeshNetwork(ctx context.Context, endpoint provisioning.En
 			return incusClient
 		},
 		GetNetworkFunc: func(name string) (*api.Network, string, error) {
-			return nil, "", api.StatusErrorf(http.StatusNotFound, "Network not found")
+			return nil, "", domain.NewErrorf(domain.ErrNotFound, "", "Network not found")
 		},
 	}
 

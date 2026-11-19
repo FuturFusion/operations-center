@@ -19,7 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -28,7 +27,6 @@ import (
 
 type environment interface {
 	VarDir() string
-	CacheDir() string
 	IsIncusOS() bool
 }
 
@@ -47,20 +45,10 @@ type systemService struct {
 	// restoreMu is held by a restore and never released after a successful one.
 	restoreMu sync.Mutex
 
-	acmeUpdateCertificateFunc func(
-		ctx context.Context,
-		fsEnv interface {
-			VarDir() string
-			CacheDir() string
-		},
-		cfg system.SecurityACME,
-		force bool,
-	) (*system.CertificatePost, error)
+	acme ACMEPort
 }
 
 var _ SystemService = &systemService{}
-
-type SystemServiceOption func(s *systemService)
 
 func NewSystemService(
 	env environment,
@@ -71,9 +59,9 @@ func NewSystemService(
 	backupRepo BackupRepo,
 	certificateRepo CertificateRepo,
 	requestRestart func(),
-	opts ...SystemServiceOption,
+	acme ACMEPort,
 ) *systemService {
-	systemSvc := &systemService{
+	return &systemService{
 		env:             env,
 		serverSvc:       serverSvc,
 		clusterSvc:      clusterSvc,
@@ -83,14 +71,8 @@ func NewSystemService(
 		certificateRepo: certificateRepo,
 		requestRestart:  requestRestart,
 
-		acmeUpdateCertificateFunc: acme.UpdateCertificate,
+		acme: acme,
 	}
-
-	for _, opt := range opts {
-		opt(systemSvc)
-	}
-
-	return systemSvc
 }
 
 func (s *systemService) GetCertificate(ctx context.Context) (system.Certificate, error) {
@@ -260,13 +242,13 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
 	cfg := config.GetSecurity().ACME
 
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, force)
+	newCert, err := s.acme.UpdateCertificate(ctx, cfg, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}
 
 	if newCert == nil {
-		if !acme.IsEnabled(cfg) {
+		if !config.IsACMEEnabled(cfg) {
 			slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
 		}
 

@@ -44,9 +44,9 @@ func TestServer_SignalLifecycleEvent(t *testing.T) {
 				server := Server{}
 
 				// Run test
-				server.SignalLifecycleEvent()
+				server.SignalLifecycleEvent(DefaultSignalLifecycleEventDelay)
 
-				time.Sleep(signalLifecycleEventDelay - time.Nanosecond)
+				time.Sleep(DefaultSignalLifecycleEventDelay - time.Nanosecond)
 				synctest.Wait()
 				require.False(t, isClosed(signaled), "Lifecycle signal emitted before the delay")
 

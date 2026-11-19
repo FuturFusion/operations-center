@@ -225,24 +225,24 @@ func (s Server) UpdateState() api.ServerUpdateState {
 	}.UpdateState()
 }
 
-var signalLifecycleEventDelay = 3 * time.Second
+// DefaultSignalLifecycleEventDelay is the default delay before a lifecycle event is signaled.
+const DefaultSignalLifecycleEventDelay = 3 * time.Second
 
-func (s Server) SignalLifecycleEvent() {
+// SignalLifecycleEvent signals the lifecycle event after delay.
+func (s Server) SignalLifecycleEvent(delay time.Duration) {
 	slm := lifecycle.ServerLifecycleMessage{
 		Server:            s.Name,
 		Cluster:           s.Cluster,
 		ServerUpdateState: s.UpdateState(),
 	}
 
-	go func() {
-		// Defer lifecycle signal a bit, let the triggering event complete first.
-		time.Sleep(signalLifecycleEventDelay)
-
+	// Defer lifecycle signal a bit, let the triggering event complete first.
+	time.AfterFunc(delay, func() {
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
 
 		lifecycle.ServerLifecycleSignal.Emit(ctx, slm)
-	}()
+	})
 }
 
 var ServerSelf = Server{

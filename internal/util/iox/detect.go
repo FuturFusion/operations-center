@@ -1,4 +1,4 @@
-package archive
+package iox
 
 import (
 	"bytes"

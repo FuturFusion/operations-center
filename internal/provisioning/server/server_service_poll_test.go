@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
@@ -127,20 +128,17 @@ func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing
 	httpsServer.StartTLS()
 	t.Cleanup(httpsServer.Close)
 
-	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	t.Cleanup(httpServer.Close)
-
 	tests := []struct {
-		name                   string
-		serverArg              provisioning.Server
-		clientPing             []queue.Item[struct{}]
-		repoGetByName          []queue.Item[*provisioning.Server]
-		repoUpdate             []queue.Item[struct{}]
-		clusterSvcGetByName    *provisioning.Cluster
-		clusterSvcGetByNameErr error
-		clusterSvcUpdateErr    error
+		name                          string
+		serverArg                     provisioning.Server
+		clientPing                    []queue.Item[struct{}]
+		clientGetPublicCertificate    *x509.Certificate
+		clientGetPublicCertificateErr error
+		repoGetByName                 []queue.Item[*provisioning.Server]
+		repoUpdate                    []queue.Item[struct{}]
+		clusterSvcGetByName           *provisioning.Cluster
+		clusterSvcGetByNameErr        error
+		clusterSvcUpdateErr           error
 
 		assertErr               require.ErrorAssertionFunc
 		assertLog               log.MatcherFunc
@@ -515,8 +513,9 @@ foobar
 				},
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			clientGetPublicCertificate: httpsServer.TLS.Certificates[0].Leaf,
+			assertErr:                  require.NoError,
+			assertLog:                  log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			assertServerCertificate: func() string {
 				return string(
 					pem.EncodeToMemory(
@@ -560,9 +559,10 @@ foobar
 				},
 			},
 
-			assertErr:        require.NoError,
-			assertLog:        log.Match("Server connection test failed"),
-			wantServerStatus: api.ServerStatusOffline,
+			clientGetPublicCertificateErr: boom.Error,
+			assertErr:                     require.NoError,
+			assertLog:                     log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+			wantServerStatus:              api.ServerStatusOffline,
 		},
 		{
 			name: "error - standalone server - connection error",
@@ -594,9 +594,10 @@ foobar
 				},
 			},
 
-			assertErr:        require.NoError,
-			assertLog:        log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
-			wantServerStatus: api.ServerStatusOffline,
+			clientGetPublicCertificateErr: boom.Error,
+			assertErr:                     require.NoError,
+			assertLog:                     log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+			wantServerStatus:              api.ServerStatusOffline,
 		},
 		{
 			name: "error - standalone server - connection error not TLS",
@@ -605,7 +606,7 @@ foobar
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
 				ConnectionURL:       "https://127.0.0.1:8443",
-				PublicConnectionURL: httpServer.URL,
+				PublicConnectionURL: "http://127.0.0.1:8080",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -628,9 +629,10 @@ foobar
 				},
 			},
 
-			assertErr:        require.NoError,
-			assertLog:        log.Match("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
-			wantServerStatus: api.ServerStatusOffline,
+			clientGetPublicCertificateErr: boom.Error,
+			assertErr:                     require.NoError,
+			assertLog:                     log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+			wantServerStatus:              api.ServerStatusOffline,
 		},
 		{
 			name: "error - standalone server - connection error not TLS - repo.Update error",
@@ -639,7 +641,7 @@ foobar
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
 				ConnectionURL:       "https://127.0.0.1:8443",
-				PublicConnectionURL: httpServer.URL,
+				PublicConnectionURL: "http://127.0.0.1:8080",
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -664,9 +666,10 @@ foobar
 				},
 			},
 
-			assertErr:        boom.ErrorIs,
-			assertLog:        log.Match("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
-			wantServerStatus: api.ServerStatusOffline,
+			clientGetPublicCertificateErr: boom.Error,
+			assertErr:                     boom.ErrorIs,
+			assertLog:                     log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+			wantServerStatus:              api.ServerStatusOffline,
 		},
 		{
 			name: "error - standalone server - repo.GetByName",
@@ -695,8 +698,9 @@ foobar
 				},
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			clientGetPublicCertificate: httpsServer.TLS.Certificates[0].Leaf,
+			assertErr:                  boom.ErrorIs,
+			assertLog:                  log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 	}
 
@@ -725,6 +729,9 @@ foobar
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					_, err := queue.Pop(t, &tc.clientPing)
 					return err
+				},
+				GetPublicCertificateFunc: func(ctx context.Context, publicURL string) (*x509.Certificate, error) {
+					return tc.clientGetPublicCertificate, tc.clientGetPublicCertificateErr
 				},
 				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
@@ -755,7 +762,6 @@ foobar
 			serverSvc := provisioningServer.New(
 				repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
-				provisioningServer.WithHTTPClient(httpsServer.Client()),
 			)
 			serverSvc.SetClusterService(clusterSvc)
 

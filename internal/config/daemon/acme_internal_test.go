@@ -1,15 +1,14 @@
-package acme_test
+package config
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-func TestIsEnabled(t *testing.T) {
+func TestIsACMEEnabled(t *testing.T) {
 	t.Parallel()
 
 	complete := system.SecurityACME{
@@ -73,7 +72,7 @@ func TestIsEnabled(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := acme.IsEnabled(tc.modify(complete))
+			got := IsACMEEnabled(tc.modify(complete))
 
 			require.Equal(t, tc.want, got, "ACME enabled state")
 		})
@@ -199,7 +198,7 @@ func TestValidateACMEConfig(t *testing.T) {
 			t.Parallel()
 
 			// Run test
-			err := acme.ValidateACMEConfig(tc.modify(valid))
+			err := validateACMEConfig(tc.modify(valid))
 
 			// Assert
 			tc.assertErr(t, err)

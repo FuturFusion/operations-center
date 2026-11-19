@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -58,7 +58,7 @@ type UpdateFilesRepo interface {
 	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) (CommitFunc, CancelFunc, error)
 	Delete(ctx context.Context, update Update) error
 	PruneFiles(ctx context.Context, update Update) (_ error)
-	UsageInformation(ctx context.Context) (file.UsageInformation, error)
+	UsageInformation(ctx context.Context) (domain.UsageInformation, error)
 	CleanupAll(ctx context.Context) error
 	DeleteUnknown(ctx context.Context, known []uuid.UUID) error
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)

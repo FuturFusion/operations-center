@@ -1,4 +1,4 @@
-package environment
+package osenv
 
 import (
 	"os"
@@ -72,7 +72,7 @@ func TestEnvironment_GetSecureBootPlatformKeyUpdate(t *testing.T) {
 				require.NoError(t, os.WriteFile(path, tc.content, 0o600))
 			}
 
-			env := environment{
+			env := osEnvironment{
 				platformKeyUpdatePath: path,
 				isIncusOS:             func() bool { return tc.isIncusOS },
 			}

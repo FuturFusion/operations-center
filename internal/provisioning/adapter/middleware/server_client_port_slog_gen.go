@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -205,6 +206,38 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 		}
 	}()
 	return _d._base.GetProviderConfig(ctx, server)
+}
+
+// GetPublicCertificate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetPublicCertificate(ctx context.Context, publicURL string) (certificate *x509.Certificate, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("publicURL", publicURL),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetPublicCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("certificate", certificate),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetPublicCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetPublicCertificate finished")
+		}
+	}()
+	return _d._base.GetPublicCertificate(ctx, publicURL)
 }
 
 // GetResources implements provisioning.ServerClientPort.

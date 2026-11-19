@@ -19,10 +19,11 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -282,7 +283,7 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 	name := args[1]
 
 	// If stdin isn't a terminal, read text from it.
-	if !termios.IsTerminal(environment.GetStdinFd()) {
+	if !termios.IsTerminal(osenv.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
@@ -617,7 +618,7 @@ func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error
 
 	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := file.SafeCopy(writer, imageReader)
+	size, err := iox.SafeCopy(writer, imageReader)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 )
 
 type multipartStreamer struct {
@@ -88,7 +88,7 @@ func NewWithFields(fields map[string]string, fileNames ...string) *multipartStre
 					return
 				}
 
-				_, err = file.SafeCopy(fileWriter, f)
+				_, err = iox.SafeCopy(fileWriter, f)
 				if err != nil {
 					m.setErr(err)
 					return

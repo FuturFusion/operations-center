@@ -20,9 +20,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	adapterMock "github.com/FuturFusion/operations-center/internal/image/adapter/mock"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/xz"
 	"github.com/FuturFusion/operations-center/internal/image/repo/mock"
-	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -950,7 +949,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil, xz.New())
 
 			// Run test
 			name, err := imageSvc.AddVersion(t.Context(), tc.multipartReaderArg)
@@ -971,6 +970,108 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			if tc.wantItemFileType != nil {
 				require.Equal(t, tc.wantItemFileType, gotItemFileType)
 			}
+		})
+	}
+}
+
+type failingWriteCloser struct {
+	writeErr error
+	closeErr error
+}
+
+func (f failingWriteCloser) Write(p []byte) (int, error) {
+	if f.writeErr != nil {
+		return 0, f.writeErr
+	}
+
+	return len(p), nil
+}
+
+func (f failingWriteCloser) Close() error {
+	return f.closeErr
+}
+
+func TestImageIncusService_AddVersion_xzErrors(t *testing.T) {
+	t.Parallel()
+
+	errXZ := errors.New("boom")
+
+	const requestJSON = `{"os": "ubuntu", "release": "24.04", "arch": "amd64", "variant": "cloud", "version": "20260303"}`
+
+	tests := []struct {
+		name               string
+		multipartReaderArg *multipart.Reader
+		xzNewReader        func(ctx context.Context, r io.Reader) (io.ReadCloser, error)
+		xzNewWriter        func(ctx context.Context, w io.Writer) (io.WriteCloser, error)
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:               "error - create xz writer",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, requestJSON),
+			xzNewWriter: func(ctx context.Context, w io.Writer) (io.WriteCloser, error) {
+				return nil, errXZ
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errXZ, a...)
+				require.ErrorContains(tt, err, "Failed to create XZ writer", a...)
+			},
+		},
+		{
+			name:               "error - write to xz writer",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, requestJSON),
+			xzNewWriter: func(ctx context.Context, w io.Writer) (io.WriteCloser, error) {
+				return failingWriteCloser{writeErr: errXZ}, nil
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errXZ, a...)
+				require.ErrorContains(tt, err, `Failed to write header for "metadata.yaml"`, a...)
+			},
+		},
+		{
+			name:               "error - close xz writer",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, requestJSON),
+			xzNewWriter: func(ctx context.Context, w io.Writer) (io.WriteCloser, error) {
+				return failingWriteCloser{closeErr: errXZ}, nil
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errXZ, a...)
+				require.ErrorContains(tt, err, "Failed to close XZ writer", a...)
+			},
+		},
+		{
+			name:               "error - create xz reader",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
+			xzNewReader: func(ctx context.Context, r io.Reader) (io.ReadCloser, error) {
+				return nil, errXZ
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, errXZ, a...)
+				require.ErrorContains(tt, err, "Failed to create xz reader", a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			xzPort := &adapterMock.XZPortMock{
+				NewReaderFunc: tc.xzNewReader,
+				NewWriterFunc: tc.xzNewWriter,
+			}
+			imageSvc := image.NewIncusImage(nil, nil, nil, xzPort)
+
+			// Run test
+			_, err := imageSvc.AddVersion(t.Context(), tc.multipartReaderArg)
+
+			// Assert
+			tc.assertErr(t, err)
 		})
 	}
 }
@@ -1000,7 +1101,7 @@ func writeMetadataTarballPart(t *testing.T, writer *multipart.Writer, filename s
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)
-	xzw, err := xz.NewWriter(t.Context(), buf)
+	xzw, err := xz.New().NewWriter(t.Context(), buf)
 	require.NoError(t, err)
 	tw := tar.NewWriter(xzw)
 	err = tw.WriteHeader(&tar.Header{
@@ -1229,7 +1330,7 @@ func TestImageIncusService_GetAll(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil, xz.New())
 
 			// Run test
 			images, err := imageSvc.GetAll(t.Context())
@@ -1279,7 +1380,7 @@ func TestImageIncusService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil, xz.New())
 
 			// Run test
 			images, err := imageSvc.GetAllNames(t.Context())
@@ -1339,7 +1440,7 @@ func TestImageIncusService_GetByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil, xz.New())
 
 			// Run test
 			img, err := imageSvc.GetByName(t.Context(), tc.nameArg)
@@ -1432,7 +1533,7 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil, xz.New())
 
 			// Run test
 			err := imageSvc.DeleteByName(t.Context(), tc.argName)
@@ -1530,7 +1631,7 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil, xz.New())
 
 			// Run test
 			err := imageSvc.DeleteBySource(t.Context(), tc.argName)
@@ -1666,7 +1767,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil, xz.New())
 
 			// Run test
 			err := imageSvc.DeleteVersionByName(t.Context(), tc.argName, tc.argVersion)
@@ -1851,7 +1952,7 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil, xz.New())
 
 			// Run test
 			rc, size, err := imageSvc.GetVersionFileByName(t.Context(), tc.argName, tc.argVersion, tc.argFilename)
@@ -1922,7 +2023,7 @@ func TestIncusImageService_Update(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil, xz.New())
 
 			// Run test
 			err := imageSvc.Update(t.Context(), tc.incusImage)
@@ -1961,7 +2062,7 @@ func TestIncusImageService_ValidateFilterExpression(t *testing.T) {
 			t.Parallel()
 
 			// Setup
-			imageSvc := image.NewIncusImage(nil, nil, nil)
+			imageSvc := image.NewIncusImage(nil, nil, nil, xz.New())
 
 			// Run test
 			err := imageSvc.ValidateFilterExpression(t.Context(), tc.argFilterExpression)
@@ -1985,7 +2086,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 		repoGetAllWithFilterErr       error
 		repoDeleteByNameErr           error
 		filesRepoDeleteVersionFileErr error
-		filesRepoUsageInformation     file.UsageInformation
+		filesRepoUsageInformation     domain.UsageInformation
 		filesRepoUsageInformationErr  error
 		simplestreamsGetFileRC        io.ReadCloser
 		simplestreamsGetFileErr       error
@@ -2728,7 +2829,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 				DeleteVersionFileFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string) error {
 					return tc.filesRepoDeleteVersionFileErr
 				},
-				UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
+				UsageInformationFunc: func(ctx context.Context) (domain.UsageInformation, error) {
 					return tc.filesRepoUsageInformation, tc.filesRepoUsageInformationErr
 				},
 				PutFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
@@ -2750,7 +2851,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo, simplestreams)
+			imageSvc := image.NewIncusImage(repo, filesRepo, simplestreams, xz.New())
 
 			// Run test
 			err := imageSvc.RefreshFromSource(tc.ctx, image.IncusImageSource{
@@ -2764,9 +2865,9 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 	}
 }
 
-func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) file.UsageInformation {
+func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) domain.UsageInformation {
 	const GiB = 1024 * 1024 * 1024
-	return file.UsageInformation{
+	return domain.UsageInformation{
 		TotalSpaceBytes:     uint64(totalSpaceGiB) * GiB,
 		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
 		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,
