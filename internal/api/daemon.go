@@ -1136,14 +1136,21 @@ func (d *Daemon) setupServerService(
 		),
 	)
 
-	// Server service needs to learn about updates of the public Operations Center
-	// address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.NetworkLocal) {
-		// Update operations center server record with updated network config.
+	selfRegister := func(ctx context.Context) {
 		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
 			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
 		}
+	}
+
+	// Server service needs to learn about updates of the REST server address.
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, _ apisystem.NetworkLocal) {
+		selfRegister(ctx)
+	})
+
+	// The public Operations Center address is part of the shared network config.
+	lifecycle.SharedNetworkUpdateSignal.AddListener(func(ctx context.Context, _ apisystem.NetworkGlobal) {
+		selfRegister(ctx)
 	})
 
 	// Server service needs to learn about updates of the server certificate.
@@ -2388,6 +2395,8 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()
 	lifecycle.NetworkUpdateSignal.Reset()
+	lifecycle.SharedNetworkUpdateSignal.Reset()
+	lifecycle.SharedSettingsUpdateSignal.Reset()
 	lifecycle.SecurityValidateSignal.Reset()
 	lifecycle.SecurityUpdateSignal.Reset()
 	lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Reset()
