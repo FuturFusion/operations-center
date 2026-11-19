@@ -27,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -143,7 +144,7 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 		return nil, cancel, err
 	}
 
-	_, err = file.SafeCopy(target, content)
+	_, err = iox.SafeCopy(target, content)
 	if err != nil {
 		return nil, cancel, err
 	}
@@ -421,7 +422,7 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destRoot *os.Root) (
 
 			defer f.Close()
 
-			n, err := file.SafeCopy(f, tarReader)
+			n, err := iox.SafeCopy(f, tarReader)
 			if err != nil {
 				return fmt.Errorf("Failed to write target file %q: %w", targetFile, err)
 			}
@@ -515,7 +516,7 @@ func verifyUpdateFiles(ctx context.Context, destRoot *os.Root, updateManifest *p
 			}()
 
 			h := sha256.New()
-			n, err := file.SafeCopy(h, f)
+			n, err := iox.SafeCopy(h, f)
 			if err != nil {
 				return fmt.Errorf("Failed to verify sha256 hash for file %q: %w", updateFile.Filename, err)
 			}

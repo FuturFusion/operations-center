@@ -2,6 +2,8 @@ package file
 
 import (
 	"os"
+
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 )
 
 // Copy copies a file, overwriting the target if it exists.
@@ -53,7 +55,7 @@ func Copy(source string, dest string) error {
 		}
 	}
 
-	_, err = SafeCopy(d, s)
+	_, err = iox.SafeCopy(d, s)
 	if err != nil {
 		return err
 	}
