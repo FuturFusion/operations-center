@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -309,7 +309,7 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 }
 
 // UsageInformation implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
+func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation domain.UsageInformation, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {

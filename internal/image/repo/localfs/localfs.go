@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
@@ -25,7 +26,7 @@ func New(root *os.Root) *localfs {
 	}
 }
 
-func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+func (l localfs) UsageInformation(_ context.Context) (domain.UsageInformation, error) {
 	return file.UsageInformationForPath(l.root.Name())
 }
 

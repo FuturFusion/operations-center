@@ -29,7 +29,6 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -367,8 +366,8 @@ func cachedImages(t *testing.T, cacheDir string, public bool) []string {
 
 // ampleCacheUsage reports plenty of free space. The test images are small, so
 // the tests must not depend on the free space of the machine.
-func ampleCacheUsage() (file.UsageInformation, error) {
-	return file.UsageInformation{TotalSpaceBytes: 1 << 40, AvailableSpaceBytes: 1 << 40}, nil
+func ampleCacheUsage() (domain.UsageInformation, error) {
+	return domain.UsageInformation{TotalSpaceBytes: 1 << 40, AvailableSpaceBytes: 1 << 40}, nil
 }
 
 type readCountingReadCloser struct {
