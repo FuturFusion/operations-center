@@ -2194,7 +2194,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 
 func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.SecurityACME) (valid bool, _ error) {
 	// ACME renews late in the validity period. A fixed threshold warns before the renewal starts.
-	if server.Type == api.ServerTypeOperationsCenter && acme.IsEnabled(acmeCfg) {
+	if server.Type == api.ServerTypeOperationsCenter && config.IsACMEEnabled(acmeCfg) {
 		return certificate.ValidateLifetime(*server.Certificate, config.ACMECertificateExpiryWarningLifetimeRatio)
 	}
 

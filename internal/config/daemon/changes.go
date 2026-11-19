@@ -4,8 +4,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 )
 
 // This file is the single home for "what changed between two configurations".
@@ -46,7 +44,7 @@ func isTrustedHTTPSProxiesChanged(oldCfg, newCfg config) bool {
 }
 
 func isACMEChanged(oldCfg, newCfg config) bool {
-	return acme.ACMEConfigChanged(oldCfg.Security.ACME, newCfg.Security.ACME)
+	return acmeConfigChanged(oldCfg.Security.ACME, newCfg.Security.ACME)
 }
 
 func isLogLevelChanged(oldCfg, newCfg config) bool {
