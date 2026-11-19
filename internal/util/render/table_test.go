@@ -95,6 +95,13 @@ func TestTable(t *testing.T) {
 			want:      "- name: one\n",
 		},
 		{
+			name:   "error - header and noheader",
+			format: render.TableFormatCSV + "," + render.TableOptionHeader + "," + render.TableOptionNoHeader,
+
+			assertErr: errassert.Contains(`Format options "header" and "noheader" are mutually exclusive`),
+			want:      "",
+		},
+		{
 			name:   "error - invalid format",
 			format: "xml",
 
