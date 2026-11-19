@@ -114,7 +114,14 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	d := restapi.NewDaemon(cmd.Context(), c.env)
 
-	err = d.Start(cmd.Context())
+	// Start keeps its context for the lifetime of the daemon. A signal only
+	// cancels it while the startup runs, so the shutdown below stays graceful.
+	startCtx, cancelStart := context.WithCancel(cmd.Context())
+	defer cancelStart()
+
+	stopCancelOnSignal := context.AfterFunc(rootCtx, cancelStart)
+	err = d.Start(startCtx)
+	stopCancelOnSignal()
 	if err != nil {
 		slog.ErrorContext(logCtx, "Failed to start daemon", logger.Err(err))
 		return fmt.Errorf("Failed to start daemon: %v", err)

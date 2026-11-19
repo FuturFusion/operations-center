@@ -746,11 +746,15 @@ func openCowsqlGlobalDB(ctx context.Context, isClustered bool, membership cluste
 			membership.SetGlobalDB(globalRepo)
 
 			clusterTaskStop := clusterHeartbeatTask(ctx, membership)
-			membership.Gateway().WaitUpgradeNotification()
+			waitUpgradeNotification(ctx, membership.Gateway())
 			_ = clusterTaskStop(time.Second)
 
 			membership.SetGlobalDB(nil)
 			_ = globalDB.Close()
+
+			if ctx.Err() != nil {
+				return nil, fmt.Errorf("Stopped waiting for the other members to upgrade: %w", ctx.Err())
+			}
 
 			continue
 		}
@@ -759,6 +763,21 @@ func openCowsqlGlobalDB(ctx context.Context, isClustered bool, membership cluste
 	}
 
 	return globalRepo, nil
+}
+
+// waitUpgradeNotification returns early if ctx is canceled.
+// The wait of the gateway does not support a context.
+func waitUpgradeNotification(ctx context.Context, gateway interface{ WaitUpgradeNotification() }) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		gateway.WaitUpgradeNotification()
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
 }
 
 func (d *Daemon) initAndLoadServerCert() error {

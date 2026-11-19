@@ -147,8 +147,7 @@ func Open(closingCtx context.Context, name string, store driver.NodeStore, addre
 		case <-connectCtx.Done():
 			return nil, connectCtx.Err()
 
-		default:
-			time.Sleep(2 * time.Second)
+		case <-time.After(2 * time.Second):
 		}
 	}
 
