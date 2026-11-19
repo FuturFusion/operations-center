@@ -18,7 +18,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/iox"
@@ -341,7 +340,7 @@ func (c *cmdIncusImageAdd) assertMetadataTarball(filename string) error {
 
 	defer f.Close()
 
-	extension, _, err := archive.DetectType(f)
+	extension, _, err := iox.DetectType(f)
 	if err != nil {
 		return fmt.Errorf("Failed to read %q: %w", filename, err)
 	}
