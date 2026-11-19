@@ -1473,21 +1473,63 @@ func (d *Daemon) setupAPIRoutes(
 	return serveMux, inventorySyncers, nil
 }
 
+// Variables instead of constants, so tests can shorten the delays.
+var (
+	lifecycleMonitorRetryMin = time.Second
+	lifecycleMonitorRetryMax = time.Minute
+)
+
 // lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
 func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {
 	return func(ctx context.Context) func(context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
 
-		err := clusterSvc.StartLifecycleEventsMonitor(ctx)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to start cluster lifecycle events monitor", logger.Err(err))
-		}
+		go func() {
+			defer close(done)
+			startLifecycleEventsMonitor(ctx, clusterSvc)
+		}()
 
-		return func(context.Context) error {
+		// Only wait for the retry loop. The monitor stops on its own when ctx is canceled.
+		return func(stopCtx context.Context) error {
 			cancel()
 
-			return nil
+			select {
+			case <-done:
+				return nil
+
+			case <-stopCtx.Done():
+				return fmt.Errorf("Failed to stop lifecycle events monitor: %w", stopCtx.Err())
+			}
 		}
+	}
+}
+
+// startLifecycleEventsMonitor retries with backoff until the start succeeds or ctx is done.
+// A transient error must not disable the monitor, because the leader does not call the task again.
+func startLifecycleEventsMonitor(ctx context.Context, clusterSvc provisioning.ClusterService) {
+	delay := lifecycleMonitorRetryMin
+
+	for {
+		err := clusterSvc.StartLifecycleEventsMonitor(ctx)
+		if err == nil {
+			return
+		}
+
+		if ctx.Err() != nil {
+			return
+		}
+
+		slog.WarnContext(ctx, "Failed to start cluster lifecycle events monitor, retrying", slog.Duration("delay", delay), logger.Err(err))
+
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-time.After(delay):
+		}
+
+		delay = min(delay*2, lifecycleMonitorRetryMax)
 	}
 }
 
