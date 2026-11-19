@@ -286,10 +286,6 @@ linters:
         text: "incus/v7/client"
       - linters:
           - forbidigo
-        path: '^internal/provisioning/cluster/cluster_service\.go$'
-        text: "Pure packages must"
-      - linters:
-          - forbidigo
         path: '^internal/provisioning/server_model\.go$'
         text: "Pure packages must"
       - linters:
