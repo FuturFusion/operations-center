@@ -49,7 +49,12 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, wrapErrFu
 				}
 			}()
 		{{end -}}
-		{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{- if or (eq $method.Name "UseProject") (eq $method.Name "UseTarget") }}
+			// Wrap the returned client, such that errors of follow up calls are wrapped as well.
+			return New{{$decorator}}(_d._base.{{ $method.Name }}({{ $method.ArgCallList }}), _d._wrapErrFunc)
+		{{- else -}}
+			{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{- end }}
 	}
 {{ end }}
 
