@@ -89,9 +89,10 @@ Components group the metrics. The `metrics_components` setting lists the
 enabled components. A disabled component exposes no metrics.
 See [system settings](settings.md) for details.
 
-| Component | Metrics                                                        | Enabled by default |
-| :---      | :---                                                           | :---               |
-| `runtime` | Go runtime, process, build information and the metrics handler | yes                |
+| Component | Metrics                                                               | Enabled by default |
+| :---      | :---                                                                  | :---               |
+| `runtime` | Go runtime, process, build information and the metrics handler        | yes                |
+| `api`     | Count, server errors, aborted responses and duration of HTTP requests | yes                |
 
 ## Metrics of the `runtime` component
 
@@ -102,3 +103,40 @@ See [system settings](settings.md) for details.
 | `promhttp_metric_handler_*`        | mixed | Requests served by the metrics endpoint                                    |
 | `operations_center_build_info`     | gauge | Version of Operations Center in the `version` label. The value is always 1 |
 | `operations_center_uptime_seconds` | gauge | Time in seconds since the start of Operations Center                       |
+
+## Metrics of the `api` component
+
+| Metric                                            | Type      | Labels                    | Description                                      |
+| :---                                              | :---      | :---                      | :---                                             |
+| `operations_center_http_requests_total`           | counter   | `method`, `route`, `code` | Number of HTTP requests                          |
+| `operations_center_http_request_errors_total`     | counter   | `method`, `route`         | Number of HTTP requests with a server error      |
+| `operations_center_http_requests_aborted_total`   | counter   | `method`, `route`         | Number of HTTP requests with an aborted response |
+| `operations_center_http_request_duration_seconds` | histogram | `method`, `route`         | Duration of the HTTP requests in seconds         |
+
+The labels have the following values:
+
+| Label    | Value                                                                                                                                           |
+| :---     | :---                                                                                                                                            |
+| `method` | HTTP method of the request. The value is `other` for a method that is not a standard HTTP method in upper case                                  |
+| `route`  | Path pattern of the matched route, for example `/1.0/provisioning/servers/{name}`. The value is `unmatched` for a request that matches no route |
+| `code`   | HTTP status code of the response                                                                                                                |
+
+The metrics cover the HTTP requests that reach the handlers of Operations Center. This includes requests to the web UI and to the metrics endpoint.
+The metrics do not cover requests that the HTTP server rejects before a handler runs, for example a malformed request.
+
+A request matches no route if the path is unknown. A request also matches no route if the route does not support the method of the request.
+A redirect, for example to the clean form of the path, has the route of its target.
+If the target matches no route, the redirect has the route `unmatched`.
+
+A server error is a response with a status code of 500 or higher.
+If a handler aborts before it starts the response, the metrics record the code 500 and a server error. The client receives no response.
+A response that aborts after it starts keeps its status code. The abort counts as an aborted response. The abort itself is not a server error.
+A handler aborts the response if it cannot write it, for example because the client closed the connection.
+A handler can also crash, for example because of a bug. A crash always counts as a server error, also after the response started.
+Some handlers ignore a failed read or write, for example the download of an image. Then the request keeps its status code. It does not count as an aborted response.
+An aborted response does not always mean that the client closed the connection. A handler also aborts the response if it cannot read the data, for example from IncusOS or from a file.
+
+A handler can hijack the connection to switch the protocol. A hijacked connection has the code 101.
+The duration ends with the hijack. It does not include the time of the session after the switch.
+
+The histogram uses the buckets 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5 and 10 seconds.
