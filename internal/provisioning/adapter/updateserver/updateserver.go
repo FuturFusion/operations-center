@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -100,33 +101,7 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
 	for _, indexUpdate := range updates.Updates {
-		update := provisioning.Update{
-			Format:      indexUpdate.Format,
-			Origin:      indexUpdate.Origin,
-			PublishedAt: indexUpdate.PublishedAt,
-			Severity:    indexUpdate.Severity,
-			Version:     indexUpdate.Version,
-			URL:         indexUpdate.URL,
-
-			UpstreamChannels: indexUpdate.Channels,
-			Status:           api.UpdateStatusUnknown,
-			UUID:             uuidFromUpdateServer(indexUpdate),
-		}
-
-		// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
-		files := make(provisioning.UpdateFiles, 0, len(indexUpdate.Files))
-		for _, file := range indexUpdate.Files {
-			_, ok := images.UpdateFileComponents[file.Component]
-			if !ok {
-				// Skip unknown file components.
-				continue
-			}
-
-			files = append(files, file)
-		}
-
-		update.Files = files
-		updatesList = append(updatesList, update)
+		updatesList = append(updatesList, toProvisioningUpdate(indexUpdate))
 	}
 
 	sort.Slice(updatesList, func(i, j int) bool {
@@ -137,6 +112,72 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 
 	return provisioning.Updates(updatesList[:limit]), nil
 }
+
+func toProvisioningUpdate(indexUpdate Update) provisioning.Update {
+	update := provisioning.Update{
+		Format:      indexUpdate.Format,
+		Origin:      indexUpdate.Origin,
+		PublishedAt: indexUpdate.PublishedAt,
+		Severity:    indexUpdate.Severity,
+		Version:     indexUpdate.Version,
+		URL:         indexUpdate.URL,
+
+		UpstreamChannels: indexUpdate.Channels,
+		Status:           api.UpdateStatusUnknown,
+		UUID:             uuidFromUpdateServer(indexUpdate),
+	}
+
+	// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
+	files := make(provisioning.UpdateFiles, 0, len(indexUpdate.Files))
+	for _, file := range indexUpdate.Files {
+		_, ok := images.UpdateFileComponents[file.Component]
+		if !ok {
+			// Skip unknown file components.
+			continue
+		}
+
+		files = append(files, file)
+	}
+
+	update.Files = files
+
+	return update
+}
+
+// GetByVersion returns the update with the given version. The update server
+// provides updates, which are no longer in its index, as long as it keeps
+// their files.
+func (u *updateServer) GetByVersion(ctx context.Context, version string) (provisioning.Update, error) {
+	_, contentVerified, err := u.fetchAndVerify(ctx, path.Join("/", version, provisioning.UpdateManifestFilename))
+	if errors.Is(err, errStatusNotFound) {
+		return provisioning.Update{}, domain.NewErrorf(domain.ErrNotFound, "", "Update source does not provide version %q", version).
+			WithHintf("The update source keeps only recent versions. Export the update from another Operations Center, which has it.").
+			WithDetail("version", version).
+			WithCause(err)
+	}
+
+	if err != nil {
+		return provisioning.Update{}, err
+	}
+
+	manifest := Update{}
+	err = json.Unmarshal(contentVerified, &manifest)
+	if err != nil {
+		return provisioning.Update{}, fmt.Errorf("Failed to read manifest of update %q: %w", version, err)
+	}
+
+	if manifest.Version != version {
+		return provisioning.Update{}, fmt.Errorf("Manifest version %q does not match requested version %q", manifest.Version, version)
+	}
+
+	// The manifest does not contain the URL. The update server provides the
+	// files of an update below its version.
+	manifest.URL = "/" + version
+
+	return toProvisioningUpdate(manifest), nil
+}
+
+var errStatusNotFound = errors.New("Not found on update server")
 
 func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
 	_, contentVerified, err := u.fetchAndVerify(ctx, "/index.sjson")
@@ -176,6 +217,10 @@ func (u *updateServer) fetchAndVerify(ctx context.Context, urlPath string) (cont
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil, fmt.Errorf("Failed to query %q: %w", urlPath, errStatusNotFound)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)

@@ -14,6 +14,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -399,6 +400,116 @@ func signedByCA(caCert []byte, _ []byte) []byte {
 
 func signedByOtherCA(_ []byte, otherCACert []byte) []byte {
 	return otherCACert
+}
+
+func TestUpdateServer_GetByVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		statusCode   int
+		manifestBody []byte
+
+		assertErr  require.ErrorAssertionFunc
+		wantUpdate provisioning.Update
+	}{
+		{
+			name:         "success",
+			statusCode:   http.StatusOK,
+			manifestBody: []byte(`{"format":"1.0","version":"202610272234","origin":"linuxcontainers.org","channels":["stable"],"severity":"none","published_at":"2026-10-27T22:34:00Z","files":[{"filename":"x86_64/IncusOS.efi.gz","component":"os"},{"filename":"unknown","component":"unknown"}]}`),
+
+			assertErr: require.NoError,
+			wantUpdate: provisioning.Update{
+				UUID:             uuid.MustParse(`3bb2ccf9-26b8-5028-9279-348f46c8ad93`),
+				Format:           "1.0",
+				Origin:           "linuxcontainers.org",
+				Version:          "202610272234",
+				URL:              "/202610272234",
+				UpstreamChannels: provisioning.UpdateUpstreamChannels{"stable"},
+				Severity:         images.UpdateSeverityNone,
+				PublishedAt:      time.Date(2026, 10, 27, 22, 34, 0, 0, time.UTC),
+				Status:           api.UpdateStatusUnknown,
+				Files: provisioning.UpdateFiles{
+					{
+						Filename:  "x86_64/IncusOS.efi.gz",
+						Component: images.UpdateFileComponentOS,
+					},
+				},
+			},
+		},
+		{
+			name:         "error - version not found",
+			statusCode:   http.StatusNotFound,
+			manifestBody: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+			},
+			wantUpdate: provisioning.Update{},
+		},
+		{
+			name:         "error - wrong status code",
+			statusCode:   http.StatusInternalServerError,
+			manifestBody: nil,
+
+			assertErr:  require.Error,
+			wantUpdate: provisioning.Update{},
+		},
+		{
+			name:         "error - invalid manifest",
+			statusCode:   http.StatusOK,
+			manifestBody: []byte(`{`),
+
+			assertErr:  require.Error,
+			wantUpdate: provisioning.Update{},
+		},
+		{
+			name:         "error - version mismatch",
+			statusCode:   http.StatusOK,
+			manifestBody: []byte(`{"version":"202611010000"}`),
+
+			assertErr:  require.Error,
+			wantUpdate: provisioning.Update{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "token", nil
+				},
+			}
+
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+			signedBody := signaturetest.SignContent(t, cert, key, tc.manifestBody)
+
+			svr := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != "/202610272234/update.sjson" {
+						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+						return
+					}
+
+					w.WriteHeader(tc.statusCode)
+					_, _ = w.Write(signedBody)
+				}),
+			)
+			defer svr.Close()
+
+			s := updateserver.New(svr.URL, string(caCert), false, envMock)
+
+			// Run test
+			update, err := s.GetByVersion(t.Context(), "202610272234")
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantUpdate, update, "unexpected update")
+		})
+	}
 }
 
 func TestUpdateServer_SourceConnectionTest(t *testing.T) {
