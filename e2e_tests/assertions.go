@@ -828,6 +828,8 @@ func assertOperationsCenterMetrics(t *testing.T) {
 
 	body := mustCurl(t, http.StatusOK, `%s %s`, ocAPI.clientAuth, metricsURL)
 	require.Regexp(t, `(?m)^go_goroutines `, body, "expect the metrics endpoint to be enabled by default")
+	require.Regexp(t, `(?m)^operations_center_http_requests_total\{.*route="/1\.0`, body, "expect the HTTP API metrics to be enabled by default and to carry the matched route")
+	require.NotRegexp(t, `route="[^"]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-`, body, "expect the route label to hold the path pattern and not the request path")
 
 	body = mustCurl(t, http.StatusOK, `%s -H 'Accept: application/openmetrics-text; version=1.0.0' %s`, ocAPI.clientAuth, metricsURL)
 	require.True(t, strings.HasSuffix(strings.TrimSpace(body), "# EOF"), "expect the OpenMetrics format to end with the end marker")

@@ -1529,7 +1529,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 				SettingsPut: systemapi.SettingsPut{
 					LogLevel:          "",
 					MetricsEnabled:    true,
-					MetricsComponents: []string{"runtime"},
+					MetricsComponents: []string{"runtime", "api"},
 				},
 			},
 		},
