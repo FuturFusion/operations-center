@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/render"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 )
 
@@ -138,4 +139,51 @@ func TestTable_nilWriter(t *testing.T) {
 
 	// Assert
 	require.ErrorContains(t, err, "Unable to render to nil writer")
+}
+
+func TestTable_writeError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		format string
+	}{
+		{
+			name:   "csv",
+			format: render.TableFormatCSV,
+		},
+		{
+			name:   "csv with header",
+			format: render.TableFormatCSV + "," + render.TableOptionHeader,
+		},
+		{
+			name:   "json",
+			format: render.TableFormatJSON,
+		},
+		{
+			name:   "yaml",
+			format: render.TableFormatYAML,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			w := failingWriter{}
+
+			// Run test
+			err := render.Table(w, tc.format, []string{"NAME"}, [][]string{{"one"}}, []string{"one"})
+
+			// Assert
+			boom.ErrorIs(t, err, "The write error must reach the caller")
+		})
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, boom.Error
 }
