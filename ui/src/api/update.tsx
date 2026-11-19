@@ -147,3 +147,21 @@ export const cleanupUpdates = (): Promise<APIResponse<object>> => {
       .catch(reject);
   });
 };
+
+export const downloadUpdate = (
+  version: string,
+  channels: string[],
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates/:download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ version, channels }),
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};

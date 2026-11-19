@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { cleanupUpdates, fetchUpdates, refreshUpdates } from "api/update";
 import DataTable from "components/DataTable";
 import ModalWindow from "components/ModalWindow";
+import DownloadUpdateBtn from "components/DownloadUpdateBtn";
 import ImportUpdatesBtn from "components/ImportUpdatesBtn";
 import UpdateActions from "components/UpdateActions";
 import { useNotification } from "context/notificationContext";
@@ -134,6 +135,7 @@ const Update = () => {
                 Refresh
               </Button>
               <ImportUpdatesBtn />
+              <DownloadUpdateBtn />
             </div>
           </div>
         </div>

@@ -131,6 +131,24 @@ and the files inside those.
 It's possible to skip files that are not needed, for example, architectures
 not used, can be left out of the tar file.
 
+### Download a specific version
+
+A refresh only downloads the most recent updates. To download an older
+version, request it by its version:
+
+```shell
+operations-center provisioning update download 202610272234 --channel legacy
+```
+
+This only works, as long as the update source still provides the version. The
+update source keeps only a limited number of versions. If the update source no
+longer provides the version, export the update from another Operations Center.
+See [Export an update](#export-an-update).
+
+Without `--channel`, the update is assigned to the default channel. A refresh
+removes updates, which are neither in use by a server nor among the most recent
+updates of a channel. Assign an older version to a separate channel to keep it.
+
 ### Export an update
 
 An update can be exported from one Operations Center and added to another

@@ -14,6 +14,7 @@ import (
 	"io"
 	"log/slog"
 	"path"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -549,6 +550,136 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	}
 
 	return s.filesRepo.Get(ctx, *update, filename)
+}
+
+var updateVersionPattern = regexp.MustCompile(`^[0-9]+$`)
+
+// Download downloads the update with the given version from the update
+// source. The source can provide versions, which are no longer in its index.
+// The update is assigned to channels. Without channels, the update is
+// assigned to the default channel.
+func (s updateService) Download(ctx context.Context, version string, channels []string) (_ uuid.UUID, err error) {
+	if !updateVersionPattern.MatchString(version) {
+		return uuid.Nil, domain.NewValidationErrf("Invalid version %q, a version only contains digits", version)
+	}
+
+	if config.GetUpdates().Source == "" {
+		return uuid.Nil, provisioning.ErrUpdateSourceNotConfigured
+	}
+
+	if len(channels) == 0 {
+		channels = []string{config.GetUpdates().UpdatesDefaultChannel}
+	}
+
+	update, err := s.source.GetByVersion(ctx, version)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	// An explicit request overrules the update filter expression. The file
+	// filter expression still applies, it selects the architectures.
+	updates, err := s.filterUpdateFileByFilterExpression(provisioning.Updates{update})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	update = updates[0]
+	update.Channels = channels
+	update.Status = api.UpdateStatusPending
+
+	err = update.Validate()
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Validate update: %w", err)
+	}
+
+	err = s.isSpaceAvailable(ctx, []provisioning.Update{update})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := s.repo.GetByUUID(ctx, update.UUID)
+		if err == nil {
+			return domain.NewErrorf(domain.ErrConstraintViolation, "", "Update %q with version %q is already present", update.UUID.String(), version).
+				WithHintf("Assign the present update to the channels instead.").
+				WithDetail("update", update.UUID.String()).
+				WithDetail("version", version)
+		}
+
+		if !errors.Is(err, domain.ErrNotFound) {
+			return fmt.Errorf("Failed to get update %q: %w", update.UUID.String(), err)
+		}
+
+		err = s.repo.Upsert(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to move update in pending state: %w", err)
+		}
+
+		// Assign the channels first. An unknown channel fails before the download.
+		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewErrorf(domain.ErrNotFound, "", "Update %q can not be assigned to the channels %v, at least one of them does not exist", update.UUID.String(), update.Channels).
+					WithHintf("Create the channel first or assign the update to an existing channel.").
+					WithDetail("update", update.UUID.String()).
+					WithDetail("channels", strings.Join(update.Channels, ", ")).
+					WithCause(err)
+			}
+
+			return fmt.Errorf("Failed to assign channels %v to update %q: %w", update.Channels, update.UUID.String(), err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		s.removeFailedDownload(ctx, update)
+	}()
+
+	for _, updateFile := range update.Files {
+		err = s.downloadFile(ctx, update, updateFile)
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
+
+	err = s.fetchManifest(ctx, update)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Failed to store manifest of update %q: %w", update.UUID.String(), err)
+	}
+
+	update.Status = api.UpdateStatusReady
+
+	err = s.repo.Upsert(ctx, update)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
+	}
+
+	return update.UUID, nil
+}
+
+// removeFailedDownload removes a partly downloaded update. A refresh would
+// remove it too, but only after the pending grace period.
+func (s updateService) removeFailedDownload(ctx context.Context, update provisioning.Update) {
+	// The request context might be canceled already.
+	ctx = context.WithoutCancel(ctx)
+
+	err := s.filesRepo.Delete(ctx, update)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to remove files of failed update download", slog.String("update", update.UUID.String()), logger.Err(err))
+	}
+
+	err = s.repo.DeleteByUUID(ctx, update.UUID)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to remove failed update download", slog.String("update", update.UUID.String()), logger.Err(err))
+	}
 }
 
 // GetArchive returns the update as tar archive and the exact size of the

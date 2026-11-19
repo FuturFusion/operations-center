@@ -114,6 +114,39 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 	return _d._base.CreateFromArchive(ctx, tarReader)
 }
 
+// Download implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Download(ctx context.Context, version string, channels []string) (uUID uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("version", version),
+			slog.Any("channels", channels),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Download")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("uUID", uUID),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Download returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Download finished")
+		}
+	}()
+	return _d._base.Download(ctx, version, channels)
+}
+
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

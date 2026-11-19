@@ -8596,6 +8596,26 @@ definitions:
         title: UpdateChangelogs represents a series of changelogs, e.g. for all the updates of a channel.
         type: array
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    UpdateDownloadPost:
+        properties:
+            channels:
+                description: |-
+                    Channels holds the name of the channels the update is assigned to.
+                    Without channels, the update is assigned to the default channel.
+                example:
+                    - legacy
+                items:
+                    type: string
+                type: array
+                x-go-name: Channels
+            version:
+                description: Version of the update.
+                example: "202610272234"
+                type: string
+                x-go-name: Version
+        title: UpdateDownloadPost defines the update to download from the update source.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     UpdateFile:
         properties:
             architecture:
@@ -14199,6 +14219,42 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Add a update
+            tags:
+                - updates
+    /1.0/provisioning/updates/:download:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Downloads the update with the given version from the update source. The
+                update source might provide versions, which are no longer listed in its
+                index. The request completes, after the download is complete.
+
+                The update is assigned to the given channels, or to the default channel.
+                A refresh removes updates, which are neither in use by a server nor among
+                the most recent updates of a channel.
+            operationId: updates_download_post
+            parameters:
+                - description: Update to download
+                  in: body
+                  name: update
+                  required: true
+                  schema:
+                    $ref: '#/definitions/UpdateDownloadPost'
+            produces:
+                - application/json
+            responses:
+                "201":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Download an update
             tags:
                 - updates
     /1.0/provisioning/updates/:refresh:

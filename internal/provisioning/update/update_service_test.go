@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -205,6 +206,423 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantID, id)
+		})
+	}
+}
+
+func TestUpdateService_Download(t *testing.T) {
+	updateID := uuidgen.FromPattern(t, "1")
+
+	sourceUpdate := provisioning.Update{
+		UUID:        updateID,
+		Origin:      "linuxcontainers.org",
+		Version:     "202610272234",
+		URL:         "/202610272234",
+		PublishedAt: time.Date(2026, 10, 27, 22, 34, 0, 0, time.UTC),
+		Severity:    images.UpdateSeverityNone,
+		Status:      api.UpdateStatusUnknown,
+		Files: provisioning.UpdateFiles{
+			{
+				Filename:     "x86_64/IncusOS.efi.gz",
+				Size:         5,
+				Sha256:       "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259", // echo -n "dummy" | sha256sum
+				Component:    images.UpdateFileComponentOS,
+				Architecture: images.UpdateFileArchitecture64BitX86,
+			},
+			{
+				// Filtered by the file filter expression.
+				Filename:     "aarch64/IncusOS.efi.gz",
+				Size:         5,
+				Component:    images.UpdateFileComponentOS,
+				Architecture: images.UpdateFileArchitecture64BitARM,
+			},
+		},
+	}
+
+	dummyFile := func() []queue.Item[io.ReadCloser] {
+		return []queue.Item[io.ReadCloser]{
+			{Value: io.NopCloser(bytes.NewBufferString(`dummy`))},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		source   string
+		version  string
+		channels []string
+
+		sourceGetByVersionErr error
+		usageInformation      []queue.Item[file.UsageInformation]
+		repoGetByUUIDErr      error
+		repoUpsert            queue.Errs
+		repoAssignChannelsErr error
+		sourceGetFile         []queue.Item[io.ReadCloser]
+		manifestExists        []queue.Item[bool]
+		sourceGetManifest     []queue.Item[[]byte]
+		filesRepoDelete       queue.Errs
+		repoDeleteByUUID      queue.Errs
+
+		assertErr            require.ErrorAssertionFunc
+		wantUUID             uuid.UUID
+		wantAssignedChannels [][]string
+		wantUpsertedStatuses []api.UpdateStatus
+		wantStoredFiles      []string
+		wantRemoved          int
+	}{
+		{
+			name:     "success - default channel",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation:  []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:  domain.ErrNotFound,
+			repoUpsert:        queue.Errs{nil, nil},
+			sourceGetFile:     dummyFile(),
+			manifestExists:    []queue.Item[bool]{{Value: false}},
+			sourceGetManifest: []queue.Item[[]byte]{{Value: []byte(`manifest`)}},
+
+			assertErr:            require.NoError,
+			wantUUID:             updateID,
+			wantAssignedChannels: [][]string{{"stable"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending, api.UpdateStatusReady},
+			wantStoredFiles:      []string{"x86_64/IncusOS.efi.gz", provisioning.UpdateManifestFilename},
+			wantRemoved:          0,
+		},
+		{
+			name:     "success - given channels",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: []string{"legacy", "prod"},
+
+			usageInformation:  []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:  domain.ErrNotFound,
+			repoUpsert:        queue.Errs{nil, nil},
+			sourceGetFile:     dummyFile(),
+			manifestExists:    []queue.Item[bool]{{Value: false}},
+			sourceGetManifest: []queue.Item[[]byte]{{Value: []byte(`manifest`)}},
+
+			assertErr:            require.NoError,
+			wantUUID:             updateID,
+			wantAssignedChannels: [][]string{{"legacy", "prod"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending, api.UpdateStatusReady},
+			wantStoredFiles:      []string{"x86_64/IncusOS.efi.gz", provisioning.UpdateManifestFilename},
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - invalid version",
+			source:   "https://updates.example.com",
+			version:  "../202610272234",
+			channels: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - no update source configured",
+			source:   "",
+			version:  "202610272234",
+			channels: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, provisioning.ErrUpdateSourceNotConfigured, a...)
+			},
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - source.GetByVersion",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			sourceGetByVersionErr: boom.Error,
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - not enough space",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation: []queue.Item[file.UsageInformation]{{Err: boom.Error}},
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - update already present",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation: []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrConstraintViolation, a...)
+			},
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - repo.GetByUUID",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation: []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: nil,
+			wantUpsertedStatuses: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - repo.Upsert pending",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation: []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUpsert:       queue.Errs{boom.Error},
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending},
+			wantAssignedChannels: nil,
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - unknown channel",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: []string{"unknown"},
+
+			usageInformation:      []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:      domain.ErrNotFound,
+			repoUpsert:            queue.Errs{nil},
+			repoAssignChannelsErr: domain.ErrNotFound,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+				require.ErrorContains(tt, err, "can not be assigned to the channels [unknown]", a...)
+			},
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: [][]string{{"unknown"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending},
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - repo.AssignChannels",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation:      []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:      domain.ErrNotFound,
+			repoUpsert:            queue.Errs{nil},
+			repoAssignChannelsErr: boom.Error,
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: [][]string{{"stable"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending},
+			wantStoredFiles:      nil,
+			wantRemoved:          0,
+		},
+		{
+			name:     "error - download file",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation: []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUpsert:       queue.Errs{nil},
+			sourceGetFile:    []queue.Item[io.ReadCloser]{{Err: boom.Error}},
+			filesRepoDelete:  queue.Errs{boom.Error},
+			repoDeleteByUUID: queue.Errs{boom.Error},
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: [][]string{{"stable"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending},
+			wantRemoved:          1,
+			wantStoredFiles:      nil,
+		},
+		{
+			name:     "error - manifest",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation:  []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:  domain.ErrNotFound,
+			repoUpsert:        queue.Errs{nil},
+			sourceGetFile:     dummyFile(),
+			manifestExists:    []queue.Item[bool]{{Value: false}},
+			sourceGetManifest: []queue.Item[[]byte]{{Err: boom.Error}},
+			filesRepoDelete:   queue.Errs{nil},
+			repoDeleteByUUID:  queue.Errs{nil},
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: [][]string{{"stable"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending},
+			wantStoredFiles:      []string{"x86_64/IncusOS.efi.gz"},
+			wantRemoved:          1,
+		},
+		{
+			name:     "error - repo.Upsert ready",
+			source:   "https://updates.example.com",
+			version:  "202610272234",
+			channels: nil,
+
+			usageInformation:  []queue.Item[file.UsageInformation]{{Value: usageInfoGiB(50, 10)}},
+			repoGetByUUIDErr:  domain.ErrNotFound,
+			repoUpsert:        queue.Errs{nil, boom.Error},
+			sourceGetFile:     dummyFile(),
+			manifestExists:    []queue.Item[bool]{{Value: false}},
+			sourceGetManifest: []queue.Item[[]byte]{{Value: []byte(`manifest`)}},
+			filesRepoDelete:   queue.Errs{nil},
+			repoDeleteByUUID:  queue.Errs{nil},
+
+			assertErr:            boom.ErrorIs,
+			wantUUID:             uuid.Nil,
+			wantAssignedChannels: [][]string{{"stable"}},
+			wantUpsertedStatuses: []api.UpdateStatus{api.UpdateStatusPending, api.UpdateStatusReady},
+			wantStoredFiles:      []string{"x86_64/IncusOS.efi.gz", provisioning.UpdateManifestFilename},
+			wantRemoved:          1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}, nil)
+
+			certPEM, _, err := incustls.GenerateMemCert(true, false)
+			require.NoError(t, err)
+
+			err = config.UpdateUpdates(t.Context(), system.UpdatesPut{
+				Source:                      tc.source,
+				SignatureVerificationRootCA: string(certPEM),
+				FileFilterExpression:        `applies_to_architecture(architecture, "x86_64")`,
+				UpdatesDefaultChannel:       "stable",
+				ServerDefaultChannel:        "stable",
+			})
+			require.NoError(t, err)
+
+			var upsertedStatuses []api.UpdateStatus
+			var assignedChannels [][]string
+
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return &provisioning.Update{}, tc.repoGetByUUIDErr
+				},
+				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+					upsertedStatuses = append(upsertedStatuses, update.Status)
+					return tc.repoUpsert.PopOrNil(t)
+				},
+				AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
+					assignedChannels = append(assignedChannels, channelNames)
+					return tc.repoAssignChannelsErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUID.PopOrNil(t)
+				},
+			}
+
+			var storedFiles []string
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
+					return queue.Pop(t, &tc.usageInformation)
+				},
+				ExistsFunc: func(ctx context.Context, update provisioning.Update, filename string) (bool, error) {
+					return queue.Pop(t, &tc.manifestExists)
+				},
+				PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
+					_, err := io.ReadAll(content)
+					require.NoError(t, err)
+
+					storedFiles = append(storedFiles, filename)
+
+					return func() error { return nil }, func() error { return nil }, nil
+				},
+				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					return tc.filesRepoDelete.PopOrNil(t)
+				},
+			}
+
+			source := &adapterMock.UpdateSourcePortMock{
+				GetByVersionFunc: func(ctx context.Context, version string) (provisioning.Update, error) {
+					update := sourceUpdate
+					update.Files = slices.Clone(sourceUpdate.Files)
+					return update, tc.sourceGetByVersionErr
+				},
+				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					rc, err := queue.Pop(t, &tc.sourceGetFile)
+					return rc, 5, err
+				},
+				GetUpdateManifestFunc: func(ctx context.Context, update provisioning.Update) ([]byte, error) {
+					return queue.Pop(t, &tc.sourceGetManifest)
+				},
+			}
+
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, source, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+			// Run test
+			gotUUID, err := updateSvc.Download(t.Context(), tc.version, tc.channels)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantUUID, gotUUID, "unexpected update UUID")
+			require.Equal(t, tc.wantAssignedChannels, assignedChannels, "unexpected channel assignments")
+			require.Equal(t, tc.wantUpsertedStatuses, upsertedStatuses, "unexpected update states written to the repository")
+			require.Equal(t, tc.wantStoredFiles, storedFiles, "unexpected files stored")
+			require.Len(t, repoUpdateFiles.DeleteCalls(), tc.wantRemoved, "unexpected removal of update files")
+			require.Len(t, repo.DeleteByUUIDCalls(), tc.wantRemoved, "unexpected removal of update")
+			require.Empty(t, tc.usageInformation, "expect all usage information calls to be consumed")
+			require.Empty(t, tc.repoUpsert, "expect all upsert calls to be consumed")
+			require.Empty(t, tc.sourceGetFile, "expect all file downloads to be consumed")
+			require.Empty(t, tc.manifestExists, "expect all manifest existence checks to be consumed")
+			require.Empty(t, tc.sourceGetManifest, "expect all manifest fetches to be consumed")
 		})
 	}
 }
