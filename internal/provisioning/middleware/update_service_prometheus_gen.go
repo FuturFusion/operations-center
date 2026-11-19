@@ -127,6 +127,20 @@ func (_d UpdateServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filt
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
+// GetArchive implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetArchive(ctx context.Context, id uuid.UUID) (readCloser io.ReadCloser, size int, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetArchive", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetArchive(ctx, id)
+}
+
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	_since := time.Now()
