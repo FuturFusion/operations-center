@@ -435,6 +435,8 @@ func (c *cmdUpdateAssignChannels) run(cmd *cobra.Command, args []string) error {
 // Cleanup updates.
 type cmdUpdateCleanup struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdUpdateCleanup) Command() *cobra.Command {
@@ -442,8 +444,17 @@ func (c *cmdUpdateCleanup) Command() *cobra.Command {
 	cmd.Use = "cleanup"
 	cmd.Short = "Cleanup updates"
 	cmd.Long = `Description:
-  Remove all update artifacts from Operations Center.
+  Remove update artifacts from Operations Center.
+
+  By default, protected updates are kept. An update is protected, if a server
+  runs its version or if it is assigned to a channel other than the default
+  channel.
+
+  With --force, all updates are removed, including the protected ones. Use this
+  only if the disk is full and the default cleanup fails.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "remove all updates, including the protected ones")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -462,7 +473,12 @@ func (c *cmdUpdateCleanup) validateArgsAndFlags(cmd *cobra.Command, args []strin
 }
 
 func (c *cmdUpdateCleanup) run(cmd *cobra.Command, args []string) error {
-	err := c.ocClient.CleanupAllUpdates(cmd.Context())
+	cleanup := c.ocClient.CleanupUpdates
+	if c.flagForce {
+		cleanup = c.ocClient.CleanupAllUpdates
+	}
+
+	err := cleanup(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("Failed to cleanup updates: %w", err)
 	}

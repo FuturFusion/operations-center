@@ -626,6 +626,77 @@ func Test_UpdateUpdate(t *testing.T) {
 	}
 }
 
+func Test_CleanupUpdates(t *testing.T) {
+	d := daemonSetup(t)
+
+	tests := []struct {
+		name       string
+		client     client.OperationsCenterClient
+		dbSeedFunc func(t *testing.T)
+
+		assertErr  require.ErrorAssertionFunc
+		assertFunc func(t *testing.T)
+	}{
+		{
+			name:       "error - not authorized",
+			client:     d.unauthorizedHTTPClient,
+			dbSeedFunc: noop,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
+			},
+			assertFunc: noop,
+		},
+		{
+			name:   "success - keep update assigned to non default channel",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedUpdate(t, d, uuidgen.FromPattern(t, "1"))
+				seedFile(t, d, filepath.Join("updates", uuidgen.FromPattern(t, "1").String(), updateFilename), []byte("update-file"))
+				seedUpdate(t, d, uuidgen.FromPattern(t, "2"))
+				seedFile(t, d, filepath.Join("updates", uuidgen.FromPattern(t, "2").String(), updateFilename), []byte("update-file"))
+
+				err := d.socketClient.CreateChannel(t.Context(), api.ChannelPost{
+					Name: "prod",
+				})
+				require.NoError(t, err)
+
+				err = d.socketClient.UpdateUpdate(t.Context(), uuidgen.FromPattern(t, "2").String(), api.UpdatePut{
+					Channels: []string{"prod"},
+				})
+				require.NoError(t, err)
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				updates, err := d.socketClient.GetUpdates(t.Context())
+				require.NoError(t, err)
+				require.Len(t, updates, 1, "expect only the protected update to be kept")
+				require.Equal(t, uuidgen.FromPattern(t, "2"), updates[0].UUID, "expect the update assigned to the prod channel to be kept")
+				require.Equal(t, []string{"prod"}, updates[0].Channels, "expect the channel assignment to be kept")
+
+				require.FileExists(t, filepath.Join(d.varDir, "updates", uuidgen.FromPattern(t, "2").String(), updateFilename), "expect the files of the protected update to be kept")
+				require.NoFileExists(t, filepath.Join(d.varDir, "updates", uuidgen.FromPattern(t, "1").String(), updateFilename), "expect the files of the removed update to be deleted")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.dbSeedFunc(t)
+
+			err := tc.client.CleanupUpdates(t.Context())
+
+			tc.assertErr(t, err)
+			tc.assertFunc(t)
+		})
+	}
+}
+
 func Test_CleanupAllUpdates(t *testing.T) {
 	d := daemonSetup(t)
 
@@ -655,6 +726,16 @@ func Test_CleanupAllUpdates(t *testing.T) {
 
 				seedUpdate(t, d, uuidgen.FromPattern(t, "1"))
 				seedFile(t, d, filepath.Join("updates", uuidgen.FromPattern(t, "1").String(), updateFilename), []byte("update-file"))
+
+				err := d.socketClient.CreateChannel(t.Context(), api.ChannelPost{
+					Name: "prod",
+				})
+				require.NoError(t, err)
+
+				err = d.socketClient.UpdateUpdate(t.Context(), uuidgen.FromPattern(t, "1").String(), api.UpdatePut{
+					Channels: []string{"prod"},
+				})
+				require.NoError(t, err)
 			},
 
 			assertErr: require.NoError,
@@ -663,7 +744,7 @@ func Test_CleanupAllUpdates(t *testing.T) {
 
 				updates, err := d.socketClient.GetUpdates(t.Context())
 				require.NoError(t, err)
-				require.Empty(t, updates)
+				require.Empty(t, updates, "expect protected updates to be removed as well")
 			},
 		},
 	}

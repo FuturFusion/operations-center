@@ -131,6 +131,75 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 	return update.UUID, nil
 }
 
+// Cleanup removes all updates, which are not protected. An update is
+// protected, if a server runs its version or if it is assigned to a channel
+// other than the default channel. Refresh can not restore such updates.
+func (s updateService) Cleanup(ctx context.Context) error {
+	var toDelete provisioning.Updates
+	var keep []uuid.UUID
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		servers, err := s.serverSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all servers during cleanup: %w", err)
+		}
+
+		versionsInUse := make(map[string]bool, len(servers))
+		for _, server := range servers {
+			versionsInUse[server.VersionData.OS.Version] = true
+		}
+
+		updates, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all updates during cleanup: %w", err)
+		}
+
+		defaultChannel := config.GetUpdates().UpdatesDefaultChannel
+		for _, update := range updates {
+			if versionsInUse[update.Version] || hasNonDefaultChannel(update, defaultChannel) {
+				keep = append(keep, update.UUID)
+				continue
+			}
+
+			toDelete = append(toDelete, update)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Remove the files first. This frees disk space before the DB is written.
+	// It also removes files, which are not known to the DB.
+	err = s.filesRepo.DeleteUnknown(ctx, keep)
+	if err != nil {
+		return fmt.Errorf("Failed to cleanup: %w", err)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		for _, update := range toDelete {
+			err := s.repo.DeleteByUUID(ctx, update.UUID)
+			if err != nil {
+				return fmt.Errorf("Failed to delete update %v: %w", update.UUID, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func hasNonDefaultChannel(update provisioning.Update, defaultChannel string) bool {
+	for _, channel := range update.Channels {
+		if channel != defaultChannel {
+			return true
+		}
+	}
+
+	return false
+}
+
+// CleanupAll removes all updates, including the protected ones.
 func (s updateService) CleanupAll(ctx context.Context) error {
 	// Since we are going to delete all the updates anyway and because this
 	// method is intended to be an escape hatch, which should also work, if

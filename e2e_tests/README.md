@@ -65,7 +65,7 @@ order:
 | `provisioning_updates_channels_tokens` | Updates, channels and tokens, see [Updates, channels and tokens](#updates-channels-and-tokens)               |
 | `oidc_authentication`                  | Authentication through OIDC, see [Fake OIDC provider](#fake-oidc-provider)                                   |
 | `openfga_authorization`                | Authorization through OpenFGA, see [OpenFGA server](#openfga-server)                                         |
-| `updates_cleanup_and_refresh`          | Removes all the updates and refreshes them. Runs last.                                                       |
+| `updates_cleanup_and_refresh`          | Cleanup keeps the protected updates, forced cleanup removes all. Refreshes the updates. Runs last.           |
 
 ### `TestE2E_StableServers`
 

@@ -27,6 +27,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //
 //		// make and configure a mocked provisioning.UpdateService
 //		mockedUpdateService := &UpdateServiceMock{
+//			CleanupFunc: func(ctx context.Context) error {
+//				panic("mock out the Cleanup method")
+//			},
 //			CleanupAllFunc: func(ctx context.Context) error {
 //				panic("mock out the CleanupAll method")
 //			},
@@ -82,6 +85,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //
 //	}
 type UpdateServiceMock struct {
+	// CleanupFunc mocks the Cleanup method.
+	CleanupFunc func(ctx context.Context) error
+
 	// CleanupAllFunc mocks the CleanupAll method.
 	CleanupAllFunc func(ctx context.Context) error
 
@@ -132,6 +138,11 @@ type UpdateServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Cleanup holds details about calls to the Cleanup method.
+		Cleanup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// CleanupAll holds details about calls to the CleanupAll method.
 		CleanupAll []struct {
 			// Ctx is the ctx argument value.
@@ -245,6 +256,7 @@ type UpdateServiceMock struct {
 			Update provisioning.Update
 		}
 	}
+	lockCleanup                         sync.RWMutex
 	lockCleanupAll                      sync.RWMutex
 	lockCreateFromArchive               sync.RWMutex
 	lockGetAll                          sync.RWMutex
@@ -261,6 +273,38 @@ type UpdateServiceMock struct {
 	lockRefresh                         sync.RWMutex
 	lockSetServerService                sync.RWMutex
 	lockUpdate                          sync.RWMutex
+}
+
+// Cleanup calls CleanupFunc.
+func (mock *UpdateServiceMock) Cleanup(ctx context.Context) error {
+	if mock.CleanupFunc == nil {
+		panic("UpdateServiceMock.CleanupFunc: method is nil but UpdateService.Cleanup was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockCleanup.Lock()
+	mock.calls.Cleanup = append(mock.calls.Cleanup, callInfo)
+	mock.lockCleanup.Unlock()
+	return mock.CleanupFunc(ctx)
+}
+
+// CleanupCalls gets all the calls that were made to Cleanup.
+// Check the length with:
+//
+//	len(mockedUpdateService.CleanupCalls())
+func (mock *UpdateServiceMock) CleanupCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockCleanup.RLock()
+	calls = mock.calls.Cleanup
+	mock.lockCleanup.RUnlock()
+	return calls
 }
 
 // CleanupAll calls CleanupAllFunc.

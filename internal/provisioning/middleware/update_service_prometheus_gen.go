@@ -43,6 +43,20 @@ func NewUpdateServiceWithPrometheus(base provisioning.UpdateService, instanceNam
 	}
 }
 
+// Cleanup implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) Cleanup(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Cleanup", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Cleanup(ctx)
+}
+
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) CleanupAll(ctx context.Context) (err error) {
 	_since := time.Now()

@@ -52,6 +52,36 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateSer
 	return this
 }
 
+// Cleanup implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Cleanup(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Cleanup")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Cleanup returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Cleanup finished")
+		}
+	}()
+	return _d._base.Cleanup(ctx)
+}
+
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

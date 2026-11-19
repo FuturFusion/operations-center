@@ -207,6 +207,201 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 	}
 }
 
+func TestUpdateService_Cleanup(t *testing.T) {
+	var (
+		idUnused        = uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc")
+		idInUse         = uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110")
+		idCustomChannel = uuid.MustParse("6a3e6f6e-3f4c-4b0e-9c55-0b8f8e3f6b11")
+		idBothChannels  = uuid.MustParse("e4b8c2a1-7d1f-4a5e-8f3b-2c6d9e0a1b22")
+		idNoChannel     = uuid.MustParse("9f1d2c3b-4a5e-4f6a-8b7c-0d1e2f3a4b33")
+	)
+
+	tests := []struct {
+		name                      string
+		serverSvcGetAll           provisioning.Servers
+		serverSvcGetAllErr        error
+		repoGetAll                provisioning.Updates
+		repoGetAllErr             error
+		filesRepoDeleteUnknownErr error
+		repoDeleteByUUID          queue.Errs
+
+		assertErr              require.ErrorAssertionFunc
+		wantDeleteUnknownKnown [][]uuid.UUID
+		wantDeletedUUIDs       []uuid.UUID
+	}{
+		{
+			name: "success",
+			serverSvcGetAll: provisioning.Servers{
+				{
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "202610272234",
+						},
+					},
+				},
+			},
+			repoGetAll: provisioning.Updates{
+				{
+					UUID:     idUnused,
+					Version:  "202611010000",
+					Channels: []string{"stable"},
+				},
+				{
+					UUID:     idInUse,
+					Version:  "202610272234",
+					Channels: []string{"stable"},
+				},
+				{
+					UUID:     idCustomChannel,
+					Version:  "202610200000",
+					Channels: []string{"prod"},
+				},
+				{
+					UUID:     idBothChannels,
+					Version:  "202610100000",
+					Channels: []string{"stable", "prod"},
+				},
+				{
+					UUID:     idNoChannel,
+					Version:  "202610010000",
+					Channels: []string{},
+				},
+			},
+			filesRepoDeleteUnknownErr: nil,
+			repoDeleteByUUID:          queue.Errs{nil, nil},
+
+			assertErr:              require.NoError,
+			wantDeleteUnknownKnown: [][]uuid.UUID{{idInUse, idCustomChannel, idBothChannels}},
+			wantDeletedUUIDs:       []uuid.UUID{idUnused, idNoChannel},
+		},
+		{
+			name:                      "error - serverSvc.GetAll",
+			serverSvcGetAll:           nil,
+			serverSvcGetAllErr:        boom.Error,
+			repoGetAll:                nil,
+			repoGetAllErr:             nil,
+			filesRepoDeleteUnknownErr: nil,
+			repoDeleteByUUID:          nil,
+
+			assertErr:              boom.ErrorIs,
+			wantDeleteUnknownKnown: nil,
+			wantDeletedUUIDs:       nil,
+		},
+		{
+			name:                      "error - repo.GetAll",
+			serverSvcGetAll:           provisioning.Servers{},
+			serverSvcGetAllErr:        nil,
+			repoGetAll:                nil,
+			repoGetAllErr:             boom.Error,
+			filesRepoDeleteUnknownErr: nil,
+			repoDeleteByUUID:          nil,
+
+			assertErr:              boom.ErrorIs,
+			wantDeleteUnknownKnown: nil,
+			wantDeletedUUIDs:       nil,
+		},
+		{
+			name:               "error - filesRepo.DeleteUnknown",
+			serverSvcGetAll:    provisioning.Servers{},
+			serverSvcGetAllErr: nil,
+			repoGetAll: provisioning.Updates{
+				{
+					UUID:     idUnused,
+					Version:  "202611010000",
+					Channels: []string{"stable"},
+				},
+			},
+			repoGetAllErr:             nil,
+			filesRepoDeleteUnknownErr: boom.Error,
+			repoDeleteByUUID:          nil,
+
+			assertErr:              boom.ErrorIs,
+			wantDeleteUnknownKnown: [][]uuid.UUID{nil},
+			wantDeletedUUIDs:       nil,
+		},
+		{
+			name:               "error - repo.DeleteByUUID",
+			serverSvcGetAll:    provisioning.Servers{},
+			serverSvcGetAllErr: nil,
+			repoGetAll: provisioning.Updates{
+				{
+					UUID:     idUnused,
+					Version:  "202611010000",
+					Channels: []string{"stable"},
+				},
+			},
+			repoGetAllErr:             nil,
+			filesRepoDeleteUnknownErr: nil,
+			repoDeleteByUUID:          queue.Errs{boom.Error},
+
+			assertErr:              boom.ErrorIs,
+			wantDeleteUnknownKnown: [][]uuid.UUID{nil},
+			wantDeletedUUIDs:       []uuid.UUID{idUnused},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}, nil)
+
+			updatesCfg := config.GetUpdates().UpdatesPut
+			updatesCfg.UpdatesDefaultChannel = "stable"
+			err := config.UpdateUpdates(t.Context(), updatesCfg)
+			require.NoError(t, err)
+
+			repo := &repoMock.UpdateRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUID.PopOrNil(t)
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				DeleteUnknownFunc: func(ctx context.Context, known []uuid.UUID) error {
+					return tc.filesRepoDeleteUnknownErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.serverSvcGetAll, tc.serverSvcGetAllErr
+				},
+			}
+
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, serverSvc)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+			// Run test
+			err = updateSvc.Cleanup(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoDeleteByUUID, "expect all repo.DeleteByUUID calls to be consumed")
+
+			var gotKnown [][]uuid.UUID
+			for _, call := range repoUpdateFiles.DeleteUnknownCalls() {
+				gotKnown = append(gotKnown, call.Known)
+			}
+
+			require.Equal(t, tc.wantDeleteUnknownKnown, gotKnown, "unexpected updates kept on disk")
+
+			var gotDeleted []uuid.UUID
+			for _, call := range repo.DeleteByUUIDCalls() {
+				gotDeleted = append(gotDeleted, call.ID)
+			}
+
+			require.Equal(t, tc.wantDeletedUUIDs, gotDeleted, "unexpected updates deleted from the repository")
+		})
+	}
+}
+
 func TestUpdateService_CleanupAll(t *testing.T) {
 	t.Parallel()
 
