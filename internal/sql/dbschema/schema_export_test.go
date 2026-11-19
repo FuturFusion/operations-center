@@ -5,6 +5,8 @@ import (
 	"database/sql"
 )
 
+const CopyRowsPerTx = copyRowsPerTx
+
 func SetupVersion(db *sql.DB, version int) error {
 	selectedUpdates := make(map[int]update, version)
 	for k, v := range updates {

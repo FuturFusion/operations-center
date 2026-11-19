@@ -17,7 +17,6 @@ import (
 	"github.com/lxc/incus/v7/shared/util"
 
 	"github.com/FuturFusion/operations-center/internal/sql/patches"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
@@ -37,8 +36,8 @@ func EnsureGlobal(ctx context.Context, db *sql.DB, address, dir string) (bool, i
 	schema := newFromMap(updates)
 	schema.fresh(freshSchema)
 	schema.file(filepath.Join(dir, "patch.global.sql"))
-	schema.migrateFunc = func(ctx context.Context, tx *sql.Tx) (string, error) {
-		return migrateFromStandalone(ctx, tx, filepath.Dir(dir))
+	schema.importFunc = func(ctx context.Context, db *sql.DB) error {
+		return importStandalone(ctx, db, filepath.Dir(dir))
 	}
 	schema.hook(func(ctx context.Context, schemaVersion int, tx *sql.Tx) error {
 		// Check if we're clustered
@@ -204,10 +203,8 @@ type schema struct {
 	sqlApplied bool
 	freshStmt  string // Optional SQL statement used to create schema from scratch
 
-	// migrateFunc migrates data from elsewhere before anything else and returns the path of the imported database.
-	migrateFunc func(ctx context.Context, tx *sql.Tx) (string, error)
-	// migratedPath is the database imported by migrateFunc in the transaction.
-	migratedPath string
+	// importFunc imports data from elsewhere before the updates. It runs outside of their transaction, since the import can be large.
+	importFunc func(ctx context.Context, db *sql.DB) error
 }
 
 // update applies a specific schema change to a database, and returns an error
@@ -329,68 +326,6 @@ func (s *schema) removePatches() error {
 	return nil
 }
 
-// migrateFromStandalone dumps the local.db file in varDir into cowsql if there is no schema table yet.
-func migrateFromStandalone(ctx context.Context, tx *sql.Tx, varDir string) (string, error) {
-	exists, err := doesSchemaTableExist(ctx, tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if schema table exists: %w", err)
-	}
-
-	if !exists {
-		_, err = os.Stat(filepath.Join(varDir, "local.db")) //nolint:forbidigo // SQLite accesses the database files by path as well.
-		if err != nil && !os.IsNotExist(err) {
-			return "", fmt.Errorf("Failed to check for existing local database: %w", err)
-		}
-
-		if err != nil {
-			return "", nil
-		}
-
-		db, err := dbdriver.Open(varDir)
-		if err != nil {
-			return "", err
-		}
-
-		defer func() { _ = db.Close() }()
-
-		dump, err := dumpStatements(ctx, db, false)
-		if err != nil {
-			return "", err
-		}
-
-		_, err = tx.ExecContext(ctx, dump)
-		if err != nil {
-			return "", err
-		}
-
-		// Only a database with a schema is imported, the sqlite global database of the tests has none.
-		imported, err := doesSchemaTableExist(ctx, tx)
-		if err != nil {
-			return "", fmt.Errorf("failed to check if schema table exists: %w", err)
-		}
-
-		if imported {
-			return filepath.Join(varDir, "local.db"), nil
-		}
-	}
-
-	return "", nil
-}
-
-// retireMigrated renames the committed import, so an empty global database does not import it again.
-func (s *schema) retireMigrated() error {
-	if s.migratedPath == "" {
-		return nil
-	}
-
-	err := os.Rename(s.migratedPath, s.migratedPath+".migrated") //nolint:forbidigo // SQLite accesses the database files by path as well.
-	if err != nil {
-		return fmt.Errorf("Failed to rename the imported standalone database: %w", err)
-	}
-
-	return nil
-}
-
 // ensure makes sure that the actual schema in the given database matches the
 // one defined by our updates.
 //
@@ -407,6 +342,14 @@ func (s *schema) ensure(ctx context.Context, db *sql.DB) (int, int, error) {
 	var initial, current int
 	var aborted bool
 
+	// The import restores the foreign keys of the connection when it is done, so it runs before they are disabled below.
+	if s.importFunc != nil {
+		err := s.importFunc(ctx, db)
+		if err != nil {
+			return -1, -1, fmt.Errorf("Failed to import the standalone database: %w", err)
+		}
+	}
+
 	// Disable foreign keys before performing a schema update so references aren't cascade deleted.
 	_, err := db.Exec("PRAGMA foreign_keys=OFF; PRAGMA legacy_alter_table=ON")
 	if err != nil {
@@ -414,14 +357,6 @@ func (s *schema) ensure(ctx context.Context, db *sql.DB) (int, int, error) {
 	}
 
 	err = transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
-		if s.migrateFunc != nil {
-			var err error
-			s.migratedPath, err = s.migrateFunc(ctx, tx)
-			if err != nil {
-				return fmt.Errorf("Failed to migrate from standalone database: %w", err)
-			}
-		}
-
 		err := s.applyPatches(ctx, tx)
 		if err != nil {
 			return fmt.Errorf("failed to execute queries from %s: %w", s.sqlPath, err)
@@ -487,11 +422,6 @@ func (s *schema) ensure(ctx context.Context, db *sql.DB) (int, int, error) {
 	}
 
 	err = s.removePatches()
-	if err != nil {
-		return -1, -1, err
-	}
-
-	err = s.retireMigrated()
 	if err != nil {
 		return -1, -1, err
 	}

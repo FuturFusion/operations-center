@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
@@ -186,59 +187,133 @@ func TestSchemaEnsure_patchFile(t *testing.T) {
 func TestEnsureGlobal_migrateFromStandalone(t *testing.T) {
 	t.Parallel()
 
-	varDir := t.TempDir()
+	// More rows than fit in one transaction of the import, and more than cowsql handles in a single Exec.
+	const rows = 2*dbschema.CopyRowsPerTx + 1
 
-	standalone, err := sqlite.Open(varDir)
-	require.NoError(t, err)
+	backends := []struct {
+		name string
+		open func(t *testing.T, dir string) *sql.DB
+	}{
+		{
+			name: "sqlite",
+			open: func(t *testing.T, dir string) *sql.DB {
+				t.Helper()
 
-	// The schema version of Operations Center v0.10.1, before the clustering.
-	err = dbschema.SetupVersion(standalone.DB, 43)
-	require.NoError(t, err)
+				db, err := sqlite.Open(dir)
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = db.Close() })
 
-	_, err = standalone.Exec(`
-INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files) VALUES
-  ('b32d0079-c48b-4957-b1cb-bef54125c861', 'origin', '1', '2025-03-12 10:57:43+00:00', 'none', '', '');
-`)
-	require.NoError(t, err)
-	require.NoError(t, standalone.Close())
-
-	// The global database of each start is new, in the database directory of the var dir.
-	countUpdates := func(address string) int {
-		dir := filepath.Join(varDir, "database")
-		require.NoError(t, os.RemoveAll(dir))
-		require.NoError(t, os.Mkdir(dir, 0o700))
-
-		db, err := sqlite.Open(dir)
-		require.NoError(t, err)
-
-		_, _, err = dbschema.EnsureGlobal(t.Context(), db.DB, address, dir)
-		require.NoError(t, err)
-
-		// The standalone member exists from the start, so the files stored by it reference it.
-		var member string
-		err = db.QueryRowContext(t.Context(), `SELECT name || '@' || address FROM cluster_members WHERE id = 1`).Scan(&member)
-		require.NoError(t, err)
-		require.Equal(t, "none@0.0.0.0", member)
-
-		var violations int
-		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM pragma_foreign_key_check`).Scan(&violations)
-		require.NoError(t, err)
-		require.Zero(t, violations, "the migrated rows reference the standalone member")
-
-		var count int
-		err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM updates`).Scan(&count)
-		require.NoError(t, err)
-
-		return count
+				return db.DB
+			},
+		},
+		{
+			name: "cowsql",
+			open: cowsqltest.OpenEmpty,
+		},
 	}
 
-	// The standalone database is imported once and kept renamed.
-	require.Equal(t, 1, countUpdates(""))
-	require.NoFileExists(t, filepath.Join(varDir, "local.db"))
-	require.FileExists(t, filepath.Join(varDir, "local.db.migrated"))
+	tests := []struct {
+		name    string
+		prepare func(t *testing.T, db *sql.DB)
+	}{
+		{
+			name:    "empty global database",
+			prepare: func(t *testing.T, db *sql.DB) { t.Helper() },
+		},
+		{
+			name: "interrupted import",
+			prepare: func(t *testing.T, db *sql.DB) {
+				t.Helper()
 
-	// The global database of a member removed from the cluster starts empty.
-	require.Equal(t, 0, countUpdates("10.0.0.1:8443"))
+				_, err := db.ExecContext(t.Context(), `
+CREATE TABLE updates (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, uuid TEXT NOT NULL, UNIQUE (uuid));
+INSERT INTO updates (uuid) VALUES ('uuid-1'), ('uuid-2');
+`)
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, backend := range backends {
+		for _, tc := range tests {
+			t.Run(backend.name+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				// Setup
+				varDir := t.TempDir()
+
+				standalone, err := sqlite.Open(varDir)
+				require.NoError(t, err)
+
+				// The schema version of Operations Center v0.10.1, before the clustering.
+				err = dbschema.SetupVersion(standalone.DB, 43)
+				require.NoError(t, err)
+
+				// The deleted last row keeps the AUTOINCREMENT counter above the highest id.
+				_, err = standalone.ExecContext(t.Context(), `
+WITH RECURSIVE seq(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM seq WHERE i < ?)
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files)
+  SELECT 'uuid-' || i, 'origin', i, '2025-03-12 10:57:43+00:00', 'none', '', '' FROM seq;
+DELETE FROM updates WHERE id = ?;
+`, rows, rows)
+				require.NoError(t, err)
+
+				var wantSeq int
+				err = standalone.QueryRowContext(t.Context(), `SELECT seq FROM sqlite_sequence WHERE name = 'updates'`).Scan(&wantSeq)
+				require.NoError(t, err)
+				require.NoError(t, standalone.Close())
+
+				// The global database of each start is new, in a database directory of the var dir.
+				dir := filepath.Join(varDir, "database")
+				require.NoError(t, os.Mkdir(dir, 0o700))
+
+				db := backend.open(t, dir)
+				tc.prepare(t, db)
+
+				// Run test
+				_, _, err = dbschema.EnsureGlobal(t.Context(), db, "", dir)
+				require.NoError(t, err)
+
+				// Assert
+				var member string
+				err = db.QueryRowContext(t.Context(), `SELECT name || '@' || address FROM cluster_members WHERE id = 1`).Scan(&member)
+				require.NoError(t, err)
+				require.Equal(t, "none@0.0.0.0", member, "expect the standalone member to exist from the start")
+
+				var violations int
+				err = db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM pragma_foreign_key_check`).Scan(&violations)
+				require.NoError(t, err)
+				require.Zero(t, violations, "expect the migrated rows to reference the standalone member")
+
+				var count, uuids int
+				err = db.QueryRowContext(t.Context(), `SELECT COUNT(*), COUNT(DISTINCT uuid) FROM updates`).Scan(&count, &uuids)
+				require.NoError(t, err)
+				require.Equal(t, rows-1, count, "expect all rows to be imported")
+				require.Equal(t, rows-1, uuids, "expect no duplicated rows")
+
+				var seq int
+				err = db.QueryRowContext(t.Context(), `SELECT seq FROM sqlite_sequence WHERE name = 'updates'`).Scan(&seq)
+				require.NoError(t, err)
+				require.Equal(t, wantSeq, seq, "expect the AUTOINCREMENT counter of the standalone database")
+
+				require.NoFileExists(t, filepath.Join(varDir, "local.db"), "expect the standalone database to be renamed")
+				require.FileExists(t, filepath.Join(varDir, "local.db.migrated"), "expect the standalone database to be kept")
+
+				// The global database of a member removed from the cluster starts empty.
+				removedDir := filepath.Join(varDir, "database-removed")
+				require.NoError(t, os.Mkdir(removedDir, 0o700))
+
+				removedDB := backend.open(t, removedDir)
+
+				_, _, err = dbschema.EnsureGlobal(t.Context(), removedDB, "10.0.0.1:8443", removedDir)
+				require.NoError(t, err)
+
+				err = removedDB.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM updates`).Scan(&count)
+				require.NoError(t, err)
+				require.Zero(t, count, "expect the renamed standalone database not to be imported again")
+			})
+		}
+	}
 }
 
 func TestEnsureGlobal_removedFirstMember(t *testing.T) {

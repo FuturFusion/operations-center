@@ -2,6 +2,7 @@ package cowsqltest
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,15 +26,48 @@ var nodeCreateMu sync.Mutex
 func Open(t *testing.T) (*cowsql.GlobalDB, error) {
 	t.Helper()
 
+	dir := filepath.Join(t.TempDir(), "global")
+	require.NoError(t, os.Mkdir(dir, 0o700))
+
+	address, store, dial := startNode(t, dir)
+
+	return cowsql.Open(context.Background(), "test.db", store, address, dir, 5*time.Second, driver.WithDialFunc(dial))
+}
+
+// OpenEmpty starts a single cowsql node in dir and returns its global database
+// without any schema. The node stops when the test ends.
+func OpenEmpty(t *testing.T, dir string) *sql.DB {
+	t.Helper()
+
+	_, store, dial := startNode(t, dir)
+
+	drv, err := driver.New(store, driver.WithDialFunc(dial))
+	require.NoError(t, err)
+
+	connector, err := drv.OpenConnector("test.db")
+	require.NoError(t, err)
+
+	db := sql.OpenDB(connector)
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+
+	// Like the global database of the daemon.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	return db
+}
+
+func startNode(t *testing.T, dir string) (string, client.NodeStore, func(context.Context, string) (net.Conn, error)) {
+	t.Helper()
+
 	// The kernel picks an unused abstract address.
 	listener, err := net.Listen("unix", "")
 	require.NoError(t, err)
 
 	address := listener.Addr().String()
 	require.NoError(t, listener.Close())
-
-	dir := filepath.Join(t.TempDir(), "global")
-	require.NoError(t, os.Mkdir(dir, 0o700))
 
 	nodeCreateMu.Lock()
 	node, err := cowsqlnode.New(1, address, dir, cowsqlnode.WithBindAddress(address))
@@ -53,5 +87,5 @@ func Open(t *testing.T) (*cowsql.GlobalDB, error) {
 		return net.Dial("unix", address)
 	}
 
-	return cowsql.Open(context.Background(), "test.db", store, address, dir, 5*time.Second, driver.WithDialFunc(dial))
+	return address, store, dial
 }

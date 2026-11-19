@@ -21,7 +21,7 @@ var copySkippedTables = []string{"schema", "patches", "cluster_members"}
 // version. The rows dst got from its fresh schema are replaced by those of src. The rows are copied with multi-row inserts in
 // transactions of limited size, since cowsql freezes or crashes on a single large statement and is slow with a commit per row.
 func CopyData(ctx context.Context, src *sql.DB, dst *sql.DB) (err error) {
-	tables, err := copiedTables(ctx, src)
+	tables, err := copiedTables(ctx, src, copySkippedTables)
 	if err != nil {
 		return fmt.Errorf("Failed to list tables: %w", err)
 	}
@@ -73,8 +73,8 @@ func CopyData(ctx context.Context, src *sql.DB, dst *sql.DB) (err error) {
 	return nil
 }
 
-// copiedTables returns the tables of db, which are copied.
-func copiedTables(ctx context.Context, db *sql.DB) ([]string, error) {
+// copiedTables returns the tables of db without the skipped ones.
+func copiedTables(ctx context.Context, db *sql.DB, skipped []string) ([]string, error) {
 	rows, err := db.QueryContext(ctx, `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid`)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func copiedTables(ctx context.Context, db *sql.DB) ([]string, error) {
 			return nil, err
 		}
 
-		if !slices.Contains(copySkippedTables, name) {
+		if !slices.Contains(skipped, name) {
 			tables = append(tables, name)
 		}
 	}
