@@ -174,10 +174,14 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 //   - Updates in ready state, where files are missing (most likely caused
 //     by a restore of the application's backuped state by IncusOS.
 func (s updateService) Prune(ctx context.Context) error {
-	var fileRepoErrs []error
 	var known []uuid.UUID
+	var removed []provisioning.Update
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
+		// Do retries this function. Start each attempt with empty lists.
+		known = nil
+		removed = nil
+
 		updates, err := s.repo.GetAll(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get all updates during prune: %w", err)
@@ -213,10 +217,8 @@ func (s updateService) Prune(ctx context.Context) error {
 				continue
 			}
 
-			err = s.filesRepo.Delete(ctx, update)
-			if err != nil {
-				fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
-			}
+			// The files are removed after the transaction.
+			removed = append(removed, update)
 
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
@@ -226,12 +228,25 @@ func (s updateService) Prune(ctx context.Context) error {
 
 		return nil
 	})
-	if err == nil {
-		// Files of updates unknown to the database, e.g. after a restore, are removed.
-		err = s.filesRepo.DeleteUnknown(ctx, known)
+	if err != nil {
+		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
 
-	err = errors.Join(append([]error{err}, fileRepoErrs...)...)
+	var fileRepoErrs []error
+	for _, update := range removed {
+		err = s.filesRepo.Delete(ctx, update)
+		if err != nil {
+			fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
+		}
+	}
+
+	// Files of updates unknown to the database, e.g. after a restore, are removed.
+	err = s.filesRepo.DeleteUnknown(ctx, known)
+	if err != nil {
+		fileRepoErrs = append(fileRepoErrs, err)
+	}
+
+	err = errors.Join(fileRepoErrs...)
 	if err != nil {
 		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
