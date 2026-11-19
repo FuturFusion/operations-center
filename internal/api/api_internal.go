@@ -88,26 +88,23 @@ func (i *internalHandler) sqlPost(r *http.Request) response.Response {
 			continue
 		}
 
-		result := dump.SQLResult{}
+		var result dump.SQLResult
 
 		err := transaction.Do(ctx, func(ctx context.Context) error {
+			// Do retries this function. Start each attempt with an empty result.
+			result = dump.SQLResult{}
+
 			if strings.HasPrefix(strings.ToUpper(query), "SELECT") {
-				err = i.internalSQLSelect(ctx, query, &result)
-			} else {
-				err = i.internalSQLExec(ctx, query, &result)
+				return i.internalSQLSelect(ctx, query, &result)
 			}
 
-			if err != nil {
-				return err
-			}
-
-			batch.Results = append(batch.Results, result)
-
-			return nil
+			return i.internalSQLExec(ctx, query, &result)
 		})
 		if err != nil {
 			return response.SmartError(err)
 		}
+
+		batch.Results = append(batch.Results, result)
 	}
 
 	return response.SyncResponse(true, batch)
