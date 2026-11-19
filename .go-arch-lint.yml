@@ -46,6 +46,7 @@ components:
   # Pure utilities. No I/O. Every component may import them.
   util_pure:
     in:
+      - internal/environment
       - internal/security/tls
       - internal/sql/dump
       # not 100% pure, but accepted
@@ -62,8 +63,7 @@ components:
 
   util:
     in:
-      # TODO: internal/environment: needs refactor, since it exposes the interface and the implementation.
-      - internal/environment
+      - internal/environment/osenv
       - internal/security/signature/**
       - internal/util/**
 

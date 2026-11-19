@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/http"
 
-	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
+	internalenvironment "github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"

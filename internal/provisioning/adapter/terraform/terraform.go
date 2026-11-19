@@ -19,7 +19,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/file"
@@ -66,7 +66,7 @@ type terraform struct {
 }
 
 func init() {
-	if !environment.IsIncusOS() {
+	if !osenv.IsIncusOS() {
 		return
 	}
 

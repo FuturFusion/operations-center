@@ -15,7 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/render"
@@ -229,7 +229,7 @@ func (c *cmdClusterTemplateEdit) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// If stdin isn't a terminal, read text from it.
-	if !termios.IsTerminal(environment.GetStdinFd()) {
+	if !termios.IsTerminal(osenv.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
