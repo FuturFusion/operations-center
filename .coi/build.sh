@@ -9,6 +9,7 @@
 # - Base development tools
 # - Node.js LTS (system, for Claude CLI)
 # - Go + tools (gopls, delve, goimports, govulncheck, lego, go-licenses, go-outliner, golangci-lint)
+# - raft and cowsql (required by operations-centerd)
 # - Claude CLI
 # - Docker
 # - GitHub CLI
@@ -117,6 +118,54 @@ install_base_dependencies() {
     ln -sf "$(command -v batcat)" /usr/local/bin/bat
 
     log "Base dependencies installed"
+}
+
+#######################################
+# Install raft and cowsql
+#
+# operations-centerd links against libcowsql and libraft. Build both
+# from source, like "make deps" does, and install them to /usr/local, so
+# the compiler, the linker and the daemon find them without extra
+# environment variables.
+#######################################
+install_cowsql() {
+    log "Installing raft and cowsql..."
+
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+        autoconf \
+        automake \
+        git \
+        liblz4-dev \
+        libsqlite3-dev \
+        libtool \
+        libuv1-dev \
+        pkg-config
+
+    local build_dir
+    build_dir="$(mktemp -d)"
+
+    git clone --depth=1 https://github.com/cowsql/raft "$build_dir/raft"
+    (
+        cd "$build_dir/raft"
+        autoreconf -i
+        ./configure
+        make -j"$(nproc)"
+        make install
+    )
+
+    git clone --depth=1 https://github.com/cowsql/cowsql "$build_dir/cowsql"
+    (
+        cd "$build_dir/cowsql"
+        autoreconf -i
+        PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure
+        make -j"$(nproc)"
+        make install
+    )
+
+    ldconfig
+    rm -rf "$build_dir"
+
+    log "raft and cowsql installed"
 }
 
 #######################################
@@ -583,6 +632,7 @@ main() {
 
     configure_dns_if_needed
     install_base_dependencies
+    install_cowsql
     install_nodejs
     install_go
     install_goreleaser
