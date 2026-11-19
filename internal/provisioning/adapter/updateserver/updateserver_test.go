@@ -280,6 +280,127 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 	}
 }
 
+func TestUpdateServer_GetUpdateManifest(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		statusCode     int
+		manifestBody   []byte
+		verificationCA func(caCert []byte, otherCACert []byte) []byte
+
+		assertErr    require.ErrorAssertionFunc
+		wantManifest func(signedBody []byte) []byte
+	}{
+		{
+			name:           "success",
+			statusCode:     http.StatusOK,
+			manifestBody:   []byte(`{"version":"1"}`),
+			verificationCA: signedByCA,
+
+			assertErr: require.NoError,
+			wantManifest: func(signedBody []byte) []byte {
+				return signedBody
+			},
+		},
+		{
+			name:           "error - wrong status code",
+			statusCode:     http.StatusNotFound,
+			manifestBody:   []byte(`{"version":"1"}`),
+			verificationCA: signedByCA,
+
+			assertErr: require.Error,
+			wantManifest: func(signedBody []byte) []byte {
+				return nil
+			},
+		},
+		{
+			name:           "error - invalid signature",
+			statusCode:     http.StatusOK,
+			manifestBody:   []byte(`{"version":"1"}`),
+			verificationCA: signedByOtherCA,
+
+			assertErr: require.Error,
+			wantManifest: func(signedBody []byte) []byte {
+				return nil
+			},
+		},
+		{
+			name:           "error - invalid manifest",
+			statusCode:     http.StatusOK,
+			manifestBody:   []byte(`{`),
+			verificationCA: signedByCA,
+
+			assertErr: require.Error,
+			wantManifest: func(signedBody []byte) []byte {
+				return nil
+			},
+		},
+		{
+			name:           "error - version mismatch",
+			statusCode:     http.StatusOK,
+			manifestBody:   []byte(`{"version":"2"}`),
+			verificationCA: signedByCA,
+
+			assertErr: require.Error,
+			wantManifest: func(signedBody []byte) []byte {
+				return nil
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "token", nil
+				},
+			}
+
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+			otherCACert, _, _ := signaturetest.GenerateCertChain(t)
+
+			signedBody := signaturetest.SignContent(t, cert, key, tc.manifestBody)
+
+			svr := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != "/1/update.sjson" {
+						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+						return
+					}
+
+					w.WriteHeader(tc.statusCode)
+					_, _ = w.Write(signedBody)
+				}),
+			)
+			defer svr.Close()
+
+			s := updateserver.New(svr.URL, string(tc.verificationCA(caCert, otherCACert)), false, envMock)
+
+			// Run test
+			manifest, err := s.GetUpdateManifest(t.Context(), provisioning.Update{
+				URL:     "/1",
+				Version: "1",
+			})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantManifest(signedBody), manifest, "unexpected manifest")
+		})
+	}
+}
+
+func signedByCA(caCert []byte, _ []byte) []byte {
+	return caCert
+}
+
+func signedByOtherCA(_ []byte, otherCACert []byte) []byte {
+	return otherCACert
+}
+
 func TestUpdateServer_SourceConnectionTest(t *testing.T) {
 	t.Parallel()
 

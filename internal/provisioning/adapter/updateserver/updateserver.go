@@ -3,10 +3,12 @@ package updateserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -137,15 +139,22 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 }
 
 func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
+	_, contentVerified, err := u.fetchAndVerify(ctx, "/index.sjson")
+	return contentVerified, err
+}
+
+// fetchAndVerify fetches the signed file at urlPath and verifies its
+// signature. It returns the signed and the verified content.
+func (u *updateServer) fetchAndVerify(ctx context.Context, urlPath string) (contentSig []byte, contentVerified []byte, _ error) {
 	u.configUpdateMu.Lock()
 	baseURL := u.baseURL
 	authenticationByQueryParam := u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
 
-	indexURL := baseURL + "/index.sjson"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
+	fileURL := baseURL + urlPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create request for %q: %w", indexURL, err)
+		return nil, nil, fmt.Errorf("Failed to create request for %q: %w", fileURL, err)
 	}
 
 	token, err := u.tokenProvider.GetToken(ctx)
@@ -163,28 +172,70 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to query latest updates: %w", err)
+		return nil, nil, fmt.Errorf("Failed to query %q: %w", urlPath, redactURLError(err))
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
 	}
 
-	contentSig, err := io.ReadAll(resp.Body)
+	contentSig, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf(`Failed to read "index.sjson" response: %w`, err)
+		return nil, nil, fmt.Errorf("Failed to read %q response: %w", urlPath, err)
 	}
 
 	u.configUpdateMu.Lock()
-	contentVerified, err := u.verifier.Verify(contentSig)
+	contentVerified, err = u.verifier.Verify(contentSig)
 	u.configUpdateMu.Unlock()
 	if err != nil {
-		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
+		return nil, nil, fmt.Errorf("Failed to verify signature of %q: %w", urlPath, err)
 	}
 
-	return contentVerified, err
+	return contentSig, contentVerified, nil
+}
+
+// GetUpdateManifest returns the signed manifest of the update. It verifies
+// the signature and that the manifest belongs to the update.
+func (u *updateServer) GetUpdateManifest(ctx context.Context, update provisioning.Update) ([]byte, error) {
+	contentSig, contentVerified, err := u.fetchAndVerify(ctx, path.Join(update.URL, provisioning.UpdateManifestFilename))
+	if err != nil {
+		return nil, err
+	}
+
+	manifest := Update{}
+	err = json.Unmarshal(contentVerified, &manifest)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read manifest of update %q: %w", update.Version, err)
+	}
+
+	if manifest.Version != update.Version {
+		return nil, fmt.Errorf("Manifest version %q does not match update version %q", manifest.Version, update.Version)
+	}
+
+	return contentSig, nil
+}
+
+// redactURLError removes the query from the URL in err. The query can contain
+// the authentication token.
+func redactURLError(err error) error {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		return err
+	}
+
+	redacted := *urlErr
+	parsed, parseErr := url.Parse(urlErr.URL)
+	if parseErr != nil {
+		redacted.URL = ""
+		return &redacted
+	}
+
+	parsed.RawQuery = ""
+	redacted.URL = parsed.String()
+
+	return &redacted
 }
 
 const idSeparator = ":"
@@ -233,7 +284,7 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to get %q of update %q: %w", filename, inUpdate.Version, err)
+		return nil, 0, fmt.Errorf("Failed to get %q of update %q: %w", filename, inUpdate.Version, redactURLError(err))
 	}
 
 	if resp.StatusCode != http.StatusOK {

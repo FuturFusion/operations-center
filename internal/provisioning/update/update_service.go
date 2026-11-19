@@ -2,6 +2,7 @@ package update
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -567,6 +568,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 //     for removal.
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
+//   - Store the signed manifest of each update from the origin, if it is missing. The export of an update needs it.
 //
 // If no update source is configured, Refresh only cleans up the updates in the
 // repository and returns [provisioning.ErrUpdateSourceNotConfigured].
@@ -657,6 +659,11 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return provisioning.ErrUpdateSourceNotConfigured
 	}
 
+	inOrigin := make(map[uuid.UUID]bool, len(originUpdates))
+	for _, update := range originUpdates {
+		inOrigin[update.UUID] = true
+	}
+
 	for _, update := range toRefreshUpdates {
 		// Make sure, we do have enough space left in the files repository before downloading the files.
 		refreshUpdate := provisioning.Update{
@@ -692,6 +699,12 @@ func (s updateService) Refresh(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		// Updates downloaded by older versions of Operations Center miss the
+		// manifest. Fetch it, while the origin still provides the update.
+		if inOrigin[update.UUID] {
+			s.storeManifest(ctx, update)
 		}
 	}
 
@@ -738,6 +751,8 @@ func (s updateService) Refresh(ctx context.Context) error {
 				return err
 			}
 		}
+
+		s.storeManifest(ctx, update)
 
 		update.Status = api.UpdateStatusReady
 
@@ -1114,6 +1129,45 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []p
 	}
 
 	return nil
+}
+
+// storeManifest stores the signed manifest of the update, if it is missing.
+// Only the export of the update needs the manifest, so a failure does not
+// fail the refresh.
+func (s updateService) storeManifest(ctx context.Context, update provisioning.Update) {
+	err := s.fetchManifest(ctx, update)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to store manifest of update", slog.String("update", update.UUID.String()), slog.String("version", update.Version), logger.Err(err))
+	}
+}
+
+func (s updateService) fetchManifest(ctx context.Context, update provisioning.Update) (err error) {
+	ok, err := s.filesRepo.Exists(ctx, update, provisioning.UpdateManifestFilename)
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		return nil
+	}
+
+	manifest, err := s.source.GetUpdateManifest(ctx, update)
+	if err != nil {
+		return err
+	}
+
+	commit, cancel, err := s.filesRepo.Put(ctx, update, provisioning.UpdateManifestFilename, io.NopCloser(bytes.NewReader(manifest)))
+	defer func() {
+		cancelErr := cancel()
+		if cancelErr != nil {
+			err = errors.Join(err, cancelErr)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+
+	return commit()
 }
 
 func (s updateService) downloadFile(ctx context.Context, update provisioning.Update, updateFile provisioning.UpdateFile) (err error) {

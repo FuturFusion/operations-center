@@ -112,3 +112,35 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context
 	}()
 	return _d._base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
 }
+
+// GetUpdateManifest implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithSlog) GetUpdateManifest(ctx context.Context, update provisioning.Update) (bytes []byte, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("update", update),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetUpdateManifest")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bytes", bytes),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetUpdateManifest returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetUpdateManifest finished")
+		}
+	}()
+	return _d._base.GetUpdateManifest(ctx, update)
+}

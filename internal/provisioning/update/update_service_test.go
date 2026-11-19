@@ -2157,6 +2157,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			size   int
 		}]
 
+		repoUpdateFilesManifestExist []queue.Item[bool]
+		repoUpdateFilesPutManifest   queue.Errs
+		sourceGetUpdateManifest      []queue.Item[[]byte]
+
 		serverSvcGetAll    provisioning.Servers
 		serverSvcGetAllErr error
 
@@ -2312,6 +2316,18 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: false,
+				},
+			},
+			sourceGetUpdateManifest: []queue.Item[[]byte]{
+				{
+					Value: []byte(`manifest`),
+				},
+			},
+			repoUpdateFilesPutManifest: queue.Errs{nil},
+
 			assertErr: require.NoError,
 		},
 		{
@@ -2466,6 +2482,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				// store new_file
 				{},
+			},
+
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: true,
+				},
 			},
 
 			assertErr: require.NoError,
@@ -2984,6 +3006,185 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
+			name:                 "success - manifest is not stored, if the existence check fails",
+			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusUnknown,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusReady,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpdateFilesExist: []queue.Item[bool]{
+				// 01, present_file
+				{
+					Value: true,
+				},
+			},
+			repoUpdateFilesPruneFiles: queue.Errs{nil},
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - manifest is not stored, if the source fails",
+			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusUnknown,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusReady,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpdateFilesExist: []queue.Item[bool]{
+				// 01, present_file
+				{
+					Value: true,
+				},
+			},
+			repoUpdateFilesPruneFiles: queue.Errs{nil},
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: false,
+				},
+			},
+			sourceGetUpdateManifest: []queue.Item[[]byte]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - manifest is not stored, if the write fails",
+			ctx:                  t.Context(),
+			source:               "https://updates.example.com",
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusUnknown,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        updatePresentUUID,
+					Status:      api.UpdateStatusReady,
+					PublishedAt: dateTime1,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+							Filename:  "present_file",
+						},
+					},
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[file.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpdateFilesExist: []queue.Item[bool]{
+				// 01, present_file
+				{
+					Value: true,
+				},
+			},
+			repoUpdateFilesPruneFiles: queue.Errs{nil},
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: false,
+				},
+			},
+			sourceGetUpdateManifest: []queue.Item[[]byte]{
+				{
+					Value: []byte(`manifest`),
+				},
+			},
+			repoUpdateFilesPutManifest: queue.Errs{boom.Error},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - toDownloadUpdates - repo.Upsert pending",
 			ctx:                  t.Context(),
 			source:               "https://updates.example.com",
@@ -3430,6 +3631,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+			},
+
 			assertErr: boom.ErrorIs,
 		},
 		{
@@ -3485,6 +3692,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 				cancelErr error
 			}]{
 				{},
+			},
+
+			repoUpdateFilesManifestExist: []queue.Item[bool]{
+				{
+					Value: true,
+				},
 			},
 
 			assertErr: boom.ErrorIs,
@@ -3599,11 +3812,20 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
 				ExistsFunc: func(ctx context.Context, update provisioning.Update, filename string) (bool, error) {
+					if filename == provisioning.UpdateManifestFilename {
+						return queue.Pop(t, &tc.repoUpdateFilesManifestExist)
+					}
+
 					return queue.Pop(t, &tc.repoUpdateFilesExist)
 				},
 				PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 					_, err := io.ReadAll(content)
 					require.NoError(t, err)
+
+					if filename == provisioning.UpdateManifestFilename {
+						err := tc.repoUpdateFilesPutManifest.PopOrNil(t)
+						return func() error { return nil }, func() error { return nil }, err
+					}
 
 					value, err := queue.Pop(t, &tc.repoUpdateFilesPut)
 
@@ -3631,6 +3853,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
+				},
+				GetUpdateManifestFunc: func(ctx context.Context, update provisioning.Update) ([]byte, error) {
+					return queue.Pop(t, &tc.sourceGetUpdateManifest)
 				},
 			}
 
@@ -3678,6 +3903,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.Empty(t, tc.repoUpdateFilesPut)
 			require.Empty(t, tc.repoUpdateFilesDelete)
 			require.Empty(t, tc.repoUpdateFilesPruneFiles)
+			require.Empty(t, tc.repoUpdateFilesManifestExist, "expect all manifest existence checks to be consumed")
+			require.Empty(t, tc.repoUpdateFilesPutManifest, "expect all manifest writes to be consumed")
+			require.Empty(t, tc.sourceGetUpdateManifest, "expect all manifest fetches to be consumed")
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 		})
 	}
