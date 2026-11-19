@@ -124,6 +124,16 @@ func (_d ChannelServiceWithPrometheus) GetChangelogByName(ctx context.Context, n
 	return _d.base.GetChangelogByName(ctx, name, architecture)
 }
 
+// SetClusterService implements provisioning.ChannelService.
+func (_d ChannelServiceWithPrometheus) SetClusterService(clusterSvc provisioning.ClusterService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		channelServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetClusterService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetClusterService(clusterSvc)
+}
+
 // SetServerService implements provisioning.ChannelService.
 func (_d ChannelServiceWithPrometheus) SetServerService(serverSvc provisioning.ServerService) {
 	_since := time.Now()
@@ -132,6 +142,16 @@ func (_d ChannelServiceWithPrometheus) SetServerService(serverSvc provisioning.S
 		channelServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerService", result).Observe(time.Since(_since).Seconds())
 	}()
 	_d.base.SetServerService(serverSvc)
+}
+
+// SetTokenService implements provisioning.ChannelService.
+func (_d ChannelServiceWithPrometheus) SetTokenService(tokenSvc provisioning.TokenService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		channelServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetTokenService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetTokenService(tokenSvc)
 }
 
 // Update implements provisioning.ChannelService.

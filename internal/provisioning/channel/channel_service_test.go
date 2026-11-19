@@ -8,7 +8,9 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
@@ -318,7 +320,17 @@ func TestChannelService_Update(t *testing.T) {
 }
 
 func TestChannelService_DeleteByName(t *testing.T) {
-	t.Parallel()
+	// Not parallel, the test modifies the global daemon config.
+	config.InitTest(t, &envMock.EnvironmentMock{
+		IsIncusOSFunc: func() bool { return false },
+	}, nil)
+	t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+	updatesPut := config.GetUpdates().UpdatesPut
+	updatesPut.UpdatesDefaultChannel = "updates-default"
+	updatesPut.ServerDefaultChannel = "server-default"
+	err := config.UpdateUpdates(t.Context(), updatesPut)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name                                        string
@@ -327,6 +339,10 @@ func TestChannelService_DeleteByName(t *testing.T) {
 		updateSvcGetUpdatesByAssignedChannelNameErr error
 		serverSvcGetAll                             provisioning.Servers
 		serverSvcGetAllErr                          error
+		clusterSvcGetAll                            provisioning.Clusters
+		clusterSvcGetAllErr                         error
+		tokenSvcGetAll                              provisioning.Tokens
+		tokenSvcGetAllErr                           error
 		repoDeleteChannelByNameErr                  error
 
 		assertErr require.ErrorAssertionFunc
@@ -334,12 +350,49 @@ func TestChannelService_DeleteByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "A",
+			serverSvcGetAll: provisioning.Servers{
+				{
+					Name:    "server",
+					Channel: "B",
+					VersionData: api.ServerVersionData{
+						UpdateChannel: "A",
+					},
+				},
+			},
+			clusterSvcGetAll: provisioning.Clusters{
+				{
+					Name:    "cluster",
+					Channel: "B",
+				},
+			},
+			tokenSvcGetAll: provisioning.Tokens{
+				{
+					UUID:    uuidgen.FromPattern(t, "1"),
+					Channel: "B",
+				},
+			},
 
 			assertErr: require.NoError,
 		},
 		{
 			name:    "error - empty name",
 			nameArg: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:    "error - channel is updates default channel",
+			nameArg: "updates-default",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:    "error - channel is server default channel",
+			nameArg: "server-default",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
@@ -366,13 +419,14 @@ func TestChannelService_DeleteByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - channel in use by server",
+			name:    "error - channel assigned to server",
 			nameArg: "A",
 			serverSvcGetAll: provisioning.Servers{
 				{
-					Name: "server",
+					Name:    "server",
+					Channel: "A",
 					VersionData: api.ServerVersionData{
-						UpdateChannel: "A",
+						UpdateChannel: "",
 					},
 				},
 			},
@@ -385,6 +439,48 @@ func TestChannelService_DeleteByName(t *testing.T) {
 			name:               "error - serverSvc.GetAll",
 			nameArg:            "A",
 			serverSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - channel assigned to cluster",
+			nameArg: "A",
+			clusterSvcGetAll: provisioning.Clusters{
+				{
+					Name:    "cluster",
+					Channel: "A",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:                "error - clusterSvc.GetAll",
+			nameArg:             "A",
+			clusterSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - channel assigned to token",
+			nameArg: "A",
+			tokenSvcGetAll: provisioning.Tokens{
+				{
+					UUID:    uuidgen.FromPattern(t, "1"),
+					Channel: "A",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:              "error - tokenSvc.GetAll",
+			nameArg:           "A",
+			tokenSvcGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -414,6 +510,18 @@ func TestChannelService_DeleteByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return tc.clusterSvcGetAll, tc.clusterSvcGetAllErr
+				},
+			}
+
+			tokenSvc := &svcMock.TokenServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
+					return tc.tokenSvcGetAll, tc.tokenSvcGetAllErr
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, channelName string) (provisioning.Updates, error) {
 					return tc.updateSvcGetUpdatesByAssignedChannelName, tc.updateSvcGetUpdatesByAssignedChannelNameErr
@@ -422,7 +530,8 @@ func TestChannelService_DeleteByName(t *testing.T) {
 
 			channelSvc := provisioningChannel.New(repo, updateSvc)
 			channelSvc.SetServerService(serverSvc)
-			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+			channelSvc.SetClusterService(clusterSvc)
+			channelSvc.SetTokenService(tokenSvc)
 
 			// Run test
 			err := channelSvc.DeleteByName(t.Context(), tc.nameArg)
