@@ -32,7 +32,7 @@ func warningMapErr(err error, entity string) error {
 			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s already exists", entityName).WithCause(err)
 
 		case sqlite3.ErrConstraintForeignKey:
-			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s references an entity, which does not exist", entityName).WithCause(err)
+			return dbschema.MapForeignKeyError(err, entityName)
 
 		default:
 			return domain.NewErrorf(domain.ErrConstraintViolation, "", "%s violates a constraint of the database", entityName).WithCause(err)
