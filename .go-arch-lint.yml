@@ -59,8 +59,6 @@ components:
       - internal/util/ptr
       - internal/util/structs
       - internal/version
-      # TODO: not pure, needs to be refactored
-      - internal/security/acme
 
   util:
     in:

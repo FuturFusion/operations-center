@@ -45,20 +45,10 @@ type systemService struct {
 	// restoreMu is held by a restore and never released after a successful one.
 	restoreMu sync.Mutex
 
-	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc
+	acme ACMEPort
 }
 
 var _ SystemService = &systemService{}
-
-// ACMEUpdateCertificateFunc requests a certificate from the ACME server.
-type ACMEUpdateCertificateFunc func(
-	ctx context.Context,
-	fsEnv interface {
-		VarDir() string
-	},
-	cfg system.SecurityACME,
-	force bool,
-) (*system.CertificatePost, error)
 
 func NewSystemService(
 	env environment,
@@ -69,7 +59,7 @@ func NewSystemService(
 	backupRepo BackupRepo,
 	certificateRepo CertificateRepo,
 	requestRestart func(),
-	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc,
+	acme ACMEPort,
 ) *systemService {
 	return &systemService{
 		env:             env,
@@ -81,7 +71,7 @@ func NewSystemService(
 		certificateRepo: certificateRepo,
 		requestRestart:  requestRestart,
 
-		acmeUpdateCertificateFunc: acmeUpdateCertificateFunc,
+		acme: acme,
 	}
 }
 
@@ -252,7 +242,7 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
 	cfg := config.GetSecurity().ACME
 
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, force)
+	newCert, err := s.acme.UpdateCertificate(ctx, cfg, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}

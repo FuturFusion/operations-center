@@ -12,35 +12,42 @@ import (
 
 	"github.com/lxc/incus/v7/shared/tls"
 
-	"github.com/FuturFusion/operations-center/shared/api/system"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/system"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // Matches the threshold of github.com/lxc/incus/v7/shared/tls.CertificateNeedsUpdate.
 const renewalLifetimeRatio = 0.8
 
-// isEnabled mirrors config.IsACMEEnabled. This package is removed with the ACME port.
-func isEnabled(cfg system.SecurityACME) bool {
-	return cfg.Domain != "" && cfg.Email != "" && cfg.CAURL != "" && cfg.AgreeTOS
+type acme struct {
+	env interface {
+		VarDir() string
+	}
+	root *os.Root
 }
 
-// UpdateCertificate updates the certificate. The ACME account data is stored
-// in acmeRoot.
-func UpdateCertificate(
-	ctx context.Context,
-	fsEnv interface {
-		VarDir() string
-	},
-	acmeRoot *os.Root,
-	cfg system.SecurityACME,
-	force bool,
-) (*system.CertificatePost, error) {
+var _ system.ACMEPort = &acme{}
+
+// New returns an adapter, that requests certificates from an ACME server.
+// The ACME account data is stored in root.
+func New(env interface{ VarDir() string }, root *os.Root) *acme {
+	return &acme{
+		env:  env,
+		root: root,
+	}
+}
+
+// UpdateCertificate requests a new certificate, if ACME is enabled and the
+// current certificate needs renewal or force is set.
+func (a *acme) UpdateCertificate(ctx context.Context, cfg apisystem.SecurityACME, force bool) (*apisystem.CertificatePost, error) {
 	log := slog.With(slog.String("domain", cfg.Domain), slog.String("ca_url", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
-	if !isEnabled(cfg) {
+	if !config.IsACMEEnabled(cfg) {
 		return nil, nil
 	}
 
 	// Load the certificate.
-	certInfo, err := tls.KeyPairAndCA(fsEnv.VarDir(), "server", tls.CertServer, true)
+	certInfo, err := tls.KeyPairAndCA(a.env.VarDir(), "server", tls.CertServer, true)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load certificate and key file: %w", err)
 	}
@@ -62,14 +69,14 @@ func UpdateCertificate(
 	}
 
 	// Remove unrelated directories when done.
-	defer cleanupAccounts(acmeRoot, caURL.Hostname(), cfg.Email)
+	defer cleanupAccounts(a.root, caURL.Hostname(), cfg.Email)
 
-	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, acmeRoot.Name(), cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
+	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, a.root.Name(), cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
 	if err != nil {
 		return nil, err
 	}
 
-	return &system.CertificatePost{
+	return &apisystem.CertificatePost{
 		Certificate: string(certBytes),
 		Key:         string(keyBytes),
 	}, nil

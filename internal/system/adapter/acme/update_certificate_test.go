@@ -15,7 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/security/acme"
+	"github.com/FuturFusion/operations-center/internal/system/adapter/acme"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -113,7 +113,7 @@ func TestUpdateCertificate(t *testing.T) {
 			t.Cleanup(func() { require.NoError(t, acmeRoot.Close()) })
 
 			// Run test
-			got, err := acme.UpdateCertificate(t.Context(), varDirEnv{dir: varDir}, acmeRoot, tc.cfg, tc.force)
+			got, err := acme.New(varDirEnv{dir: varDir}, acmeRoot).UpdateCertificate(t.Context(), tc.cfg, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)

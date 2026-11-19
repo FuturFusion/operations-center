@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/system"
+	adapterMock "github.com/FuturFusion/operations-center/internal/system/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
@@ -916,15 +917,10 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				nil,
 				certificateRepo,
 				nil,
-				func(
-					ctx context.Context,
-					fsEnv interface {
-						VarDir() string
+				&adapterMock.ACMEPortMock{
+					UpdateCertificateFunc: func(ctx context.Context, cfg systemapi.SecurityACME, force bool) (*systemapi.CertificatePost, error) {
+						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
 					},
-					cfg systemapi.SecurityACME,
-					force bool,
-				) (*systemapi.CertificatePost, error) {
-					return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
 				},
 			)
 
