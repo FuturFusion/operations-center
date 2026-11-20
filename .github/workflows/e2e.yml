@@ -63,6 +63,13 @@ jobs:
       cancel-in-progress: false
     strategy:
       fail-fast: false
+      # The flavors share the self-hosted runner and its Incus, so test them
+      # one after the other.
+      max-parallel: 1
+      matrix:
+        incus-application:
+          - incus-lts-7.0
+          - incus
     timeout-minutes: 185
     runs-on:
       - self-hosted
@@ -129,6 +136,7 @@ jobs:
         env:
           OPERATIONS_CENTER_E2E_TEST: "true"
           OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
+          OPERATIONS_CENTER_E2E_TEST_INCUS_APPLICATION: "${{ matrix.incus-application }}"
           OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
         run: |
           set -o pipefail
@@ -139,8 +147,11 @@ jobs:
       - name: Compute artifact name
         id: artifact
         if: always()
+        env:
+          INCUS_APPLICATION: "${{ matrix.incus-application }}"
         run: |
-          echo "name=operations-center-e2e-logs-$(date -u +%Y-%m-%d)-run-${GITHUB_RUN_NUMBER}-attempt-${GITHUB_RUN_ATTEMPT}" >> "${GITHUB_OUTPUT}"
+          # The name is unique per flavor, both jobs of a run upload their logs.
+          echo "name=operations-center-e2e-logs-$(date -u +%Y-%m-%d)-run-${GITHUB_RUN_NUMBER}-attempt-${GITHUB_RUN_ATTEMPT}-${INCUS_APPLICATION}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload logs
         if: always()

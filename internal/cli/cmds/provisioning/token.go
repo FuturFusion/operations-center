@@ -19,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
@@ -469,7 +470,7 @@ func (c *cmdTokenGetImage) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
-	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus, migration-manager, non-primary applications")
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus-lts-7.0, migration-manager, non-primary applications")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -497,24 +498,24 @@ func (c *cmdTokenGetImage) validateArgsAndFlags(cmd *cobra.Command, args []strin
 
 	var primaryApplicationCount int
 	for _, application := range c.flagApplications {
-		fileComponent := images.UpdateFileComponent(application)
-		_, ok := images.UpdateFileComponents[fileComponent]
-		if !ok {
+		// The Incus flavors share the update file component "incus", so the
+		// application names of the flavors are not part of the component list.
+		_, ok := images.UpdateFileComponents[images.UpdateFileComponent(application)]
+		if !ok && !domain.IsApplicationNameIncusKind(application) {
 			return fmt.Errorf(`Invalid value for flag "--application": %q`, application)
 		}
 
-		if fileComponent == images.UpdateFileComponentOperationsCenter {
+		if application == images.UpdateFileComponentOperationsCenter.String() {
 			return fmt.Errorf(`Deploying operations-center through operations-center is not supported`)
 		}
 
-		switch fileComponent {
-		case images.UpdateFileComponentIncus, images.UpdateFileComponentMigrationManager:
+		if domain.IsPrimaryApplication(application) {
 			primaryApplicationCount++
 		}
 	}
 
 	if len(c.flagApplications) > 0 && primaryApplicationCount != 1 {
-		return fmt.Errorf(`Exactly one primary application (incus, migration-manager) is required`)
+		return fmt.Errorf(`Exactly one primary application (%s, %s, migration-manager) is required`, domain.ApplicationNameIncusLTS70, domain.ApplicationNameIncus)
 	}
 
 	return nil

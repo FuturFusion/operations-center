@@ -187,7 +187,7 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&c.flagServerNames, flagServerNames, "s", nil, "Server names of the cluster members")
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
-	cmd.Flags().StringVarP(&c.flagServerType, "server-type", "t", "incus", "Type of servers, that should be clustered, supported values are (incus, migration-manager, operations-center)")
+	cmd.Flags().StringVarP(&c.flagServerType, "server-type", "t", api.ServerTypeIncusLTS70.String(), "Type of servers, that should be clustered, supported values are (incus-lts-7.0, incus, migration-manager, operations-center)")
 	cmd.Flags().StringVarP(&c.flagServicesConfigFile, "services-config", "c", "", "Services config applied on the cluster nodes during pre clustering")
 	cmd.Flags().StringVarP(&c.flagApplicationConfigFile, "application-seed-config", "a", "", "Application seed configuration applied on the cluster during post clustering")
 	cmd.Flags().StringVar(&c.flagClusterTemplate, "cluster-template", "", "Name of the cluster template to be applied. Mutual exclusive with --services-config and --application-seed-config")

@@ -19,6 +19,13 @@ type envSetting struct {
 // envSettings collects the environment variables in the order they are read.
 var envSettings []envSetting
 
+const (
+	incusApplicationEnvVar = "OPERATIONS_CENTER_E2E_TEST_INCUS_APPLICATION"
+
+	incusApplicationStable = "incus"
+	incusApplicationLTS70  = "incus-lts-7.0"
+)
+
 var (
 	diskSize             = envOrDefault("OPERATIONS_CENTER_E2E_TEST_DISK_SIZE", "50GiB")
 	memorySize           = envOrDefault("OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE", "4GiB")
@@ -34,6 +41,10 @@ var (
 	bmcProxyAddress      = envOrDefault("OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS", "")
 	hostAddress          = envOrDefault("OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS", "")
 
+	// incusApplication is the flavor of the Incus application, which is installed
+	// on the servers. The server type of such a server has the same name.
+	incusApplication = envOrDefault(incusApplicationEnvVar, incusApplicationLTS70)
+
 	selfUpdateFromVersion   = envOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION", "")
 	selfUpdateReplaceDaemon = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON", false)
 
@@ -42,6 +53,13 @@ var (
 )
 
 func init() {
+	// A typo must not silently test the default flavor.
+	switch incusApplication {
+	case incusApplicationStable, incusApplicationLTS70:
+	default:
+		panic(fmt.Sprintf("%s: unsupported Incus application %q, supported values are %q and %q", incusApplicationEnvVar, incusApplication, incusApplicationLTS70, incusApplicationStable))
+	}
+
 	goCoverDir = os.Getenv("GOCOVERDIR")
 	if goCoverDir == "" {
 		tmpDir, err := os.MkdirTemp("", "oc-e2e-tests-*")

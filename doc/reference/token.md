@@ -76,7 +76,7 @@ The seed configuration has the following structure:
 applications:
   version: "1"
   applications:
-    - name: incus
+    - name: incus-lts-7.0
     - name: debug
 # install:
 # ...

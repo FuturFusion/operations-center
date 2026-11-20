@@ -137,7 +137,7 @@ content and adjust it to your target system:
 applications:
   version: "1"
   applications:
-    - name: incus
+    - name: incus-lts-7.0
 install:
   version: "1"
   force_install: false
@@ -162,7 +162,7 @@ network:
 
 The important aspects are:
 
-* `applications`: the application to be installed, most likely `incus`.
+* `applications`: the application to be installed, most likely `incus-lts-7.0`.
 * `install.target`: only needed, if the system has more than one installation
   target (disk) to choose from. Without it, the installer expects a single disk
   to be present. The target can be selected by `bus`, `id`, `min_size`,
