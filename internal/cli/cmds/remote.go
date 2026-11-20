@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -136,6 +137,10 @@ func (c *cmdRemoteAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 
 	if name == "local" {
 		return fmt.Errorf(`Name of remote can not be "local", since it is a reserved name for the local access through unix socket`)
+	}
+
+	if !file.IsPathElement(name) {
+		return fmt.Errorf(`Name of remote %q is invalid, it can not contain path separators and can not be "." or ".."`, name)
 	}
 
 	addrURL, err := url.Parse(addr)
