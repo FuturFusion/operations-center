@@ -2691,7 +2691,7 @@ func (s *serverService) ReconcileMeshTunnelLocalAddress(ctx context.Context, ser
 	network, etag, err := incusClient.GetNetwork(provisioning.MeshNetworkName)
 	if err != nil {
 		// Clusters without the internal mesh network are not managed.
-		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil
 		}
 

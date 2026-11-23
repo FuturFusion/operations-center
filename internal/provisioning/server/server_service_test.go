@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -3188,7 +3187,7 @@ func TestServerService_ReconcileMeshTunnelLocalAddress(t *testing.T) {
 				Cluster: new("cluster"),
 				OSData:  osData("192.168.0.100"),
 			},
-			incusClientGetNetworkErr: incusapi.StatusErrorf(http.StatusNotFound, "Network not found"),
+			incusClientGetNetworkErr: domain.NewErrorf(domain.ErrNotFound, "", "Network not found"),
 
 			assertErr: require.NoError,
 		},
