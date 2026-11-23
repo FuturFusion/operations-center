@@ -204,8 +204,9 @@ func TestUpgradeFromSQLite(t *testing.T) {
 		require.Equal(t, before[path], metadata(t, m, path), path)
 	}
 
-	require.Equal(t, withField(t, images, "source", ""), metadata(t, m, "/1.0/images/incus?recursion=1"), "The images are expected to get the field source")
-	require.Equal(t, withField(t, sources, "name", "source_before"), sourcesWithoutLocal(t, m, "/1.0/images/incus/sources?recursion=1"), "Invalid source names are expected to be sanitized")
+	// The images move below the source "local". Sources move up to "/1.0/images/incus".
+	require.Equal(t, withField(t, images, "source", "local"), metadata(t, m, "/1.0/images/incus/local/images?recursion=1"))
+	require.Equal(t, withField(t, sources, "name", "source_before"), sourcesWithoutLocal(t, m, "/1.0/images/incus?recursion=1"), "Invalid source names are expected to be sanitized")
 
 	require.Equal(t, "https://"+m.address, field(t, m, "/1.0/system/network", "address"))
 	require.Equal(t, m.address, field(t, m, "/1.0/system/network", "rest_server_address"))
@@ -213,7 +214,7 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	require.Equal(t, []any{hex.EncodeToString(fingerprint[:])}, field(t, m, "/1.0/system/security", "trusted_tls_client_cert_fingerprints"))
 	require.Equal(t, `version == "none"`, field(t, m, "/1.0/system/updates", "filter_expression"))
 
-	status, content := m.request(t, http.MethodGet, apiPath, nil, "")
+	status, content := m.request(t, http.MethodGet, "/1.0/images/incus/local/images"+strings.TrimPrefix(apiPath, "/1.0/images/incus"), nil, "")
 	require.Equal(t, http.StatusOK, status)
 	require.Equal(t, imageContent, content)
 	require.True(t, m.hasFile(filePath))

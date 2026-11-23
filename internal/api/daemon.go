@@ -1398,9 +1398,9 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	isContentTypeCheckExempt := func(r *http.Request) bool {
-		// POST /1.0/images/incus requires multipart/form-data. It relies on the
-		// cross-origin check only.
-		if r.Method == http.MethodPost && r.URL.Path == "/1.0/images/incus" {
+		// Uploads to the image source "local" require multipart/form-data. They
+		// rely on the cross-origin check only.
+		if r.Method == http.MethodPost && r.URL.Path == "/1.0/images/incus/"+api.IncusImageSourceLocal+"/images" {
 			return true
 		}
 
@@ -1438,13 +1438,8 @@ func (d *Daemon) setupAPIRoutes(
 
 	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase)
 
-	imageRouter := api10router.SubGroup("/images")
-	imageSourceRouter := imageRouter.SubGroup("/sources")
-	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
-	imageIncusRouter := imageRouter.SubGroup("/incus")
-	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
-	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
-	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
+	imageIncusRouter := api10router.SubGroup("/images/incus")
+	registerIncusImageSourcesAndImagesHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, imageSourceSvc, incusImageSvc)
 
 	metricsRouter := api10router.SubGroup("/metrics")
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())

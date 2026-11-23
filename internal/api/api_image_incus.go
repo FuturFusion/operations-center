@@ -8,10 +8,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
-	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -19,27 +20,8 @@ import (
 )
 
 type imageIncusHandler struct {
-	service image.ImageIncusService
-}
-
-func registerImageIncusHandler(router Router, simplestreamsRouter Router, authorizer *authz.Authorizer, service image.ImageIncusService) {
-	handler := &imageIncusHandler{
-		service: service,
-	}
-
-	// public simplestreams routes, available without authentication
-	simplestreamsRouter.HandleFunc("GET /streams/v1/index.json", response.With(handler.simplestreamsPublicIndexGet))
-	simplestreamsRouter.HandleFunc("GET /streams/v1/images.json", response.With(handler.simplestreamsPublicImagesGet))
-	// Allow download of incus image files without authentication
-	simplestreamsRouter.HandleFunc("GET /1.0/images/incus/{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
-
-	router.HandleFunc("GET /{$}", response.With(handler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{$}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("GET /{name}", response.With(handler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("PUT /{name}", response.With(handler.incusImagePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("DELETE /{name}", response.With(handler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	service       image.ImageIncusService
+	sourceService image.IncusImageSourceService
 }
 
 // swagger:operation GET /incus-images/streams/v1/index.json simplestreams simplestreams_index_get
@@ -74,7 +56,7 @@ func (i *imageIncusHandler) simplestreamsPublicIndexGet(r *http.Request) respons
 	}
 
 	for _, incusImage := range incusImages {
-		index.Products = append(index.Products, incusImage.Name)
+		index.Products = append(index.Products, simplestreamsProductName(incusImage))
 	}
 
 	stream := simplestreams.Stream{
@@ -121,9 +103,39 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 		Products:  make(map[string]simplestreams.Product, len(incusImages)),
 	}
 
+	// Images of different sources can have the same alias. Incus picks one of
+	// them without a warning. So only the preferred image keeps the alias.
+	// Local images win, then the other sources in the order of their ID.
+	// GetAll orders the images by source ID, so only local images move to the front.
+	sortLocalIncusImagesFirst(incusImages)
+
+	type aliasKey struct {
+		alias        string
+		architecture string
+	}
+
+	takenAliases := map[aliasKey]bool{}
+
 	for _, incusImage := range incusImages {
+		// Incus cannot launch an image without versions. It must not take the
+		// aliases of the images of other sources.
+		if len(incusImage.Versions) == 0 {
+			continue
+		}
+
+		aliases := make([]string, 0, len(incusImage.Aliases))
+		for _, alias := range incusImage.Aliases {
+			key := aliasKey{alias: alias, architecture: incusImage.Architecture}
+			if takenAliases[key] {
+				continue
+			}
+
+			takenAliases[key] = true
+			aliases = append(aliases, alias)
+		}
+
 		product := simplestreams.Product{
-			Aliases:         strings.Join(incusImage.Aliases, ","),
+			Aliases:         strings.Join(aliases, ","),
 			Architecture:    incusImage.Architecture,
 			OperatingSystem: incusImage.OperatingSystem,
 			Release:         incusImage.Release,
@@ -133,12 +145,12 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 
 		for version := range product.Versions {
 			for filename, fileDetails := range product.Versions[version].Items {
-				fileDetails.Path = filepath.Join("/1.0/images/incus", incusImage.Name, version, filename)
+				fileDetails.Path = filepath.Join("/1.0/images/incus", incusImage.Source, "images", incusImage.Name, version, filename)
 				product.Versions[version].Items[filename] = fileDetails
 			}
 		}
 
-		products.Products[incusImage.Name] = product
+		products.Products[simplestreamsProductName(incusImage)] = product
 	}
 
 	return response.ManualResponse(func(w http.ResponseWriter) error {
@@ -148,49 +160,74 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 	})
 }
 
-// swagger:operation GET /1.0/images/incus incus_images incus_images_get
+// swagger:operation GET /1.0/images/incus/{source}/images incus_images incus_images_get
 //
 //	Get the list of incus images
 //
-//	Returns a list of incus images (URLs).
+//	Returns a list of incus images (URLs) of the image source.
 //
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/images/incus?recursion=1 incus_images incus_images_get_recursion
+// swagger:operation GET /1.0/images/incus/{source}/images?recursion=1 incus_images incus_images_get_recursion
 //
 //	Get the list of incus images
 //
-//	Returns a list of incus images (structs).
+//	Returns a list of incus images (structs) of the image source.
 //
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/IncusImagesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
-	if isRecursionRequest(r) {
-		incusImages, err := i.service.GetAll(r.Context())
-		if err != nil {
-			return response.SmartError(err)
-		}
+	source := r.PathValue("source")
 
+	// An unknown source is not found, not an empty list.
+	_, err := i.sourceService.GetByName(r.Context(), source)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	incusImages, err := i.service.GetAllBySource(r.Context(), source)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if isRecursionRequest(r) {
 		result := make([]api.IncusImage, 0, len(incusImages))
 		for _, incusImage := range incusImages {
 			result = append(result, api.IncusImage{
+				Source:          incusImage.Source,
 				Name:            incusImage.Name,
 				OperatingSystem: incusImage.OperatingSystem,
 				Release:         incusImage.Release,
@@ -209,20 +246,15 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	incusImageNames, err := i.service.GetAllNames(r.Context())
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	result := make([]string, 0, len(incusImageNames))
-	for _, name := range incusImageNames {
-		result = append(result, fmt.Sprintf("/%s/images/incus/%s", api.APIVersion, name))
+	result := make([]string, 0, len(incusImages))
+	for _, incusImage := range incusImages {
+		result = append(result, fmt.Sprintf("/%s/images/incus/%s/images/%s", api.APIVersion, incusImage.Source, incusImage.Name))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/images/incus/{name} incus_images incus_image_get
+// swagger:operation GET /1.0/images/incus/{source}/images/{name} incus_images incus_image_get
 //
 //	Get the incus image
 //
@@ -232,6 +264,11 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source of the incus image
+//	    type: string
+//	    required: true
 //	  - in: path
 //	    name: name
 //	    description: Name of the incus image
@@ -247,9 +284,10 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
+	source := r.PathValue("source")
 	name := r.PathValue("name")
 
-	incusImage, err := i.service.GetByName(r.Context(), name)
+	incusImage, err := i.service.GetByName(r.Context(), source, name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -257,6 +295,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.IncusImage{
+			Source:          incusImage.Source,
 			Name:            incusImage.Name,
 			OperatingSystem: incusImage.OperatingSystem,
 			Release:         incusImage.Release,
@@ -274,7 +313,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/images/incus/{name} incus_images incus_image_put
+// swagger:operation PUT /1.0/images/incus/{source}/images/{name} incus_images incus_image_put
 //
 //	Update the incus image
 //
@@ -286,6 +325,11 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source of the incus image
+//	    type: string
+//	    required: true
 //	  - in: path
 //	    name: name
 //	    description: Name of the incus image
@@ -311,6 +355,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
+	source := r.PathValue("source")
 	name := r.PathValue("name")
 
 	var incusImage api.IncusImagePut
@@ -321,7 +366,7 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 	}
 
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
-		currentIncusImage, err := i.service.GetByName(ctx, name)
+		currentIncusImage, err := i.service.GetByName(ctx, source, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
 		}
@@ -349,7 +394,7 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 	return response.SyncResponse(true, nil)
 }
 
-// swagger:operation DELETE /1.0/images/incus/{name} incus_images incus_image_delete
+// swagger:operation DELETE /1.0/images/incus/{source}/images/{name} incus_images incus_image_delete
 //
 //	Delete the incus image
 //
@@ -359,6 +404,11 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source of the incus image
+//	    type: string
+//	    required: true
 //	  - in: path
 //	    name: name
 //	    description: Name of the incus image
@@ -376,9 +426,10 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response {
+	source := r.PathValue("source")
 	name := r.PathValue("name")
 
-	err := i.service.DeleteByName(r.Context(), name)
+	err := i.service.DeleteByName(r.Context(), source, name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -386,12 +437,12 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/images/incus incus_images incus_images_post
+// swagger:operation POST /1.0/images/incus/{source}/images incus_images incus_images_post
 //
 //	Add an incus image version
 //
 //	Add a new incus image version. Also creates the incus image, if it does not
-//	exist.
+//	exist. Images can only be uploaded to the image source "local".
 //
 //	---
 //	consumes:
@@ -399,6 +450,11 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source, only "local" is permitted
+//	    type: string
+//	    required: true
 //	  - in: formData
 //	    name: request_json
 //	    description: >
@@ -428,6 +484,12 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Response {
+	source := r.PathValue("source")
+	if source != api.IncusImageSourceLocal {
+		return response.SmartError(domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Images can only be uploaded to the image source %q", api.IncusImageSourceLocal).
+			WithDetail("source", source))
+	}
+
 	mediatype, params, err := mime.ParseMediaType(r.Header.Get("Content-type"))
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to process Content-type header: %w", err))
@@ -447,10 +509,10 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+api.IncusImageSourceLocal+"/images/"+name)
 }
 
-// swagger:operation DELETE /1.0/images/incus/{name}/{version} incus_images incus_image_version_delete
+// swagger:operation DELETE /1.0/images/incus/{source}/images/{name}/{version} incus_images incus_image_version_delete
 //
 //	Delete the incus image version
 //
@@ -460,6 +522,11 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source of the incus image
+//	    type: string
+//	    required: true
 //	  - in: path
 //	    name: name
 //	    description: Name of the incus image
@@ -482,10 +549,11 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Response {
+	source := r.PathValue("source")
 	name := r.PathValue("name")
 	version := r.PathValue("version")
 
-	err := i.service.DeleteVersionByName(r.Context(), name, version)
+	err := i.service.DeleteVersionByName(r.Context(), source, name, version)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -493,7 +561,7 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/images/incus/{name}/{version}/{filename} incus_images incus_image_version_file_get
+// swagger:operation GET /1.0/images/incus/{source}/images/{name}/{version}/{filename} incus_images incus_image_version_file_get
 //
 //	Get a specific file from an incus image version
 //
@@ -503,6 +571,11 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 //	produces:
 //	  - "application/octet-stream"
 //	parameters:
+//	  - in: path
+//	    name: source
+//	    description: Name of the image source of the incus image
+//	    type: string
+//	    required: true
 //	  - in: path
 //	    name: name
 //	    description: Name of the incus image
@@ -532,11 +605,12 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.Response {
+	source := r.PathValue("source")
 	name := r.PathValue("name")
 	version := r.PathValue("version")
 	filename := r.PathValue("filename")
 
-	rc, size, err := i.service.GetVersionFileByName(r.Context(), name, version, filename)
+	rc, size, err := i.service.GetVersionFileByName(r.Context(), source, name, version, filename)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get file %q for incus image %q, version %q: %w", filename, name, version, err))
 	}
@@ -546,4 +620,25 @@ func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.R
 	}
 
 	return response.ReadCloserResponse(r, rc, false, filename, int(size), headers)
+}
+
+func sortLocalIncusImagesFirst(images image.IncusImages) {
+	slices.SortStableFunc(images, func(a image.IncusImage, b image.IncusImage) int {
+		aLocal := a.Source == api.IncusImageSourceLocal
+		bLocal := b.Source == api.IncusImageSourceLocal
+		if aLocal == bLocal {
+			return 0
+		}
+
+		if aLocal {
+			return -1
+		}
+
+		return 1
+	})
+}
+
+func simplestreamsProductName(incusImage image.IncusImage) string {
+	// Images of different sources can have the same name.
+	return incusImage.Source + ":" + incusImage.Name
 }
