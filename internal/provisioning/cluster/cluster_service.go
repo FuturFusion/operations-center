@@ -478,7 +478,12 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	}
 
 	// Make sure, the cluster certificate is already valid ("not before date" has passed).
-	time.Sleep(s.createClusterCertificateNotBeforeDelay)
+	select {
+	case <-ctx.Done():
+		return newCluster, fmt.Errorf("Wait for cluster certificate to become valid: %w", ctx.Err())
+
+	case <-time.After(s.createClusterCertificateNotBeforeDelay):
+	}
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
@@ -1963,7 +1968,12 @@ func (s *clusterService) removeSingleServer(ctx context.Context, name string, re
 		}
 
 		// Wait for the factory reset to take place.
-		time.Sleep(s.removeServerFactoryResetWaitDelay)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("Wait for factory reset of server %q: %w", removedServerName, ctx.Err())
+
+		case <-time.After(s.removeServerFactoryResetWaitDelay):
+		}
 	}
 
 	// Forcefully remove the server from the cluster.
@@ -2168,7 +2178,7 @@ func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serve
 
 		select {
 		case <-ctx.Done():
-			return errors.Join(ctx.Err(), err)
+			return fmt.Errorf("Wait to retry deletion of cluster member: %w", errors.Join(ctx.Err(), err))
 
 		case <-time.After(s.removeServerDeleteClusterMemberRetryDelay):
 		}
