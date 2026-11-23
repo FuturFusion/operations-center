@@ -575,6 +575,37 @@ func (_d MembershipServiceWithSlog) Join(ctx context.Context, cfg api.ClusterJoi
 	return _d._base.Join(ctx, cfg)
 }
 
+// LeaderAddress implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LeaderAddress(ctx context.Context) (s string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LeaderAddress")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("s", s),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method LeaderAddress returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method LeaderAddress finished")
+		}
+	}()
+	return _d._base.LeaderAddress(ctx)
+}
+
 // LocalMemberID implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) LocalMemberID() (n int64, err error) {
 	ctx := logger.ContextWithComponent(context.Background(), _d._component)

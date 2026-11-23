@@ -1344,6 +1344,19 @@ func (m *membership) MemberClient(address string) (client.OperationsCenterClient
 	return client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCert), client.WithDialTimeout(MemberDialTimeout))
 }
 
+func (m *membership) LeaderAddress(ctx context.Context) (string, error) {
+	leader, err := m.Gateway().IsLeader(ctx)
+	if err != nil {
+		return "", fmt.Errorf("Failed to check for leader status: %w", err)
+	}
+
+	if leader {
+		return m.Gateway().State().ClusterAddress(), nil
+	}
+
+	return m.Gateway().LeaderAddress()
+}
+
 func (m *membership) isLeader(ctx context.Context) error {
 	leader, err := m.Gateway().IsLeader(ctx)
 	if err != nil {

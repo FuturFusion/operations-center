@@ -283,6 +283,20 @@ func (_d MembershipServiceWithPrometheus) Join(ctx context.Context, cfg api.Clus
 	return _d.base.Join(ctx, cfg)
 }
 
+// LeaderAddress implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) LeaderAddress(ctx context.Context) (s string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LeaderAddress", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LeaderAddress(ctx)
+}
+
 // LocalMemberID implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) LocalMemberID() (n int64, err error) {
 	_since := time.Now()

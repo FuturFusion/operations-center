@@ -145,6 +145,9 @@ type Daemon struct {
 	cacheRoot *os.Root
 	subRoots  []*os.Root
 
+	// forward forwards requests within the cluster once the API routes are set up.
+	forward atomic.Pointer[forwarder]
+
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
 	configReloadMu *sync.Mutex
@@ -247,11 +250,15 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		serverBackgroundTasks: provisioningServer.NewBackgroundTasks(),
 	}
 
-	// Until the security configuration is loaded, only the unix socket is trusted.
+	// Until the security configuration is loaded, only the unix socket and the cluster members are trusted.
 	startingAuthenticator := authn.New([]authn.Auther{
 		authnmiddleware.NewAutherWithSlog(
 			authnunixsocket.UnixSocket{},
 			authnmiddleware.AutherWithSlogWithComponent(componentAuthnUnixSocket),
+		),
+		authnmiddleware.NewAutherWithSlog(
+			authntls.New(d.clusterMemberFingerprints),
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
 		),
 	}, authn.WithStarting())
 	d.authenticator = &startingAuthenticator
@@ -864,6 +871,15 @@ func (d *Daemon) initAndLoadServerCert() error {
 	return nil
 }
 
+// clusterMemberFingerprints returns the fingerprints of the certificates of the cluster members.
+func (d *Daemon) clusterMemberFingerprints() []string {
+	if d.membershipSvc == nil {
+		return []string{}
+	}
+
+	return slices.Collect(maps.Keys(d.membershipSvc.TrustedClients()))
+}
+
 func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Security) error {
 	d.configReloadMu.Lock()
 	defer d.configReloadMu.Unlock()
@@ -906,17 +922,8 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		}
 	}
 
-	trustedFingerprints := make([]string, 0, len(cfg.TrustedTLSClientCertFingerprints)+1)
-
-	// Always trust our own client certificate if present.
-	// This required to self connect if Operations Center is self-registered.
-	clientCertFingerprint, err := incustls.CertFingerprintStr(d.clientCertificate)
-	if err == nil {
-		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
-	}
-
 	// Setup client cert fingerprint authentication.
-	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+	trustedFingerprints := slices.Clone(cfg.TrustedTLSClientCertFingerprints)
 
 	// The trusted client certificates grant access just like a bare fingerprint does.
 	// The fingerprints of the valid certificates are used even if others fail to
@@ -928,6 +935,17 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
 
+	// Always trust our own client certificate if present.
+	// This required to self connect if Operations Center is self-registered.
+	clientFingerprint := func() []string {
+		fingerprint := d.clientKeypair.Get().Fingerprint
+		if fingerprint == "" {
+			return nil
+		}
+
+		return []string{fingerprint}
+	}
+
 	// The metrics only certificates authenticate like the other trusted certificates.
 	// The authorizer restricts them to metrics access.
 	metricsCertificateFingerprints, err := securitytls.CertificateFingerprints(cfg.TrustedTLSMetricsClientCertificates)
@@ -937,14 +955,18 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	metricsFingerprints := slices.Concat(cfg.TrustedTLSMetricsClientCertFingerprints, metricsCertificateFingerprints)
 
+	configTLS := func() []string {
+		return slices.Concat(trustedFingerprints, clientFingerprint(), metricsFingerprints)
+	}
+
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
-			authntls.New(slices.Concat(trustedFingerprints, metricsFingerprints)),
+			authntls.New(configTLS, d.clusterMemberFingerprints),
 			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
 		),
 	)
 
-	d.authenticator.Replace(authn.New(authers))
+	d.authenticator.Replace(authn.New(authers, authn.WithTrustedForward(d.isClusterMemberRequest)))
 
 	authorizers := []authz.Authorizer{
 		authzmiddleware.NewAuthorizerWithSlog(
@@ -952,7 +974,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
 		),
 		authzmiddleware.NewAuthorizerWithSlog(
-			authztls.New(ctx, trustedFingerprints, authztls.WithMetricsCertificateFingerprints(metricsFingerprints)),
+			authztls.New(ctx, trustedFingerprints,
+				authztls.WithCertificateFingerprintSources(clientFingerprint, d.clusterMemberFingerprints),
+				authztls.WithMetricsCertificateFingerprints(metricsFingerprints),
+			),
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzTLS),
 		),
 	}
@@ -1493,6 +1518,48 @@ func (d *Daemon) setupAPIRoutes(
 		return false
 	}
 
+	// Endpoints that should not be forwarded to the leader.
+	memberLocalPaths := []string{
+		// Local configuration.
+		"/1.0/system/network",
+		"/1.0/system/settings",
+		"/1.0/system/:clean-cache",
+		// Cluster bootstrap APIs are local only.
+		"/1.0/membership/:enable",
+		"/1.0/membership/:join",
+		// Only accepted through the unix socket of this member.
+		"/1.0/provisioning/servers/:self_register",
+	}
+
+	forward := forwarder{
+		clustered:  d.env.Clustered,
+		membership: membershipSvc,
+		targets:    memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	}
+
+	d.forward.Store(&forward)
+
+	requireLeader := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// IncusOS of this member sends its self updates through the unix socket.
+			localSelfUpdate := r.URL.Path == "/1.0/provisioning/servers/:self" && r.TLS == nil
+
+			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) && !localSelfUpdate {
+				resp := forward.toLeader(r)
+				if resp != nil {
+					err := resp.Render(w)
+					if err != nil {
+						slog.WarnContext(r.Context(), "Render forwarded response failed", logger.Err(err))
+					}
+
+					return
+				}
+			}
+
+			next(w, r)
+		}
+	}
+
 	simplestreamsRouter := router.SubGroup("/incus-images")
 	simplestreamsRouter.AddMiddlewares(cors.Handler(cors.CORSConfig{
 		AllowedOrigins:   "*",
@@ -1510,7 +1577,7 @@ func (d *Daemon) setupAPIRoutes(
 	api10PreInitAuth := api10PreInit.SubGroup("").AddMiddlewares(authenticatorMiddleware)
 	registerAPI10Handler(api10PreInitAuth)
 
-	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase)
+	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase, requireLeader)
 
 	imageRouter := api10router.SubGroup("/images")
 	imageSourceRouter := imageRouter.SubGroup("/sources")
@@ -1573,6 +1640,18 @@ var (
 	lifecycleMonitorRetryMin = time.Second
 	lifecycleMonitorRetryMax = time.Minute
 )
+
+// isClusterMemberRequest reports whether r is sent by another cluster member.
+func (d *Daemon) isClusterMemberRequest(r *http.Request) bool {
+	if d.membershipSvc == nil || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return false
+	}
+
+	// Only the leaf certificate is proven by the TLS handshake, the rest of the chain is unverified.
+	_, ok := d.membershipSvc.TrustedClients()[incustls.CertFingerprint(r.TLS.PeerCertificates[0])]
+
+	return ok
+}
 
 // lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
 func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {

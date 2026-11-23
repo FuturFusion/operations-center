@@ -43,6 +43,7 @@ type MembershipService interface {
 	HeartbeatOfflineThreshold() time.Duration
 	LocalMemberID() (int64, error)
 	MemberClient(address string) (client.OperationsCenterClient, error)
+	LeaderAddress(ctx context.Context) (string, error)
 	Handover(ctx context.Context, address string) error
 	Rebalance(ctx context.Context) error
 

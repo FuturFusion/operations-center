@@ -86,6 +86,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			JoinFunc: func(ctx context.Context, cfg api.ClusterJoinPost) error {
 //				panic("mock out the Join method")
 //			},
+//			LeaderAddressFunc: func(ctx context.Context) (string, error) {
+//				panic("mock out the LeaderAddress method")
+//			},
 //			LocalMemberIDFunc: func() (int64, error) {
 //				panic("mock out the LocalMemberID method")
 //			},
@@ -182,6 +185,9 @@ type MembershipServiceMock struct {
 
 	// JoinFunc mocks the Join method.
 	JoinFunc func(ctx context.Context, cfg api.ClusterJoinPost) error
+
+	// LeaderAddressFunc mocks the LeaderAddress method.
+	LeaderAddressFunc func(ctx context.Context) (string, error)
 
 	// LocalMemberIDFunc mocks the LocalMemberID method.
 	LocalMemberIDFunc func() (int64, error)
@@ -331,6 +337,11 @@ type MembershipServiceMock struct {
 			// Cfg is the cfg argument value.
 			Cfg api.ClusterJoinPost
 		}
+		// LeaderAddress holds details about calls to the LeaderAddress method.
+		LeaderAddress []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// LocalMemberID holds details about calls to the LocalMemberID method.
 		LocalMemberID []struct {
 		}
@@ -414,6 +425,7 @@ type MembershipServiceMock struct {
 	lockHeartbeatOfflineThreshold sync.RWMutex
 	lockIsMemberCertificate       sync.RWMutex
 	lockJoin                      sync.RWMutex
+	lockLeaderAddress             sync.RWMutex
 	lockLocalMemberID             sync.RWMutex
 	lockMemberClient              sync.RWMutex
 	lockNotifyUpgradeCompleted    sync.RWMutex
@@ -1038,6 +1050,38 @@ func (mock *MembershipServiceMock) JoinCalls() []struct {
 	mock.lockJoin.RLock()
 	calls = mock.calls.Join
 	mock.lockJoin.RUnlock()
+	return calls
+}
+
+// LeaderAddress calls LeaderAddressFunc.
+func (mock *MembershipServiceMock) LeaderAddress(ctx context.Context) (string, error) {
+	if mock.LeaderAddressFunc == nil {
+		panic("MembershipServiceMock.LeaderAddressFunc: method is nil but MembershipService.LeaderAddress was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockLeaderAddress.Lock()
+	mock.calls.LeaderAddress = append(mock.calls.LeaderAddress, callInfo)
+	mock.lockLeaderAddress.Unlock()
+	return mock.LeaderAddressFunc(ctx)
+}
+
+// LeaderAddressCalls gets all the calls that were made to LeaderAddress.
+// Check the length with:
+//
+//	len(mockedMembershipService.LeaderAddressCalls())
+func (mock *MembershipServiceMock) LeaderAddressCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockLeaderAddress.RLock()
+	calls = mock.calls.LeaderAddress
+	mock.lockLeaderAddress.RUnlock()
 	return calls
 }
 
