@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 )
@@ -267,7 +268,7 @@ func copyFile(srcRoot *os.Root, src string, dstRoot *os.Root, dst string) (_ int
 		err = errors.Join(err, destination.Close())
 	}()
 
-	nBytes, err := file.SafeCopy(destination, source)
+	nBytes, err := iox.SafeCopy(destination, source)
 	return nBytes, err
 }
 
@@ -391,7 +392,7 @@ func copyToZip(w io.Writer, root *os.Root, name string) error {
 
 	defer f.Close()
 
-	_, err = file.SafeCopy(w, f)
+	_, err = iox.SafeCopy(w, f)
 
 	return err
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/multipartstreamer"
 	"github.com/FuturFusion/operations-center/internal/util/render"
@@ -656,7 +657,7 @@ func (c *cmdIncusImageVersionGetFile) run(cmd *cobra.Command, args []string) err
 
 	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := file.SafeCopy(writer, fileReader)
+	size, err := iox.SafeCopy(writer, fileReader)
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -454,7 +455,7 @@ func (c *imageCache) write(ctx context.Context, public bool, cacheID string, gen
 		}
 	}()
 
-	_, err = file.SafeCopy(partial, newContextReader(ctx, image))
+	_, err = iox.SafeCopy(partial, newContextReader(ctx, image))
 	if err != nil {
 		return fmt.Errorf("Failed to write cached seed image %q: %w", fingerprintID, err)
 	}
