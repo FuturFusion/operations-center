@@ -426,7 +426,7 @@ func TestAuthentication(t *testing.T) {
 			body: http.NoBody,
 
 			wantStatusCode:   http.StatusOK,
-			wantBodyContains: "operations_center_build_info",
+			wantBodyContains: `operations_center_http_requests_total{code="201",method="POST",route="/1.0/provisioning/tokens"}`,
 		},
 		{
 			name: "plain http GET /1.0/provisioning/servers - unauthorized",

@@ -36,7 +36,8 @@ log_levels:
 pprof_enabled: false
 metrics_enabled: true
 metrics_components:
-  - runtime'
+  - runtime
+  - api'
 
 failed=0
 
