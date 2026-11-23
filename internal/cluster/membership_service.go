@@ -69,6 +69,9 @@ type membership struct {
 	// postCertificate replaces the request applying a cluster certificate on another member in tests.
 	postCertificate func(ctx context.Context, address string, trusted *x509.Certificate, certificate apisystem.CertificatePost) error
 
+	// reloadConfigOnMember replaces the request letting another member reload the shared config in tests.
+	reloadConfigOnMember func(ctx context.Context, address string) error
+
 	// removalChecks refuse the removal of a member, which is not forced.
 	removalChecks []RemovalCheck
 
@@ -1611,10 +1614,10 @@ func (m *membership) PersistSharedConfig(ctx context.Context, change config.Shar
 }
 
 // PublishSharedConfig lets the other cluster members reload a change stored by PersistSharedConfig.
-// The change is reverted if an online member fails to reload it.
+// The change is reverted if a reachable member fails to reload it.
 func (m *membership) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
-	// Offline members pick up the config on restart.
-	notified := m.reloadSharedConfigOnMembers(ctx, cowsqlcluster.NotifyAlive)
+	// Members out of reach pick up the config when they start.
+	notified := m.reloadSharedConfigOnMembers(ctx)
 	if notified == nil {
 		return nil
 	}
@@ -1640,7 +1643,7 @@ func (m *membership) PublishSharedConfig(ctx context.Context, change config.Shar
 	}
 
 	// Let this and the other members reload the previous config.
-	reverted := errors.Join(m.ReloadSharedConfig(revertCtx), m.reloadSharedConfigOnMembers(revertCtx, cowsqlcluster.NotifyTryAll))
+	reverted := errors.Join(m.ReloadSharedConfig(revertCtx), m.reloadSharedConfigOnMembers(revertCtx))
 	if reverted != nil {
 		slog.WarnContext(ctx, "Failed to let all cluster members reload the reverted shared config", logger.Err(reverted))
 	}
@@ -1648,23 +1651,25 @@ func (m *membership) PublishSharedConfig(ctx context.Context, change config.Shar
 	return notified
 }
 
-// reloadSharedConfigOnMembers lets the cluster members selected by policy reload the shared config.
-func (m *membership) reloadSharedConfigOnMembers(ctx context.Context, policy cowsqlcluster.NotifierPolicy) error {
-	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), policy)
+// reloadSharedConfigOnMembers lets the other cluster members reload the shared config.
+// The members counted as offline by the heartbeats are asked as well, since a member which just started counts as
+// offline for a while. One of them failing is skipped: it applies the stored config when it starts.
+func (m *membership) reloadSharedConfigOnMembers(ctx context.Context) error {
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), cowsqlcluster.NotifyTryAll)
 	if err != nil {
 		return fmt.Errorf("Failed to notify cluster members about the shared config change: %w", err)
 	}
+
+	offline := m.offlineAddresses(ctx)
 
 	var failedMu sync.Mutex
 	var failed []string
 
 	errs := notifier(func(ctx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
-		c, err := m.MemberClient(address)
-		if err == nil {
-			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			defer cancel()
-
-			_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reload-config", nil, nil)
+		err := m.reloadSharedConfigOnMember(ctx, address)
+		if err != nil && offline[address] {
+			slog.WarnContext(ctx, "Cluster member counted as offline did not reload the shared config, it applies the stored config when it starts", slog.String("address", address), logger.Err(err))
+			return nil
 		}
 
 		if err != nil {
@@ -1690,11 +1695,54 @@ func (m *membership) reloadSharedConfigOnMembers(ctx context.Context, policy cow
 		WithCause(errors.Join(errs...))
 }
 
+// reloadSharedConfigOnMember lets the cluster member at address reload the shared config.
+func (m *membership) reloadSharedConfigOnMember(ctx context.Context, address string) error {
+	if m.reloadConfigOnMember != nil {
+		return m.reloadConfigOnMember(ctx, address)
+	}
+
+	c, err := m.MemberClient(address)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reload-config", nil, nil)
+
+	return err
+}
+
 // neverReached tells whether the error of a request to another member says that no connection to it was made, so it never saw the request.
 func neverReached(err error) bool {
 	var opErr *net.OpError
 
 	return errors.As(err, &opErr) && opErr.Op == "dial"
+}
+
+// offlineAddresses returns the addresses of the cluster members counted as offline by the heartbeats.
+func (m *membership) offlineAddresses(ctx context.Context) map[string]bool {
+	if m.global() == nil {
+		return nil
+	}
+
+	members, err := m.global().GetNodes(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to get the cluster members, counting all of them as online", logger.Err(err))
+		return nil
+	}
+
+	threshold := m.gateway.HeartbeatOfflineThreshold()
+
+	offline := map[string]bool{}
+	for _, member := range members {
+		if member.IsOffline(threshold) {
+			offline[member.Address] = true
+		}
+	}
+
+	return offline
 }
 
 // memberNames returns the quoted names of the cluster members at addresses, sorted.
@@ -1828,8 +1876,9 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 	}
 
 	// A certificate for the same key reaches the online members now and the others when they start.
+	// The members counted as offline by the heartbeats are tried as well, since a member which just started counts as offline for a while.
 	// A new key would cut off an offline member for good, so it needs all members.
-	policy := cowsqlcluster.NotifyAlive
+	policy := cowsqlcluster.NotifyTryAll
 	if !sameKey(currentCert, newCert) {
 		policy = cowsqlcluster.NotifyAll
 	}
@@ -1859,6 +1908,7 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 
 	var reverterMu sync.Mutex
 
+	offline := m.offlineAddresses(ctx)
 	skipped := map[string]bool{}
 
 	post := apisystem.CertificatePost{Certificate: certificatePEM, Key: keyPEM}
@@ -1883,6 +1933,16 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 			reverterMu.Lock()
 			skipped[address] = true
 			reverterMu.Unlock()
+		}
+
+		if err != nil && policy == cowsqlcluster.NotifyTryAll && offline[address] {
+			reverterMu.Lock()
+			skipped[address] = true
+			reverterMu.Unlock()
+
+			slog.WarnContext(notifyCtx, "Cluster member counted as offline did not apply the cluster certificate, it adopts it when it starts", slog.String("address", address), logger.Err(err))
+
+			return nil
 		}
 
 		return err

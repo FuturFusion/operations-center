@@ -57,9 +57,10 @@ its logging, metrics and pprof settings. The API presents both parts together,
 so a client configures a member the same way it configures a standalone server.
 
 The shared configuration is applied by all members at once. A change is refused
-and reverted if an online member can not apply it, because it is unreachable or
-because applying it fails. An offline member applies the shared configuration
-when it starts again.
+and reverted if an online member can not apply it. A member counted as offline
+by the heartbeats is asked as well, since a member which just started counts as
+offline for a while. If it can not apply the change, it applies the shared
+configuration when it starts.
 
 ## Server records of the members
 
