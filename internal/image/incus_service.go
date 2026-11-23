@@ -112,6 +112,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	newImg := IncusImage{
+		Source:          api.IncusImageSourceLocal,
 		Name:            incusImageName(os, release, architecture, variant),
 		Aliases:         []string{fmt.Sprintf("%s/%s/%s", os, release, variant)},
 		OperatingSystem: os,
@@ -129,7 +130,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 
 	name := newImg.Name
 
-	img, err := s.repo.GetByName(ctx, name)
+	img, err := s.repo.GetByName(ctx, api.IncusImageSourceLocal, name)
 	if err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
 			return "", fmt.Errorf("Failed to get incus image %q: %w", name, err)
@@ -244,7 +245,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		img, err = s.repo.GetByName(ctx, name)
+		img, err = s.repo.GetByName(ctx, api.IncusImageSourceLocal, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get version %q for incus image %q: %w", versionIdentifier, name, err)
 		}
@@ -481,51 +482,58 @@ func (s *imageIncusService) GetAll(ctx context.Context) (IncusImages, error) {
 	return imgs, nil
 }
 
-func (s *imageIncusService) GetAllNames(ctx context.Context) ([]string, error) {
-	names, err := s.repo.GetAllNames(ctx)
+func (s *imageIncusService) GetAllBySource(ctx context.Context, source string) (IncusImages, error) {
+	imgs, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
+		Source: &source,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get incus image names: %w", err)
+		return nil, fmt.Errorf("Failed to get incus images of source %q: %w", source, err)
 	}
 
-	return names, nil
+	return imgs, nil
 }
 
-func (s *imageIncusService) GetByName(ctx context.Context, name string) (*IncusImage, error) {
-	err := ValidateIncusImageName(name)
+func (s *imageIncusService) GetByName(ctx context.Context, source string, name string) (*IncusImage, error) {
+	err := validateIncusImageKey(source, name)
 	if err != nil {
 		return nil, err
 	}
 
-	img, err := s.repo.GetByName(ctx, name)
+	img, err := s.repo.GetByName(ctx, source, name)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get incus image %q: %w", name, err)
+		return nil, fmt.Errorf("Failed to get incus image %q of source %q: %w", name, source, err)
 	}
 
 	return img, nil
 }
 
-func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error {
-	err := ValidateIncusImageName(name)
+func (s *imageIncusService) DeleteByName(ctx context.Context, source string, name string) error {
+	err := validateIncusImageKey(source, name)
+	if err != nil {
+		return err
+	}
+
+	err = assertLocalSource(source)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		img, err := s.repo.GetByName(ctx, name)
+		img, err := s.repo.GetByName(ctx, source, name)
 		if err != nil {
-			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
+			return fmt.Errorf("Failed to get incus image %q of source %q: %w", name, source, err)
 		}
 
-		err = s.repo.DeleteByName(ctx, name)
+		err = s.repo.DeleteByName(ctx, source, name)
 		if err != nil {
-			return fmt.Errorf("Failed to delete incus image %q: %w", name, err)
+			return fmt.Errorf("Failed to delete incus image %q of source %q: %w", name, source, err)
 		}
 
 		// The files are only deleted once the deletion of the image is committed.
 		return transaction.AfterCommit(ctx, func(ctx context.Context) error {
 			err := s.filesRepo.Delete(logger.DetachedContext(ctx), img)
 			if err != nil {
-				return fmt.Errorf("Failed to delete incus image %q: %w", name, err)
+				return fmt.Errorf("Failed to delete incus image %q of source %q: %w", name, source, err)
 			}
 
 			return nil
@@ -539,11 +547,16 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 }
 
 func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName string) error {
-	if sourceName == "" {
-		return domain.NewValidationErrf("Invalid image source name, name can not be empty")
+	if sourceName == api.IncusImageSourceLocal {
+		return errLocalSourceReadOnly()
 	}
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	err := ValidateIncusImageSourceName(sourceName)
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		images, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
 			Source: new(sourceName),
 		})
@@ -560,7 +573,7 @@ func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName strin
 				return fmt.Errorf("Failed to remove files for image %q from source %q: %w", img.Name, sourceName, err)
 			}
 
-			err = s.repo.DeleteByName(ctx, img.Name)
+			err = s.repo.DeleteByName(ctx, img.Source, img.Name)
 			if err != nil {
 				return fmt.Errorf("Failed to delete image %q (source %q): %w", img.Name, sourceName, err)
 			}
@@ -575,8 +588,13 @@ func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName strin
 	return nil
 }
 
-func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string, versionIdentifier string) error {
-	err := ValidateIncusImageName(name)
+func (s *imageIncusService) DeleteVersionByName(ctx context.Context, source string, name string, versionIdentifier string) error {
+	err := validateIncusImageKey(source, name)
+	if err != nil {
+		return err
+	}
+
+	err = assertLocalSource(source)
 	if err != nil {
 		return err
 	}
@@ -586,14 +604,15 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		img, err := s.repo.GetByName(ctx, name)
+		img, err := s.repo.GetByName(ctx, source, name)
 		if err != nil {
-			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
+			return fmt.Errorf("Failed to get incus image %q of source %q: %w", name, source, err)
 		}
 
 		_, ok := img.Versions[versionIdentifier]
 		if !ok {
-			return domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q has no version %q", name, versionIdentifier).
+			return domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q of source %q has no version %q", name, source, versionIdentifier).
+				WithDetail("source", source).
 				WithDetail("image", name).
 				WithDetail("version", versionIdentifier)
 		}
@@ -622,8 +641,8 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 	return nil
 }
 
-func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error) {
-	err := ValidateIncusImageName(name)
+func (s *imageIncusService) GetVersionFileByName(ctx context.Context, source string, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error) {
+	err := validateIncusImageKey(source, name)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -636,15 +655,16 @@ func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name strin
 		return nil, 0, domain.NewValidationErrf("Filename cannot be empty")
 	}
 
-	img, err := s.repo.GetByName(ctx, name)
+	img, err := s.repo.GetByName(ctx, source, name)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to get incus image %q: %w", name, err)
+		return nil, 0, fmt.Errorf("Failed to get incus image %q of source %q: %w", name, source, err)
 	}
 
 	// Only serve files, which are part of the image.
 	_, ok := img.Versions[version].Items[filename]
 	if !ok {
-		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q has no file %q in version %q", name, filename, version).
+		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Incus image %q of source %q has no file %q in version %q", name, source, filename, version).
+			WithDetail("source", source).
 			WithDetail("image", name).
 			WithDetail("version", version).
 			WithDetail("file_name", filename)
@@ -659,7 +679,17 @@ func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name strin
 }
 
 func (s *imageIncusService) Update(ctx context.Context, incusImage IncusImage) error {
-	err := ValidateIncusImageName(incusImage.Name)
+	err := validateIncusImageKey(incusImage.Source, incusImage.Name)
+	if err != nil {
+		return fmt.Errorf("Failed to validate incus image %q for update: %w", incusImage.Name, err)
+	}
+
+	err = assertLocalSource(incusImage.Source)
+	if err != nil {
+		return err
+	}
+
+	err = incusImage.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate incus image %q for update: %w", incusImage.Name, err)
 	}
@@ -701,13 +731,26 @@ func (s *imageIncusService) ValidateFilterExpression(ctx context.Context, filter
 //   - Remove the images, version or files, which are marked for removal.
 //   - Download the images, version or files, that are part of the resulting state
 //     and not yet present on the system.
+//   - Store each image only with the files on disk. A new version is only stored
+//     with all its files. The next refresh downloads the failed files again.
 func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusImageSource) error {
+	if source.Name == api.IncusImageSourceLocal {
+		return errLocalSourceReadOnly()
+	}
+
+	// The update to schema v44 replaced empty URLs with an invalid URL. The
+	// refresh error becomes a warning, which tells the user to fix the URL.
+	err := validateIncusImageSourceURL(source.URL)
+	if err != nil {
+		return fmt.Errorf("Failed to refresh images from source %q, update the URL of the source: %w", source.Name, err)
+	}
+
 	originImages, err := s.simplestreams.GetImageList(ctx, source)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh images from source %q: %w", source.Name, err)
 	}
 
-	setIncusImageNames(originImages)
+	setIncusImageKeys(source.Name, originImages)
 
 	originImages, err = filterImageVersionFilesByFilterExpression(originImages, source.FilterExpression)
 	if err != nil {
@@ -730,7 +773,7 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 
 	imagesToDeleteFromDB := determineImagesToDeleteFromDB(originImages, dbImages)
 	for _, image := range imagesToDeleteFromDB {
-		err = s.repo.DeleteByName(ctx, image.Name)
+		err = s.repo.DeleteByName(ctx, image.Source, image.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to remove obsolete image %q from DB: %w", image.Name, err)
 		}
@@ -765,19 +808,38 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 		return fmt.Errorf("Failed to remove supernoumerous images from source %q: %w", source.Name, errors.Join(errs...))
 	}
 
-	// Iterate images, check if files exist, download if not.
-syncImages:
+	dbImageNames := make(map[string]bool, len(dbImages))
+	for _, image := range dbImages {
+		dbImageNames[image.Name] = true
+	}
+
+	// Store each image only with the files on disk. The next refresh downloads
+	// the missing files again. After a stop, the remaining images are still
+	// stored, because their obsolete files are already deleted.
+	downloadsStopped := false
 	for _, image := range originImages {
-		// Make sure, we do have enough space left in the files repository before downloading the files.
-		err = s.isSpaceAvailable(ctx, image)
-		if err != nil {
-			errs = append(errs, err)
-			break syncImages
+		if !downloadsStopped {
+			// Make sure, we do have enough space left in the files repository before downloading the files.
+			err = s.isSpaceAvailable(ctx, image)
+			if err != nil {
+				errs = append(errs, err)
+				downloadsStopped = true
+			}
 		}
 
 		for versionIdentifier, version := range image.Versions {
+			hasMetadata := hasMetadataFile(version)
+
+			var downloadedFiles []string
+			incomplete := false
 			for filename, fileItem := range version.Items {
 				if dbImageVersionFileLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
+					continue
+				}
+
+				if downloadsStopped {
+					incomplete = true
+					delete(version.Items, filename)
 					continue
 				}
 
@@ -791,16 +853,56 @@ syncImages:
 				err = s.downloadFile(ctx, downloadItem)
 				if err != nil {
 					errs = append(errs, err)
+					incomplete = true
+					delete(version.Items, filename)
+					downloadsStopped = len(errs) >= 10
 					continue
+				}
+
+				downloadedFiles = append(downloadedFiles, filename)
+			}
+
+			// Incus clients cannot use a version with missing files. Keep only
+			// the files that were stored before this refresh.
+			if incomplete {
+				for _, filename := range downloadedFiles {
+					err = s.filesRepo.DeleteVersionFile(ctx, &image, versionIdentifier, filename)
+					if err != nil {
+						errs = append(errs, err)
+					}
+
+					delete(version.Items, filename)
 				}
 			}
 
-			if len(errs) >= 10 {
-				break syncImages
+			// Incus cannot use a version without its metadata file.
+			if hasMetadata && !hasMetadataFile(version) || len(version.Items) == 0 {
+				for filename := range version.Items {
+					err = s.filesRepo.DeleteVersionFile(ctx, &image, versionIdentifier, filename)
+					if err != nil {
+						errs = append(errs, err)
+					}
+				}
+
+				delete(image.Versions, versionIdentifier)
 			}
 		}
 
-		err := s.repo.Upsert(ctx, image)
+		if len(image.Versions) == 0 {
+			if !dbImageNames[image.Name] {
+				continue
+			}
+
+			err = s.repo.DeleteByName(ctx, image.Source, image.Name)
+			if err != nil {
+				errs = append([]error{err}, errs...)
+				return fmt.Errorf("Failed to remove image %q without files from DB: %w", image.Name, errors.Join(errs...))
+			}
+
+			continue
+		}
+
+		err = s.repo.Upsert(ctx, image)
 		if err != nil {
 			errs = append([]error{err}, errs...)
 			return fmt.Errorf("Failed to update image %q in DB: %w", image.Name, errors.Join(errs...))
@@ -814,37 +916,40 @@ syncImages:
 	return nil
 }
 
-// setIncusImageNames sets the name of each image to "os:release:architecture:variant".
-// Simplestreams does not define a format for product names, so each image source uses its own.
-func setIncusImageNames(images IncusImages) {
+func setIncusImageKeys(sourceName string, images IncusImages) {
+	// Simplestreams does not define a format for product names, so each image
+	// source uses its own. Build the name from the image properties instead.
 	for i := range images {
+		images[i].Source = sourceName
 		images[i].Architecture = fixArchitectureMapping(images[i].Architecture)
 		images[i].Name = incusImageName(images[i].OperatingSystem, images[i].Release, images[i].Architecture, images[i].Variant)
 	}
 }
 
-// incusImageName is lower case, like the names on images.linuxcontainers.org.
-// FilePath is lower case too, so names that differ only in case would share the same files.
 func incusImageName(os string, release string, architecture string, variant string) string {
+	// FilePath is lower case, so names that differ only in case would share the
+	// same files.
 	return strings.ToLower(strings.Join([]string{os, release, architecture, variant}, ":"))
 }
 
-// validateIncusImages skips and logs invalid images. Image sources often provide
-// unsupported images, so this must not fail the refresh.
-// It also returns the file paths that more than one image uses and the names
-// of the invalid images.
 func validateIncusImages(ctx context.Context, source IncusImageSource, images IncusImages) (IncusImages, map[string]bool, map[string]bool) {
-	// Images with the same file path would share their files. Skip all of them.
+	// Image sources often provide unsupported images. Skip them, so they do not
+	// fail the refresh.
+	validationErrs := make([]error, len(images))
 	filePathCount := make(map[string]int, len(images))
-	for _, image := range images {
-		filePathCount[image.FilePath()]++
+	for i, image := range images {
+		validationErrs[i] = image.Validate()
+		if validationErrs[i] == nil {
+			filePathCount[image.FilePath()]++
+		}
 	}
 
+	// Valid images with the same file path would share their files. Skip all of them.
 	conflictingFilePaths := map[string]bool{}
 	invalidImageNames := map[string]bool{}
 	n := 0
-	for _, image := range images {
-		err := image.Validate()
+	for i, image := range images {
+		err := validationErrs[i]
 		if err != nil {
 			invalidImageNames[image.Name] = true
 		}
@@ -957,6 +1062,16 @@ func getImageVersionFileLookup(images IncusImages) map[string]bool {
 	return lookup
 }
 
+func hasMetadataFile(version api.IncusImageVersion) bool {
+	for _, fileItem := range version.Items {
+		if fileItem.FileType == "incus.tar.xz" {
+			return true
+		}
+	}
+
+	return false
+}
+
 func imageVersionFileIdentifier(image IncusImage, versionIdentifier string, filename string) string {
 	return filepath.Join(image.FilePath(), versionIdentifier, filename)
 }
@@ -1037,4 +1152,15 @@ func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem)
 	}
 
 	return commit()
+}
+
+func assertLocalSource(source string) error {
+	// The refresh of a source owns its images and would revert the changes.
+	if source == api.IncusImageSourceLocal {
+		return nil
+	}
+
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Images of source %q can not be changed, only images of source %q", source, api.IncusImageSourceLocal).
+		WithHintf("Change the filter expression of the source to remove images or files.").
+		WithDetail("source", source)
 }

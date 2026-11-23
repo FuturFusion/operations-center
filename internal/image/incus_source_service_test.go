@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/image/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestSourceService_Create(t *testing.T) {
@@ -275,6 +276,18 @@ func TestSourceService_Update(t *testing.T) {
 			},
 		},
 		{
+			name: "error - local source is read only",
+			incusImage: image.IncusImageSource{
+				Name:             api.IncusImageSourceLocal,
+				URL:              "https://images.linuxcontainers.org",
+				FilterExpression: "true",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name: "error - repo.Update",
 			incusImage: image.IncusImageSource{
 				Name:             "one",
@@ -342,6 +355,14 @@ func TestSourceService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
+			name:    "error - local source is read only",
+			argName: api.IncusImageSourceLocal,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name:                          "error - imageSourcer.DeleteBySource",
 			argName:                       "one",
 			imageSourcerDeleteBySourceErr: boom.Error,
@@ -390,6 +411,7 @@ func TestSourceService_RefreshByName(t *testing.T) {
 
 	tests := []struct {
 		name                             string
+		argName                          string
 		repoGetByName                    image.IncusImageSource
 		repoGetByNameErr                 error
 		imageSourcerRefreshFromSourceErr error
@@ -397,7 +419,8 @@ func TestSourceService_RefreshByName(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name:    "success",
+			argName: "one",
 			repoGetByName: image.IncusImageSource{
 				Name: "one",
 			},
@@ -405,13 +428,23 @@ func TestSourceService_RefreshByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "error - local source is read only",
+			argName: api.IncusImageSourceLocal,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name:             "error - repo.GetByName",
+			argName:          "one",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - imageSourcer.RefreshFromSource",
+			name:    "error - imageSourcer.RefreshFromSource",
+			argName: "one",
 			repoGetByName: image.IncusImageSource{
 				Name: "one",
 			},
@@ -441,7 +474,7 @@ func TestSourceService_RefreshByName(t *testing.T) {
 			imageSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
-			err := imageSvc.RefreshByName(t.Context(), "one")
+			err := imageSvc.RefreshByName(t.Context(), tc.argName)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -464,6 +497,9 @@ func TestSourceService_RefreshAll(t *testing.T) {
 		{
 			name: "success",
 			repoGetAll: image.IncusImageSources{
+				{
+					Name: api.IncusImageSourceLocal,
+				},
 				{
 					Name: "one",
 				},
