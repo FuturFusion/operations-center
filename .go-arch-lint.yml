@@ -55,6 +55,7 @@ components:
       - internal/util/component
       - internal/util/expropts
       - internal/util/logger
+      - internal/util/pathutil
       - internal/util/ptr
       - internal/util/structs
       - internal/version
