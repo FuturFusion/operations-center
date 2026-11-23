@@ -240,6 +240,39 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 	return _d._base.GetAllWithFilter(ctx, filter)
 }
 
+// GetArchive implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetArchive(ctx context.Context, id uuid.UUID) (readCloser io.ReadCloser, size int, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetArchive")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetArchive returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetArchive finished")
+		}
+	}()
+	return _d._base.GetArchive(ctx, id)
+}
+
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

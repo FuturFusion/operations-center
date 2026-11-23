@@ -14414,6 +14414,38 @@ paths:
             summary: Update an update
             tags:
                 - updates
+    /1.0/provisioning/updates/{uuid}/archive:
+        get:
+            description: |-
+                Gets the update as tar archive. The archive contains the signed manifest
+                and all files of the update. Use the archive to add the update to another
+                Operations Center with POST /1.0/provisioning/updates.
+            operationId: update_archive_get
+            parameters:
+                - description: UUID of the update
+                  format: uuid
+                  in: path
+                  name: uuid
+                  required: true
+                  type: string
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    description: Tar archive of the update
+                    schema:
+                        type: file
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the update archive
+            tags:
+                - updates
     /1.0/provisioning/updates/{uuid}/changelog:
         get:
             description: Gets the changelog for a specific update.

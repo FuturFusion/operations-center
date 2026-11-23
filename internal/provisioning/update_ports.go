@@ -28,6 +28,7 @@ type UpdateService interface {
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
+	GetArchive(ctx context.Context, id uuid.UUID) (_ io.ReadCloser, size int, _ error)
 	CleanupAll(ctx context.Context) error
 	Prune(ctx context.Context) error
 	Refresh(ctx context.Context) error

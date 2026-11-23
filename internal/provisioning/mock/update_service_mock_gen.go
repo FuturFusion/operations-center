@@ -45,6 +45,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 //				panic("mock out the GetAllWithFilter method")
 //			},
+//			GetArchiveFunc: func(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+//				panic("mock out the GetArchive method")
+//			},
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
@@ -99,6 +102,9 @@ type UpdateServiceMock struct {
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error)
+
+	// GetArchiveFunc mocks the GetArchive method.
+	GetArchiveFunc func(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error)
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
@@ -167,6 +173,13 @@ type UpdateServiceMock struct {
 			Ctx context.Context
 			// Filter is the filter argument value.
 			Filter provisioning.UpdateFilter
+		}
+		// GetArchive holds details about calls to the GetArchive method.
+		GetArchive []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// GetByUUID holds details about calls to the GetByUUID method.
 		GetByUUID []struct {
@@ -251,6 +264,7 @@ type UpdateServiceMock struct {
 	lockGetAllUUIDs                     sync.RWMutex
 	lockGetAllUUIDsWithFilter           sync.RWMutex
 	lockGetAllWithFilter                sync.RWMutex
+	lockGetArchive                      sync.RWMutex
 	lockGetByUUID                       sync.RWMutex
 	lockGetChangelog                    sync.RWMutex
 	lockGetChangelogByChannel           sync.RWMutex
@@ -464,6 +478,42 @@ func (mock *UpdateServiceMock) GetAllWithFilterCalls() []struct {
 	mock.lockGetAllWithFilter.RLock()
 	calls = mock.calls.GetAllWithFilter
 	mock.lockGetAllWithFilter.RUnlock()
+	return calls
+}
+
+// GetArchive calls GetArchiveFunc.
+func (mock *UpdateServiceMock) GetArchive(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+	if mock.GetArchiveFunc == nil {
+		panic("UpdateServiceMock.GetArchiveFunc: method is nil but UpdateService.GetArchive was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetArchive.Lock()
+	mock.calls.GetArchive = append(mock.calls.GetArchive, callInfo)
+	mock.lockGetArchive.Unlock()
+	return mock.GetArchiveFunc(ctx, id)
+}
+
+// GetArchiveCalls gets all the calls that were made to GetArchive.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetArchiveCalls())
+func (mock *UpdateServiceMock) GetArchiveCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetArchive.RLock()
+	calls = mock.calls.GetArchive
+	mock.lockGetArchive.RUnlock()
 	return calls
 }
 

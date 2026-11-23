@@ -124,6 +124,22 @@ func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) e
 	return nil
 }
 
+// GetUpdateArchive returns the update as tar archive. CreateUpdate accepts
+// this archive. The caller must close the returned reader.
+func (c OperationsCenterClient) GetUpdateArchive(ctx context.Context, id string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "archive"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
 func (c OperationsCenterClient) GetUpdatesFile(ctx context.Context, id string, filename string) (io.ReadCloser, error) {
 	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "files", filename), nil, nil)
 	if err != nil {

@@ -130,3 +130,30 @@ and the files inside those.
 
 It's possible to skip files that are not needed, for example, architectures
 not used, can be left out of the tar file.
+
+### Export an update
+
+An update can be exported from one Operations Center and added to another
+Operations Center. This makes an update available, even if the update source
+no longer provides it. For example, use this to deploy the same version as in
+another environment:
+
+```shell
+operations-center provisioning update export <uuid> update.tar
+operations-center provisioning update add update.tar
+```
+
+Run `export` against the Operations Center, which has the update. Run `add`
+against the Operations Center, which needs the update.
+
+The archive has the format described in
+[Prepare manual updates](#prepare-manual-updates). It contains the signed
+manifest `update.sjson` and the files of the update. Both Operations Center
+instances need the same `signature_verification_root_ca` in the
+[Update settings](settings.md#update-settings).
+
+Operations Center stores the signed manifest when it downloads an update from
+the update source. Updates downloaded by Operations Center versions without
+this feature do not have the manifest. A refresh fetches the missing manifest
+only for the most recent updates in the index of the update source. For an
+older update, the export fails.

@@ -13,6 +13,7 @@ import (
 	"hash"
 	"io"
 	"log/slog"
+	"path"
 	"runtime"
 	"slices"
 	"sort"
@@ -563,6 +564,193 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	}
 
 	return s.filesRepo.Get(ctx, *update, filename)
+}
+
+// GetArchive returns the update as tar archive and the exact size of the
+// archive. CreateFromArchive accepts this archive, so an update can be moved
+// to another Operations Center.
+func (s updateService) GetArchive(ctx context.Context, id uuid.UUID) (io.ReadCloser, int, error) {
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if update.Status != api.UpdateStatusReady {
+		return nil, 0, domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Update %q is not ready", id.String()).
+			WithHintf("Wait for the download of the update to complete.").
+			WithDetail("update", id.String()).
+			WithDetail("status", update.Status.String())
+	}
+
+	filenames := make([]string, 0, len(update.Files)+1)
+	filenames = append(filenames, provisioning.UpdateManifestFilename)
+	for _, updateFile := range update.Files {
+		filenames = append(filenames, updateFile.Filename)
+	}
+
+	// Check all files before the first byte is sent. An error after this
+	// point only truncates the archive.
+	for _, filename := range filenames {
+		ok, err := s.filesRepo.Exists(ctx, *update, filename)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to check file %q of update %q: %w", filename, id.String(), err)
+		}
+
+		if ok {
+			continue
+		}
+
+		if filename == provisioning.UpdateManifestFilename {
+			return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "Update %q has no signed manifest", id.String()).
+				WithHintf("A refresh fetches the manifest only for the most recent updates of the update source. Otherwise, export the update from another Operations Center that has the manifest.").
+				WithDetail("update", id.String())
+		}
+
+		return nil, 0, domain.NewErrorf(domain.ErrNotFound, "", "File %q of update %q is missing", filename, id.String()).
+			WithHintf("Refresh the updates to download the missing files.").
+			WithDetail("update", id.String()).
+			WithDetail("file", filename)
+	}
+
+	// Open all files up front. The sizes give the exact archive size, so the
+	// client detects a truncated archive.
+	entries, err := s.openArchiveEntries(ctx, *update, filenames)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	size, err := archiveSize(entries)
+	if err != nil {
+		closeArchiveEntries(entries)
+		return nil, 0, err
+	}
+
+	pr, pw := io.Pipe()
+	go func() {
+		defer closeArchiveEntries(entries)
+
+		pw.CloseWithError(writeArchive(entries, pw))
+	}()
+
+	return pr, size, nil
+}
+
+type archiveEntry struct {
+	header *tar.Header
+	// content is nil for directories.
+	content io.ReadCloser
+}
+
+func (s updateService) openArchiveEntries(ctx context.Context, update provisioning.Update, filenames []string) ([]archiveEntry, error) {
+	entries := make([]archiveEntry, 0, len(filenames)+4)
+	dirs := make(map[string]bool, 4)
+	for _, filename := range filenames {
+		// CreateFromArchive does not create missing parent directories.
+		entries = appendArchiveDirs(entries, dirs, path.Dir(filename), update.PublishedAt)
+
+		rc, size, err := s.filesRepo.Get(ctx, update, filename)
+		if err != nil {
+			closeArchiveEntries(entries)
+			return nil, fmt.Errorf("Failed to open file %q of update %q: %w", filename, update.UUID.String(), err)
+		}
+
+		entries = append(entries, archiveEntry{
+			header: &tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     filename,
+				Mode:     0o644,
+				Size:     int64(size),
+				ModTime:  update.PublishedAt,
+			},
+			content: rc,
+		})
+	}
+
+	return entries, nil
+}
+
+func appendArchiveDirs(entries []archiveEntry, dirs map[string]bool, dir string, modTime time.Time) []archiveEntry {
+	if dir == "." || dir == "/" || dirs[dir] {
+		return entries
+	}
+
+	entries = appendArchiveDirs(entries, dirs, path.Dir(dir), modTime)
+	dirs[dir] = true
+
+	return append(entries, archiveEntry{
+		header: &tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     dir + "/",
+			Mode:     0o755,
+			ModTime:  modTime,
+		},
+	})
+}
+
+func closeArchiveEntries(entries []archiveEntry) {
+	for _, entry := range entries {
+		if entry.content != nil {
+			_ = entry.content.Close()
+		}
+	}
+}
+
+// tarBlockSize is the block size of the tar format. Headers and file
+// contents are padded to this size.
+const tarBlockSize = 512
+
+// archiveSize returns the exact size of the archive that writeArchive writes
+// for the given entries.
+func archiveSize(entries []archiveEntry) (int, error) {
+	var size int64
+	for _, entry := range entries {
+		// The tar writer adds extra header blocks for long names or large
+		// files. Let it encode the header to get its exact size.
+		var counter byteCounter
+		err := tar.NewWriter(&counter).WriteHeader(entry.header)
+		if err != nil {
+			return 0, fmt.Errorf("Failed to encode archive header for %q: %w", entry.header.Name, err)
+		}
+
+		size += counter.n
+		size += (entry.header.Size + tarBlockSize - 1) / tarBlockSize * tarBlockSize
+	}
+
+	// The archive ends with two zero blocks.
+	size += 2 * tarBlockSize
+
+	return int(size), nil
+}
+
+type byteCounter struct {
+	n int64
+}
+
+func (c *byteCounter) Write(p []byte) (int, error) {
+	c.n += int64(len(p))
+	return len(p), nil
+}
+
+func writeArchive(entries []archiveEntry, w io.Writer) error {
+	tw := tar.NewWriter(w)
+
+	for _, entry := range entries {
+		err := tw.WriteHeader(entry.header)
+		if err != nil {
+			return fmt.Errorf("Failed to write archive header for %q: %w", entry.header.Name, err)
+		}
+
+		if entry.content == nil {
+			continue
+		}
+
+		_, err = file.SafeCopy(tw, entry.content)
+		if err != nil {
+			return fmt.Errorf("Failed to add file %q to archive: %w", entry.header.Name, err)
+		}
+	}
+
+	return tw.Close()
 }
 
 // Refresh refreshes the updates from an origin.

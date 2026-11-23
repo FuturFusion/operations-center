@@ -35,6 +35,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 	// no authentication required for all GET routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{uuid}/archive", response.With(handler.updateArchiveGet))
 	router.HandleFunc("GET /{uuid}/changelog", response.With(handler.updateChangelogGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
 	router.HandleFunc("GET /{uuid}/files/{filename...}", response.With(handler.updateFileGet))
@@ -647,4 +648,49 @@ func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
 	}
 
 	return response.ReadCloserResponse(r, rc, false, filename, fileSize, nil)
+}
+
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/archive updates update_archive_get
+//
+//	Get the update archive
+//
+//	Gets the update as tar archive. The archive contains the signed manifest
+//	and all files of the update. Use the archive to add the update to another
+//	Operations Center with POST /1.0/provisioning/updates.
+//
+//	---
+//	produces:
+//	  - application/octet-stream
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	responses:
+//	  "200":
+//	    description: Tar archive of the update
+//	    schema:
+//	      type: file
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updateArchiveGet(r *http.Request) response.Response {
+	UUID, err := uuid.Parse(r.PathValue("uuid"))
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	rc, size, err := u.service.GetArchive(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ReadCloserResponse(r, rc, false, UUID.String()+".tar", size, nil)
 }

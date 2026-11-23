@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"testing/iotest"
 	"time"
@@ -207,6 +208,340 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantID, id)
 		})
+	}
+}
+
+func TestUpdateService_GetArchive(t *testing.T) {
+	t.Parallel()
+
+	updateID := uuidgen.FromPattern(t, "1")
+
+	readyUpdate := provisioning.Update{
+		UUID:        updateID,
+		Status:      api.UpdateStatusReady,
+		PublishedAt: time.Date(2026, 10, 27, 22, 34, 0, 0, time.UTC),
+		Files: provisioning.UpdateFiles{
+			{
+				Filename: "x86_64/IncusOS.efi.gz",
+			},
+			{
+				Filename: "x86_64/debug/debug.raw.gz",
+			},
+		},
+	}
+
+	type fileContent struct {
+		rc   io.ReadCloser
+		size int
+	}
+
+	tests := []struct {
+		name          string
+		repoGetByUUID *provisioning.Update
+		repoGetErr    error
+		filesExist    []queue.Item[bool]
+		filesGet      []queue.Item[fileContent]
+
+		assertErr        require.ErrorAssertionFunc
+		wantSize         int
+		assertArchiveErr require.ErrorAssertionFunc
+		wantArchiveLen   int
+		wantEntries      []string
+		wantContents     map[string]string
+	}{
+		{
+			name:          "success",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Value: true},
+				{Value: true},
+				{Value: true},
+			},
+			filesGet: []queue.Item[fileContent]{
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`manifest`)), size: 8}},
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`efi`)), size: 3}},
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`debug`)), size: 5}},
+			},
+
+			assertErr:        require.NoError,
+			wantSize:         5120,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   5120,
+			wantEntries: []string{
+				"update.sjson",
+				"x86_64/",
+				"x86_64/IncusOS.efi.gz",
+				"x86_64/debug/",
+				"x86_64/debug/debug.raw.gz",
+			},
+			wantContents: map[string]string{
+				"update.sjson":              "manifest",
+				"x86_64/IncusOS.efi.gz":     "efi",
+				"x86_64/debug/debug.raw.gz": "debug",
+			},
+		},
+		{
+			name: "success - long file name",
+			repoGetByUUID: &provisioning.Update{
+				UUID:        updateID,
+				Status:      api.UpdateStatusReady,
+				PublishedAt: time.Date(2026, 10, 27, 22, 34, 0, 0, time.UTC),
+				Files: provisioning.UpdateFiles{
+					{
+						Filename: longArchiveFilename,
+					},
+				},
+			},
+			repoGetErr: nil,
+			filesExist: []queue.Item[bool]{
+				{Value: true},
+				{Value: true},
+			},
+			filesGet: []queue.Item[fileContent]{
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`manifest`)), size: 8}},
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`long`)), size: 4}},
+			},
+
+			assertErr:        require.NoError,
+			wantSize:         4608,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   4608,
+			wantEntries: []string{
+				"update.sjson",
+				"x86_64/",
+				longArchiveFilename,
+			},
+			wantContents: map[string]string{
+				"update.sjson":      "manifest",
+				longArchiveFilename: "long",
+			},
+		},
+		{
+			name:          "error - repo.GetByUUID",
+			repoGetByUUID: nil,
+			repoGetErr:    boom.Error,
+			filesExist:    nil,
+			filesGet:      nil,
+
+			assertErr:        boom.ErrorIs,
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name: "error - update not ready",
+			repoGetByUUID: &provisioning.Update{
+				UUID:   updateID,
+				Status: api.UpdateStatusPending,
+			},
+			repoGetErr: nil,
+			filesExist: nil,
+			filesGet:   nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name:          "error - filesRepo.Exists",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Err: boom.Error},
+			},
+			filesGet: nil,
+
+			assertErr:        boom.ErrorIs,
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name:          "error - manifest missing",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Value: false},
+			},
+			filesGet: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+				require.ErrorContains(tt, err, "has no signed manifest", a...)
+			},
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name:          "error - update file missing",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Value: true},
+				{Value: false},
+			},
+			filesGet: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+				require.ErrorContains(tt, err, `File "x86_64/IncusOS.efi.gz"`, a...)
+			},
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name:          "error - filesRepo.Get",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Value: true},
+				{Value: true},
+				{Value: true},
+			},
+			filesGet: []queue.Item[fileContent]{
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`manifest`)), size: 8}},
+				{Err: boom.Error},
+			},
+
+			assertErr:        boom.ErrorIs,
+			wantSize:         0,
+			assertArchiveErr: require.NoError,
+			wantArchiveLen:   0,
+			wantEntries:      nil,
+			wantContents:     nil,
+		},
+		{
+			name:          "error - read file while writing the archive",
+			repoGetByUUID: &readyUpdate,
+			repoGetErr:    nil,
+			filesExist: []queue.Item[bool]{
+				{Value: true},
+				{Value: true},
+				{Value: true},
+			},
+			filesGet: []queue.Item[fileContent]{
+				{Value: fileContent{rc: io.NopCloser(iotest.ErrReader(boom.Error)), size: 8}},
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`efi`)), size: 3}},
+				{Value: fileContent{rc: io.NopCloser(bytes.NewBufferString(`debug`)), size: 5}},
+			},
+
+			assertErr:        require.NoError,
+			wantSize:         5120,
+			assertArchiveErr: boom.ErrorIs,
+			wantArchiveLen:   512,
+			wantEntries: []string{
+				"update.sjson",
+			},
+			wantContents: map[string]string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return tc.repoGetByUUID, tc.repoGetErr
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				ExistsFunc: func(ctx context.Context, update provisioning.Update, filename string) (bool, error) {
+					return queue.Pop(t, &tc.filesExist)
+				},
+				GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					value, err := queue.Pop(t, &tc.filesGet)
+					return value.rc, value.size, err
+				},
+			}
+
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
+
+			// Run test
+			rc, size, err := updateSvc.GetArchive(t.Context(), updateID)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantSize, size, "unexpected archive size")
+
+			archive, readErr := readAll(rc)
+			gotEntries, gotContents, archiveErr := readArchive(archive)
+			tc.assertArchiveErr(t, errors.Join(readErr, archiveErr))
+			require.Len(t, archive, tc.wantArchiveLen, "unexpected number of archive bytes")
+			require.Equal(t, tc.wantEntries, gotEntries, "unexpected archive entries")
+			require.Equal(t, tc.wantContents, gotContents, "unexpected archive content")
+			require.Empty(t, tc.filesExist, "expect all existence checks to be consumed")
+			require.Empty(t, tc.filesGet, "expect all file reads to be consumed")
+		})
+	}
+}
+
+// longArchiveFilename needs an extended tar header, because it is longer
+// than 100 characters.
+var longArchiveFilename = "x86_64/" + strings.Repeat("a", 150) + ".raw.gz"
+
+// readAll returns the data read before an error. It accepts a nil reader.
+func readAll(rc io.ReadCloser) ([]byte, error) {
+	if rc == nil {
+		return nil, nil
+	}
+
+	defer rc.Close()
+
+	return io.ReadAll(rc)
+}
+
+// readArchive returns the entry names and the content of the regular files.
+func readArchive(archive []byte) ([]string, map[string]string, error) {
+	if archive == nil {
+		return nil, nil, nil
+	}
+
+	var entries []string
+	contents := map[string]string{}
+
+	tr := tar.NewReader(bytes.NewReader(archive))
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return entries, contents, nil
+		}
+
+		if err != nil {
+			return entries, contents, err
+		}
+
+		entries = append(entries, hdr.Name)
+
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		body, err := io.ReadAll(tr)
+		if err != nil {
+			return entries, contents, err
+		}
+
+		contents[hdr.Name] = string(body)
 	}
 }
 
