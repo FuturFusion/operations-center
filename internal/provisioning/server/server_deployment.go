@@ -1538,7 +1538,7 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 		return err
 	}
 
-	deployedServer.SignalLifecycleEvent()
+	deployedServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1643,7 +1643,7 @@ func (s *serverService) CancelDeploymentByName(ctx context.Context, name string,
 		run.cancel()
 	}
 
-	cancelledServer.SignalLifecycleEvent()
+	cancelledServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }

@@ -9,13 +9,13 @@ import (
 	"github.com/spf13/cobra"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
 func main() {
-	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(config.ApplicationName, config.ApplicationEnvPrefix))
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, osenv.New(config.ApplicationName, config.ApplicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

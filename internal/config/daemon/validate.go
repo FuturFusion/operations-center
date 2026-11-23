@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -72,7 +71,7 @@ func validateShared(oldGlobalCfg, newGlobalCfg SharedConfig, isIncusOS bool) err
 		return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 	}
 
-	err = acme.ValidateACMEConfig(newGlobalCfg.Security.ACME)
+	err = validateACMEConfig(newGlobalCfg.Security.ACME)
 	if err != nil {
 		return err
 	}

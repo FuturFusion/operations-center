@@ -1,6 +1,6 @@
 //go:build linux || darwin || freebsd || openbsd
 
-package environment
+package osenv
 
 import "golang.org/x/sys/unix"
 

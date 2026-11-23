@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -417,7 +417,7 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 		return nil
 	}
 
-	_, err := file.SafeCopy(writer, r.rc)
+	_, err := iox.SafeCopy(writer, r.rc)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"maps"
 	"math"
 	"net"
-	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -64,8 +63,6 @@ type serverService struct {
 	deploymentControlLoopMu   sync.Mutex
 	deploymentControlLoopRuns map[string]*deploymentRun
 
-	httpClient *http.Client
-
 	meshTunnelMu       sync.Mutex
 	meshTunnelInFlight map[string]struct{}
 
@@ -75,8 +72,9 @@ type serverService struct {
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
 
-	now                    func() time.Time
-	initialConnectionDelay time.Duration
+	now                       func() time.Time
+	initialConnectionDelay    time.Duration
+	signalLifecycleEventDelay time.Duration
 
 	selfUpdateSignal signals.Signal[provisioning.Server]
 
@@ -154,6 +152,12 @@ func WithBackgroundTasks(background *BackgroundTasks) Option {
 func WithNow(nowFunc func() time.Time) Option {
 	return func(s *serverService) {
 		s.now = nowFunc
+	}
+}
+
+func WithSignalLifecycleEventDelay(delay time.Duration) Option {
+	return func(s *serverService) {
+		s.signalLifecycleEventDelay = delay
 	}
 }
 
@@ -283,15 +287,15 @@ func New(
 		channelSvc:       channelSvc,
 		updateSvc:        updateSvc,
 		warning:          provisioning.LogWarningService{},
-		httpClient:       &http.Client{},
 
 		deploymentControlLoopRuns: map[string]*deploymentRun{},
 
 		serverCertificate: serverCertificate,
 
-		now:                    time.Now,
-		initialConnectionDelay: 1 * time.Second,
-		background:             NewBackgroundTasks(),
+		now:                       time.Now,
+		initialConnectionDelay:    1 * time.Second,
+		signalLifecycleEventDelay: provisioning.DefaultSignalLifecycleEventDelay,
+		background:                NewBackgroundTasks(),
 
 		selfUpdateSignal: signals.New[provisioning.Server](),
 
@@ -492,7 +496,7 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 	})
 
 	if deploymentInProgress {
-		newServer.SignalLifecycleEvent()
+		newServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	return newServer, nil
@@ -1485,7 +1489,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1541,7 +1545,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1613,7 +1617,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1695,7 +1699,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1738,7 +1742,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		return err
 	}
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -1913,7 +1917,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	reverter.Success()
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -2184,7 +2188,7 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 		return fmt.Errorf("Failed to update servers in maintenance state: %w", err)
 	}
 
-	server.SignalLifecycleEvent()
+	server.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -2332,7 +2336,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			}
 
 			if signalLifecycle {
-				updateServer.SignalLifecycleEvent()
+				updateServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 			}
 
 			return nil
@@ -2644,7 +2648,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	}
 
 	if signalLifecycle {
-		updatedServer.SignalLifecycleEvent()
+		updatedServer.SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	if updateServerConfiguration && updatedServer.Cluster != nil {
@@ -2683,7 +2687,7 @@ func (s *serverService) ReconcileMeshTunnelLocalAddress(ctx context.Context, ser
 	network, etag, err := incusClient.GetNetwork(provisioning.MeshNetworkName)
 	if err != nil {
 		// Clusters without the internal mesh network are not managed.
-		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil
 		}
 
@@ -2885,37 +2889,18 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 				}
 
 			case isStandaloneNonIncusServerWithPublicConnectionURL: // case 2, standalone non Incus server
-				req, retryErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, server.PublicConnectionURL, http.NoBody)
-				if retryErr != nil {
-					// Create request for certificate check failed, keep the original error.
-					break refreshAttempt
-				}
-
-				resp, retryErr := s.httpClient.Do(req)
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
-
+				peerCertificate, retryErr := s.client.GetPublicCertificate(ctxWithTimeout, server.PublicConnectionURL)
 				if retryErr != nil {
 					// Connection to public connection URL failed. This can be a network
-					// issue, an invalid or unreachable public connection URL or a
-					// certificate error. We don't care about the root cause in this
-					// case and break the refresh attempt and keep the original error.
+					// issue, an invalid or unreachable public connection URL, a
+					// certificate error or a connection without TLS. We don't care about
+					// the root cause in this case and break the refresh attempt and keep
+					// the original error.
 					log.DebugContext(ctx, "Refresh certificate connection attempt to public connection URL failed", logger.Err(retryErr))
 					break refreshAttempt
 				}
 
-				if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
-					// Connection was successful, but we don't have a TLS connection
-					// or no peer certificates (should not happen, as long as
-					// public connection URL is https).  We don't care about the root
-					// cause in this case and break the refresh attempt and keep the
-					// original error.
-					log.DebugContext(ctx, "Refresh certificate connection attempt did not return TLS connection or no peer certificates")
-					break refreshAttempt
-				}
-
-				serverCert := certificate.EncodeToPEM(resp.TLS.PeerCertificates[0].Raw)
+				serverCert := certificate.EncodeToPEM(peerCertificate.Raw)
 
 				retryErr = transaction.Do(ctx, func(ctx context.Context) error {
 					updateServer, err := s.repo.GetByName(ctx, server.Name)

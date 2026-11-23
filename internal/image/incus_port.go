@@ -5,7 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type ImageIncusService interface {
@@ -46,10 +46,16 @@ type ImageIncusFileRepo interface {
 	Delete(ctx context.Context, img *IncusImage) error
 	DeleteVersion(ctx context.Context, img *IncusImage, versionIdentifier string) error
 	DeleteVersionFile(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) error
-	UsageInformation(ctx context.Context) (file.UsageInformation, error)
+	UsageInformation(ctx context.Context) (domain.UsageInformation, error)
 }
 
 type SimplestreamsPort interface {
 	GetImageList(ctx context.Context, source IncusImageSource) (IncusImages, error)
 	GetFile(ctx context.Context, source IncusImageSource, path string) (io.ReadCloser, error)
+}
+
+// XZPort compresses and decompresses content with xz.
+type XZPort interface {
+	NewReader(ctx context.Context, r io.Reader) (io.ReadCloser, error)
+	NewWriter(ctx context.Context, w io.Writer) (io.WriteCloser, error)
 }

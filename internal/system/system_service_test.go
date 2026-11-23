@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/system"
+	adapterMock "github.com/FuturFusion/operations-center/internal/system/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
@@ -83,7 +84,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, certificateRepo)
+			systemSvc := system.NewSystemService(nil, nil, nil, certificateRepo, nil)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -754,7 +755,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo, nil)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -805,70 +806,156 @@ func failFirstUpdate(partialWrite func(keyPair *testKeyPair, certificatePEM []by
 }
 
 func TestSystemService_TriggerCertificateRenew(t *testing.T) {
-	t.Parallel()
+	now := time.Now()
 
-	currentCertPEM, currentKeyPEM, err := incustls.GenerateMemCert(true, false)
+	// 10 of 90 days passed. The renewal is not due before 80% of the validity.
+	notDueCertPEM, notDueKeyPEM := certs.GenerateForDomain(t, "oc.example.com", now.Add(-10*24*time.Hour), now.Add(80*24*time.Hour))
+	// 82 of 90 days passed. The renewal is due.
+	dueCertPEM, dueKeyPEM := certs.GenerateForDomain(t, "oc.example.com", now.Add(-82*24*time.Hour), now.Add(8*24*time.Hour))
+	otherDomainCertPEM, otherDomainKeyPEM := certs.GenerateForDomain(t, "other.example.com", now.Add(-10*24*time.Hour), now.Add(80*24*time.Hour))
+
+	newCertPEM, newKeyPEM, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
-	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
+	acmeEnabled := systemapi.SecurityACME{
+		AgreeTOS: true,
+		CAURL:    "https://acme.example.com/directory",
+		Domain:   "oc.example.com",
+		Email:    "admin@example.com",
+	}
+
+	newCert := &systemapi.CertificatePost{
+		Certificate: string(newCertPEM),
+		Key:         string(newKeyPEM),
+	}
 
 	tests := []struct {
-		name                      string
-		certPEM                   string
-		keyPEM                    string
-		acmeUpdateCertificate     *systemapi.CertificatePost
-		acmeUpdateCertificateErr  error
-		serverGetAllWithFilterErr error
+		name                        string
+		acmeCfg                     systemapi.SecurityACME
+		force                       bool
+		currentCertPEM              string
+		currentKeyPEM               string
+		repoGetServerCertificateErr error
+		acmeRequestCertificate      *systemapi.CertificatePost
+		acmeRequestCertificateErr   error
+		serverGetAllWithFilterErr   error
 
-		assertErr   require.ErrorAssertionFunc
-		wantChanged bool
+		assertErr       require.ErrorAssertionFunc
+		wantChanged     bool
+		wantACMERequest bool
 	}{
 		{
-			name:    "success - no new certificate",
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
+			name:           "success - ACME disabled",
+			acmeCfg:        systemapi.SecurityACME{},
+			force:          true,
+			currentCertPEM: dueCertPEM,
+			currentKeyPEM:  dueKeyPEM,
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			wantChanged:     false,
+			wantACMERequest: false,
 		},
 		{
-			name:    "success - new certificate",
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
-			acmeUpdateCertificate: &systemapi.CertificatePost{
-				Certificate: string(certPEM),
-				Key:         string(keyPEM),
+			name:           "success - not due for renewal",
+			acmeCfg:        acmeEnabled,
+			force:          false,
+			currentCertPEM: notDueCertPEM,
+			currentKeyPEM:  notDueKeyPEM,
+
+			assertErr:       require.NoError,
+			wantChanged:     false,
+			wantACMERequest: false,
+		},
+		{
+			name:                   "success - not due for renewal, but forced",
+			acmeCfg:                acmeEnabled,
+			force:                  true,
+			currentCertPEM:         notDueCertPEM,
+			currentKeyPEM:          notDueKeyPEM,
+			acmeRequestCertificate: newCert,
+
+			assertErr:       require.NoError,
+			wantChanged:     true,
+			wantACMERequest: true,
+		},
+		{
+			name:                   "success - due for renewal",
+			acmeCfg:                acmeEnabled,
+			force:                  false,
+			currentCertPEM:         dueCertPEM,
+			currentKeyPEM:          dueKeyPEM,
+			acmeRequestCertificate: newCert,
+
+			assertErr:       require.NoError,
+			wantChanged:     true,
+			wantACMERequest: true,
+		},
+		{
+			name:                   "success - domain mismatch",
+			acmeCfg:                acmeEnabled,
+			force:                  false,
+			currentCertPEM:         otherDomainCertPEM,
+			currentKeyPEM:          otherDomainKeyPEM,
+			acmeRequestCertificate: newCert,
+
+			assertErr:       require.NoError,
+			wantChanged:     true,
+			wantACMERequest: true,
+		},
+		{
+			name:                        "error - certificateRepo.GetServerCertificate",
+			acmeCfg:                     acmeEnabled,
+			force:                       false,
+			currentCertPEM:              dueCertPEM,
+			currentKeyPEM:               dueKeyPEM,
+			repoGetServerCertificateErr: boom.Error,
+
+			assertErr:       boom.ErrorIs,
+			wantChanged:     false,
+			wantACMERequest: false,
+		},
+		{
+			name:           "error - invalid current certificate",
+			acmeCfg:        acmeEnabled,
+			force:          false,
+			currentCertPEM: "invalid",
+			currentKeyPEM:  dueKeyPEM,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to parse certificate", a...)
 			},
-
-			assertErr:   require.NoError,
-			wantChanged: true,
+			wantChanged:     false,
+			wantACMERequest: false,
 		},
 		{
-			name:                     "error - acmeUpdateCertificate",
-			certPEM:                  string(certPEM),
-			keyPEM:                   string(keyPEM),
-			acmeUpdateCertificateErr: boom.Error,
+			name:                      "error - acme.RequestCertificate",
+			acmeCfg:                   acmeEnabled,
+			force:                     false,
+			currentCertPEM:            dueCertPEM,
+			currentKeyPEM:             dueKeyPEM,
+			acmeRequestCertificateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:       boom.ErrorIs,
+			wantChanged:     false,
+			wantACMERequest: true,
 		},
 		{
-			name:    "error - update certificate",
-			certPEM: string(certPEM),
-			keyPEM:  string(keyPEM),
-			acmeUpdateCertificate: &systemapi.CertificatePost{
-				Certificate: string(certPEM),
-				Key:         string(keyPEM),
-			},
+			name:                      "error - update certificate",
+			acmeCfg:                   acmeEnabled,
+			force:                     false,
+			currentCertPEM:            dueCertPEM,
+			currentKeyPEM:             dueKeyPEM,
+			acmeRequestCertificate:    newCert,
 			serverGetAllWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:       boom.ErrorIs,
+			wantChanged:     false,
+			wantACMERequest: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			// Setup
 			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
@@ -876,14 +963,22 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				},
 			}
 
+			config.InitTest(t, env, nil)
+			sharedCfg := config.ProvisionalShared()
+			sharedCfg.Security.ACME = tc.acmeCfg
+			err := config.LoadShared(t.Context(), sharedCfg, func(_ context.Context, change config.SharedChange) (config.SharedConfig, error) {
+				return config.SharedConfig{}, nil
+			})
+			require.NoError(t, err)
+
 			keyPair := testKeyPair{
-				certificatePEM: currentCertPEM,
-				keyPEM:         currentKeyPEM,
+				certificatePEM: []byte(tc.currentCertPEM),
+				keyPEM:         []byte(tc.currentKeyPEM),
 			}
 
 			certificateRepo := &repoMock.CertificateRepoMock{
 				GetServerCertificateFunc: func(ctx context.Context) ([]byte, error) {
-					return keyPair.certificatePEM, nil
+					return keyPair.certificatePEM, tc.repoGetServerCertificateErr
 				},
 				GetServerKeyPairFunc: func(ctx context.Context) ([]byte, []byte, error) {
 					return keyPair.certificatePEM, keyPair.keyPEM, nil
@@ -907,32 +1002,21 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(
-				env,
-				serverSvc,
-				nil,
-				certificateRepo,
-				system.WithACMEUpdateCertificateFunc(
-					func(
-						ctx context.Context,
-						fsEnv interface {
-							CacheDir() string
-						},
-						cfg systemapi.SecurityACME,
-						current *x509.Certificate,
-						force bool,
-					) (*systemapi.CertificatePost, error) {
-						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
-					},
-				),
-			)
+			acmePort := &adapterMock.ACMEPortMock{
+				RequestCertificateFunc: func(ctx context.Context, cfg systemapi.SecurityACME) (*systemapi.CertificatePost, error) {
+					return tc.acmeRequestCertificate, tc.acmeRequestCertificateErr
+				},
+			}
+
+			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo, acmePort)
 
 			// Run test
-			changed, err := systemSvc.TriggerCertificateRenew(t.Context(), false)
+			changed, err := systemSvc.TriggerCertificateRenew(t.Context(), tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantChanged, changed)
+			require.Equal(t, tc.wantACMERequest, len(acmePort.RequestCertificateCalls()) == 1, "ACME request expectation")
 		})
 	}
 }
@@ -1327,7 +1411,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig)
@@ -1380,7 +1464,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err = config.UpdateNetwork(t.Context(), networkConfig.NetworkGlobalPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1513,7 +1597,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1582,7 +1666,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig)
@@ -1606,7 +1690,7 @@ func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	systemSvc := system.NewSystemService(nil, nil, nil, nil)
+	systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 	before := systemSvc.GetSettingsConfig(t.Context())
 
 	err = systemSvc.UpdateSettingsConfig(t.Context(), systemapi.SettingsPut{
@@ -1684,7 +1768,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1730,7 +1814,7 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, cacheRepo, nil)
+			systemSvc := system.NewSystemService(nil, nil, cacheRepo, nil, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())

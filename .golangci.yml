@@ -267,41 +267,22 @@ linters:
           - depguard
         path: '^internal/domain/errors\.go$'
         text: "syscall"
-      # Baseline. Remove each entry when the violation is fixed.
+      # Only http.StatusText is used. It does not do any I/O.
       - linters:
           - depguard
         path: '^shared/api/error\.go$'
         text: "net/http"
-      - linters:
-          - depguard
-        path: '^internal/provisioning/cluster/cluster_service\.go$'
-        text: "net/http"
-      - linters:
-          - depguard
-        path: '^internal/provisioning/server/server_service\.go$'
-        text: "net/http"
+      # The alias exposes the Incus interface. The adapter hides the implementation.
       - linters:
           - depguard
         path: '^internal/provisioning/cluster_ports\.go$'
         text: "incus/v7/client"
-      - linters:
-          - forbidigo
-        path: '^internal/provisioning/cluster/cluster_service\.go$'
-        text: "Pure packages must"
-      - linters:
-          - forbidigo
-        path: '^internal/provisioning/server_model\.go$'
-        text: "Pure packages must"
-      - linters:
-          - forbidigo
-        path: '^internal/provisioning/server/server_service\.go$'
-        text: "Pure packages must"
       # File system access through os.Root. Tests, tools, the command line
       # client and low level helpers work with paths provided by the user.
       - linters:
           - forbidigo
         text: "Use os.Root for file system access"
-        path: '(_test\.go$|^e2e_tests/|^cluster_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/|^internal/security/signature/signaturetest/|^internal/sql/cowsql/cowsqltest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
+        path: '(_test\.go$|^e2e_tests/|^cluster_tests/|^cmd/generate-[^/]+/|^internal/cli/|^internal/client/|^internal/config/cli/|^internal/environment/osenv/|^internal/security/signature/signaturetest/|^internal/sql/cowsql/cowsqltest/|^internal/util/(editor|file|logger|multipartstreamer)/)'
       # The work dir of the secure boot media is passed to external tools, which need absolute paths.
       - linters:
           - forbidigo

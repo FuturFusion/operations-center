@@ -98,6 +98,12 @@ func statusCodeAndReason(err error) (int, api.ErrorReason) {
 	case errors.As(err, &validationErr):
 		return http.StatusBadRequest, api.ErrorReasonInvalidArgument
 
+	// The Incus adapter maps "not found" errors of Incus servers to
+	// domain.ErrNotFound, see incus.NotFoundWrapper. Services check for it.
+	// The API still reports it as upstream error, not as missing resource.
+	case errors.Is(err, domain.ErrNotFound) && isIncusStatusError(err):
+		return http.StatusBadGateway, api.ErrorReasonUpstream
+
 	case errors.Is(err, domain.ErrNotFound):
 		return http.StatusNotFound, api.ErrorReasonNotFound
 
@@ -141,6 +147,12 @@ func statusCodeAndReason(err error) (int, api.ErrorReason) {
 	}
 
 	return http.StatusInternalServerError, api.ErrorReasonInternal
+}
+
+func isIncusStatusError(err error) bool {
+	_, found := incusapi.StatusErrorMatch(err)
+
+	return found
 }
 
 // reasonForStatusCode returns the generic reason for the given HTTP status code.

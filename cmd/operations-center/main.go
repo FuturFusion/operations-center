@@ -17,13 +17,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/cmds"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
 func main() {
-	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(config.ApplicationName, config.ApplicationEnvPrefix))
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, osenv.New(config.ApplicationName, config.ApplicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, formatError(err))
 		os.Exit(1)
@@ -250,7 +250,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	if !ok {
 		// If we don't have a regular terminal, fail immediately, since we can not
 		// ask the user for manual verification.
-		if !termios.IsTerminal(environment.GetStdinFd()) {
+		if !termios.IsTerminal(osenv.GetStdinFd()) {
 			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
 		}
 

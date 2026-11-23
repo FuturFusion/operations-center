@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/lxc/incus/v7/shared/revert"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -18,16 +19,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
+// Matches the threshold of github.com/lxc/incus/v7/shared/tls.CertificateNeedsUpdate.
+const acmeRenewalLifetimeRatio = 0.8
+
 type environment interface {
 	VarDir() string
-	CacheDir() string
 	IsIncusOS() bool
 }
 
@@ -37,42 +39,26 @@ type systemService struct {
 	cacheRepo       CacheRepo
 	certificateRepo CertificateRepo
 
-	acmeUpdateCertificateFunc func(
-		ctx context.Context,
-		fsEnv interface {
-			CacheDir() string
-		},
-		cfg system.SecurityACME,
-		current *x509.Certificate,
-		force bool,
-	) (*system.CertificatePost, error)
+	acme ACMEPort
 }
 
 var _ SystemService = &systemService{}
-
-type SystemServiceOption func(s *systemService)
 
 func NewSystemService(
 	env environment,
 	serverSvc ProvisioningServerService,
 	cacheRepo CacheRepo,
 	certificateRepo CertificateRepo,
-	opts ...SystemServiceOption,
+	acme ACMEPort,
 ) *systemService {
-	systemSvc := &systemService{
+	return &systemService{
 		env:             env,
 		serverSvc:       serverSvc,
 		cacheRepo:       cacheRepo,
 		certificateRepo: certificateRepo,
 
-		acmeUpdateCertificateFunc: acme.UpdateCertificate,
+		acme: acme,
 	}
-
-	for _, opt := range opts {
-		opt(systemSvc)
-	}
-
-	return systemSvc
 }
 
 func (s *systemService) GetCertificate(ctx context.Context) (system.Certificate, error) {
@@ -240,6 +226,12 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 }
 
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
+	cfg := config.GetSecurity().ACME
+	if !config.IsACMEEnabled(cfg) {
+		slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
+		return false, nil
+	}
+
 	certificatePEM, err := s.certificateRepo.GetServerCertificate(ctx)
 	if err != nil {
 		return false, fmt.Errorf("Failed to read the server certificate: %w", err)
@@ -250,19 +242,15 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 		return false, fmt.Errorf("Failed to parse certificate: %w", err)
 	}
 
-	cfg := config.GetSecurity().ACME
-
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, current, force)
-	if err != nil {
-		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
+	if !force && !incustls.CertificateNeedsUpdate(cfg.Domain, current) {
+		renewalAfter := current.NotBefore.Add(time.Duration(float64(current.NotAfter.Sub(current.NotBefore)) * acmeRenewalLifetimeRatio))
+		slog.InfoContext(ctx, "ACME server certificate renewal skipped, certificate is not due for renewal", slog.String("domain", cfg.Domain), slog.Time("renewal_after", renewalAfter), slog.Time("not_after", current.NotAfter))
+		return false, nil
 	}
 
-	if newCert == nil {
-		if !acme.IsEnabled(cfg) {
-			slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
-		}
-
-		return false, nil
+	newCert, err := s.acme.RequestCertificate(ctx, cfg)
+	if err != nil {
+		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}
 
 	err = s.UpdateCertificate(ctx, newCert.Certificate, newCert.Key)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
@@ -42,7 +43,7 @@ func TestUsageInformationForPath(t *testing.T) {
 
 			tc.assertErr(t, err)
 			if err != nil {
-				require.Equal(t, file.UsageInformation{}, gotUI)
+				require.Equal(t, domain.UsageInformation{}, gotUI)
 				return
 			}
 

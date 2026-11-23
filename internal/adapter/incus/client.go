@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -27,6 +28,7 @@ type Client struct {
 	clientCA      string
 	env           Environment
 	skipGetServer bool
+	httpClient    *http.Client
 }
 
 var (
@@ -58,6 +60,13 @@ func WithSkipGetServer(skipGetServer bool) Option {
 	}
 }
 
+// WithHTTPClient sets the HTTP client used to connect to public connection URLs.
+func WithHTTPClient(httpClient *http.Client) Option {
+	return func(c *Client) {
+		c.httpClient = httpClient
+	}
+}
+
 type transportWrapper struct {
 	transport *http.Transport
 }
@@ -74,6 +83,7 @@ func New(clientCert string, clientKey string, opts ...Option) Client {
 	c := Client{
 		clientCert: clientCert,
 		clientKey:  clientKey,
+		httpClient: &http.Client{},
 	}
 
 	for _, opt := range opts {
@@ -158,5 +168,5 @@ func (c Client) IncusClient(ctx context.Context, endpoint provisioning.Endpoint)
 		return nil, err
 	}
 
-	return client, nil
+	return middleware.NewInstanceServerWithErrorWrapper(client, NotFoundWrapper()), nil
 }

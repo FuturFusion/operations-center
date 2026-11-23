@@ -139,6 +139,14 @@ func TestSmartError(t *testing.T) {
 			wantReason:  api.ErrorReasonUpstream,
 		},
 		{
+			name: "not found error of an incus server",
+			err:  fmt.Errorf("Failed to get pool: %w", incusNotFound{err: incusapi.StatusErrorf(http.StatusNotFound, "Storage pool not found")}),
+
+			wantCode:    http.StatusBadGateway,
+			wantMessage: "Failed to get pool: Storage pool not found",
+			wantReason:  api.ErrorReasonUpstream,
+		},
+		{
 			name: "wrapped sql no rows",
 			err:  fmt.Errorf("Failed to fetch server: %w", sql.ErrNoRows),
 
@@ -267,3 +275,14 @@ func errorMetadata(t *testing.T, metadata any) api.ErrorMetadata {
 
 	return errorMetadata
 }
+
+// incusNotFound mimics the not found error of the Incus adapter.
+type incusNotFound struct {
+	err error
+}
+
+func (e incusNotFound) Error() string { return e.err.Error() }
+
+func (e incusNotFound) Unwrap() error { return e.err }
+
+func (e incusNotFound) Is(target error) bool { return target == domain.ErrNotFound }

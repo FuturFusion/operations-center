@@ -15,6 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -286,7 +287,7 @@ func (c *cmdClusterArtifactGetArchive) run(cmd *cobra.Command, args []string) er
 
 	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := file.SafeCopy(writer, archiveReader)
+	size, err := iox.SafeCopy(writer, archiveReader)
 	if err != nil {
 		return err
 	}
@@ -354,7 +355,7 @@ func (c *cmdClusterArtifactGetFile) run(cmd *cobra.Command, args []string) error
 
 	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := file.SafeCopy(writer, fileReader)
+	size, err := iox.SafeCopy(writer, fileReader)
 	if err != nil {
 		return err
 	}

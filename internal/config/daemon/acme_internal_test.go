@@ -1,15 +1,14 @@
-package acme_test
+package config
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-func TestIsEnabled(t *testing.T) {
+func TestIsACMEEnabled(t *testing.T) {
 	t.Parallel()
 
 	complete := system.SecurityACME{
@@ -73,7 +72,7 @@ func TestIsEnabled(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := acme.IsEnabled(tc.modify(complete))
+			got := IsACMEEnabled(tc.modify(complete))
 
 			require.Equal(t, tc.want, got, "ACME enabled state")
 		})
@@ -182,6 +181,94 @@ func TestValidateACMEConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "error - challenge address invalid",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.Address = "invalid address"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to parse ACME HTTP challenge address", a...)
+			},
+		},
+		{
+			name: "error - CA URL not parseable",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.CAURL = "not a url"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to parse ACME CA URL", a...)
+			},
+		},
+		{
+			name: "error - CA URL without scheme",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.CAURL = "//example.org/directory"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to determine scheme for ACME CA URL", a...)
+			},
+		},
+		{
+			name: "error - CA URL without host",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.CAURL = "https:///directory"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to determine host for ACME CA URL", a...)
+			},
+		},
+		{
+			name: "error - CA URL port not a number",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.CAURL = "https://example.org:abc/directory"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to parse ACME CA URL", a...)
+			},
+		},
+		{
+			name: "error - CA URL port out of range",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.CAURL = "https://example.org:70000/directory"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "ACME CA URL port 70000 is invalid", a...)
+			},
+		},
+		{
+			name: "error - provider environment invalid",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.ProviderEnvironment = []string{"invalid"}
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Invalid key=value format for provider environment", a...)
+			},
+		},
+		{
+			name: "error - challenge invalid",
+			modify: func(cfg system.SecurityACME) system.SecurityACME {
+				cfg.Challenge = "invalid"
+				return cfg
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "challenge", a...)
+			},
+		},
+		{
 			name: "error - email invalid",
 			modify: func(cfg system.SecurityACME) system.SecurityACME {
 				cfg.Email = "invalid"
@@ -199,7 +286,7 @@ func TestValidateACMEConfig(t *testing.T) {
 			t.Parallel()
 
 			// Run test
-			err := acme.ValidateACMEConfig(tc.modify(valid))
+			err := validateACMEConfig(tc.modify(valid))
 
 			// Assert
 			tc.assertErr(t, err)

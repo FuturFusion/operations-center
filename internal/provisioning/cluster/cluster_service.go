@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"maps"
 	"net"
-	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -60,6 +59,8 @@ type clusterService struct {
 
 	now func() time.Time
 
+	signalLifecycleEventDelay time.Duration
+
 	lifecycleEventHandlerBackoffStart time.Duration
 	lifecycleEventHandlerBackoffLimit time.Duration
 
@@ -96,6 +97,12 @@ func WithCreateClusterConnectionTestTimeout(timeout time.Duration) Option {
 func WithCreateClusterCertificateNotBeforeDelay(delay time.Duration) Option {
 	return func(s *clusterService) {
 		s.createClusterCertificateNotBeforeDelay = delay
+	}
+}
+
+func WithSignalLifecycleEventDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.signalLifecycleEventDelay = delay
 	}
 }
 
@@ -170,6 +177,8 @@ func New(
 		createClusterCertificateNotBeforeDelay: 5 * time.Second,
 
 		now: time.Now,
+
+		signalLifecycleEventDelay: provisioning.DefaultSignalLifecycleEventDelay,
 
 		lifecycleEventHandlerBackoffStart: 200 * time.Millisecond,
 		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
@@ -478,7 +487,12 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	}
 
 	// Make sure, the cluster certificate is already valid ("not before date" has passed).
-	time.Sleep(s.createClusterCertificateNotBeforeDelay)
+	select {
+	case <-ctx.Done():
+		return newCluster, fmt.Errorf("Wait for cluster certificate to become valid: %w", ctx.Err())
+
+	case <-time.After(s.createClusterCertificateNotBeforeDelay):
+	}
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
@@ -1963,7 +1977,12 @@ func (s *clusterService) removeSingleServer(ctx context.Context, name string, re
 		}
 
 		// Wait for the factory reset to take place.
-		time.Sleep(s.removeServerFactoryResetWaitDelay)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("Wait for factory reset of server %q: %w", removedServerName, ctx.Err())
+
+		case <-time.After(s.removeServerFactoryResetWaitDelay):
+		}
 	}
 
 	// Forcefully remove the server from the cluster.
@@ -2025,7 +2044,7 @@ func clearOCCreatedStorageVolumes(removedServerName string, incusClient provisio
 	for _, storageVolumeName := range ocCreatedStorageVolumes {
 		err = incusClient.UseTarget(removedServerName).DeleteStoragePoolVolume("local", "custom", storageVolumeName)
 		if err != nil {
-			if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				continue
 			}
 
@@ -2162,13 +2181,13 @@ func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serve
 		}
 
 		// The server is already gone from the cluster, nothing left to do.
-		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return errors.Join(ctx.Err(), err)
+			return fmt.Errorf("Wait to retry deletion of cluster member: %w", errors.Join(ctx.Err(), err))
 
 		case <-time.After(s.removeServerDeleteClusterMemberRetryDelay):
 		}
@@ -3026,7 +3045,7 @@ func (s *clusterService) LaunchClusterReboot(ctx context.Context, name string) e
 
 	// Kick the control loop right away instead of waiting for the next tick of the
 	// periodic cluster update control loop.
-	servers[0].SignalLifecycleEvent()
+	servers[0].SignalLifecycleEvent(s.signalLifecycleEventDelay)
 
 	return nil
 }
@@ -3217,7 +3236,7 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 
 	if emitLifecycleSignal {
 		// Use last server as the triggering server, since it was most likely the last one that was updated.
-		servers[len(servers)-1].SignalLifecycleEvent()
+		servers[len(servers)-1].SignalLifecycleEvent(s.signalLifecycleEventDelay)
 	}
 
 	return nil
