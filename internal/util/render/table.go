@@ -43,6 +43,10 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 	if len(fields) == 2 {
 		options = strings.Split(fields[1], ",")
 
+		if slices.Contains(options, TableOptionHeader) && slices.Contains(options, TableOptionNoHeader) {
+			return fmt.Errorf("Format options %q and %q are mutually exclusive", TableOptionHeader, TableOptionNoHeader)
+		}
+
 		if slices.Contains(options, TableOptionNoHeader) {
 			header = nil
 		}
@@ -115,7 +119,10 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 			return err
 		}
 
-		_, _ = fmt.Fprintf(w, "%s", out)
+		_, err = w.Write(out)
+		if err != nil {
+			return err
+		}
 
 	default:
 		// TODO: should this go to stderr?
