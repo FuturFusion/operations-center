@@ -69,6 +69,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateAddCmd.Command())
 
+	// Download
+	updateDownloadCmd := cmdUpdateDownload{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateDownloadCmd.Command())
+
 	// Export
 	updateExportCmd := cmdUpdateExport{
 		ocClient: c.OCClient,
@@ -392,6 +399,63 @@ func (c *cmdUpdateAdd) run(cmd *cobra.Command, args []string) error {
 	err = c.ocClient.CreateUpdate(cmd.Context(), f)
 	if err != nil {
 		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
+	}
+
+	return nil
+}
+
+// Download update.
+type cmdUpdateDownload struct {
+	ocClient *client.OperationsCenterClient
+
+	flagChannels []string
+}
+
+func (c *cmdUpdateDownload) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "download <version>"
+	cmd.Short = "Download an update with a specific version"
+	cmd.Long = `Description:
+  Download an update with a specific version from the update source.
+
+  The update source might provide versions, which are no longer listed. The
+  update is assigned to the given channels, or to the default channel.
+
+  The filter_expression does not apply to this download. The
+  file_filter_expression still applies and selects the architectures.
+
+  A refresh removes updates, which are neither in use by a server nor among
+  the most recent updates of a channel. Assign an older version to a separate
+  channel to keep it.
+`
+
+	cmd.Flags().StringSliceVar(&c.flagChannels, "channel", []string{}, "channel the update should be assigned to")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateDownload) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateDownload) run(cmd *cobra.Command, args []string) error {
+	version := args[0]
+
+	err := c.ocClient.DownloadUpdate(cmd.Context(), api.UpdateDownloadPost{
+		Version:  version,
+		Channels: c.flagChannels,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to download update %q: %w", version, err)
 	}
 
 	return nil

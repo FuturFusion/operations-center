@@ -112,6 +112,17 @@ func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
 	return nil
 }
 
+// DownloadUpdate downloads an update with the given version from the update
+// source.
+func (c OperationsCenterClient) DownloadUpdate(ctx context.Context, request api.UpdateDownloadPost) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/updates/:download", nil, request)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) error {
 	query := url.Values{}
 	query.Add("wait", strconv.FormatBool(wait))

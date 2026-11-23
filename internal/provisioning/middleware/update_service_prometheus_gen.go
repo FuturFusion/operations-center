@@ -71,6 +71,20 @@ func (_d UpdateServiceWithPrometheus) CreateFromArchive(ctx context.Context, tar
 	return _d.base.CreateFromArchive(ctx, tarReader)
 }
 
+// Download implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) Download(ctx context.Context, version string, channels []string) (uUID uuid.UUID, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Download", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Download(ctx, version, channels)
+}
+
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	_since := time.Now()

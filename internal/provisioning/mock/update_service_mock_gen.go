@@ -33,6 +33,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			CreateFromArchiveFunc: func(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
 //				panic("mock out the CreateFromArchive method")
 //			},
+//			DownloadFunc: func(ctx context.Context, version string, channels []string) (uuid.UUID, error) {
+//				panic("mock out the Download method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -90,6 +93,9 @@ type UpdateServiceMock struct {
 
 	// CreateFromArchiveFunc mocks the CreateFromArchive method.
 	CreateFromArchiveFunc func(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
+
+	// DownloadFunc mocks the Download method.
+	DownloadFunc func(ctx context.Context, version string, channels []string) (uuid.UUID, error)
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Updates, error)
@@ -149,6 +155,15 @@ type UpdateServiceMock struct {
 			Ctx context.Context
 			// TarReader is the tarReader argument value.
 			TarReader *tar.Reader
+		}
+		// Download holds details about calls to the Download method.
+		Download []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Version is the version argument value.
+			Version string
+			// Channels is the channels argument value.
+			Channels []string
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -260,6 +275,7 @@ type UpdateServiceMock struct {
 	}
 	lockCleanupAll                      sync.RWMutex
 	lockCreateFromArchive               sync.RWMutex
+	lockDownload                        sync.RWMutex
 	lockGetAll                          sync.RWMutex
 	lockGetAllUUIDs                     sync.RWMutex
 	lockGetAllUUIDsWithFilter           sync.RWMutex
@@ -342,6 +358,46 @@ func (mock *UpdateServiceMock) CreateFromArchiveCalls() []struct {
 	mock.lockCreateFromArchive.RLock()
 	calls = mock.calls.CreateFromArchive
 	mock.lockCreateFromArchive.RUnlock()
+	return calls
+}
+
+// Download calls DownloadFunc.
+func (mock *UpdateServiceMock) Download(ctx context.Context, version string, channels []string) (uuid.UUID, error) {
+	if mock.DownloadFunc == nil {
+		panic("UpdateServiceMock.DownloadFunc: method is nil but UpdateService.Download was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Version  string
+		Channels []string
+	}{
+		Ctx:      ctx,
+		Version:  version,
+		Channels: channels,
+	}
+	mock.lockDownload.Lock()
+	mock.calls.Download = append(mock.calls.Download, callInfo)
+	mock.lockDownload.Unlock()
+	return mock.DownloadFunc(ctx, version, channels)
+}
+
+// DownloadCalls gets all the calls that were made to Download.
+// Check the length with:
+//
+//	len(mockedUpdateService.DownloadCalls())
+func (mock *UpdateServiceMock) DownloadCalls() []struct {
+	Ctx      context.Context
+	Version  string
+	Channels []string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Version  string
+		Channels []string
+	}
+	mock.lockDownload.RLock()
+	calls = mock.calls.Download
+	mock.lockDownload.RUnlock()
 	return calls
 }
 

@@ -195,3 +195,86 @@ func Test_updateHandler_updateArchiveGet(t *testing.T) {
 }
 
 const updateArchiveTestUUID = "3b9d0f85-67b4-480e-b369-fef25e9d8ccc"
+
+func Test_updateHandler_updatesDownloadPost(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name               string
+		body               string
+		serviceDownloadErr error
+
+		wantVersions            []string
+		wantChannels            [][]string
+		wantStatusCode          int
+		wantResponseBodyContain string
+	}{
+		{
+			name:               "success",
+			body:               `{"version":"202610272234","channels":["legacy"]}`,
+			serviceDownloadErr: nil,
+
+			wantVersions:            []string{"202610272234"},
+			wantChannels:            [][]string{{"legacy"}},
+			wantStatusCode:          http.StatusCreated,
+			wantResponseBodyContain: "/1.0/provisioning/updates/" + updateArchiveTestUUID,
+		},
+		{
+			name:               "error - invalid body",
+			body:               `{`,
+			serviceDownloadErr: nil,
+
+			wantVersions:            nil,
+			wantChannels:            nil,
+			wantStatusCode:          http.StatusBadRequest,
+			wantResponseBodyContain: `"error_code":400`,
+		},
+		{
+			name:               "error - service.Download",
+			body:               `{"version":"202610272234"}`,
+			serviceDownloadErr: boom.Error,
+
+			wantVersions:            []string{"202610272234"},
+			wantChannels:            [][]string{nil},
+			wantStatusCode:          http.StatusInternalServerError,
+			wantResponseBodyContain: `"error_code":500`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			service := &provisioningMock.UpdateServiceMock{
+				DownloadFunc: func(ctx context.Context, version string, channels []string) (uuid.UUID, error) {
+					return uuid.MustParse(updateArchiveTestUUID), tc.serviceDownloadErr
+				},
+			}
+
+			handler := &updateHandler{
+				service: service,
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/:download", strings.NewReader(tc.body))
+			rec := httptest.NewRecorder()
+
+			// Run test
+			err := handler.updatesDownloadPost(req).Render(rec)
+
+			// Assert
+			require.NoError(t, err, "rendering the response must not fail")
+			var gotVersions []string
+			var gotChannels [][]string
+			for _, call := range service.DownloadCalls() {
+				gotVersions = append(gotVersions, call.Version)
+				gotChannels = append(gotChannels, call.Channels)
+			}
+
+			require.Equal(t, tc.wantVersions, gotVersions, "unexpected versions requested")
+			require.Equal(t, tc.wantChannels, gotChannels, "unexpected channels requested")
+			require.Equal(t, tc.wantStatusCode, rec.Code, "unexpected status code")
+			require.Contains(t, rec.Body.String()+rec.Header().Get("Location"), tc.wantResponseBodyContain, "unexpected response")
+		})
+	}
+}
