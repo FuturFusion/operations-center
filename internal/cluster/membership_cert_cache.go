@@ -33,8 +33,16 @@ func (m *membership) updateCertificateCacheFromLocal(ctx context.Context) {
 }
 
 func (m *membership) updateCertificateCacheFromGlobal(ctx context.Context) {
+	err := m.loadCertificateCacheFromGlobal(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to retrieve server certificates from global cluster members", logger.Err(err))
+	}
+}
+
+// loadCertificateCacheFromGlobal replaces the in-memory and the local copy of the member certificates with the ones of the global database.
+func (m *membership) loadCertificateCacheFromGlobal(ctx context.Context) error {
 	if m.global() == nil {
-		return
+		return nil
 	}
 
 	var certsByAddress map[string]api.Certificate
@@ -46,8 +54,7 @@ func (m *membership) updateCertificateCacheFromGlobal(ctx context.Context) {
 		return err
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to retrieve server certificates from global cluster members", logger.Err(err))
-		return
+		return err
 	}
 
 	m.setCertificateCache(slices.Collect(maps.Values(certsByAddress)))
@@ -59,6 +66,8 @@ func (m *membership) updateCertificateCacheFromGlobal(ctx context.Context) {
 			slog.ErrorContext(ctx, "Failed to store the server certificate of a cluster member locally", slog.String("address", address), logger.Err(err))
 		}
 	}
+
+	return nil
 }
 
 // setCertificateCache updates the in-memory list of server certificates, used for intra-cluster communication.

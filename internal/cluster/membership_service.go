@@ -72,6 +72,10 @@ type membership struct {
 	// reloadConfigOnMember replaces the request letting another member reload the shared config in tests.
 	reloadConfigOnMember func(ctx context.Context, address string) error
 
+	// certRefreshedAt is when a rejected client certificate last made this member reload the member certificates.
+	certRefreshMu   sync.Mutex
+	certRefreshedAt time.Time
+
 	// removalChecks refuse the removal of a member, which is not forced.
 	removalChecks []RemovalCheck
 
@@ -2444,6 +2448,9 @@ func (m *membership) gatewayAuthenticator() func(w http.ResponseWriter, r *http.
 
 		trusted, _, _, _ := authn.Auth(w, r)
 		if !trusted {
+			// The certificate may belong to a member this member has not learned about yet.
+			m.refreshCertificateCacheSoon()
+
 			http.Error(w, "403 invalid client certificate", http.StatusForbidden)
 
 			return false
@@ -2451,4 +2458,32 @@ func (m *membership) gatewayAuthenticator() func(w http.ResponseWriter, r *http.
 
 		return true
 	}
+}
+
+// certificateCacheRefreshInterval limits how often a rejected client certificate makes this member reload the member certificates.
+const certificateCacheRefreshInterval = 5 * time.Second
+
+// refreshCertificateCacheSoon reloads the certificates of the cluster members in the background, at most once per interval.
+func (m *membership) refreshCertificateCacheSoon() {
+	m.certRefreshMu.Lock()
+	defer m.certRefreshMu.Unlock()
+
+	if time.Since(m.certRefreshedAt) < certificateCacheRefreshInterval || m.global() == nil {
+		return
+	}
+
+	m.certRefreshedAt = time.Now()
+
+	ctx := m.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// The database is out of reach while the cluster has no leader, which is no error of this member.
+	go func() {
+		err := m.loadCertificateCacheFromGlobal(ctx)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to reload the member certificates after a rejected client certificate", logger.Err(err))
+		}
+	}()
 }
