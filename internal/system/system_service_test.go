@@ -1649,6 +1649,16 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 	}
 }
 
+type failingSharedPersister struct{}
+
+func (failingSharedPersister) PersistSharedConfig(context.Context, config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
+	return config.SharedConfig{}, config.SharedConfig{}, boom.Error
+}
+
+func (failingSharedPersister) PublishSharedConfig(context.Context, config.SharedChange, config.SharedConfig) error {
+	return nil
+}
+
 func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
 	env := &envMock.EnvironmentMock{
 		ClusteredFunc: func() bool { return false },
@@ -1656,9 +1666,7 @@ func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
 	}
 
 	config.InitTest(t, env, nil)
-	err := config.LoadShared(t.Context(), config.ProvisionalShared(), func(context.Context, config.SharedChange) (config.SharedConfig, error) {
-		return config.SharedConfig{}, boom.Error
-	})
+	err := config.LoadShared(t.Context(), config.ProvisionalShared(), failingSharedPersister{})
 	require.NoError(t, err)
 
 	systemSvc := system.NewSystemService(nil, nil, nil, nil)

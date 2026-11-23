@@ -55,7 +55,9 @@ type MembershipService interface {
 	TrustedClients() map[string]x509.Certificate
 	IsMemberCertificate(certificatePEM string) bool
 
-	PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
+	PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error)
+	PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error
+	ReloadSharedConfig(ctx context.Context) error
 }
 
 type GlobalRaftRepo interface {

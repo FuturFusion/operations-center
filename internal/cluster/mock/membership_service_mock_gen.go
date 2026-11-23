@@ -98,11 +98,17 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			NotifyUpgradeCompletedFunc: func(ctx context.Context) error {
 //				panic("mock out the NotifyUpgradeCompleted method")
 //			},
-//			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+//			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
 //				panic("mock out the PersistSharedConfig method")
+//			},
+//			PublishSharedConfigFunc: func(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
+//				panic("mock out the PublishSharedConfig method")
 //			},
 //			RebalanceFunc: func(ctx context.Context) error {
 //				panic("mock out the Rebalance method")
+//			},
+//			ReloadSharedConfigFunc: func(ctx context.Context) error {
+//				panic("mock out the ReloadSharedConfig method")
 //			},
 //			RemoveMemberFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the RemoveMember method")
@@ -199,10 +205,16 @@ type MembershipServiceMock struct {
 	NotifyUpgradeCompletedFunc func(ctx context.Context) error
 
 	// PersistSharedConfigFunc mocks the PersistSharedConfig method.
-	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
+	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error)
+
+	// PublishSharedConfigFunc mocks the PublishSharedConfig method.
+	PublishSharedConfigFunc func(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error
 
 	// RebalanceFunc mocks the Rebalance method.
 	RebalanceFunc func(ctx context.Context) error
+
+	// ReloadSharedConfigFunc mocks the ReloadSharedConfig method.
+	ReloadSharedConfigFunc func(ctx context.Context) error
 
 	// RemoveMemberFunc mocks the RemoveMember method.
 	RemoveMemberFunc func(ctx context.Context, name string, force bool) error
@@ -362,8 +374,22 @@ type MembershipServiceMock struct {
 			// Change is the change argument value.
 			Change config.SharedChange
 		}
+		// PublishSharedConfig holds details about calls to the PublishSharedConfig method.
+		PublishSharedConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Change is the change argument value.
+			Change config.SharedChange
+			// Previous is the previous argument value.
+			Previous config.SharedConfig
+		}
 		// Rebalance holds details about calls to the Rebalance method.
 		Rebalance []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// ReloadSharedConfig holds details about calls to the ReloadSharedConfig method.
+		ReloadSharedConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -430,7 +456,9 @@ type MembershipServiceMock struct {
 	lockMemberClient              sync.RWMutex
 	lockNotifyUpgradeCompleted    sync.RWMutex
 	lockPersistSharedConfig       sync.RWMutex
+	lockPublishSharedConfig       sync.RWMutex
 	lockRebalance                 sync.RWMutex
+	lockReloadSharedConfig        sync.RWMutex
 	lockRemoveMember              sync.RWMutex
 	lockReset                     sync.RWMutex
 	lockSetGlobalDB               sync.RWMutex
@@ -1177,7 +1205,7 @@ func (mock *MembershipServiceMock) NotifyUpgradeCompletedCalls() []struct {
 }
 
 // PersistSharedConfig calls PersistSharedConfigFunc.
-func (mock *MembershipServiceMock) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+func (mock *MembershipServiceMock) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
 	if mock.PersistSharedConfigFunc == nil {
 		panic("MembershipServiceMock.PersistSharedConfigFunc: method is nil but MembershipService.PersistSharedConfig was just called")
 	}
@@ -1212,6 +1240,46 @@ func (mock *MembershipServiceMock) PersistSharedConfigCalls() []struct {
 	return calls
 }
 
+// PublishSharedConfig calls PublishSharedConfigFunc.
+func (mock *MembershipServiceMock) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
+	if mock.PublishSharedConfigFunc == nil {
+		panic("MembershipServiceMock.PublishSharedConfigFunc: method is nil but MembershipService.PublishSharedConfig was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Change   config.SharedChange
+		Previous config.SharedConfig
+	}{
+		Ctx:      ctx,
+		Change:   change,
+		Previous: previous,
+	}
+	mock.lockPublishSharedConfig.Lock()
+	mock.calls.PublishSharedConfig = append(mock.calls.PublishSharedConfig, callInfo)
+	mock.lockPublishSharedConfig.Unlock()
+	return mock.PublishSharedConfigFunc(ctx, change, previous)
+}
+
+// PublishSharedConfigCalls gets all the calls that were made to PublishSharedConfig.
+// Check the length with:
+//
+//	len(mockedMembershipService.PublishSharedConfigCalls())
+func (mock *MembershipServiceMock) PublishSharedConfigCalls() []struct {
+	Ctx      context.Context
+	Change   config.SharedChange
+	Previous config.SharedConfig
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Change   config.SharedChange
+		Previous config.SharedConfig
+	}
+	mock.lockPublishSharedConfig.RLock()
+	calls = mock.calls.PublishSharedConfig
+	mock.lockPublishSharedConfig.RUnlock()
+	return calls
+}
+
 // Rebalance calls RebalanceFunc.
 func (mock *MembershipServiceMock) Rebalance(ctx context.Context) error {
 	if mock.RebalanceFunc == nil {
@@ -1241,6 +1309,38 @@ func (mock *MembershipServiceMock) RebalanceCalls() []struct {
 	mock.lockRebalance.RLock()
 	calls = mock.calls.Rebalance
 	mock.lockRebalance.RUnlock()
+	return calls
+}
+
+// ReloadSharedConfig calls ReloadSharedConfigFunc.
+func (mock *MembershipServiceMock) ReloadSharedConfig(ctx context.Context) error {
+	if mock.ReloadSharedConfigFunc == nil {
+		panic("MembershipServiceMock.ReloadSharedConfigFunc: method is nil but MembershipService.ReloadSharedConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockReloadSharedConfig.Lock()
+	mock.calls.ReloadSharedConfig = append(mock.calls.ReloadSharedConfig, callInfo)
+	mock.lockReloadSharedConfig.Unlock()
+	return mock.ReloadSharedConfigFunc(ctx)
+}
+
+// ReloadSharedConfigCalls gets all the calls that were made to ReloadSharedConfig.
+// Check the length with:
+//
+//	len(mockedMembershipService.ReloadSharedConfigCalls())
+func (mock *MembershipServiceMock) ReloadSharedConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockReloadSharedConfig.RLock()
+	calls = mock.calls.ReloadSharedConfig
+	mock.lockReloadSharedConfig.RUnlock()
 	return calls
 }
 

@@ -318,12 +318,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// On update of the security configuration, perform reload of the security
-	// related infrastructure.
-	lifecycle.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Security) {
-		err := d.securityConfigReload(ctx, cfg)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to reload security config", logger.Err(err))
-		}
+	// related infrastructure. A failure is reported, so a change reloaded from
+	// another cluster member is reverted.
+	lifecycle.SecurityUpdateSignal.AddListenerWithErr(func(ctx context.Context, cfg apisystem.Security) error {
+		return d.securityConfigReload(ctx, cfg)
 	})
 
 	// Replace the client keypair when the cluster updates it.
@@ -771,7 +769,7 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 		return nil, fmt.Errorf("Failed to read shared config: %w", err)
 	}
 
-	err = config.LoadShared(ctx, *sharedCfg, membership.PersistSharedConfig)
+	err = config.LoadShared(ctx, *sharedCfg, membership)
 	if err != nil {
 		return nil, err
 	}

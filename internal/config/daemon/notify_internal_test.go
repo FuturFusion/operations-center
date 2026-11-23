@@ -307,7 +307,7 @@ func Test_notify_loadSharedACME(t *testing.T) {
 			run: func(t *testing.T, stored SharedConfig) error {
 				t.Helper()
 
-				return LoadShared(t.Context(), stored, persistChange)
+				return LoadShared(t.Context(), stored, changePersister{})
 			},
 
 			wantACMEEmits:     0,
@@ -318,7 +318,7 @@ func Test_notify_loadSharedACME(t *testing.T) {
 			run: func(t *testing.T, stored SharedConfig) error {
 				t.Helper()
 
-				err := LoadShared(t.Context(), ProvisionalShared(), persistChange)
+				err := LoadShared(t.Context(), ProvisionalShared(), changePersister{})
 				require.NoError(t, err, "the provisional config must load")
 
 				return UpdateSecurity(t.Context(), system.SecurityPut{
@@ -335,7 +335,7 @@ func Test_notify_loadSharedACME(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 			stored := ProvisionalShared()
 			stored.Security.ACME = acme
@@ -364,6 +364,13 @@ func Test_notify_loadSharedACME(t *testing.T) {
 	}
 }
 
-func persistChange(_ context.Context, change SharedChange) (SharedConfig, error) {
-	return change.cfg, nil
+// changePersister stores a change as given and has no other cluster members to publish it to.
+type changePersister struct{}
+
+func (changePersister) PersistSharedConfig(_ context.Context, change SharedChange) (SharedConfig, SharedConfig, error) {
+	return change.cfg, SharedConfig{}, nil
+}
+
+func (changePersister) PublishSharedConfig(context.Context, SharedChange, SharedConfig) error {
+	return nil
 }

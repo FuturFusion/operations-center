@@ -65,8 +65,8 @@ func sharedConfigValidator() validateFunc[SharedConfig] {
 // errSharedNotLoaded is returned for updates of the shared config before it has been loaded from the database.
 var errSharedNotLoaded = domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Shared configuration can not be changed before the database is ready")
 
-func persistSharedNotLoaded(context.Context, section, SharedConfig, SharedConfig) (SharedConfig, error) {
-	return SharedConfig{}, errSharedNotLoaded
+func persistSharedNotLoaded(context.Context, section, SharedConfig, SharedConfig) (SharedConfig, publishFunc, error) {
+	return SharedConfig{}, nil, errSharedNotLoaded
 }
 
 // newProvisionalSharedStore returns a store holding cfg until the shared config is loaded from the database, rejecting all updates.
@@ -84,8 +84,17 @@ func ProvisionalShared() SharedConfig {
 	return sharedStore.Load().Get()
 }
 
-// LoadShared replaces the provisional shared config with cfg read from the database and persists later updates using persist.
-func LoadShared(ctx context.Context, cfg SharedConfig, persist func(ctx context.Context, change SharedChange) (SharedConfig, error)) error {
+// SharedPersister stores a change of the shared config in the database and lets the other cluster members reload it.
+type SharedPersister interface {
+	// PersistSharedConfig stores change and returns the stored config and the one it replaced.
+	PersistSharedConfig(ctx context.Context, change SharedChange) (stored SharedConfig, previous SharedConfig, err error)
+
+	// PublishSharedConfig lets the other members reload a stored change, it reverts the change if one of them fails to.
+	PublishSharedConfig(ctx context.Context, change SharedChange, previous SharedConfig) error
+}
+
+// LoadShared replaces the provisional shared config with cfg read from the database and persists later updates using persister.
+func LoadShared(ctx context.Context, cfg SharedConfig, persister SharedPersister) error {
 	normalized, err := normalizeShared(cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to load shared config: %w", err)
@@ -98,15 +107,30 @@ func LoadShared(ctx context.Context, cfg SharedConfig, persist func(ctx context.
 		return fmt.Errorf("Failed to load shared config: %w", err)
 	}
 
-	sharedStore.Load().replace(ctx, normalized, func(ctx context.Context, update section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, error) {
-		return persist(ctx, SharedChange{section: update, cfg: newCfg})
-	})
+	persist := func(ctx context.Context, update section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, publishFunc, error) {
+		change := SharedChange{section: update, cfg: newCfg}
+
+		stored, previous, err := persister.PersistSharedConfig(ctx, change)
+		if err != nil {
+			return SharedConfig{}, nil, err
+		}
+
+		return stored, func(ctx context.Context) error {
+			return persister.PublishSharedConfig(ctx, change, previous)
+		}, nil
+	}
+
+	sharedStore.Load().replace(ctx, normalized, persist)
 
 	if reflect.DeepEqual(cfg, normalized) {
 		return nil
 	}
 
-	_, err = persist(ctx, SharedChange{section: sectionChanged, cfg: normalized})
+	_, publish, err := persist(ctx, sectionChanged, normalized, normalized)
+	if err == nil {
+		err = publish(ctx)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Failed to persist loaded shared config: %w", err)
 	}
@@ -173,6 +197,16 @@ func sharedEqual(a SharedConfig, b SharedConfig) bool {
 	}
 
 	return reflect.DeepEqual(normalizedA, normalizedB)
+}
+
+// ReloadShared applies the shared config returned by fetch, which another cluster member persisted.
+func ReloadShared(ctx context.Context, fetch func(ctx context.Context) (SharedConfig, error)) error {
+	err := sharedStore.Load().reload(ctx, fetch)
+	if err != nil {
+		return fmt.Errorf("Failed to reload shared config: %w", err)
+	}
+
+	return nil
 }
 
 func init() {

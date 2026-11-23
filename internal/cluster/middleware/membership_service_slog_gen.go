@@ -694,7 +694,7 @@ func (_d MembershipServiceWithSlog) NotifyUpgradeCompleted(ctx context.Context) 
 }
 
 // PersistSharedConfig implements cluster.MembershipService.
-func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, change config.SharedChange) (sharedConfig config.SharedConfig, err error) {
+func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -708,7 +708,8 @@ func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, cha
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("sharedConfig", sharedConfig),
+				slog.Any("stored", stored),
+				slog.Any("previous", previous),
 				slog.Any("err", err),
 			)
 		} else {
@@ -723,6 +724,38 @@ func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, cha
 		}
 	}()
 	return _d._base.PersistSharedConfig(ctx, change)
+}
+
+// PublishSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("change", change),
+			slog.Any("previous", previous),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PublishSharedConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method PublishSharedConfig returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method PublishSharedConfig finished")
+		}
+	}()
+	return _d._base.PublishSharedConfig(ctx, change, previous)
 }
 
 // Rebalance implements cluster.MembershipService.
@@ -753,6 +786,36 @@ func (_d MembershipServiceWithSlog) Rebalance(ctx context.Context) (err error) {
 		}
 	}()
 	return _d._base.Rebalance(ctx)
+}
+
+// ReloadSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ReloadSharedConfig(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ReloadSharedConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ReloadSharedConfig returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ReloadSharedConfig finished")
+		}
+	}()
+	return _d._base.ReloadSharedConfig(ctx)
 }
 
 // RemoveMember implements cluster.MembershipService.

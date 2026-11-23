@@ -105,14 +105,14 @@ func TestOpenGlobalDB(t *testing.T) {
 	globalRepo := clusterRepo.NewGlobalRaftRepo(globalDB)
 	configRepo := clusterRepo.NewConfigRepo(globalRepo)
 
-	require.NoError(t, svc.Enable(ctx, "", configRepo, globalRepo))
+	require.NoError(t, svc.Enable(ctx, "", clusterRepo.NewJoinTokenRepo(globalRepo), configRepo, globalRepo))
 	require.Equal(t, int64(1), globalRepo.GetNodeID())
 
 	// The shared config is stored in the global database.
 	_, err = configRepo.GetSharedConfig(ctx)
 	require.NoError(t, err)
 
-	merged, err := svc.PersistSharedConfig(ctx, config.SharedChange{})
+	merged, _, err := svc.PersistSharedConfig(ctx, config.SharedChange{})
 	require.NoError(t, err)
 
 	stored, err := configRepo.GetSharedConfig(ctx)

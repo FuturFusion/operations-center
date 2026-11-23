@@ -340,7 +340,7 @@ func (_d MembershipServiceWithPrometheus) NotifyUpgradeCompleted(ctx context.Con
 }
 
 // PersistSharedConfig implements cluster.MembershipService.
-func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Context, change config.SharedChange) (sharedConfig config.SharedConfig, err error) {
+func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -351,6 +351,20 @@ func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Contex
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PersistSharedConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.PersistSharedConfig(ctx, change)
+}
+
+// PublishSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PublishSharedConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PublishSharedConfig(ctx, change, previous)
 }
 
 // Rebalance implements cluster.MembershipService.
@@ -365,6 +379,20 @@ func (_d MembershipServiceWithPrometheus) Rebalance(ctx context.Context) (err er
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Rebalance", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Rebalance(ctx)
+}
+
+// ReloadSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ReloadSharedConfig(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ReloadSharedConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ReloadSharedConfig(ctx)
 }
 
 // RemoveMember implements cluster.MembershipService.

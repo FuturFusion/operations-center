@@ -166,6 +166,8 @@ func registerInternalClusterMembershipHandler(
 	leaderAuthenticated.HandleFunc("POST /:handover", response.With(handler.handoverPost))
 	// Rebalance cluster roles.
 	leaderAuthenticated.HandleFunc("POST /:rebalance", response.With(handler.rebalancePost))
+	// Reload the shared config from the global database.
+	authenticated.HandleFunc("POST /:reload-config", response.With(handler.reloadConfigPost))
 	// Trust a supplied join token.
 	leaderUntrusted.HandleFunc("POST /:trust", response.With(handler.trustPost))
 	// Accept a new cluster member.
@@ -226,6 +228,15 @@ func (m *membershipHandler) handoverPost(r *http.Request) response.Response {
 
 func (m *membershipHandler) rebalancePost(r *http.Request) response.Response {
 	err := m.service.Rebalance(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) reloadConfigPost(r *http.Request) response.Response {
+	err := m.service.ReloadSharedConfig(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}

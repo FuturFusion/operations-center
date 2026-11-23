@@ -1311,8 +1311,9 @@ func (m *membership) HandlerFuncs() map[string]http.HandlerFunc {
 }
 
 // PersistSharedConfig stores the section changed by change in the global database.
-// The other sections are kept as stored.
-func (m *membership) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+// The other sections are kept as stored, so a member which missed a change of them can't overwrite it.
+func (m *membership) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
+	var previous config.SharedConfig
 	var merged config.SharedConfig
 	err := transaction.ForceTx(ctx, m.global(), func(ctx context.Context, _ transaction.TX) error {
 		stored, err := m.sharedConfig().GetSharedConfig(ctx)
@@ -1320,13 +1321,140 @@ func (m *membership) PersistSharedConfig(ctx context.Context, change config.Shar
 			return err
 		}
 
-		merged = change.Apply(*stored)
+		previous = *stored
+		merged = change.Apply(previous)
 
 		return m.sharedConfig().UpdateSharedConfig(ctx, merged)
 	})
 	if err != nil {
-		return config.SharedConfig{}, err
+		return config.SharedConfig{}, config.SharedConfig{}, err
 	}
+
+	return merged, previous, nil
+}
+
+// PublishSharedConfig lets the other cluster members reload a change stored by PersistSharedConfig.
+// The change is reverted if an online member fails to reload it.
+func (m *membership) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
+	// Offline members pick up the config on restart.
+	notified := m.reloadSharedConfigOnMembers(ctx, cowsqlcluster.NotifyAlive)
+	if notified == nil {
+		return nil
+	}
+
+	// The revert still runs after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
+	err := transaction.ForceTx(revertCtx, m.global(), func(ctx context.Context, _ transaction.TX) error {
+		current, err := m.sharedConfig().GetSharedConfig(ctx)
+		if err != nil {
+			return err
+		}
+
+		// A later change of the section by another member is kept.
+		if !change.Applied(*current) {
+			return nil
+		}
+
+		return m.sharedConfig().UpdateSharedConfig(ctx, change.Revert(*current, previous))
+	})
+	if err != nil {
+		return errors.Join(notified, fmt.Errorf("Failed to revert the shared config: %w", err))
+	}
+
+	// Let this and the other members reload the previous config.
+	reverted := errors.Join(m.ReloadSharedConfig(revertCtx), m.reloadSharedConfigOnMembers(revertCtx, cowsqlcluster.NotifyTryAll))
+	if reverted != nil {
+		slog.WarnContext(ctx, "Failed to let all cluster members reload the reverted shared config", logger.Err(reverted))
+	}
+
+	return notified
+}
+
+// reloadSharedConfigOnMembers lets the cluster members selected by policy reload the shared config.
+func (m *membership) reloadSharedConfigOnMembers(ctx context.Context, policy cowsqlcluster.NotifierPolicy) error {
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), policy)
+	if err != nil {
+		return fmt.Errorf("Failed to notify cluster members about the shared config change: %w", err)
+	}
+
+	var failedMu sync.Mutex
+	var failed []string
+
+	errs := notifier(func(ctx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
+		c, err := m.MemberClient(address)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
+			_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reload-config", nil, nil)
+		}
+
+		if err != nil {
+			failedMu.Lock()
+			failed = append(failed, address)
+			failedMu.Unlock()
+		}
+
+		return err
+	})
+
+	if len(failed) == 0 {
+		return nil
+	}
+
+	names, err := m.memberNames(ctx, failed)
+	if err != nil {
+		return errors.Join(append(errs, err)...)
+	}
+
+	return domain.NewErrorf(domain.ErrUnavailable, "", "Cluster members %s did not apply the shared config change, it has been reverted", strings.Join(names, ", ")).
+		WithHintf("Retry once all cluster members are reachable.").
+		WithCause(errors.Join(errs...))
+}
+
+// memberNames returns the quoted names of the cluster members at addresses, sorted.
+func (m *membership) memberNames(ctx context.Context, addresses []string) ([]string, error) {
+	members, err := m.GetMembersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	byAddress := make(map[string]string, len(members))
+	for _, member := range members {
+		byAddress[member.Address] = member.Name
+	}
+
+	names := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		name, ok := byAddress[address]
+		if !ok {
+			name = address
+		}
+
+		names = append(names, strconv.Quote(name))
+	}
+
+	slices.Sort(names)
+
+	return names, nil
+}
+
+// ReloadSharedConfig applies the shared config stored in the global database by another cluster member.
+func (m *membership) ReloadSharedConfig(ctx context.Context) error {
+	if m.sharedConfig() == nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster database is still initializing")
+	}
+
+	return config.ReloadShared(ctx, func(ctx context.Context) (config.SharedConfig, error) {
+		cfg, err := m.sharedConfig().GetSharedConfig(ctx)
+		if err != nil {
+			return config.SharedConfig{}, err
+		}
+
+		return *cfg, nil
+	})
+}
 
 // MemberClient returns a client for the cluster member with the given address.
 func (m *membership) MemberClient(address string) (client.OperationsCenterClient, error) {
@@ -1712,5 +1840,4 @@ func (m *membership) gatewayAuthenticator() func(w http.ResponseWriter, r *http.
 
 		return true
 	}
-	return merged, nil
 }

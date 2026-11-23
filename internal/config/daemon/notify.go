@@ -2,6 +2,8 @@ package config
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
@@ -13,8 +15,9 @@ var componentConfig = logger.RegisterComponent("config")
 
 // notify informs the subsystems about a configuration that has already been
 // persisted and committed. It can not fail the update anymore, so everything
-// that may reject a configuration belongs in validate or validateDelegated and
-// failures here are logged only.
+// that may reject a configuration belongs in validate or validateDelegated.
+// Failures here are logged for a change of this member and reported for a
+// change reloaded from another member, which reverts it.
 //
 // The payloads are taken from newCfg, the committed configuration, so listeners
 // see the same values as GetNetwork and friends, defaults included.
@@ -24,7 +27,7 @@ var componentConfig = logger.RegisterComponent("config")
 // an operator recovers a subsystem which failed to pick up an earlier update.
 // Every other section is only notified if it actually changed, so an update of
 // one section does not disturb the others.
-func notifyLocal(ctx context.Context, updated section, oldCfg, newCfg localConfig) {
+func notifyLocal(ctx context.Context, updated section, oldCfg, newCfg localConfig) error {
 	// The component is only applied to the records emitted here. The context
 	// passed to the listeners keeps the component of the caller, so they are
 	// not attributed to the config package.
@@ -57,43 +60,52 @@ func notifyLocal(ctx context.Context, updated section, oldCfg, newCfg localConfi
 
 		metrics.Apply(newCfg.Settings.MetricsEnabled, newCfg.Settings.MetricsComponents)
 	}
+
+	return nil
 }
 
-func notifyShared(ctx context.Context, updated section, oldCfg, newCfg SharedConfig) {
-	// The component is only applied to the records emitted here. The context
-	// passed to the listeners keeps the component of the caller, so they are
-	// not attributed to the config package.
-	logCtx := logger.ContextWithComponent(ctx, componentConfig)
+// notifyShared applies a shared configuration and returns the errors of the listeners failing to.
+// Every listener is run, a failed one does not keep the others from applying the configuration.
+func notifyShared(ctx context.Context, updated section, oldCfg, newCfg SharedConfig) error {
+	var errs []error
 
 	if updated == sectionNetwork || isSharedNetworkChanged(oldCfg, newCfg) {
-		lifecycle.SharedNetworkUpdateSignal.Emit(ctx, newCfg.Network)
+		errs = append(errs, applied("network", lifecycle.SharedNetworkUpdateSignal.TryEmit(ctx, newCfg.Network)))
 	}
 
 	if isSecurityAuthChanged(oldCfg, newCfg) {
-		lifecycle.SecurityUpdateSignal.Emit(ctx, newCfg.Security)
+		errs = append(errs, applied("security", lifecycle.SecurityUpdateSignal.TryEmit(ctx, newCfg.Security)))
 	}
 
 	if isTrustedHTTPSProxiesChanged(oldCfg, newCfg) {
-		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, newCfg.Security.TrustedHTTPSProxies)
+		errs = append(errs, applied("trusted HTTPS proxies", lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.TryEmit(ctx, newCfg.Security.TrustedHTTPSProxies)))
 	}
 
 	// The certificate already matches the stored ACME config.
 	if updated != sectionLoaded && isACMEChanged(oldCfg, newCfg) {
-		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, newCfg.Security.ACME)
+		errs = append(errs, applied("ACME", lifecycle.SecurityACMEUpdateSignal.TryEmit(ctx, newCfg.Security.ACME)))
 	}
 
 	if updated == sectionSettings || isSharedSettingsChanged(oldCfg, newCfg) {
-		err := lifecycle.SharedSettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)
-		if err != nil {
-			slog.ErrorContext(logCtx, "Failed to apply updated settings config", logger.Err(err))
-		}
+		errs = append(errs, applied("settings", lifecycle.SharedSettingsUpdateSignal.TryEmit(ctx, newCfg.Settings)))
 	}
 
 	if updated == sectionUpdates || isUpdatesChanged(oldCfg, newCfg) {
-		lifecycle.UpdatesUpdateSignal.Emit(ctx, newCfg.Updates)
+		errs = append(errs, applied("updates", lifecycle.UpdatesUpdateSignal.TryEmit(ctx, newCfg.Updates)))
 	}
 
 	if updated == sectionCluster || isSharedClusterChanged(oldCfg, newCfg) {
-		lifecycle.SharedClusterUpdateSignal.Emit(ctx, newCfg.Cluster)
+		errs = append(errs, applied("cluster", lifecycle.SharedClusterUpdateSignal.TryEmit(ctx, newCfg.Cluster)))
 	}
+
+	return errors.Join(errs...)
+}
+
+// applied names the section whose listeners returned err.
+func applied(section string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return fmt.Errorf("Failed to apply the %s config: %w", section, err)
 }
