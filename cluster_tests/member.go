@@ -3,13 +3,19 @@ package clustertests
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +27,8 @@ import (
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	membershipapi "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/sql/dump"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -101,7 +109,8 @@ func (m *member) tryStart() error {
 	defer out.Close()
 
 	cmd := exec.Command(m.binary, "--debug", "--logfile", logFile)
-	cmd.Env = append(os.Environ(), "OPERATIONS_CENTER_DIR="+m.dir)
+	// The members would otherwise download the updates of the default source, which adds to the file sets counted by the tests.
+	cmd.Env = append(os.Environ(), "OPERATIONS_CENTER_DIR="+m.dir, "OPERATIONS_CENTER_SOURCE_POLL_SKIP_FIRST=true")
 	cmd.Stdout = out
 	cmd.Stderr = out
 
@@ -169,6 +178,26 @@ func (m *member) kill() {
 	m.cmd = nil
 }
 
+// clientCertificate returns the client certificate of the member.
+func (m *member) clientCertificate(t *testing.T) string {
+	t.Helper()
+
+	content, err := os.ReadFile(filepath.Join(m.dir, "client.crt"))
+	require.NoError(t, err)
+
+	return string(content)
+}
+
+// serverCertificate returns the server keypair of the member, which identifies it to the other members.
+func (m *member) serverCertificate(t *testing.T) tls.Certificate {
+	t.Helper()
+
+	cert, err := tls.LoadX509KeyPair(filepath.Join(m.dir, "server.crt"), filepath.Join(m.dir, "server.key"))
+	require.NoError(t, err)
+
+	return cert
+}
+
 // readFile returns the content of the file name below the var dir of the member.
 func (m *member) readFile(t *testing.T, name string) string {
 	t.Helper()
@@ -199,6 +228,37 @@ func (m *member) request(t *testing.T, method string, path string, body io.Reade
 	require.NoError(t, err)
 
 	return resp.StatusCode, content
+}
+
+// jsonRequest sends a JSON request with the headers to the API of the member and returns the status code and the response headers.
+func (m *member) jsonRequest(t *testing.T, method string, path string, content any, headers map[string]string) (int, http.Header) {
+	t.Helper()
+
+	var body io.Reader = http.NoBody
+	if content != nil {
+		data, err := json.Marshal(content)
+		require.NoError(t, err)
+
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), method, "http://unix.socket"+path, body)
+	require.NoError(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	resp, err := m.client.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	_, err = io.Copy(io.Discard, resp.Body)
+	require.NoError(t, err)
+
+	return resp.StatusCode, resp.Header
 }
 
 // api sends a JSON request to the API of the member and returns the response.
@@ -232,11 +292,18 @@ func (m *member) mustGet(t *testing.T, path string, target any) error {
 
 // tryAPI is like api, but returns an error instead of failing the test, e.g. while the member restarts.
 func (m *member) tryAPI(method string, path string, content any) (api.Response, error) {
+	resp, _, err := m.tryAPIWithETag(method, path, content, "")
+
+	return resp, err
+}
+
+// tryAPIWithETag sends the ETag, if not empty, as If-Match header and returns the ETag of the response.
+func (m *member) tryAPIWithETag(method string, path string, content any, etag string) (api.Response, string, error) {
 	var body io.Reader
 	if content != nil {
 		data, err := json.Marshal(content)
 		if err != nil {
-			return api.Response{}, err
+			return api.Response{}, "", err
 		}
 
 		body = bytes.NewReader(data)
@@ -247,14 +314,17 @@ func (m *member) tryAPI(method string, path string, content any) (api.Response, 
 
 	req, err := http.NewRequestWithContext(ctx, method, "http://unix.socket"+path, body)
 	if err != nil {
-		return api.Response{}, err
+		return api.Response{}, "", err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	if etag != "" {
+		req.Header.Set("If-Match", etag)
+	}
 
 	httpResp, err := m.client.Do(req)
 	if err != nil {
-		return api.Response{}, err
+		return api.Response{}, "", err
 	}
 
 	defer httpResp.Body.Close()
@@ -262,16 +332,96 @@ func (m *member) tryAPI(method string, path string, content any) (api.Response, 
 	var resp api.Response
 	err = json.NewDecoder(httpResp.Body).Decode(&resp)
 	if err != nil {
-		return api.Response{}, fmt.Errorf("Failed to decode response of %s %s: %w", method, path, err)
+		return api.Response{}, "", fmt.Errorf("Failed to decode response of %s %s: %w", method, path, err)
 	}
 
-	return resp, nil
+	return resp, httpResp.Header.Get("ETag"), nil
+}
+
+// members returns the cluster members as seen by m.
+func (m *member) members(t *testing.T) []api.ClusterMember {
+	t.Helper()
+
+	members, err := m.tryMembers()
+	require.NoError(t, err)
+
+	return members
+}
+
+// tryMembers is like members, but returns an error instead of failing the test.
+func (m *member) tryMembers() ([]api.ClusterMember, error) {
+	resp, err := m.tryAPI(http.MethodGet, "/1.0/membership/members", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+
+	var members []api.ClusterMember
+	err = resp.MetadataAsStruct(&members)
+
+	return members, err
+}
+
+// query runs a SQL statement on the global database.
+func (m *member) query(t *testing.T, query string) {
+	t.Helper()
+
+	m.mustAPI(t, http.MethodPost, "/internal/sql", map[string]string{"query": query})
+}
+
+// queryRows runs a SELECT on the global database and returns its rows.
+func (m *member) queryRows(t *testing.T, query string) [][]any {
+	t.Helper()
+
+	resp := m.mustAPI(t, http.MethodPost, "/internal/sql", map[string]string{"query": query})
+
+	var batch dump.SQLBatch
+	err := resp.MetadataAsStruct(&batch)
+	require.NoError(t, err)
+	require.Len(t, batch.Results, 1)
+
+	return batch.Results[0].Rows
 }
 
 // hasFile reports whether the member stores the file name below its var dir.
 func (m *member) hasFile(name string) bool {
 	_, err := os.Stat(filepath.Join(m.dir, filepath.FromSlash(name)))
 	return err == nil
+}
+
+// writeFile stores the file name below the var dir of the member.
+func (m *member) writeFile(t *testing.T, name string, content string) {
+	t.Helper()
+
+	filename := filepath.Join(m.dir, filepath.FromSlash(name))
+
+	err := os.MkdirAll(filepath.Dir(filename), 0o700)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filename, []byte(content), 0o600)
+	require.NoError(t, err)
+}
+
+// ageFile makes the file name below the var dir old enough to be pruned on startup.
+func (m *member) ageFile(t *testing.T, name string) {
+	t.Helper()
+
+	old := time.Now().Add(-time.Hour)
+	err := os.Chtimes(filepath.Join(m.dir, filepath.FromSlash(name)), old, old)
+	require.NoError(t, err)
+}
+
+// logSize returns the current size of the log of the member.
+func (m *member) logSize() int64 {
+	fi, err := os.Stat(filepath.Join(m.dir, "daemon.log"))
+	if err != nil {
+		return 0
+	}
+
+	return fi.Size()
 }
 
 func (m *member) logTail() string {
@@ -334,6 +484,53 @@ func (m *member) httpsRequest(t *testing.T, cert *tls.Certificate, method string
 	return resp.StatusCode, string(data)
 }
 
+// tryTaskStatus returns the state of the leader tasks of the member target, through the network API of m with the member certificate cert.
+// An empty target returns the state of m.
+func (m *member) tryTaskStatus(cert *tls.Certificate, target string) (*membershipapi.InternalClusterTaskStatus, error) {
+	path := "/internal/membership/tasks/:status"
+	if target != "" {
+		path += "?target=" + url.QueryEscape(target)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://"+m.address+path, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{*cert}} //nolint:gosec
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
+
+	httpResp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer httpResp.Body.Close()
+
+	var resp api.Response
+	err = json.NewDecoder(httpResp.Body).Decode(&resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+
+	var status membershipapi.InternalClusterTaskStatus
+	err = resp.MetadataAsStruct(&status)
+	if err != nil {
+		return nil, err
+	}
+
+	return &status, nil
+}
+
 // newClientCertificate returns a new client certificate and its PEM encoding.
 func newClientCertificate(t *testing.T) (tls.Certificate, string) {
 	t.Helper()
@@ -345,4 +542,76 @@ func newClientCertificate(t *testing.T) (tls.Certificate, string) {
 	require.NoError(t, err)
 
 	return cert, string(certPEM)
+}
+
+// renewClusterCertificate returns a PEM encoded certificate for the key of the PEM encoded key pair, valid from now on and with the same names.
+func renewClusterCertificate(t *testing.T, certPEM string, keyPEM string) string {
+	t.Helper()
+
+	keyPair, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+	require.NoError(t, err)
+
+	current, err := x509.ParseCertificate(keyPair.Certificate[0])
+	require.NoError(t, err)
+
+	signer, ok := keyPair.PrivateKey.(crypto.Signer)
+	require.True(t, ok)
+
+	// The renewed certificate has to be newer than the current one.
+	notBefore := time.Now()
+	if !notBefore.After(current.NotBefore) {
+		notBefore = current.NotBefore.Add(time.Second)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(notBefore.UnixNano()),
+		Subject:               current.Subject,
+		NotBefore:             notBefore,
+		NotAfter:              notBefore.Add(365 * 24 * time.Hour),
+		DNSNames:              current.DNSNames,
+		IPAddresses:           current.IPAddresses,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, signer.Public(), signer)
+	require.NoError(t, err)
+
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+}
+
+// newKeyPairPEM returns a generated PEM encoded certificate and key.
+func newKeyPairPEM(t *testing.T) (certPEM string, keyPEM string) {
+	t.Helper()
+
+	cert, key, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	return string(cert), string(key)
+}
+
+// presentedCertificate returns the PEM encoded leaf certificate the server at address presents.
+func presentedCertificate(t *testing.T, address string) string {
+	t.Helper()
+
+	conn, err := tls.Dial("tcp", address, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec
+	require.NoError(t, err)
+
+	defer func() { _ = conn.Close() }()
+
+	certs := conn.ConnectionState().PeerCertificates
+	require.NotEmpty(t, certs)
+
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certs[0].Raw}))
+}
+
+// errorMessage returns the error message of the API response body.
+func errorMessage(t *testing.T, body string) string {
+	t.Helper()
+
+	var resp api.Response
+	require.NoError(t, json.Unmarshal([]byte(body), &resp), body)
+
+	return resp.Error
 }

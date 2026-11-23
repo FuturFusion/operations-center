@@ -1,7 +1,8 @@
 # Cluster Tests
 
-The cluster tests run Operations Center members, each one as a separate
-`operations-centerd` process on the local host.
+The cluster tests run an Operations Center cluster of three members, each one
+as a separate `operations-centerd` process on the local host. The handover
+test runs a cluster of four members, so one of them is a stand-by member.
 
 ## Usage
 
