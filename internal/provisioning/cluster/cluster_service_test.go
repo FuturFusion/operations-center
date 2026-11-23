@@ -16003,7 +16003,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{},
 			},
 			incusClientDeleteStoragePoolVolumeErrs: queue.Errs{
-				incusapi.StatusErrorf(404, "Storage pool not found"),
+				domain.NewErrorf(domain.ErrNotFound, "", "Storage pool not found"),
 				boom.Error,
 			},
 
@@ -16143,7 +16143,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
 				{},
 			},
-			incusClientDeleteClusterMemberErr: incusapi.StatusErrorf(404, "Cluster member not found"),
+			incusClientDeleteClusterMemberErr: domain.NewErrorf(domain.ErrNotFound, "", "Cluster member not found"),
 
 			assertErr: require.NoError,
 			assertLog: log.Contains("Forceful server removal"),

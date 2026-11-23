@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"maps"
 	"net"
-	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -2045,7 +2044,7 @@ func clearOCCreatedStorageVolumes(removedServerName string, incusClient provisio
 	for _, storageVolumeName := range ocCreatedStorageVolumes {
 		err = incusClient.UseTarget(removedServerName).DeleteStoragePoolVolume("local", "custom", storageVolumeName)
 		if err != nil {
-			if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				continue
 			}
 
@@ -2182,7 +2181,7 @@ func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serve
 		}
 
 		// The server is already gone from the cluster, nothing left to do.
-		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil
 		}
 
