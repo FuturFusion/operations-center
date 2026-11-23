@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	imageSourceName = "e2e-test"
+	imageSourceName = "e2e_test"
 	imageSourceURL  = "https://images.linuxcontainers.org"
 
 	// flagsImageOS is the operating system of the image, which is uploaded
@@ -169,25 +169,25 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	name := fmt.Sprintf("alpinelinux:edge:%s:default", cpuArch)
 
 	t.Log("Add images to operations-center")
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/alpine-vm %[2]s/rootfs.squashfs %[2]s/alpine-vm.root`, 5*time.Minute, cpuArch, imagesDir)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s/alpine-vm %[2]s/rootfs.squashfs %[2]s/alpine-vm.root`, 5*time.Minute, cpuArch, imagesDir)
 
-	resp := mustRun(t, `../bin/operations-center.linux.%s image incus list`, cpuArch)
+	resp := mustRun(t, `../bin/operations-center.linux.%s image incus image list local`, cpuArch)
 	fmt.Println(resp.Output())
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 1'`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image list local -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 1'`, cpuArch, name)
 
 	// The metadata is derived from the metadata tarball, not from flags.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and (.versions | has("%[4]s"))'`, cpuArch, name, cpuArch, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and (.versions | has("%[4]s"))'`, cpuArch, name, cpuArch, version)
 	// The files are stored under their canonical names, not under the names
 	// they have been uploaded with.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys | sort == ["disk.qcow2","incus.tar.xz","root.squashfs"]'`, cpuArch, name, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys | sort == ["disk.qcow2","incus.tar.xz","root.squashfs"]'`, cpuArch, name, version)
 
 	// The file types are detected from the content of the files.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | .["incus.tar.xz"].ftype == "incus.tar.xz" and .["root.squashfs"].ftype == "squashfs" and .["disk.qcow2"].ftype == "disk-kvm.img"'`, cpuArch, name, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items | .["incus.tar.xz"].ftype == "incus.tar.xz" and .["root.squashfs"].ftype == "squashfs" and .["disk.qcow2"].ftype == "disk-kvm.img"'`, cpuArch, name, version)
 
 	// The combined hashes, which Incus derives the image fingerprints from, are
 	// calculated on upload.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | (.combined_squashfs_sha256 | length) == 64 and (.["combined_disk-kvm-img_sha256"] | length) == 64'`, cpuArch, name, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | (.combined_squashfs_sha256 | length) == 64 and (.["combined_disk-kvm-img_sha256"] | length) == 64'`, cpuArch, name, version)
 
 	// The name of the metadata tarball does not matter, the one Incus itself
 	// uses has to keep working as well.
@@ -200,11 +200,11 @@ func assertIncusImageAdd(t *testing.T, imagesDir string, version string) string 
 	// Adding the same version a second time is rejected. The version is only
 	// known after the metadata tarball has been read, so this also asserts,
 	// that the metadata tarball is accepted.
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs`, cpuArch, imagesDir)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s/incus.tar.xz %[2]s/rootfs.squashfs`, cpuArch, imagesDir)
 	require.False(t, resp.Success(), "expect adding an existing image version to fail")
 
 	// An image file in the place of the metadata tarball is rejected.
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/rootfs.squashfs %[2]s/alpine-vm`, cpuArch, imagesDir)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s/rootfs.squashfs %[2]s/alpine-vm`, cpuArch, imagesDir)
 	require.False(t, resp.Success(), "expect adding an image file as metadata tarball to fail")
 	require.Contains(t, resp.Output(), "is not a metadata tarball")
 
@@ -219,21 +219,21 @@ func assertIncusImageCRUD(t *testing.T, tmpDir string, imagesDir string, downloa
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus")
+	t.Log("Assert operations-center cli image incus image")
 
 	uploadedSHA := mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs"))
 
 	// The uploaded file is stored verbatim, only its name is normalized.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .sha256 == "%[4]s" and .size > 0'`, cpuArch, name, version, uploadedSHA)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .sha256 == "%[4]s" and .size > 0'`, cpuArch, name, version, uploadedSHA)
 
 	// show renders in all the supported formats.
-	resp := mustRun(t, `../bin/operations-center.linux.%s image incus show %s -f yaml`, cpuArch, name)
+	resp := mustRun(t, `../bin/operations-center.linux.%s image incus image show local %s -f yaml`, cpuArch, name)
 	require.Contains(t, resp.Output(), "name: "+name)
 
-	mustRun(t, `../bin/operations-center.linux.%s image incus show %s`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%s image incus image show local %s`, cpuArch, name)
 
 	// Showing a non existing image fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus show does-not-exist:1:%s:default`, cpuArch, cpuArch)
+	resp = run(t, `../bin/operations-center.linux.%s image incus image show local does-not-exist:1:%s:default`, cpuArch, cpuArch)
 	require.False(t, resp.Success(), "expect showing a non existing image to fail")
 
 	// edit reads the new state from stdin, if stdin is not a terminal.
@@ -241,17 +241,17 @@ func assertIncusImageCRUD(t *testing.T, tmpDir string, imagesDir string, downloa
 	err := os.WriteFile(imagePutFilename, []byte("---\naliases:\n  - e2e/alpine\n  - e2e/alpine/edge\ndescription: E2E test image\n"), 0o600)
 	require.NoError(t, err)
 
-	mustRun(t, `../bin/operations-center.linux.%s image incus edit %s < %s`, cpuArch, name, imagePutFilename)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.description == "E2E test image" and ((.aliases | sort) == ["e2e/alpine","e2e/alpine/edge"])'`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%s image incus image edit local %s < %s`, cpuArch, name, imagePutFilename)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.description == "E2E test image" and ((.aliases | sort) == ["e2e/alpine","e2e/alpine/edge"])'`, cpuArch, name)
 
 	// file downloads a single file of an image version. The command refuses to
 	// overwrite an existing target file, so the target directory is empty.
 	downloaded := filepath.Join(downloadDir, "root.squashfs")
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus file %s %s root.squashfs %s`, 2*time.Minute, cpuArch, name, version, downloaded)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus image file local %s %s root.squashfs %s`, 2*time.Minute, cpuArch, name, version, downloaded)
 	require.Equal(t, uploadedSHA, mustSHA256(t, downloaded), "expect the downloaded file to match the uploaded file")
 
 	// Downloading an unknown file of a known version fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus file %s %s does-not-exist %s`, cpuArch, name, version, filepath.Join(downloadDir, "does-not-exist"))
+	resp = run(t, `../bin/operations-center.linux.%s image incus image file local %s %s does-not-exist %s`, cpuArch, name, version, filepath.Join(downloadDir, "does-not-exist"))
 	require.False(t, resp.Success(), "expect downloading a non existing file to fail")
 }
 
@@ -264,7 +264,7 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus add with metadata flags")
+	t.Log("Assert operations-center cli image incus image add with metadata flags")
 
 	name := fmt.Sprintf("%s:%s:%s:%s", flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
 
@@ -275,22 +275,22 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	payload := filepath.Join(payloadDir, "rootfs.squashfs")
 	payloadSHA := mustWriteFileWithContent(t, payload, squashfsMagic, flagsImageSize)
 
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, time.Minute, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, time.Minute, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "%[3]s" and .release == "%[4]s" and .arch == "%[5]s" and .variant == "%[6]s"'`, cpuArch, name, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .ftype == "squashfs" and .sha256 == "%[4]s" and .size == %[5]d'`, cpuArch, name, flagsImageVersion, payloadSHA, flagsImageSize)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.name == "%[2]s" and .os == "%[3]s" and .release == "%[4]s" and .arch == "%[5]s" and .variant == "%[6]s"'`, cpuArch, name, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items["root.squashfs"] | .ftype == "squashfs" and .sha256 == "%[4]s" and .size == %[5]d'`, cpuArch, name, flagsImageVersion, payloadSHA, flagsImageSize)
 
 	// The generated metadata tarball has to be a complete xz archive containing a
 	// metadata.yaml, otherwise the image is unusable for Incus.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | .ftype == "incus.tar.xz" and .size > 0 and (.sha256 | length) == 64'`, cpuArch, name, flagsImageVersion)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions["%[3]s"].items["incus.tar.xz"] | .ftype == "incus.tar.xz" and .size > 0 and (.sha256 | length) == 64'`, cpuArch, name, flagsImageVersion)
 
 	metadataFile := filepath.Join(downloadDir, "incus.tar.xz")
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus file %s %s incus.tar.xz %s`, time.Minute, cpuArch, name, flagsImageVersion, metadataFile)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus image file local %s %s incus.tar.xz %s`, time.Minute, cpuArch, name, flagsImageVersion, metadataFile)
 	mustRun(t, `tar -tJf %s | grep -q '^metadata.yaml$'`, metadataFile)
 	mustRun(t, `tar -xJf %s -O metadata.yaml | grep -q 'serial: "%s"'`, metadataFile, flagsImageVersion)
 
 	// Without a metadata tarball all the metadata flags are required.
-	resp := run(t, `../bin/operations-center.linux.%s image incus add %s`, cpuArch, payload)
+	resp := run(t, `../bin/operations-center.linux.%s image incus image add %s`, cpuArch, payload)
 	require.False(t, resp.Success(), "expect add without metadata to fail")
 	require.Contains(t, resp.Output(), "Either provide the image attributes")
 
@@ -300,17 +300,17 @@ func assertIncusImageAddFromFlags(t *testing.T, imagesDir string, downloadDir st
 	unsupported := filepath.Join(payloadDir, "unsupported.img")
 	mustWriteFileWithContent(t, unsupported, nil, flagsImageSize)
 
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, cpuArch, unsupported, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageUnsupportedVersion)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version %[7]s`, cpuArch, unsupported, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageUnsupportedVersion)
 	require.False(t, resp.Success(), "expect add of an unsupported image file to fail")
 	require.Contains(t, resp.Output(), "Unsupported image file")
 
 	// The version has to look like a simplestreams serial.
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version notadate`, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s --os %[3]s --release %[4]s --arch %[5]s --variant %[6]s --image-version notadate`, cpuArch, payload, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
 	require.False(t, resp.Success(), "expect an invalid image version to be rejected")
 	require.Contains(t, resp.Output(), "8 digits long date")
 
 	// Only the architectures known to Incus are accepted.
-	resp = run(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s --os %[3]s --release %[4]s --arch sparc64 --variant %[5]s --image-version %[6]s`, cpuArch, payload, flagsImageOS, flagsImageRelease, flagsImageVariant, flagsImageVersion)
+	resp = run(t, `../bin/operations-center.linux.%[1]s image incus image add %[2]s --os %[3]s --release %[4]s --arch sparc64 --variant %[5]s --image-version %[6]s`, cpuArch, payload, flagsImageOS, flagsImageRelease, flagsImageVariant, flagsImageVersion)
 	require.False(t, resp.Success(), "expect an unsupported architecture to be rejected")
 
 	return name
@@ -330,7 +330,7 @@ func assertIncusImageSourceRefresh(t *testing.T) (release string, version string
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus source")
+	t.Log("Assert operations-center cli image incus (image sources)")
 
 	t.Cleanup(ocIncusImageSourceCleanup(t, imageSourceName))
 
@@ -348,52 +348,57 @@ func assertIncusImageSourceRefresh(t *testing.T) (release string, version string
 
 	// An empty filter expression is rejected client side, so that nobody
 	// accidentally mirrors a whole image server.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source add %s %s --filter ''`, cpuArch, imageSourceName, imageSourceURL)
+	resp = run(t, `../bin/operations-center.linux.%s image incus add %s %s --filter ''`, cpuArch, imageSourceName, imageSourceURL)
 	require.False(t, resp.Success(), "expect an empty filter expression to be rejected")
 	require.Contains(t, resp.Output(), "Filter expression can not be empty")
 
 	// Omitting the filter expression entirely behaves the same.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source add %s %s`, cpuArch, imageSourceName, imageSourceURL)
+	resp = run(t, `../bin/operations-center.linux.%s image incus add %s %s`, cpuArch, imageSourceName, imageSourceURL)
 	require.False(t, resp.Success(), "expect a missing filter expression to be rejected")
 
 	// A filter expression, which does not compile, is rejected server side.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source add %s %s --filter 'no_such_field == "x"'`, cpuArch, imageSourceName, imageSourceURL)
+	resp = run(t, `../bin/operations-center.linux.%s image incus add %s %s --filter 'no_such_field == "x"'`, cpuArch, imageSourceName, imageSourceURL)
 	require.False(t, resp.Success(), "expect an invalid filter expression to be rejected")
 	require.Contains(t, resp.Output(), "failed to validate filter expression")
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus source list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, imageSourceName)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, imageSourceName)
 
 	filter := incusImageSourceFilter(name, version, `file_type in ["incus.tar.xz", "squashfs"]`)
-	mustRun(t, `../bin/operations-center.linux.%s image incus source add %s %s --filter '%s'`, cpuArch, imageSourceName, imageSourceURL, filter)
+	mustRun(t, `../bin/operations-center.linux.%s image incus add %s %s --filter '%s'`, cpuArch, imageSourceName, imageSourceURL, filter)
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus source list -f json | jq -r -e '[ .[] | select(.name == "%[2]s" and .url == "%[3]s") ] | length == 1'`, cpuArch, imageSourceName, imageSourceURL)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s" and .url == "%[3]s") ] | length == 1'`, cpuArch, imageSourceName, imageSourceURL)
 	// The filter expression contains double quotes, so it is passed to jq as an
 	// argument instead of being interpolated into the jq program.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus source show %[2]s -f json | jq -r -e --arg filter '%[4]s' '.name == "%[2]s" and .url == "%[3]s" and .filter_expression == $filter'`, cpuArch, imageSourceName, imageSourceURL, filter)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e --arg filter '%[4]s' '.name == "%[2]s" and .url == "%[3]s" and .filter_expression == $filter'`, cpuArch, imageSourceName, imageSourceURL, filter)
 
-	resp = mustRun(t, `../bin/operations-center.linux.%s image incus source show %s -f yaml`, cpuArch, imageSourceName)
+	resp = mustRun(t, `../bin/operations-center.linux.%s image incus show %s -f yaml`, cpuArch, imageSourceName)
 	require.Contains(t, resp.Output(), "url: "+imageSourceURL)
 
 	// Adding the same source a second time is rejected.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source add %s %s --filter 'true'`, cpuArch, imageSourceName, imageSourceURL)
+	resp = run(t, `../bin/operations-center.linux.%s image incus add %s %s --filter 'true'`, cpuArch, imageSourceName, imageSourceURL)
 	require.False(t, resp.Success(), "expect a duplicate image source to be rejected")
 
 	// A refresh is synchronous. It downloads every file matching the filter
 	// expression and verifies its sha256 against the manifest of the source.
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus source refresh %s`, 10*time.Minute, cpuArch, imageSourceName)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus refresh %s`, 10*time.Minute, cpuArch, imageSourceName)
 
-	resp = mustRun(t, `../bin/operations-center.linux.%s image incus list`, cpuArch)
+	resp = mustRun(t, `../bin/operations-center.linux.%s image incus image list %s`, cpuArch, imageSourceName)
 	fmt.Println(resp.Output())
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '(.versions | keys) == ["%[3]s"]'`, cpuArch, name, version)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys | sort == ["incus.tar.xz","root.squashfs"]'`, cpuArch, name, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show `+imageSourceName+` %[2]s -f json | jq -r -e '(.versions | keys) == ["%[3]s"]'`, cpuArch, name, version)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show `+imageSourceName+` %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys | sort == ["incus.tar.xz","root.squashfs"]'`, cpuArch, name, version)
 
 	// The aliases and the description are adopted from the source.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '(.aliases | index("alpine/%[3]s")) != null'`, cpuArch, name, release)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show `+imageSourceName+` %[2]s -f json | jq -r -e '(.aliases | index("alpine/%[3]s")) != null'`, cpuArch, name, release)
 
 	// A second refresh is idempotent.
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus source refresh %s`, 5*time.Minute, cpuArch, imageSourceName)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '(.versions | keys) == ["%[3]s"]'`, cpuArch, name, version)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus refresh %s`, 5*time.Minute, cpuArch, imageSourceName)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show `+imageSourceName+` %[2]s -f json | jq -r -e '(.versions | keys) == ["%[3]s"]'`, cpuArch, name, version)
+
+	// The refresh owns the images of a source, they can not be removed manually.
+	resp = run(t, `../bin/operations-center.linux.%s image incus image remove %s %s`, cpuArch, imageSourceName, name)
+	require.False(t, resp.Success(), "expect removing an image of an image source to fail")
+	require.Contains(t, resp.Error(), "can not be changed", "expect the error to explain, that only local images can be changed")
 
 	return release, version
 }
@@ -410,14 +415,14 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 	t.Log("Assert public simplestreams endpoints")
 
 	mustRun(t, `curl -sSfk "%s/streams/v1/index.json" | jq -r -e '.format == "index:1.0" and .index.images.datatype == "image-downloads" and .index.images.path == "streams/v1/images.json" and .index.images.format == "products:1.0"'`, ocImagesURL)
-	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") != null) and (index("%[3]s") != null)'`, ocImagesURL, manualName, sourceName)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") != null) and (index("%[3]s") != null)'`, ocImagesURL, "local:"+manualName, imageSourceName+":"+sourceName)
 
 	mustRun(t, `curl -sSfk "%s/streams/v1/images.json" | jq -r -e '.content_id == "images" and .datatype == "image-downloads" and .format == "products:1.0"'`, ocImagesURL)
-	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"] | .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and .aliases == "e2e/alpine,e2e/alpine/edge"'`, ocImagesURL, manualName, cpuArch)
-	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | to_entries | all(.value | (.sha256 | length) == 64 and .size > 0 and (.ftype | length) > 0 and (.path | length) > 0)'`, ocImagesURL, manualName, manualVersion)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["local:%[2]s"] | .os == "alpinelinux" and .release == "edge" and .arch == "%[3]s" and .variant == "default" and .aliases == "e2e/alpine,e2e/alpine/edge"'`, ocImagesURL, manualName, cpuArch)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["local:%[2]s"].versions["%[3]s"].items | to_entries | all(.value | (.sha256 | length) == 64 and .size > 0 and (.ftype | length) > 0 and (.path | length) > 0)'`, ocImagesURL, manualName, manualVersion)
 
-	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, manualName, manualVersion, "root.squashfs", mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs")))
-	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, sourceName, sourceVersion, "root.squashfs", "")
+	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, "local:"+manualName, manualVersion, "root.squashfs", mustSHA256(t, filepath.Join(imagesDir, "rootfs.squashfs")))
+	assertPublicSimplestreamsFile(t, downloadDir, ocImagesURL, imageSourceName+":"+sourceName, sourceVersion, "root.squashfs", "")
 
 	// The endpoints are public, the authenticated image API is not.
 	mustCurl(t, http.StatusUnauthorized, `-o /dev/null "%s/images/incus"`, newOperationsCenterAPI(t).baseURL)
@@ -426,21 +431,21 @@ func assertPublicSimplestreams(t *testing.T, downloadDir string, imagesDir strin
 // assertPublicSimplestreamsFile downloads the given file through the path
 // advertised for it in images.json and verifies its checksum. If wantSHA256 is
 // empty, the checksum advertised in images.json is used.
-func assertPublicSimplestreamsFile(t *testing.T, downloadDir string, ocImagesURL string, name string, version string, filename string, wantSHA256 string) {
+func assertPublicSimplestreamsFile(t *testing.T, downloadDir string, ocImagesURL string, productName string, version string, filename string, wantSHA256 string) {
 	t.Helper()
 
-	resp := mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].path'`, ocImagesURL, name, version, filename)
+	resp := mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].path'`, ocImagesURL, productName, version, filename)
 	itemPath := resp.OutputTrimmed()
 
 	if wantSHA256 == "" {
-		resp = mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].sha256'`, ocImagesURL, name, version, filename)
+		resp = mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items["%[4]s"].sha256'`, ocImagesURL, productName, version, filename)
 		wantSHA256 = resp.OutputTrimmed()
 	}
 
-	target := filepath.Join(downloadDir, fmt.Sprintf("public_%s_%s", strings.ReplaceAll(name, ":", "_"), filename))
+	target := filepath.Join(downloadDir, fmt.Sprintf("public_%s_%s", strings.ReplaceAll(productName, ":", "_"), filename))
 	mustRunWithTimeout(t, `curl -sSfk -o %s "%s%s"`, 5*time.Minute, target, ocImagesURL, itemPath)
 
-	require.Equalf(t, wantSHA256, mustSHA256(t, target), "expect the path advertised for %q of image %q to serve the file", filename, name)
+	require.Equalf(t, wantSHA256, mustSHA256(t, target), "expect the path advertised for %q of image %q to serve the file", filename, productName)
 }
 
 // assertLaunchFromOCImagesRemote registers Operations Center as image remote on
@@ -489,7 +494,7 @@ func assertIncusImageSourcePrune(t *testing.T, tmpDir string, ocImagesURL string
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus source edit prunes images")
+	t.Log("Assert operations-center cli image incus edit prunes images")
 
 	filter := incusImageSourceFilter(sourceName, sourceVersion, `file_type == "incus.tar.xz"`)
 
@@ -497,21 +502,21 @@ func assertIncusImageSourcePrune(t *testing.T, tmpDir string, ocImagesURL string
 	err := os.WriteFile(sourcePutFilename, fmt.Appendf(nil, "---\nurl: %s\nfilter_expression: '%s'\n", imageSourceURL, filter), 0o600)
 	require.NoError(t, err)
 
-	mustRun(t, `../bin/operations-center.linux.%s image incus source edit %s < %s`, cpuArch, imageSourceName, sourcePutFilename)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus source show %[2]s -f json | jq -r -e --arg filter '%[3]s' '.filter_expression == $filter'`, cpuArch, imageSourceName, filter)
+	mustRun(t, `../bin/operations-center.linux.%s image incus edit %s < %s`, cpuArch, imageSourceName, sourcePutFilename)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e --arg filter '%[3]s' '.filter_expression == $filter'`, cpuArch, imageSourceName, filter)
 
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus source refresh %s`, 5*time.Minute, cpuArch, imageSourceName)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus refresh %s`, 5*time.Minute, cpuArch, imageSourceName)
 
 	// The file, which no longer matches the filter expression, is gone.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys == ["incus.tar.xz"]'`, cpuArch, sourceName, sourceVersion)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show `+imageSourceName+` %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys == ["incus.tar.xz"]'`, cpuArch, sourceName, sourceVersion)
 
 	// It is deleted from the files repository, the remaining one is not.
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/root.squashfs`, sourceRelease, cpuArch, sourceVersion)
+	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/`+imageSourceName+`/alpine/%s/%s/default/%s/root.squashfs`, sourceRelease, cpuArch, sourceVersion)
 	require.False(t, resp.Success(), "expect the pruned file to be deleted from the files repository")
-	mustRun(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/incus.tar.xz`, sourceRelease, cpuArch, sourceVersion)
+	mustRun(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/`+imageSourceName+`/alpine/%s/%s/default/%s/incus.tar.xz`, sourceRelease, cpuArch, sourceVersion)
 
 	// It is no longer advertised publicly.
-	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, sourceName, sourceVersion)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, imageSourceName+":"+sourceName, sourceVersion)
 }
 
 // assertIncusImageSourceRemove removes the image source and asserts, that the
@@ -523,27 +528,28 @@ func assertIncusImageSourceRemove(t *testing.T, ocImagesURL string, sourceName s
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus source remove")
+	t.Log("Assert operations-center cli image incus remove (image source)")
 
-	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus source remove %s`, time.Minute, cpuArch, imageSourceName)
+	mustRunWithTimeout(t, `../bin/operations-center.linux.%s image incus remove %s`, time.Minute, cpuArch, imageSourceName)
 
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus source list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, imageSourceName)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, sourceName)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, imageSourceName)
+	resp := run(t, `../bin/operations-center.linux.%s image incus image list %s`, cpuArch, imageSourceName)
+	require.False(t, resp.Success(), "expect listing the images of a removed source to fail")
 
 	// The files of the removed images are deleted as well. Only the directory
 	// of the image itself is removed, its parent directories are left behind.
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default`, sourceRelease, cpuArch)
+	resp = run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/`+imageSourceName+`/alpine/%s/%s/default`, sourceRelease, cpuArch)
 	require.False(t, resp.Success(), "expect the files of the images of the removed source to be deleted")
 
 	// The manually uploaded images are not affected.
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s" or .name == "%[3]s") ] | length == 2'`, cpuArch, manualName, flagsName)
-	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") == null) and (index("%[3]s") != null)'`, ocImagesURL, sourceName, manualName)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image list local -f json | jq -r -e '[ .[] | select(.name == "%[2]s" or .name == "%[3]s") ] | length == 2'`, cpuArch, manualName, flagsName)
+	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") == null) and (index("%[3]s") != null)'`, ocImagesURL, imageSourceName+":"+sourceName, "local:"+manualName)
 
 	// Operating on a removed source fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source show %s`, cpuArch, imageSourceName)
+	resp = run(t, `../bin/operations-center.linux.%s image incus show %s`, cpuArch, imageSourceName)
 	require.False(t, resp.Success(), "expect showing a removed image source to fail")
 
-	resp = run(t, `../bin/operations-center.linux.%s image incus source refresh %s`, cpuArch, imageSourceName)
+	resp = run(t, `../bin/operations-center.linux.%s image incus refresh %s`, cpuArch, imageSourceName)
 	require.False(t, resp.Success(), "expect refreshing a removed image source to fail")
 }
 
@@ -555,26 +561,26 @@ func assertIncusImageRemove(t *testing.T, name string) {
 	stop := timeTrack(t)
 	defer stop()
 
-	t.Log("Assert operations-center cli image incus remove")
+	t.Log("Assert operations-center cli image incus image remove")
 
-	mustRun(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions | length == 0'`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%s image incus image remove-version local %s %s`, cpuArch, name, flagsImageVersion)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image show local %[2]s -f json | jq -r -e '.versions | length == 0'`, cpuArch, name)
 
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/%s/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
+	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/local/%s/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
 	require.False(t, resp.Success(), "expect the files of the removed version to be deleted")
 
 	// Removing a non existing version fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
+	resp = run(t, `../bin/operations-center.linux.%s image incus image remove-version local %s %s`, cpuArch, name, flagsImageVersion)
 	require.False(t, resp.Success(), "expect removing a non existing image version to fail")
 
-	mustRun(t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)
-	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%s image incus image remove local %s`, cpuArch, name)
+	mustRun(t, `../bin/operations-center.linux.%[1]s image incus image list local -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, name)
 
-	resp = run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
+	resp = run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/local/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
 	require.False(t, resp.Success(), "expect the files of the removed image to be deleted")
 
 	// Removing a non existing image fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)
+	resp = run(t, `../bin/operations-center.linux.%s image incus image remove local %s`, cpuArch, name)
 	require.False(t, resp.Success(), "expect removing a non existing image to fail")
 }
 
@@ -598,7 +604,7 @@ func ocIncusImagesCleanup(t *testing.T) func() {
 		stop := timeTrack(t, "Operations Center images cleanup")
 		defer stop()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus list -f json | jq -r '.[].name'`, cpuArch)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus image list local -f json | jq -r '.[].name'`, cpuArch)
 		if !resp.Success() {
 			t.Error(resp.Error())
 			return
@@ -606,7 +612,7 @@ func ocIncusImagesCleanup(t *testing.T) func() {
 
 		for incusImage := range strings.Lines(resp.Output()) {
 			incusImage = strings.TrimSpace(incusImage)
-			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, incusImage)
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus image remove local %s`, cpuArch, incusImage)
 			if !resp.Success() {
 				t.Error(resp.Error())
 			}
@@ -631,13 +637,13 @@ func ocIncusImageSourceCleanup(t *testing.T, name string) func() {
 		stop := timeTrack(t, "Operations Center image source cleanup")
 		defer stop()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s image incus source list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 1'`, cpuArch, name)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 1'`, cpuArch, name)
 		if !resp.Success() {
 			// The image source does not exist (any more), nothing to clean up.
 			return
 		}
 
-		resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus source remove %s`, cpuArch, name)
+		resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)
 		if !resp.Success() {
 			t.Error(resp.Error())
 		}
