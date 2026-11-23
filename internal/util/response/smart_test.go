@@ -91,6 +91,14 @@ func TestSmartError(t *testing.T) {
 			wantReason:  api.ErrorReasonOperationNotPermitted,
 		},
 		{
+			name: "unavailable",
+			err:  domain.NewErrorf(domain.ErrUnavailable, "", "File %q is stored by offline cluster members", "one"),
+
+			wantCode:    http.StatusServiceUnavailable,
+			wantMessage: `File "one" is stored by offline cluster members`,
+			wantReason:  api.ErrorReasonUnavailable,
+		},
+		{
 			name: "constraint violation",
 			err:  fmt.Errorf("Failed to create server: %w", domain.ErrConstraintViolation),
 

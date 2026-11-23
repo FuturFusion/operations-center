@@ -23,6 +23,8 @@ var (
 
 	ErrTerminal = errors.New("Terminal")
 
+	ErrUnavailable = errors.New("Unavailable")
+
 	ErrInvalidArgument = ErrValidation("Invalid argument")
 )
 

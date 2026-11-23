@@ -50,6 +50,9 @@ func (e *ServerError) Is(target error) bool {
 
 	case http.StatusForbidden:
 		return target == domain.ErrNotAuthorized
+
+	case http.StatusServiceUnavailable:
+		return target == domain.ErrUnavailable
 	}
 
 	return false
