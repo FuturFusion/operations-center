@@ -282,6 +282,9 @@ const (
 	// Amount of time in seconds before an unresponsive cluster member is considered offline.
 	DefaultOfflineThresholdSeconds = 20
 
+	// Offline threshold in seconds, which a configured one has to exceed.
+	minOfflineThresholdSeconds = 10
+
 	// Default lifetime of a cluster membership join token.
 	DefaultMembershipJoinTokenExpiry = 3 * time.Hour
 )

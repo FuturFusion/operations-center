@@ -108,6 +108,29 @@ func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate
 	return _d._base.GetCertificate(ctx)
 }
 
+// GetClusterConfig implements system0.SystemService.
+func (_d SystemServiceWithSlog) GetClusterConfig(ctx context.Context) (cluster system.Cluster) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("cluster", cluster),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method GetClusterConfig finished")
+	}()
+	return _d._base.GetClusterConfig(ctx)
+}
+
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network system.Network) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -292,6 +315,37 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 		}
 	}()
 	return _d._base.UpdateCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateClusterConfig implements system0.SystemService.
+func (_d SystemServiceWithSlog) UpdateClusterConfig(ctx context.Context, cfg system.ClusterPut) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateClusterConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method UpdateClusterConfig returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method UpdateClusterConfig finished")
+		}
+	}()
+	return _d._base.UpdateClusterConfig(ctx, cfg)
 }
 
 // UpdateNetworkConfig implements system0.SystemService.

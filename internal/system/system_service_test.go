@@ -1867,6 +1867,52 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 	}
 }
 
+func TestSystemService_UpdateClusterConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		clusterConfig systemapi.ClusterPut
+
+		assertErr     require.ErrorAssertionFunc
+		wantThreshold int
+	}{
+		{
+			name:          "success",
+			clusterConfig: systemapi.ClusterPut{OfflineThresholdSeconds: 30},
+
+			assertErr:     require.NoError,
+			wantThreshold: 30,
+		},
+		{
+			name:          "error - threshold too low",
+			clusterConfig: systemapi.ClusterPut{OfflineThresholdSeconds: 5},
+
+			assertErr:     require.Error,
+			wantThreshold: config.DefaultOfflineThresholdSeconds,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
+				IsIncusOSFunc: func() bool { return false },
+			}
+
+			config.InitTest(t, env, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+
+			// Run test
+			err := systemSvc.UpdateClusterConfig(t.Context(), tc.clusterConfig)
+			gotClusterConfig := systemSvc.GetClusterConfig(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantThreshold, gotClusterConfig.OfflineThresholdSeconds)
+		})
+	}
+}
+
 func TestSystemService_CleanCache(t *testing.T) {
 	t.Parallel()
 

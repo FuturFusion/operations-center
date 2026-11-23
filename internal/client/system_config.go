@@ -113,6 +113,32 @@ func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, c
 	return nil
 }
 
+// GetSystemClusterConfig returns the cluster config and its ETag.
+func (c OperationsCenterClient) GetSystemClusterConfig(ctx context.Context) (system.Cluster, string, error) {
+	response, etag, err := c.doRequestETag(ctx, http.MethodGet, "/system/cluster", nil, "")
+	if err != nil {
+		return system.Cluster{}, "", err
+	}
+
+	cfg := system.Cluster{}
+	err = json.Unmarshal(response.Metadata, &cfg)
+	if err != nil {
+		return system.Cluster{}, "", err
+	}
+
+	return cfg, etag, nil
+}
+
+// UpdateSystemClusterConfig updates the cluster config, if the ETag is not empty only while it is unchanged.
+func (c OperationsCenterClient) UpdateSystemClusterConfig(ctx context.Context, cfg system.ClusterPut, etag string) error {
+	_, _, err := c.doRequestETag(ctx, http.MethodPut, "/system/cluster", cfg, etag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetSystemCertificate(ctx context.Context) (system.Certificate, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, "/system/certificate", nil, nil)
 	if err != nil {

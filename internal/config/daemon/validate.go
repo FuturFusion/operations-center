@@ -123,6 +123,12 @@ func validateShared(oldGlobalCfg, newGlobalCfg SharedConfig, isIncusOS bool) err
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" and "security.trusted_tls_client_certificates" properties can not both be empty when running on IncusOS`)
 	}
 
+	// Cluster configuration
+	// The heartbeats run at half the offline threshold, like in Incus.
+	if isSharedClusterChanged(oldGlobalCfg, newGlobalCfg) && newGlobalCfg.Cluster.OfflineThresholdSeconds <= minOfflineThresholdSeconds {
+		return domain.NewValidationErrf(`Invalid config, "cluster.offline_threshold_seconds" must be greater than %d`, minOfflineThresholdSeconds)
+	}
+
 	return nil
 }
 

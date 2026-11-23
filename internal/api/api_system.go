@@ -32,6 +32,8 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("PUT /settings", response.With(handler.settingsPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 	router.HandleFunc("GET /updates", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 	router.HandleFunc("PUT /updates", response.With(handler.updatesPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	router.HandleFunc("GET /cluster", response.With(handler.clusterGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	router.HandleFunc("PUT /cluster", response.With(handler.clusterPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 	router.HandleFunc("POST /:clean-cache", response.With(handler.cleanCachePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 }
 
@@ -419,6 +421,79 @@ func (s *systemHandler) updatesPut(r *http.Request) response.Response {
 	err = s.service.UpdateUpdatesConfig(ctx, updatesConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update updates configuration: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/system/cluster system system_cluster_get
+//
+//	Get the system's cluster configuration
+//
+//	Get the configuration shared by the cluster members, the offline threshold of the heartbeats.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/SystemClusterResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) clusterGet(r *http.Request) response.Response {
+	clusterConfig := s.service.GetClusterConfig(r.Context())
+
+	// The ETag covers the part shared by the cluster members.
+	return response.SyncResponseETag(true, clusterConfig, config.GetCluster())
+}
+
+// swagger:operation PUT /1.0/system/cluster system system_cluster_put
+//
+//	Update the system's cluster configuration
+//
+//	Update the configuration shared by the cluster members.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: system_cluster_put
+//	    description: System cluster configuration definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/SystemClusterPut"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) clusterPut(r *http.Request) response.Response {
+	var clusterConfig apisystem.ClusterPut
+
+	err := json.NewDecoder(r.Body).Decode(&clusterConfig)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Without an If-Match header the change replaces whatever is stored.
+	ctx := config.WithIfMatch(r.Context(), r.Header.Get("If-Match"))
+
+	err = s.service.UpdateClusterConfig(ctx, clusterConfig)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update cluster configuration: %w", err))
 	}
 
 	return response.EmptySyncResponse

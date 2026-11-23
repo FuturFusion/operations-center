@@ -7127,12 +7127,36 @@ definitions:
                 x-go-name: Key
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemCluster:
+        properties:
+            offline_threshold_seconds:
+                format: int64
+                type: integer
+                x-go-name: OfflineThresholdSeconds
+        title: Cluster represents shared cluster membership configuration.
+        type: object
+        x-go-name: Cluster
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SystemClusterPut:
+        properties:
+            offline_threshold_seconds:
+                format: int64
+                type: integer
+                x-go-name: OfflineThresholdSeconds
+        title: ClusterPut represents user configurable cluster membership configuration.
+        type: object
+        x-go-name: ClusterPut
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetwork:
         properties:
             address:
                 description: Address of Operations Center which is used by managed servers to connect.
                 type: string
                 x-go-name: OperationsCenterAddress
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -14629,6 +14653,52 @@ paths:
             summary: Renew the system's ACME certificate
             tags:
                 - system
+    /1.0/system/cluster:
+        get:
+            description: Get the configuration shared by the cluster members, the offline threshold of the heartbeats.
+            operationId: system_cluster_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/SystemClusterResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the system's cluster configuration
+            tags:
+                - system
+        put:
+            consumes:
+                - application/json
+            description: Update the configuration shared by the cluster members.
+            operationId: system_cluster_put
+            parameters:
+                - description: System cluster configuration definition
+                  in: body
+                  name: system_cluster_put
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SystemClusterPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system's cluster configuration
+            tags:
+                - system
     /1.0/system/network:
         get:
             description: Get the system's network configuration.
@@ -16311,6 +16381,26 @@ responses:
             properties:
                 metadata:
                     $ref: '#/definitions/Certificate'
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    SystemClusterResponse:
+        description: The cluster configuration of Operations Center
+        schema:
+            properties:
+                metadata:
+                    $ref: '#/definitions/SystemCluster'
                 status:
                     example: Success
                     type: string

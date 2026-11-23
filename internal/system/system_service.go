@@ -580,6 +580,19 @@ func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig syste
 	return nil
 }
 
+func (s *systemService) GetClusterConfig(_ context.Context) system.Cluster {
+	return config.GetCluster()
+}
+
+func (s *systemService) UpdateClusterConfig(ctx context.Context, newConfig system.ClusterPut) error {
+	err := config.UpdateCluster(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update cluster configuration: %w", err)
+	}
+
+	return nil
+}
+
 func (s *systemService) CleanCache(ctx context.Context) error {
 	err := s.cacheRepo.CleanupAll(ctx)
 	if err != nil {

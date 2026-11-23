@@ -25,6 +25,9 @@ type SystemService interface {
 	GetUpdatesConfig(ctx context.Context) system.Updates
 	UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error
 
+	GetClusterConfig(ctx context.Context) system.Cluster
+	UpdateClusterConfig(ctx context.Context, cfg system.ClusterPut) error
+
 	CleanCache(ctx context.Context) error
 }
 

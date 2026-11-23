@@ -517,6 +517,17 @@ type swaggerSystemUpdatesResponse struct {
 	}
 }
 
+// The cluster configuration of Operations Center
+//
+// swagger:response SystemClusterResponse
+type swaggerSystemClusterResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
+		Metadata apisystem.Cluster `json:"metadata"`
+	}
+}
+
 // The warning
 //
 // swagger:response WarningResponse

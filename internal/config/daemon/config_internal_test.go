@@ -25,6 +25,7 @@ type testConfig struct {
 	Security system.Security
 	Settings testSettings
 	Updates  system.Updates
+	Cluster  system.Cluster
 }
 
 type testNetwork struct {
@@ -62,6 +63,7 @@ func (c testConfig) split() (localConfig, SharedConfig) {
 		Network:  system.NetworkGlobal{NetworkGlobalPut: system.NetworkGlobalPut{OperationsCenterAddress: c.Network.NetworkPut.OperationsCenterAddress}},
 		Security: c.Security,
 		Updates:  c.Updates,
+		Cluster:  c.Cluster,
 	}
 
 	return local, shared
@@ -765,6 +767,25 @@ func Test_validate(t *testing.T) {
 			isIncusOS: true,
 
 			assertErr: require.NoError,
+		},
+		// Cluster
+		{
+			name: "cluster.offline_threshold_seconds above the minimum",
+			cfg: testConfig{
+				Updates: defaultUpdates,
+				Cluster: system.Cluster{ClusterPut: system.ClusterPut{OfflineThresholdSeconds: 11}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "cluster.offline_threshold_seconds not above the minimum",
+			cfg: testConfig{
+				Updates: defaultUpdates,
+				Cluster: system.Cluster{ClusterPut: system.ClusterPut{OfflineThresholdSeconds: 10}},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`"cluster.offline_threshold_seconds" must be greater than 10`),
 		},
 		{
 			name: "invalid metrics components - invalid component name",

@@ -437,6 +437,31 @@ func Test_SetSystemCertificate(t *testing.T) {
 	require.Equal(t, "CN=localhost,O=Linux Containers", newCertificate.Subject)
 }
 
+func Test_SystemClusterConfig(t *testing.T) {
+	d := daemonSetup(t)
+
+	_, _, err := d.unauthorizedHTTPClient.GetSystemClusterConfig(t.Context())
+	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
+
+	clusterConfig, etag, err := d.socketClient.GetSystemClusterConfig(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, 20, clusterConfig.OfflineThresholdSeconds)
+
+	err = d.socketClient.UpdateSystemClusterConfig(t.Context(), system.ClusterPut{OfflineThresholdSeconds: 10}, etag)
+	require.ErrorContains(t, err, `"cluster.offline_threshold_seconds" must be greater than 10`)
+
+	err = d.socketClient.UpdateSystemClusterConfig(t.Context(), system.ClusterPut{OfflineThresholdSeconds: 30}, etag)
+	require.NoError(t, err)
+
+	clusterConfig, _, err = d.socketClient.GetSystemClusterConfig(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, 30, clusterConfig.OfflineThresholdSeconds)
+
+	// The ETag read before the change is stale.
+	err = d.socketClient.UpdateSystemClusterConfig(t.Context(), system.ClusterPut{OfflineThresholdSeconds: 40}, etag)
+	require.ErrorIs(t, err, domain.ErrPreconditionFailed)
+}
+
 // Test_RenewSystemCertificate does not cover an actual renewal, that requires a
 // reachable ACME server.
 func Test_RenewSystemCertificate(t *testing.T) {

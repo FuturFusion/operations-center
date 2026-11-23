@@ -67,6 +67,16 @@ func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certi
 	return _d.base.GetCertificate(ctx)
 }
 
+// GetClusterConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) GetClusterConfig(ctx context.Context) (cluster system.Cluster) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterConfig(ctx)
+}
+
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (network system.Network) {
 	_since := time.Now()
@@ -147,6 +157,20 @@ func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, cer
 		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateClusterConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateClusterConfig(ctx context.Context, cfg system.ClusterPut) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateClusterConfig(ctx, cfg)
 }
 
 // UpdateNetworkConfig implements system0.SystemService.

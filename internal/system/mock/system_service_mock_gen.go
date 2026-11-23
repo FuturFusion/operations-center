@@ -28,6 +28,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			GetCertificateFunc: func(ctx context.Context) (system.Certificate, error) {
 //				panic("mock out the GetCertificate method")
 //			},
+//			GetClusterConfigFunc: func(ctx context.Context) system.Cluster {
+//				panic("mock out the GetClusterConfig method")
+//			},
 //			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
 //				panic("mock out the GetNetworkConfig method")
 //			},
@@ -48,6 +51,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			},
 //			UpdateCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
+//			},
+//			UpdateClusterConfigFunc: func(ctx context.Context, cfg system.ClusterPut) error {
+//				panic("mock out the UpdateClusterConfig method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system.NetworkPut) error {
 //				panic("mock out the UpdateNetworkConfig method")
@@ -74,6 +80,9 @@ type SystemServiceMock struct {
 	// GetCertificateFunc mocks the GetCertificate method.
 	GetCertificateFunc func(ctx context.Context) (system.Certificate, error)
 
+	// GetClusterConfigFunc mocks the GetClusterConfig method.
+	GetClusterConfigFunc func(ctx context.Context) system.Cluster
+
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context) system.Network
 
@@ -94,6 +103,9 @@ type SystemServiceMock struct {
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
+	// UpdateClusterConfigFunc mocks the UpdateClusterConfig method.
+	UpdateClusterConfigFunc func(ctx context.Context, cfg system.ClusterPut) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, cfg system.NetworkPut) error
@@ -116,6 +128,11 @@ type SystemServiceMock struct {
 		}
 		// GetCertificate holds details about calls to the GetCertificate method.
 		GetCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetClusterConfig holds details about calls to the GetClusterConfig method.
+		GetClusterConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -160,6 +177,13 @@ type SystemServiceMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateClusterConfig holds details about calls to the UpdateClusterConfig method.
+		UpdateClusterConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg system.ClusterPut
+		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -191,6 +215,7 @@ type SystemServiceMock struct {
 	}
 	lockCleanCache              sync.RWMutex
 	lockGetCertificate          sync.RWMutex
+	lockGetClusterConfig        sync.RWMutex
 	lockGetNetworkConfig        sync.RWMutex
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
@@ -198,6 +223,7 @@ type SystemServiceMock struct {
 	lockPropagateCertificate    sync.RWMutex
 	lockTriggerCertificateRenew sync.RWMutex
 	lockUpdateCertificate       sync.RWMutex
+	lockUpdateClusterConfig     sync.RWMutex
 	lockUpdateNetworkConfig     sync.RWMutex
 	lockUpdateSecurityConfig    sync.RWMutex
 	lockUpdateSettingsConfig    sync.RWMutex
@@ -265,6 +291,38 @@ func (mock *SystemServiceMock) GetCertificateCalls() []struct {
 	mock.lockGetCertificate.RLock()
 	calls = mock.calls.GetCertificate
 	mock.lockGetCertificate.RUnlock()
+	return calls
+}
+
+// GetClusterConfig calls GetClusterConfigFunc.
+func (mock *SystemServiceMock) GetClusterConfig(ctx context.Context) system.Cluster {
+	if mock.GetClusterConfigFunc == nil {
+		panic("SystemServiceMock.GetClusterConfigFunc: method is nil but SystemService.GetClusterConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetClusterConfig.Lock()
+	mock.calls.GetClusterConfig = append(mock.calls.GetClusterConfig, callInfo)
+	mock.lockGetClusterConfig.Unlock()
+	return mock.GetClusterConfigFunc(ctx)
+}
+
+// GetClusterConfigCalls gets all the calls that were made to GetClusterConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.GetClusterConfigCalls())
+func (mock *SystemServiceMock) GetClusterConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetClusterConfig.RLock()
+	calls = mock.calls.GetClusterConfig
+	mock.lockGetClusterConfig.RUnlock()
 	return calls
 }
 
@@ -501,6 +559,42 @@ func (mock *SystemServiceMock) UpdateCertificateCalls() []struct {
 	mock.lockUpdateCertificate.RLock()
 	calls = mock.calls.UpdateCertificate
 	mock.lockUpdateCertificate.RUnlock()
+	return calls
+}
+
+// UpdateClusterConfig calls UpdateClusterConfigFunc.
+func (mock *SystemServiceMock) UpdateClusterConfig(ctx context.Context, cfg system.ClusterPut) error {
+	if mock.UpdateClusterConfigFunc == nil {
+		panic("SystemServiceMock.UpdateClusterConfigFunc: method is nil but SystemService.UpdateClusterConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg system.ClusterPut
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockUpdateClusterConfig.Lock()
+	mock.calls.UpdateClusterConfig = append(mock.calls.UpdateClusterConfig, callInfo)
+	mock.lockUpdateClusterConfig.Unlock()
+	return mock.UpdateClusterConfigFunc(ctx, cfg)
+}
+
+// UpdateClusterConfigCalls gets all the calls that were made to UpdateClusterConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.UpdateClusterConfigCalls())
+func (mock *SystemServiceMock) UpdateClusterConfigCalls() []struct {
+	Ctx context.Context
+	Cfg system.ClusterPut
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg system.ClusterPut
+	}
+	mock.lockUpdateClusterConfig.RLock()
+	calls = mock.calls.UpdateClusterConfig
+	mock.lockUpdateClusterConfig.RUnlock()
 	return calls
 }
 
