@@ -2,6 +2,7 @@ import { FC, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import { useFormik } from "formik";
+import ChannelSelect from "components/ChannelSelect";
 import { Token, TokenFormValues } from "types/token";
 
 interface Props {
@@ -58,6 +59,11 @@ const TokenForm: FC<Props> = ({ token, onSubmit }) => {
               {formik.errors.description}
             </Form.Control.Feedback>
           </Form.Group>
+          <ChannelSelect
+            formClasses="mb-3"
+            value={formik.values.channel}
+            onChange={(val) => formik.setFieldValue("channel", val)}
+          />
           <Form.Group className="mb-3" controlId="expire_at">
             <Form.Label>Expiry</Form.Label>
             <div>
