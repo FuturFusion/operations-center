@@ -73,6 +73,7 @@ func Test_validate(t *testing.T) {
 		oldCfg    *testConfig
 		cfg       testConfig
 		isIncusOS bool
+		clustered bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -193,7 +194,7 @@ func Test_validate(t *testing.T) {
 			},
 		},
 		{
-			name: "require network.rest_server_address if network.address is set",
+			name: "network.address without network.rest_server_address",
 			cfg: testConfig{
 				Network: testNetwork{
 					NetworkPut: testNetworkPut{
@@ -203,9 +204,7 @@ func Test_validate(t *testing.T) {
 				Updates: defaultUpdates,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
-			},
+			assertErr: require.NoError,
 		},
 		{
 			name: "require network.address if network.rest_server_address is set",
@@ -219,8 +218,50 @@ func Test_validate(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+				require.ErrorContains(tt, err, `Invalid config, "network.address" must be set if Operations Center is clustered or "network.rest_server_address" is set`)
 			},
+		},
+		{
+			name: "require network.address if clustered",
+			oldCfg: &testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
+						OperationsCenterAddress: "https://192.0.2.1:8443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: testConfig{
+				Updates: defaultUpdates,
+			},
+			clustered: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.address" must be set if Operations Center is clustered or "network.rest_server_address" is set`)
+			},
+		},
+		{
+			name: "network.rest_server_address can be unset if clustered",
+			oldCfg: &testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
+						RestServerAddress:       "192.0.2.1:8443",
+						OperationsCenterAddress: "https://192.0.2.1:8443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: testConfig{
+				Network: testNetwork{
+					NetworkPut: testNetworkPut{
+						OperationsCenterAddress: "https://192.0.2.1:8443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			clustered: true,
+
+			assertErr: require.NoError,
 		},
 		{
 			name: "invalid network.address",
@@ -754,16 +795,48 @@ func Test_validate(t *testing.T) {
 			newLocal, newShared := tc.cfg.split()
 
 			// The validation of a configuration update, see system.UpdateNetworkConfig.
-			err := validate(oldLocal, newLocal, tc.isIncusOS)
+			err := validate(oldLocal, newLocal, tc.isIncusOS, tc.clustered)
 			if err == nil {
 				err = validateShared(oldShared, newShared, tc.isIncusOS)
 			}
 
 			if err == nil {
-				err = validateSharedNetworkConfig(newLocal.Network, oldShared.Network, newShared.Network)
+				err = validateSharedNetworkConfig(newLocal.Network, oldShared.Network, newShared.Network, tc.clustered)
 			}
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestValidateClusterAddress(t *testing.T) {
+	tests := []struct {
+		name    string
+		address string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{name: "IPv4", address: "192.0.2.1:8443", assertErr: require.NoError},
+		{name: "IPv6", address: "[2001:db8::1]:8443", assertErr: require.NoError},
+		{name: "empty", address: "", assertErr: require.Error},
+		{name: "no port", address: "192.0.2.1", assertErr: require.Error},
+		{name: "empty port", address: "192.0.2.1:", assertErr: require.Error},
+		{name: "port not a number", address: "192.0.2.1:abc", assertErr: require.Error},
+		{name: "port 0", address: "192.0.2.1:0", assertErr: require.Error},
+		{name: "port out of range", address: "192.0.2.1:70000", assertErr: require.Error},
+		{name: "host name", address: "localhost:8443", assertErr: require.Error},
+		{name: "loopback", address: "127.0.0.1:8443", assertErr: require.Error},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateClusterAddress(tc.address)
+			tc.assertErr(t, err)
+
+			// A valid cluster address is a valid address of Operations Center.
+			if err == nil {
+				require.NoError(t, validateURI("https://"+tc.address, true, false, true))
+			}
 		})
 	}
 }
@@ -873,6 +946,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 
 func Test_UpdateSecurity_trustedClientCertificates(t *testing.T) {
 	env := &mock.EnvironmentMock{
+		ClusteredFunc: func() bool { return false },
 		IsIncusOSFunc: func() bool {
 			return true
 		},

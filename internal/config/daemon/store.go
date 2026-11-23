@@ -27,6 +27,7 @@ const (
 	sectionSecurity
 	sectionSettings
 	sectionUpdates
+	sectionCluster
 )
 
 // store owns one configuration value and everything needed to change it.
@@ -89,7 +90,7 @@ func diskPersister(env enver) persistFunc[localConfig] {
 }
 
 func localConfigValidator(ctx context.Context, _ localConfig, oldCfg, newCfg localConfig, env enver) error {
-	err := validate(oldCfg, newCfg, env.IsIncusOS())
+	err := validate(oldCfg, newCfg, env.IsIncusOS(), env.Clustered())
 	if err != nil {
 		return err
 	}
@@ -155,4 +156,34 @@ func (s *store[T]) replace(ctx context.Context, cfg T, persist persistFunc[T]) {
 	s.current.Store(&cfg)
 
 	s.notify(logger.DetachedContext(ctx), sectionLoaded, oldCfg, cfg)
+}
+
+// set runs mutate with the committed configuration without validation and notification.
+// Persisting also commits the new configuration.
+func (s *store[T]) set(ctx context.Context, mutate func(oldCfg T, persist func(newCfg T) error) error) error {
+	var publish publishFunc
+
+	err := func() error {
+		s.updateMu.Lock()
+		defer s.updateMu.Unlock()
+
+		oldCfg := s.Get()
+
+		return mutate(oldCfg, func(newCfg T) error {
+			var err error
+			newCfg, publish, err = s.persist(ctx, sectionChanged, oldCfg, newCfg)
+			if err != nil {
+				return err
+			}
+
+			s.current.Store(&newCfg)
+
+			return nil
+		})
+	}()
+	if err != nil || publish == nil {
+		return err
+	}
+
+	return publish(ctx)
 }

@@ -16,13 +16,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func main() {
@@ -162,8 +165,9 @@ PRAGMA temp_store = MEMORY;
 	cert, err := cluster.FindOrGenCertInfo(varRoot, config.ServerCertificateFilename, config.ServerKeyFilename)
 	die(err)
 
-	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(varRoot.Name(), "database"))
-	membership, err := cluster.NewClusterMembershipService(ctx, varRoot, &listener.ListenerSet{}, localRepo, cert, cert, nil)
+	env := environment.New(config.ApplicationName, config.ApplicationEnvPrefix)
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(varRoot.Name(), "database"), standaloneSystem{})
+	membership, err := cluster.NewClusterMembershipService(ctx, env, varRoot, standaloneSystem{}, &listener.ListenerSet{}, localRepo, cert, cert, nil, nil)
 	die(err)
 
 	globalDB, err := cluster.OpenGlobalDB(ctx, membership, false, "")
@@ -176,6 +180,15 @@ PRAGMA temp_store = MEMORY;
 	die(membership.Stop(ctx))
 	die(localDB.Close())
 	die(db.Close())
+}
+
+// standaloneSystem reports the network config of a member, which isn't clustered.
+type standaloneSystem struct {
+	system.SystemService
+}
+
+func (standaloneSystem) GetNetworkConfig(context.Context) apisystem.Network {
+	return apisystem.Network{}
 }
 
 // die is a convenience function to end the processing with a panic in the case of an error.

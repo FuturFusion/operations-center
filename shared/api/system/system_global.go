@@ -66,6 +66,20 @@ type SettingsGlobalPut struct {
 	ServerRegistrationScriptlet string `json:"server_registration_scriptlet" yaml:"server_registration_scriptlet"`
 }
 
+// Cluster represents shared cluster membership configuration.
+//
+// swagger:model SystemCluster
+type Cluster struct {
+	ClusterPut `yaml:",inline"`
+}
+
+// ClusterPut represents user configurable cluster membership configuration.
+//
+// swagger:model SystemClusterPut
+type ClusterPut struct {
+	OfflineThresholdSeconds int `json:"offline_threshold_seconds" yaml:"offline_threshold_seconds"`
+}
+
 // Security represents the system's security configuration.
 //
 // swagger:model

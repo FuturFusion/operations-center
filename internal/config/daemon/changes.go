@@ -74,6 +74,10 @@ func isSharedSettingsChanged(oldCfg, newCfg SharedConfig) bool {
 	return !reflect.DeepEqual(oldCfg.Settings.SettingsGlobalPut, newCfg.Settings.SettingsGlobalPut)
 }
 
+func isSharedClusterChanged(oldCfg, newCfg SharedConfig) bool {
+	return oldCfg.Cluster.ClusterPut != newCfg.Cluster.ClusterPut
+}
+
 func isUpdatesChanged(oldCfg, newCfg SharedConfig) bool {
 	return oldCfg.Updates.UpdatesPut != newCfg.Updates.UpdatesPut
 }

@@ -2611,6 +2611,7 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return true
 				},
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			// Setup

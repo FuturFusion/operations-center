@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -32,6 +33,7 @@ type InternalConfig struct {
 type enver interface {
 	VarDir() string
 	IsIncusOS() bool
+	Clustered() bool
 }
 
 // defaultStore holds the config singleton. It is only ever replaced as a whole,
@@ -50,7 +52,7 @@ func sharedConfigValidator() validateFunc[SharedConfig] {
 
 		// A shared config stored before the address was required is kept until the network is changed.
 		if isSharedNetworkChanged(oldCfg, newCfg) {
-			err = validateSharedNetworkConfig(currentLocalCfg.Network, oldCfg.Network, newCfg.Network)
+			err = validateSharedNetworkConfig(currentLocalCfg.Network, oldCfg.Network, newCfg.Network, env.Clustered())
 			if err != nil {
 				return err
 			}
@@ -148,6 +150,9 @@ func withSharedSection(dst SharedConfig, src SharedConfig, s section) SharedConf
 	case sectionUpdates:
 		dst.Updates = src.Updates
 
+	case sectionCluster:
+		dst.Cluster = src.Cluster
+
 	default:
 		return src
 	}
@@ -199,7 +204,7 @@ func Init(env enver) error {
 	// which validate the settings they own are wired up after Init, and making
 	// their probes a prerequisite for the daemon to come up would keep an
 	// offline installation from starting at all.
-	err = validate(localCfg, localCfg, env.IsIncusOS())
+	err = validate(localCfg, localCfg, env.IsIncusOS(), env.Clustered())
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
@@ -253,6 +258,30 @@ func UpdateNetwork(ctx context.Context, cfg system.NetworkGlobalPut) error {
 		c.Network.NetworkGlobalPut = cfg
 
 		return c
+	})
+}
+
+func UpdateNetworkClusterAddress(ctx context.Context, address string) error {
+	store := defaultStore.Load()
+	return store.set(ctx, func(oldCfg localConfig, persist func(newCfg localConfig) error) error {
+		if oldCfg.Network.ClusterAddress == address {
+			return nil
+		}
+
+		newCfg := oldCfg
+		newCfg.Network.ClusterAddress = address
+
+		err := validateNetworkConfigClusterAddress(oldCfg.Network, newCfg.Network, store.env.Clustered())
+		if err != nil {
+			return err
+		}
+
+		err = persist(newCfg)
+		if err != nil {
+			return err
+		}
+
+		return lifecycle.NetworkUpdateSignal.TryEmit(ctx, newCfg.Network)
 	})
 }
 
@@ -346,6 +375,18 @@ func GetUpdates() system.Updates {
 func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	return sharedStore.Load().Update(ctx, sectionUpdates, func(ctx context.Context, c SharedConfig) SharedConfig {
 		c.Updates.UpdatesPut = cfg
+
+		return c
+	})
+}
+
+func GetCluster() system.Cluster {
+	return sharedStore.Load().Get().Cluster
+}
+
+func UpdateCluster(ctx context.Context, cfg system.ClusterPut) error {
+	return sharedStore.Load().Update(ctx, sectionCluster, func(ctx context.Context, c SharedConfig) SharedConfig {
+		c.Cluster.ClusterPut = cfg
 
 		return c
 	})

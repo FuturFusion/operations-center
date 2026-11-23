@@ -100,6 +100,7 @@ func Test_debugHandler_pprof(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return false
 				},
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 			err := config.UpdateLocalSettings(context.Background(), apisystem.SettingsLocalPut{
 				LogLevel:     "WARN",

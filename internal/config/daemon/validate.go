@@ -19,9 +19,9 @@ import (
 
 // validate performs the validation the config package owns itself. It is a pure
 // function: it reads no global state, takes no lock and performs no I/O.
-func validate(oldLocalCfg, newLocalCfg localConfig, isIncusOS bool) error {
+func validate(oldLocalCfg, newLocalCfg localConfig, isIncusOS bool, clustered bool) error {
 	// Network configuration
-	err := validateNetworkConfig(oldLocalCfg.Network, newLocalCfg.Network, isIncusOS)
+	err := validateNetworkConfig(oldLocalCfg.Network, newLocalCfg.Network, isIncusOS, clustered)
 	if err != nil {
 		return err
 	}
@@ -131,18 +131,71 @@ func validateShared(oldGlobalCfg, newGlobalCfg SharedConfig, isIncusOS bool) err
 func ValidateNetworkConfig(cfg system.NetworkLocal) error {
 	local := defaultStore.Load()
 
-	return validateNetworkConfig(local.Get().Network, cfg, local.env.IsIncusOS())
+	return validateNetworkConfig(local.Get().Network, cfg, local.env.IsIncusOS(), local.env.Clustered())
 }
 
 func ValidateSharedNetworkConfig(localCfg system.NetworkLocal, sharedCfg system.NetworkGlobal) error {
+	local := defaultStore.Load()
 	shared := sharedStore.Load()
-	return validateSharedNetworkConfig(localCfg, shared.Get().Network, sharedCfg)
+	return validateSharedNetworkConfig(localCfg, shared.Get().Network, sharedCfg, local.env.Clustered())
 }
 
-func validateNetworkConfig(oldLocalCfg, newLocalCfg system.NetworkLocal, isIncusOS bool) error {
+func ValidateClusterAddress(address string) error {
+	if address == "" {
+		return domain.NewValidationErrf("Cluster address can not be empty")
+	}
+
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+
+	if port == "" {
+		return domain.NewValidationErrf("Cluster address must specify a port")
+	}
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 0xffff {
+		return domain.NewValidationErrf("Cluster address port %q must be a number between 1 and 65535", port)
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return domain.NewValidationErrf("Cluster address must specify an IP address")
+	}
+
+	if !ip.IsGlobalUnicast() {
+		return domain.NewValidationErrf("Cluster address IP must be a global unicast IP")
+	}
+
+	return nil
+}
+
+func validateNetworkConfigClusterAddress(oldCfg, newCfg system.NetworkLocal, clustered bool) error {
+	isClusterAddressChanged := oldCfg.ClusterAddress != "" && oldCfg.ClusterAddress != newCfg.ClusterAddress
+	if isClusterAddressChanged && clustered {
+		return domain.NewValidationErrf(`Invalid config, "network.cluster_address" is required for cluster connectivity and can not be changed`)
+	}
+
+	if newCfg.ClusterAddress != "" {
+		err := ValidateClusterAddress(newCfg.ClusterAddress)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, "network.cluster_address" is invalid: %v`, err)
+		}
+	}
+
+	return nil
+}
+
+func validateNetworkConfig(oldLocalCfg, newLocalCfg system.NetworkLocal, isIncusOS bool, clustered bool) error {
 	isRestServerAddressChanged := oldLocalCfg.RestServerAddress != newLocalCfg.RestServerAddress
 	if isIncusOS && isRestServerAddressChanged && newLocalCfg.RestServerAddress == "" {
 		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+	}
+
+	err := validateNetworkConfigClusterAddress(oldLocalCfg, newLocalCfg, clustered)
+	if err != nil {
+		return err
 	}
 
 	if newLocalCfg.RestServerAddress != "" {
@@ -173,10 +226,10 @@ func validateNetworkConfig(oldLocalCfg, newLocalCfg system.NetworkLocal, isIncus
 	return nil
 }
 
-func validateSharedNetworkConfig(currentLocalCfg system.NetworkLocal, _, newGlobalCfg system.NetworkGlobal) error {
-	if (currentLocalCfg.RestServerAddress != "" && newGlobalCfg.OperationsCenterAddress == "") ||
-		(currentLocalCfg.RestServerAddress == "" && newGlobalCfg.OperationsCenterAddress != "") {
-		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+func validateSharedNetworkConfig(currentLocalCfg system.NetworkLocal, _, newGlobalCfg system.NetworkGlobal, clustered bool) error {
+	// Listening on the network requires the address Operations Center is reached by.
+	if newGlobalCfg.OperationsCenterAddress == "" && (clustered || currentLocalCfg.RestServerAddress != "") {
+		return domain.NewValidationErrf(`Invalid config, "network.address" must be set if Operations Center is clustered or "network.rest_server_address" is set`)
 	}
 
 	err := validateURI(newGlobalCfg.OperationsCenterAddress, false, false, true)

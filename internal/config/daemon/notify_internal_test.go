@@ -17,7 +17,7 @@ import (
 )
 
 func Test_notify_smoke(t *testing.T) {
-	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 	var (
 		acmeEmits    int
@@ -71,7 +71,7 @@ func Test_notify_smoke(t *testing.T) {
 }
 
 func Test_notify_componentLogLevels(t *testing.T) {
-	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+	InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 	logBuf := &log.SyncBuffer{}
 
@@ -191,7 +191,7 @@ func Test_notify_metricsComponents(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+			InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 
 			component := metrics.RegisterComponent("test.notify_metrics_components")
 

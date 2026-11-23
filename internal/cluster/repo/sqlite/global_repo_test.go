@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -28,9 +29,10 @@ func TestGlobalRaftRepo_transactor(t *testing.T) {
 	require.Positive(t, repo.TxTimeout())
 	require.Equal(t, db.SchemaVersion(), repo.SchemaVersion())
 
+	// The threshold is taken from the cluster config.
 	threshold, err := repo.GetNodeOfflineThreshold(t.Context())
 	require.NoError(t, err)
-	require.Positive(t, threshold)
+	require.Equal(t, time.Duration(config.GetCluster().OfflineThresholdSeconds)*time.Second, threshold)
 
 	// All members are in the default failure domain.
 	domains, err := repo.GetNodesFailureDomains(t.Context())

@@ -14,6 +14,9 @@ type NetworkLocal struct {
 type NetworkLocalPut struct {
 	// Address and port to bind the REST API to.
 	RestServerAddress string `json:"rest_server_address" yaml:"rest_server_address"`
+
+	// Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+	ClusterAddress string `json:"cluster_address" yaml:"cluster_address"`
 }
 
 // SettingsLocal represents the system settings of this member.

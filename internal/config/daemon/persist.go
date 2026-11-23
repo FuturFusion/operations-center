@@ -52,6 +52,10 @@ func normalizeShared(cfg SharedConfig) (SharedConfig, error) {
 		cfg.Updates.ServerDefaultChannel = "stable"
 	}
 
+	if cfg.Cluster.OfflineThresholdSeconds <= 0 {
+		cfg.Cluster.OfflineThresholdSeconds = DefaultOfflineThresholdSeconds
+	}
+
 	return cfg, nil
 }
 

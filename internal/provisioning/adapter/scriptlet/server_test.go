@@ -633,6 +633,9 @@ def server_registration(candidate):
 				IsIncusOSFunc: func() bool {
 					return false
 				},
+				ClusteredFunc: func() bool {
+					return false
+				},
 			}, nil)
 
 			logBuf := &log.SyncBuffer{}

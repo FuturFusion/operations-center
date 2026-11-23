@@ -139,6 +139,7 @@ func Test_metricsGet(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return false
 				},
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 			err := config.UpdateLocalSettings(t.Context(), apisystem.SettingsLocalPut{
 				LogLevel:          "WARN",

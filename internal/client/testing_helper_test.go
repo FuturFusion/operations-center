@@ -80,6 +80,7 @@ func daemonSetup(t *testing.T) testDaemon {
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
+		ClusteredFunc: func() bool { return false },
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{

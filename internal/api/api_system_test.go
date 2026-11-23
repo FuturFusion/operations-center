@@ -51,6 +51,7 @@ func TestSystemCertificate(t *testing.T) {
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
+		ClusteredFunc: func() bool { return false },
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{
@@ -216,6 +217,7 @@ func TestSystemCleanCachePost(t *testing.T) {
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
+		ClusteredFunc: func() bool { return false },
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{

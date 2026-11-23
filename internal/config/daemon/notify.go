@@ -92,4 +92,8 @@ func notifyShared(ctx context.Context, updated section, oldCfg, newCfg SharedCon
 	if updated == sectionUpdates || isUpdatesChanged(oldCfg, newCfg) {
 		lifecycle.UpdatesUpdateSignal.Emit(ctx, newCfg.Updates)
 	}
+
+	if updated == sectionCluster || isSharedClusterChanged(oldCfg, newCfg) {
+		lifecycle.SharedClusterUpdateSignal.Emit(ctx, newCfg.Cluster)
+	}
 }

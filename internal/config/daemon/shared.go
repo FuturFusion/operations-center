@@ -18,4 +18,7 @@ type SharedConfig struct {
 
 	// Updates configuration shared by all cluster members.
 	Updates system.Updates `json:"updates" yaml:"updates"`
+
+	// Cluster configuration shared by all cluster members.
+	Cluster system.Cluster `json:"cluster" yaml:"cluster"`
 }
