@@ -55,6 +55,12 @@ func (c *CmdSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(updatesCmd.Command())
 
+	clusterCmd := system.CmdCluster{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterCmd.Command())
+
 	cleanCacheCmd := system.CmdCleanCache{
 		OCClient: c.OCClient,
 	}

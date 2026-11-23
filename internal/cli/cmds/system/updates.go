@@ -3,6 +3,7 @@ package system
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -93,7 +95,7 @@ func (c *cmdUpdatesShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdUpdatesShow) run(cmd *cobra.Command, args []string) error {
-	config, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
+	config, _, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -162,7 +164,7 @@ func (c *cmdUpdatesEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata)
+		err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata, "")
 		if err != nil {
 			return err
 		}
@@ -170,7 +172,7 @@ func (c *cmdUpdatesEdit) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	updatesConfig, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
+	updatesConfig, etag, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -193,7 +195,12 @@ func (c *cmdUpdatesEdit) run(cmd *cobra.Command, args []string) error {
 		newdata := system.UpdatesPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata)
+			err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata, etag)
+		}
+
+		// Editing again doesn't help, the change has to be based on the current config.
+		if errors.Is(err, domain.ErrPreconditionFailed) {
+			return err
 		}
 
 		// Respawn the editor

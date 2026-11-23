@@ -104,6 +104,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
+	clusterCmd := cmds.CmdCluster{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(clusterCmd.Command())
+
 	imageCmd := cmds.CmdImage{
 		OCClient: globalCmd.ocClient,
 	}
