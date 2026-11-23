@@ -61,6 +61,20 @@ func (_d MembershipServiceWithPrometheus) Accept(ctx context.Context, cfg api.Cl
 	return _d.base.Accept(ctx, cfg)
 }
 
+// ApplyClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyClusterCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyClusterCertificate(ctx, certificatePEM, keyPEM)
+}
+
 // Auth implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, username string, protocol string, err error) {
 	_since := time.Now()
@@ -87,6 +101,20 @@ func (_d MembershipServiceWithPrometheus) Bootstrap(ctx context.Context, cfg api
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Bootstrap", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Bootstrap(ctx, cfg)
+}
+
+// CheckMembersOnline implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) CheckMembersOnline(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CheckMembersOnline", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CheckMembersOnline(ctx)
 }
 
 // CreateToken implements cluster.MembershipService.
@@ -475,4 +503,18 @@ func (_d MembershipServiceWithPrometheus) TrustedClients() (stringToCertificate 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TrustedClients", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.TrustedClients()
+}
+
+// UpdateClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
 }

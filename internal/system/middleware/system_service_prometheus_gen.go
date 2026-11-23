@@ -107,6 +107,20 @@ func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (upd
 	return _d.base.GetUpdatesConfig(ctx)
 }
 
+// PropagateCertificate implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) PropagateCertificate(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PropagateCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PropagateCertificate(ctx)
+}
+
 // TriggerCertificateRenew implements system0.SystemService.
 func (_d SystemServiceWithPrometheus) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
 	_since := time.Now()

@@ -89,6 +89,38 @@ func (_d MembershipServiceWithSlog) Accept(ctx context.Context, cfg api.ClusterA
 	return _d._base.Accept(ctx, cfg)
 }
 
+// ApplyClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("certificatePEM", certificatePEM),
+			slog.String("keyPEM", keyPEM),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplyClusterCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ApplyClusterCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ApplyClusterCertificate finished")
+		}
+	}()
+	return _d._base.ApplyClusterCertificate(ctx, certificatePEM, keyPEM)
+}
+
 // Auth implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, username string, protocol string, err error) {
 	ctx := logger.ContextWithComponent(r.Context(), _d._component)
@@ -152,6 +184,36 @@ func (_d MembershipServiceWithSlog) Bootstrap(ctx context.Context, cfg api.Clust
 		}
 	}()
 	return _d._base.Bootstrap(ctx, cfg)
+}
+
+// CheckMembersOnline implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) CheckMembersOnline(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CheckMembersOnline")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method CheckMembersOnline returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method CheckMembersOnline finished")
+		}
+	}()
+	return _d._base.CheckMembersOnline(ctx)
 }
 
 // CreateToken implements cluster.MembershipService.
@@ -974,4 +1036,36 @@ func (_d MembershipServiceWithSlog) TrustedClients() (stringToCertificate map[st
 		log.DebugContext(ctx, "<= method TrustedClients finished")
 	}()
 	return _d._base.TrustedClients()
+}
+
+// UpdateClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("certificatePEM", certificatePEM),
+			slog.String("keyPEM", keyPEM),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateClusterCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate finished")
+		}
+	}()
+	return _d._base.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -29,6 +30,7 @@ type environment interface {
 	VarDir() string
 	CacheDir() string
 	IsIncusOS() bool
+	Clustered() bool
 }
 
 type systemService struct {
@@ -36,6 +38,13 @@ type systemService struct {
 	serverSvc       ProvisioningServerService
 	cacheRepo       CacheRepo
 	certificateRepo CertificateRepo
+
+	// updateClusterCertificate persists the cluster certificate on all members.
+	updateClusterCertificate func(ctx context.Context, certificatePEM string, keyPEM string) error
+	// isMemberCertificate reports if the certificate belongs to a cluster member.
+	isMemberCertificate func(certificatePEM string) bool
+	// checkMembersOnline fails unless all cluster members are online.
+	checkMembersOnline func(ctx context.Context) error
 
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
@@ -51,6 +60,27 @@ type systemService struct {
 var _ SystemService = &systemService{}
 
 type SystemServiceOption func(s *systemService)
+
+// WithClusterCertificateUpdater sets the function persisting the cluster certificate on all cluster members.
+func WithClusterCertificateUpdater(f func(ctx context.Context, certificatePEM string, keyPEM string) error) SystemServiceOption {
+	return func(s *systemService) {
+		s.updateClusterCertificate = f
+	}
+}
+
+// WithClusterMembersOnlineCheck sets the check that all cluster members are online, which an ACME renewal needs.
+func WithClusterMembersOnlineCheck(checkMembersOnline func(ctx context.Context) error) SystemServiceOption {
+	return func(s *systemService) {
+		s.checkMembersOnline = checkMembersOnline
+	}
+}
+
+// WithClusterMemberCertificates sets the cluster member certificate checker.
+func WithClusterMemberCertificates(isMemberCertificate func(certificatePEM string) bool) SystemServiceOption {
+	return func(s *systemService) {
+		s.isMemberCertificate = isMemberCertificate
+	}
+}
 
 func NewSystemService(
 	env environment,
@@ -135,6 +165,11 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return nil
 	}
 
+	err = s.storeCertificate(ctx, certificatePEM, keyPEM)
+	if err != nil {
+		return err
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -145,14 +180,9 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	reverter.Add(func() {
 		revertErr := s.storeCertificate(revertCtx, string(currentServerCertificate), string(currentServerKey))
 		if revertErr != nil {
-			err = errors.Join(err, fmt.Errorf("Failed to restore the server key pair: %w", revertErr))
+			err = errors.Join(err, fmt.Errorf("Failed to put back the previous certificate: %w", revertErr))
 		}
 	})
-
-	err = s.certificateRepo.UpdateServerKeyPair(ctx, []byte(certificatePEM), []byte(keyPEM))
-	if err != nil {
-		return fmt.Errorf("Failed to persist the server key pair: %w", err)
-	}
 
 	// Restart openfga application, if it is present as secondary application
 	// on IncusOS.
@@ -164,23 +194,27 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 			return fmt.Errorf("Failed to get operations-center server entry: %w", err)
 		}
 
-		if len(servers) != 1 {
-			//domain-errors:internal Violated invariant, nothing the user can do about it.
-			return fmt.Errorf("Failed to get operations-center server entry, expected 1 entry, got %d", len(servers))
-		}
-
-		hasOpenFGA := false
-		for _, app := range servers[0].VersionData.Applications {
-			if app.Name == "openfga" {
-				hasOpenFGA = true
-				break
+		// Every cluster member runs on its own IncusOS.
+		for _, server := range servers {
+			if !s.isPeerServer(server, currentCertificate) {
+				continue
 			}
-		}
 
-		if hasOpenFGA {
-			err = s.serverSvc.RestartApplication(ctx, servers[0].Name, "openfga")
+			hasOpenFGA := false
+			for _, app := range server.VersionData.Applications {
+				if app.Name == "openfga" {
+					hasOpenFGA = true
+					break
+				}
+			}
+
+			if !hasOpenFGA {
+				continue
+			}
+
+			err = s.serverSvc.RestartApplication(ctx, server.Name, "openfga")
 			if err != nil {
-				return fmt.Errorf("Failed to restart OpenFGA application: %w", err)
+				return fmt.Errorf("Failed to restart OpenFGA application on %q: %w", server.Name, err)
 			}
 		}
 	}
@@ -241,6 +275,84 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 	}
 }
 
+// isPeerServer returns whether the server record belongs to this system or a cluster member.
+func (s *systemService) isPeerServer(server provisioning.Server, current tls.Certificate) bool {
+	if s.env.Clustered() {
+		return s.isMemberCertificate != nil && s.isMemberCertificate(ptr.From(server.Certificate))
+	}
+
+	cert, err := certificate.Decode([]byte(ptr.From(server.Certificate)))
+	if err != nil {
+		return false
+	}
+
+	return len(current.Certificate) > 0 && bytes.Equal(cert.Raw, current.Certificate[0])
+}
+
+// storeCertificate persists the certificate presented to API clients on all cluster members, keeping the previous one on failure.
+func (s *systemService) storeCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	if s.env.Clustered() {
+		if s.updateClusterCertificate == nil {
+			return errors.New("No cluster certificate updater configured")
+		}
+
+		err := s.updateClusterCertificate(ctx, certificatePEM, keyPEM)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster certificate: %w", err)
+		}
+
+		return nil
+	}
+
+	currentCertificate, currentKey, err := s.certificateRepo.GetServerKeyPair(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to read the server key pair: %w", err)
+	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Restore the certificate and the key, even if the update wrote only one of
+	// them. This keeps the certificate and the key matching.
+	reverter.Add(func() {
+		revertErr := s.certificateRepo.UpdateServerKeyPair(ctx, currentCertificate, currentKey)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to restore the server key pair: %w", revertErr))
+		}
+	})
+
+	err = s.certificateRepo.UpdateServerKeyPair(ctx, []byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return fmt.Errorf("Failed to persist the server key pair: %w", err)
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+// PropagateCertificate informs the subsystems and the managed servers about a certificate changed outside of UpdateCertificate.
+func (s *systemService) PropagateCertificate(ctx context.Context) error {
+	certificatePEM, keyPEM, err := s.certificateRepo.GetServerKeyPair(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to read the server key pair: %w", err)
+	}
+
+	keyPair, err := tls.X509KeyPair(certificatePEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("Failed to validate key pair: %w", err)
+	}
+
+	err = lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, keyPair)
+	if err != nil {
+		return fmt.Errorf("Failed to update certificate: %w", err)
+	}
+
+	s.pushServerCertificateAll(ctx, string(certificatePEM))
+
+	return nil
+}
+
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
 	certificatePEM, err := s.certificateRepo.GetServerCertificate(ctx)
 	if err != nil {
@@ -253,6 +365,15 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 	}
 
 	cfg := config.GetSecurity().ACME
+
+	// An ACME certificate comes with a new key, which only reaches the cluster if all members are online.
+	// A certificate renewed for the existing key reaches the offline members when they start, so it needs no check.
+	if s.checkMembersOnline != nil && acme.IsEnabled(cfg) && (force || incustls.CertificateNeedsUpdate(cfg.Domain, current)) {
+		err = s.checkMembersOnline(ctx)
+		if err != nil {
+			return false, fmt.Errorf("ACME server certificate renewal skipped: %w", err)
+		}
+	}
 
 	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, current, force)
 	if err != nil {

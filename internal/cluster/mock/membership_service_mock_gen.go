@@ -35,11 +35,17 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			AcceptFunc: func(ctx context.Context, cfg api.ClusterAcceptPost) (*api0.InternalClusterAcceptResponse, error) {
 //				panic("mock out the Accept method")
 //			},
+//			ApplyClusterCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
+//				panic("mock out the ApplyClusterCertificate method")
+//			},
 //			AuthFunc: func(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
 //				panic("mock out the Auth method")
 //			},
 //			BootstrapFunc: func(ctx context.Context, cfg api.ClusterBootstrapPost) error {
 //				panic("mock out the Bootstrap method")
+//			},
+//			CheckMembersOnlineFunc: func(ctx context.Context) error {
+//				panic("mock out the CheckMembersOnline method")
 //			},
 //			CreateTokenFunc: func(ctx context.Context, req api.ClusterTokenPost) error {
 //				panic("mock out the CreateToken method")
@@ -131,6 +137,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			TrustedClientsFunc: func() map[string]x509.Certificate {
 //				panic("mock out the TrustedClients method")
 //			},
+//			UpdateClusterCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
+//				panic("mock out the UpdateClusterCertificate method")
+//			},
 //		}
 //
 //		// use mockedMembershipService in code that requires cluster.MembershipService
@@ -141,11 +150,17 @@ type MembershipServiceMock struct {
 	// AcceptFunc mocks the Accept method.
 	AcceptFunc func(ctx context.Context, cfg api.ClusterAcceptPost) (*api0.InternalClusterAcceptResponse, error)
 
+	// ApplyClusterCertificateFunc mocks the ApplyClusterCertificate method.
+	ApplyClusterCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
 	// AuthFunc mocks the Auth method.
 	AuthFunc func(w http.ResponseWriter, r *http.Request) (bool, string, string, error)
 
 	// BootstrapFunc mocks the Bootstrap method.
 	BootstrapFunc func(ctx context.Context, cfg api.ClusterBootstrapPost) error
+
+	// CheckMembersOnlineFunc mocks the CheckMembersOnline method.
+	CheckMembersOnlineFunc func(ctx context.Context) error
 
 	// CreateTokenFunc mocks the CreateToken method.
 	CreateTokenFunc func(ctx context.Context, req api.ClusterTokenPost) error
@@ -237,6 +252,9 @@ type MembershipServiceMock struct {
 	// TrustedClientsFunc mocks the TrustedClients method.
 	TrustedClientsFunc func() map[string]x509.Certificate
 
+	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
+	UpdateClusterCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// Accept holds details about calls to the Accept method.
@@ -245,6 +263,15 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg api.ClusterAcceptPost
+		}
+		// ApplyClusterCertificate holds details about calls to the ApplyClusterCertificate method.
+		ApplyClusterCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
 		}
 		// Auth holds details about calls to the Auth method.
 		Auth []struct {
@@ -259,6 +286,11 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg api.ClusterBootstrapPost
+		}
+		// CheckMembersOnline holds details about calls to the CheckMembersOnline method.
+		CheckMembersOnline []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// CreateToken holds details about calls to the CreateToken method.
 		CreateToken []struct {
@@ -432,10 +464,21 @@ type MembershipServiceMock struct {
 		// TrustedClients holds details about calls to the TrustedClients method.
 		TrustedClients []struct {
 		}
+		// UpdateClusterCertificate holds details about calls to the UpdateClusterCertificate method.
+		UpdateClusterCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
+		}
 	}
 	lockAccept                    sync.RWMutex
+	lockApplyClusterCertificate   sync.RWMutex
 	lockAuth                      sync.RWMutex
 	lockBootstrap                 sync.RWMutex
+	lockCheckMembersOnline        sync.RWMutex
 	lockCreateToken               sync.RWMutex
 	lockDeleteTokenByName         sync.RWMutex
 	lockDetermineNodeID           sync.RWMutex
@@ -466,6 +509,7 @@ type MembershipServiceMock struct {
 	lockStop                      sync.RWMutex
 	lockTrust                     sync.RWMutex
 	lockTrustedClients            sync.RWMutex
+	lockUpdateClusterCertificate  sync.RWMutex
 }
 
 // Accept calls AcceptFunc.
@@ -501,6 +545,46 @@ func (mock *MembershipServiceMock) AcceptCalls() []struct {
 	mock.lockAccept.RLock()
 	calls = mock.calls.Accept
 	mock.lockAccept.RUnlock()
+	return calls
+}
+
+// ApplyClusterCertificate calls ApplyClusterCertificateFunc.
+func (mock *MembershipServiceMock) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	if mock.ApplyClusterCertificateFunc == nil {
+		panic("MembershipServiceMock.ApplyClusterCertificateFunc: method is nil but MembershipService.ApplyClusterCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockApplyClusterCertificate.Lock()
+	mock.calls.ApplyClusterCertificate = append(mock.calls.ApplyClusterCertificate, callInfo)
+	mock.lockApplyClusterCertificate.Unlock()
+	return mock.ApplyClusterCertificateFunc(ctx, certificatePEM, keyPEM)
+}
+
+// ApplyClusterCertificateCalls gets all the calls that were made to ApplyClusterCertificate.
+// Check the length with:
+//
+//	len(mockedMembershipService.ApplyClusterCertificateCalls())
+func (mock *MembershipServiceMock) ApplyClusterCertificateCalls() []struct {
+	Ctx            context.Context
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockApplyClusterCertificate.RLock()
+	calls = mock.calls.ApplyClusterCertificate
+	mock.lockApplyClusterCertificate.RUnlock()
 	return calls
 }
 
@@ -573,6 +657,38 @@ func (mock *MembershipServiceMock) BootstrapCalls() []struct {
 	mock.lockBootstrap.RLock()
 	calls = mock.calls.Bootstrap
 	mock.lockBootstrap.RUnlock()
+	return calls
+}
+
+// CheckMembersOnline calls CheckMembersOnlineFunc.
+func (mock *MembershipServiceMock) CheckMembersOnline(ctx context.Context) error {
+	if mock.CheckMembersOnlineFunc == nil {
+		panic("MembershipServiceMock.CheckMembersOnlineFunc: method is nil but MembershipService.CheckMembersOnline was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockCheckMembersOnline.Lock()
+	mock.calls.CheckMembersOnline = append(mock.calls.CheckMembersOnline, callInfo)
+	mock.lockCheckMembersOnline.Unlock()
+	return mock.CheckMembersOnlineFunc(ctx)
+}
+
+// CheckMembersOnlineCalls gets all the calls that were made to CheckMembersOnline.
+// Check the length with:
+//
+//	len(mockedMembershipService.CheckMembersOnlineCalls())
+func (mock *MembershipServiceMock) CheckMembersOnlineCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockCheckMembersOnline.RLock()
+	calls = mock.calls.CheckMembersOnline
+	mock.lockCheckMembersOnline.RUnlock()
 	return calls
 }
 
@@ -1571,5 +1687,45 @@ func (mock *MembershipServiceMock) TrustedClientsCalls() []struct {
 	mock.lockTrustedClients.RLock()
 	calls = mock.calls.TrustedClients
 	mock.lockTrustedClients.RUnlock()
+	return calls
+}
+
+// UpdateClusterCertificate calls UpdateClusterCertificateFunc.
+func (mock *MembershipServiceMock) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	if mock.UpdateClusterCertificateFunc == nil {
+		panic("MembershipServiceMock.UpdateClusterCertificateFunc: method is nil but MembershipService.UpdateClusterCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockUpdateClusterCertificate.Lock()
+	mock.calls.UpdateClusterCertificate = append(mock.calls.UpdateClusterCertificate, callInfo)
+	mock.lockUpdateClusterCertificate.Unlock()
+	return mock.UpdateClusterCertificateFunc(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateClusterCertificateCalls gets all the calls that were made to UpdateClusterCertificate.
+// Check the length with:
+//
+//	len(mockedMembershipService.UpdateClusterCertificateCalls())
+func (mock *MembershipServiceMock) UpdateClusterCertificateCalls() []struct {
+	Ctx            context.Context
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockUpdateClusterCertificate.RLock()
+	calls = mock.calls.UpdateClusterCertificate
+	mock.lockUpdateClusterCertificate.RUnlock()
 	return calls
 }

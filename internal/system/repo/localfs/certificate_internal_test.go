@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
@@ -177,4 +178,45 @@ func requireWriteFile(t *testing.T, filename string, content string) {
 
 	err := os.WriteFile(filename, []byte(content), 0o600)
 	require.NoError(t, err)
+}
+
+func TestCertificate_clustered(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	requireWriteFile(t, filepath.Join(dir, config.ServerCertificateFilename), "server certificate")
+	requireWriteFile(t, filepath.Join(dir, config.ServerKeyFilename), "server key")
+	requireWriteFile(t, filepath.Join(dir, config.ClusterCertificateFilename), "cluster certificate")
+	requireWriteFile(t, filepath.Join(dir, config.ClusterKeyFilename), "cluster key")
+
+	clustered := false
+	repo := NewCertificate(fsroot.Open(t, dir), WithClustered(func() bool { return clustered }))
+
+	certificatePEM, keyPEM, err := repo.GetServerKeyPair(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "server certificate", string(certificatePEM))
+	require.Equal(t, "server key", string(keyPEM))
+
+	clustered = true
+
+	certificatePEM, keyPEM, err = repo.GetServerKeyPair(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "cluster certificate", string(certificatePEM))
+	require.Equal(t, "cluster key", string(keyPEM))
+
+	// While clustered, an update replaces the cluster certificate and leaves the server certificate alone.
+	err = repo.UpdateServerKeyPair(t.Context(), []byte("new certificate"), []byte("new key"))
+	require.NoError(t, err)
+
+	requireFileContent(t, filepath.Join(dir, config.ClusterCertificateFilename), "new certificate")
+	requireFileContent(t, filepath.Join(dir, config.ClusterKeyFilename), "new key")
+	requireFileContent(t, filepath.Join(dir, config.ServerCertificateFilename), "server certificate")
+}
+
+func requireFileContent(t *testing.T, filename string, want string) {
+	t.Helper()
+
+	content, err := os.ReadFile(filename)
+	require.NoError(t, err)
+	require.Equal(t, want, string(content))
 }

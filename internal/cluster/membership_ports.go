@@ -57,6 +57,9 @@ type MembershipService interface {
 
 	PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error)
 	PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error
+	CheckMembersOnline(ctx context.Context) error
+	UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
+	ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	ReloadSharedConfig(ctx context.Context) error
 }
 

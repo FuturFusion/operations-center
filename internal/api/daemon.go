@@ -289,6 +289,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// A member, which was offline while the cluster certificate was renewed, adopts it before anything presents or pins the certificate.
+	err = clusteringSvc.SyncClusterCertificate(ctx, d.varRoot, clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"), nil), config.GetLocalNetwork().ClusterAddress)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to check the cluster certificate of the other members", logger.Err(err))
+	}
+
 	err = d.initAndLoadServerCert()
 	if err != nil {
 		return err
@@ -1348,7 +1354,18 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 				systemLocalfs.New(d.cacheRoot, seedImageCacheDir),
 			),
 			// Do not wrap with slog. This repo handles the private key of the server.
-			systemLocalfs.NewCertificate(d.varRoot),
+			systemLocalfs.NewCertificate(d.varRoot, systemLocalfs.WithClustered(d.env.Clustered)),
+			system.WithClusterCertificateUpdater(func(ctx context.Context, certificatePEM string, keyPEM string) error {
+				return d.membershipSvc.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
+			}),
+			system.WithClusterMemberCertificates(d.isClusterMemberCertificate),
+			system.WithClusterMembersOnlineCheck(func(ctx context.Context) error {
+				if !d.env.Clustered() || d.membershipSvc == nil {
+					return nil
+				}
+
+				return d.membershipSvc.CheckMembersOnline(ctx)
+			}),
 		),
 	)
 }
@@ -2083,11 +2100,7 @@ func (d *Daemon) backgroundTasks(
 	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
 
-		scope := api.WarningScope{
-			Scope:      "acme_certificate_update",
-			EntityType: "system",
-			Entity:     "operations-center",
-		}
+		scope := warning.ScopeACMECertificateUpdate
 
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {

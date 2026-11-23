@@ -11,6 +11,7 @@ type SystemService interface {
 	GetCertificate(ctx context.Context) (system.Certificate, error)
 	UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error)
+	PropagateCertificate(ctx context.Context) error
 
 	GetNetworkConfig(ctx context.Context) system.Network
 	UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) error

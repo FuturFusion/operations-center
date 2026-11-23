@@ -168,6 +168,8 @@ func registerInternalClusterMembershipHandler(
 	leaderAuthenticated.HandleFunc("POST /:rebalance", response.With(handler.rebalancePost))
 	// Reload the shared config from the global database.
 	authenticated.HandleFunc("POST /:reload-config", response.With(handler.reloadConfigPost))
+	// Apply a cluster certificate updated by another cluster member.
+	authenticated.HandleFunc("POST /:update-certificate", response.With(handler.updateCertificatePost))
 	// Trust a supplied join token.
 	leaderUntrusted.HandleFunc("POST /:trust", response.With(handler.trustPost))
 	// Accept a new cluster member.
@@ -237,6 +239,22 @@ func (m *membershipHandler) rebalancePost(r *http.Request) response.Response {
 
 func (m *membershipHandler) reloadConfigPost(r *http.Request) response.Response {
 	err := m.service.ReloadSharedConfig(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) updateCertificatePost(r *http.Request) response.Response {
+	var req apisystem.CertificatePost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = m.service.ApplyClusterCertificate(r.Context(), req.Certificate, req.Key)
 	if err != nil {
 		return response.SmartError(err)
 	}

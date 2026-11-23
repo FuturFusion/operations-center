@@ -154,6 +154,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		serverGetSystemProvider     []queue.Item[provisioning.ServerSystemProvider]
 		serverUpdateSystemProvider  []queue.Item[struct{}]
 		serverRestartApplicationErr error
+		clustered                   bool
 
 		assertErr                       require.ErrorAssertionFunc
 		assertLog                       log.MatcherFunc
@@ -161,6 +162,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		wantProviderCertificate         string
 		wantCertificate                 string
 		wantKey                         string
+		wantRestarted                   []string
 	}{
 		{
 			name: "success - no registered servers except for self-registered operations-center",
@@ -193,8 +195,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:                  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
-					Name: "operations-center",
-					Type: api.ServerTypeOperationsCenter,
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
 					VersionData: api.ServerVersionData{
 						Applications: []api.ApplicationVersionData{
 							{
@@ -215,6 +218,82 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			wantCertificate: string(certPEM),
 			wantKey:         string(keyPEM),
+			wantRestarted:   []string{"operations-center"},
+		},
+		{
+			name: "success - deployed Operations Center is not restarted",
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
+				t.Helper()
+			},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
+				},
+				{
+					Name:        "deployed",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(otherLeafPEM)),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+			},
+			serverGetAll: provisioning.Servers{operationsCenterServer},
+
+			assertErr: require.NoError,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+			wantCertificate: string(certPEM),
+			wantKey:         string(keyPEM),
+			wantRestarted:   []string{},
+		},
+		{
+			name: "success - clustered - only cluster members are restarted",
+			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
+				t.Helper()
+			},
+			repoUpdateServerKeyPair: storeKeyPair,
+			certPEM:                 string(certPEM),
+			keyPEM:                  string(keyPEM),
+			clustered:               true,
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name:        "one",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new("member-one"),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+				{
+					Name:        "deployed",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(otherLeafPEM)),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+			wantCertificate: string(currentCertPEM),
+			wantKey:         string(currentKeyPEM),
+			wantRestarted:   []string{"one"},
 		},
 		{
 			name: "success - no registered servers - same certificate",
@@ -590,17 +669,30 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			wantKey:                         string(currentKeyPEM),
 		},
 		{
-			name: "error - serverSvc.GetAllWithFilter - no operations-center entry",
+			name: "error - serverSvc.RestartApplication - on another cluster member",
 			setupKeyPair: func(t *testing.T, keyPair *testKeyPair) {
 				t.Helper()
 			},
 			repoUpdateServerKeyPair: storeKeyPair,
 			certPEM:                 string(certPEM),
 			keyPEM:                  string(keyPEM),
-			serverGetAllWithFilter:  provisioning.Servers{},
+			clustered:               true,
+			serverGetAllWithFilter: provisioning.Servers{
+				{Name: "one", Type: api.ServerTypeOperationsCenter, Certificate: new("member-one")},
+				{
+					Name:        "two",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new("member-two"),
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{{Name: "openfga"}},
+					},
+				},
+			},
+			serverRestartApplicationErr: boom.Error,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected 1 entry, got 0")
+				require.ErrorIs(tt, err, boom.Error)
+				require.ErrorContains(tt, err, `Failed to restart OpenFGA application on "two"`)
 			},
 			assertLog:                       log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
@@ -617,8 +709,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:                  string(keyPEM),
 			serverGetAllWithFilter: provisioning.Servers{
 				{
-					Name: "operations-center",
-					Type: api.ServerTypeOperationsCenter,
+					Name:        "operations-center",
+					Type:        api.ServerTypeOperationsCenter,
+					Certificate: new(string(currentCertPEM)),
 					VersionData: api.ServerVersionData{
 						Applications: []api.ApplicationVersionData{
 							{
@@ -735,6 +828,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				lifecycle.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())
 			})
 
+			restarted := []string{}
 			serverSvc := &mock.ProvisioningServerServiceMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return tc.serverGetAll, tc.serverGetAllErr
@@ -751,11 +845,19 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					return err
 				},
 				RestartApplicationFunc: func(ctx context.Context, name, applicationName string) error {
+					restarted = append(restarted, name)
 					return tc.serverRestartApplicationErr
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo,
+				system.WithClusterCertificateUpdater(func(ctx context.Context, certificatePEM string, keyPEM string) error {
+					return nil
+				}),
+				system.WithClusterMemberCertificates(func(certificatePEM string) bool {
+					return certificatePEM == "member-one" || certificatePEM == "member-two"
+				}),
+			)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -767,6 +869,10 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.Empty(t, tc.serverGetSystemProvider)
 			require.Empty(t, tc.serverUpdateSystemProvider)
 			require.Empty(t, tc.wantServerCertificateUpdateEmit)
+
+			if tc.wantRestarted != nil {
+				require.Equal(t, tc.wantRestarted, restarted)
+			}
 
 			require.Equal(t, tc.wantCertificate, string(keyPair.certificatePEM), "Stored server certificate")
 			require.Equal(t, tc.wantKey, string(keyPair.keyPEM), "Stored server key")

@@ -40,6 +40,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			GetUpdatesConfigFunc: func(ctx context.Context) system.Updates {
 //				panic("mock out the GetUpdatesConfig method")
 //			},
+//			PropagateCertificateFunc: func(ctx context.Context) error {
+//				panic("mock out the PropagateCertificate method")
+//			},
 //			TriggerCertificateRenewFunc: func(ctx context.Context, force bool) (bool, error) {
 //				panic("mock out the TriggerCertificateRenew method")
 //			},
@@ -82,6 +85,9 @@ type SystemServiceMock struct {
 
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
 	GetUpdatesConfigFunc func(ctx context.Context) system.Updates
+
+	// PropagateCertificateFunc mocks the PropagateCertificate method.
+	PropagateCertificateFunc func(ctx context.Context) error
 
 	// TriggerCertificateRenewFunc mocks the TriggerCertificateRenew method.
 	TriggerCertificateRenewFunc func(ctx context.Context, force bool) (bool, error)
@@ -130,6 +136,11 @@ type SystemServiceMock struct {
 		}
 		// GetUpdatesConfig holds details about calls to the GetUpdatesConfig method.
 		GetUpdatesConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// PropagateCertificate holds details about calls to the PropagateCertificate method.
+		PropagateCertificate []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -184,6 +195,7 @@ type SystemServiceMock struct {
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
 	lockGetUpdatesConfig        sync.RWMutex
+	lockPropagateCertificate    sync.RWMutex
 	lockTriggerCertificateRenew sync.RWMutex
 	lockUpdateCertificate       sync.RWMutex
 	lockUpdateNetworkConfig     sync.RWMutex
@@ -381,6 +393,38 @@ func (mock *SystemServiceMock) GetUpdatesConfigCalls() []struct {
 	mock.lockGetUpdatesConfig.RLock()
 	calls = mock.calls.GetUpdatesConfig
 	mock.lockGetUpdatesConfig.RUnlock()
+	return calls
+}
+
+// PropagateCertificate calls PropagateCertificateFunc.
+func (mock *SystemServiceMock) PropagateCertificate(ctx context.Context) error {
+	if mock.PropagateCertificateFunc == nil {
+		panic("SystemServiceMock.PropagateCertificateFunc: method is nil but SystemService.PropagateCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockPropagateCertificate.Lock()
+	mock.calls.PropagateCertificate = append(mock.calls.PropagateCertificate, callInfo)
+	mock.lockPropagateCertificate.Unlock()
+	return mock.PropagateCertificateFunc(ctx)
+}
+
+// PropagateCertificateCalls gets all the calls that were made to PropagateCertificate.
+// Check the length with:
+//
+//	len(mockedSystemService.PropagateCertificateCalls())
+func (mock *SystemServiceMock) PropagateCertificateCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockPropagateCertificate.RLock()
+	calls = mock.calls.PropagateCertificate
+	mock.lockPropagateCertificate.RUnlock()
 	return calls
 }
 

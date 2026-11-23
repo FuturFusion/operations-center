@@ -1456,6 +1456,145 @@ func (m *membership) ReloadSharedConfig(ctx context.Context) error {
 	})
 }
 
+// CheckMembersOnline fails unless all cluster members are online.
+func (m *membership) CheckMembersOnline(ctx context.Context) error {
+	_, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), cowsqlcluster.NotifyAll)
+	if err != nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "All cluster members need to be online to update the cluster certificate").WithCause(err)
+	}
+
+	return nil
+}
+
+// UpdateClusterCertificate applies the cluster certificate on all cluster members. All of them need to be online.
+func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	keyPair, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return domain.NewValidationErrf("Failed to validate key pair: %v", err)
+	}
+
+	currentCert, err := m.gateway.NetworkCert().PublicKeyX509()
+	if err != nil {
+		return err
+	}
+
+	newCert, err := x509.ParseCertificate(keyPair.Certificate[0])
+	if err != nil {
+		return err
+	}
+
+	// A certificate for the same key reaches the online members now and the others when they start.
+	// A new key would cut off an offline member for good, so it needs all members.
+	policy := cowsqlcluster.NotifyAlive
+	if !sameKey(currentCert, newCert) {
+		policy = cowsqlcluster.NotifyAll
+	}
+
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), policy)
+	if err != nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "All cluster members need to be online to replace the key of the cluster certificate").WithCause(err)
+	}
+
+	previousCertificate, err := m.varRoot.ReadFile("cluster.crt")
+	if err != nil {
+		return err
+	}
+
+	previousKey, err := m.varRoot.ReadFile("cluster.key")
+	if err != nil {
+		return err
+	}
+
+	previous := apisystem.CertificatePost{Certificate: string(previousCertificate), Key: string(previousKey)}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
+	var reverterMu sync.Mutex
+
+	post := apisystem.CertificatePost{Certificate: certificatePEM, Key: keyPEM}
+	errs := notifier(func(notifyCtx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
+		err := m.postClusterCertificate(notifyCtx, address, currentCert, post)
+		if err != nil {
+			return err
+		}
+
+		reverterMu.Lock()
+		reverter.Add(func() {
+			err := m.postClusterCertificate(revertCtx, address, newCert, previous)
+			if err != nil {
+				slog.ErrorContext(revertCtx, "Failed to put back the previous cluster certificate on cluster member", slog.String("address", address), logger.Err(err))
+			}
+		})
+		reverterMu.Unlock()
+
+		return nil
+	})
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to update the cluster certificate on all cluster members: %w", err)
+	}
+
+	// This member is updated last, so it is unchanged if another one fails.
+	err = m.setClusterCertificate(keyPair)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+// postClusterCertificate applies the cluster certificate on the member at address, which must present trusted.
+func (m *membership) postClusterCertificate(ctx context.Context, address string, trusted *x509.Certificate, certificate apisystem.CertificatePost) error {
+	certInfo, ok := m.gateway.ServerCert().(*incustls.CertInfo)
+	if !ok {
+		//domain-errors:internal The server certificate is always loaded by the daemon itself.
+		return fmt.Errorf("Invalid certificate info: %T", m.gateway.ServerCert())
+	}
+
+	c, err := client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(trusted), client.WithDialTimeout(MemberDialTimeout))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:update-certificate", nil, certificate)
+
+	return err
+}
+
+// ApplyClusterCertificate applies the cluster certificate updated by another cluster member.
+func (m *membership) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	keyPair, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return domain.NewValidationErrf("Failed to validate key pair: %v", err)
+	}
+
+	err = m.setClusterCertificate(keyPair)
+	if err != nil {
+		return err
+	}
+
+	return lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, keyPair)
+}
+
+// setClusterCertificate persists the cluster certificate and applies it to the listeners and the database gateway.
+func (m *membership) setClusterCertificate(keyPair tls.Certificate) error {
+	certInfo, err := m.gateway.State().SetClusterCertificate(cowsqltls.NewCertInfo(keyPair, nil, nil))
+	if err != nil {
+		return fmt.Errorf("Failed to persist cluster certificate: %w", err)
+	}
+
+	m.gateway.NetworkUpdateCert(certInfo)
+
+	return nil
+}
+
 // MemberClient returns a client for the cluster member with the given address.
 func (m *membership) MemberClient(address string) (client.OperationsCenterClient, error) {
 	networkCert, err := m.gateway.NetworkCert().PublicKeyX509()
