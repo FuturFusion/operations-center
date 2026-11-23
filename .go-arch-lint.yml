@@ -62,8 +62,6 @@ components:
       - internal/version
       # TODO: used in pure fashion, but should be cleaned up
       - internal/util/archive/**
-      # TODO: used in pure fashion, but should be cleaned up
-      - internal/util/file
       # TODO: not pure, needs to be refactored
       - internal/security/acme
 
