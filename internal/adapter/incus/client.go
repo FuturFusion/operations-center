@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -158,5 +159,5 @@ func (c Client) IncusClient(ctx context.Context, endpoint provisioning.Endpoint)
 		return nil, err
 	}
 
-	return client, nil
+	return middleware.NewInstanceServerWithErrorWrapper(client, NotFoundWrapper()), nil
 }

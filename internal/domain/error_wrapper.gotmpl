@@ -49,7 +49,12 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, wrapErrFu
 				}
 			}()
 		{{end -}}
-		{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{- if and (eq (len $method.Returns) 1) ((index $method.Returns 0).TypeString | hasSuffix (printf ".%s" $wrapper.Name)) }}
+			// Wrap the returned client, such that errors of follow up calls are wrapped as well.
+			return New{{$decorator}}(_d._base.{{ $method.Name }}({{ $method.ArgCallList }}), _d._wrapErrFunc)
+		{{- else -}}
+			{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{- end }}
 	}
 {{ end }}
 
