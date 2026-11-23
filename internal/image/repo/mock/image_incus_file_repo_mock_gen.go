@@ -9,8 +9,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 // Ensure that ImageIncusFileRepoMock does implement image.ImageIncusFileRepo.
@@ -41,7 +41,7 @@ var _ image.ImageIncusFileRepo = &ImageIncusFileRepoMock{}
 //			PutFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
 //				panic("mock out the Put method")
 //			},
-//			UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
+//			UsageInformationFunc: func(ctx context.Context) (domain.UsageInformation, error) {
 //				panic("mock out the UsageInformation method")
 //			},
 //		}
@@ -70,7 +70,7 @@ type ImageIncusFileRepoMock struct {
 	PutFunc func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error)
 
 	// UsageInformationFunc mocks the UsageInformation method.
-	UsageInformationFunc func(ctx context.Context) (file.UsageInformation, error)
+	UsageInformationFunc func(ctx context.Context) (domain.UsageInformation, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -408,7 +408,7 @@ func (mock *ImageIncusFileRepoMock) PutCalls() []struct {
 }
 
 // UsageInformation calls UsageInformationFunc.
-func (mock *ImageIncusFileRepoMock) UsageInformation(ctx context.Context) (file.UsageInformation, error) {
+func (mock *ImageIncusFileRepoMock) UsageInformation(ctx context.Context) (domain.UsageInformation, error) {
 	if mock.UsageInformationFunc == nil {
 		panic("ImageIncusFileRepoMock.UsageInformationFunc: method is nil but ImageIncusFileRepo.UsageInformation was just called")
 	}

@@ -21,7 +21,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -37,8 +36,8 @@ func testFlasher(t *testing.T) *Flasher {
 	t.Helper()
 
 	cache := newImageCache(fsroot.Open(t, t.TempDir()))
-	cache.usage = func() (file.UsageInformation, error) {
-		return file.UsageInformation{
+	cache.usage = func() (domain.UsageInformation, error) {
+		return domain.UsageInformation{
 			TotalSpaceBytes:     1 << 60,
 			AvailableSpaceBytes: 1 << 60,
 		}, nil
@@ -328,8 +327,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		t.Parallel()
 
 		flasher := testFlasher(t)
-		flasher.cache.usage = func() (file.UsageInformation, error) {
-			return file.UsageInformation{
+		flasher.cache.usage = func() (domain.UsageInformation, error) {
+			return domain.UsageInformation{
 				TotalSpaceBytes:     100,
 				AvailableSpaceBytes: 1,
 			}, nil

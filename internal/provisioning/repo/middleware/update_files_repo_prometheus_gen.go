@@ -13,8 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 // UpdateFilesRepoWithPrometheus implements provisioning.UpdateFilesRepo interface with all methods wrapped
@@ -155,7 +155,7 @@ func (_d UpdateFilesRepoWithPrometheus) Put(ctx context.Context, update provisio
 }
 
 // UsageInformation implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithPrometheus) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
+func (_d UpdateFilesRepoWithPrometheus) UsageInformation(ctx context.Context) (usageInformation domain.UsageInformation, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
