@@ -189,6 +189,44 @@ func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID strin
 	return _d._base.OpenSeededImage(ctx, cacheID, fingerprintID)
 }
 
+// PrepareSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) PrepareSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (fingerprintID string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cacheID", cacheID),
+			slog.Uint64("generation", generation),
+			slog.String("fingerprint", fingerprint),
+			slog.Any("id", id),
+			slog.Any("seedConfig", seedConfig),
+			slog.Bool("public", public),
+			slog.Any("source", source),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PrepareSeededImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("fingerprintID", fingerprintID),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method PrepareSeededImage returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method PrepareSeededImage finished")
+		}
+	}()
+	return _d._base.PrepareSeededImage(ctx, cacheID, generation, fingerprint, id, seedConfig, public, source)
+}
+
 // RemoveSeededImages implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) RemoveSeededImages(ctx context.Context, cachePrefix string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -242,38 +280,4 @@ func (_d FlasherPortWithSlog) SeedImageCacheGeneration(ctx context.Context, cach
 		log.DebugContext(ctx, "<= method SeedImageCacheGeneration finished")
 	}()
 	return _d._base.SeedImageCacheGeneration(ctx, cachePrefix)
-}
-
-// SeedImageFingerprintID implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (s string, err error) {
-	ctx = logger.ContextWithComponent(ctx, _d._component)
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("fingerprint", fingerprint),
-			slog.Any("id", id),
-			slog.Any("seedConfig", seedConfig),
-		)
-	}
-	log.DebugContext(ctx, "=> calling SeedImageFingerprintID")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.String("s", s),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			log.DebugContext(ctx, "<= method SeedImageFingerprintID returned an error")
-		} else {
-			log.DebugContext(ctx, "<= method SeedImageFingerprintID finished")
-		}
-	}()
-	return _d._base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
 }

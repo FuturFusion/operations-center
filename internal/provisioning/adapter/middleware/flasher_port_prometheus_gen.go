@@ -97,6 +97,20 @@ func (_d FlasherPortWithPrometheus) OpenSeededImage(ctx context.Context, cacheID
 	return _d.base.OpenSeededImage(ctx, cacheID, fingerprintID)
 }
 
+// PrepareSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) PrepareSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (fingerprintID string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "PrepareSeededImage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PrepareSeededImage(ctx, cacheID, generation, fingerprint, id, seedConfig, public, source)
+}
+
 // RemoveSeededImages implements provisioning.FlasherPort.
 func (_d FlasherPortWithPrometheus) RemoveSeededImages(ctx context.Context, cachePrefix string) (err error) {
 	_since := time.Now()
@@ -119,18 +133,4 @@ func (_d FlasherPortWithPrometheus) SeedImageCacheGeneration(ctx context.Context
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedImageCacheGeneration", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.SeedImageCacheGeneration(ctx, cachePrefix)
-}
-
-// SeedImageFingerprintID implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (s string, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedImageFingerprintID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
 }
