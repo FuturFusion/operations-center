@@ -217,7 +217,8 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	status, content := m.request(t, http.MethodGet, "/1.0/images/incus/local/images"+strings.TrimPrefix(apiPath, "/1.0/images/incus"), nil, "")
 	require.Equal(t, http.StatusOK, status)
 	require.Equal(t, imageContent, content)
-	require.True(t, m.hasFile(filePath))
+	require.True(t, m.hasFile(filepath.Join("images", "local", strings.TrimPrefix(filePath, "images/"))), "The image file is expected below the source directory")
+	require.False(t, m.hasFile(filePath), "The image file is expected to be moved")
 
 	// The trusted client of the shared config keeps its access.
 	status, body = m.httpsRequest(t, &trusted, http.MethodGet, "/1.0/images/incus", nil, nil)

@@ -9,9 +9,11 @@ import (
 	"slices"
 
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
-type patchRun func(ctx context.Context, name string, varRoot *os.Root) error
+// patchRun gets the database, that records the patch, and the var dir.
+type patchRun func(ctx context.Context, name string, db dbdriver.DBTX, varRoot *os.Root) error
 
 type patch struct {
 	name  string
@@ -24,7 +26,7 @@ type patch struct {
 func (p *patch) apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) error {
 	slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
 
-	err := p.run(ctx, p.name, varRoot)
+	err := p.run(ctx, p.name, db, varRoot)
 	if err != nil {
 		return fmt.Errorf("Failed applying patch %q: %w", p.name, err)
 	}
@@ -38,32 +40,37 @@ func (p *patch) apply(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) e
 }
 
 // applyOnce runs a cluster patch, unless another cluster member claimed it in the global database first.
+// The claim and the patch run in the same transaction.
 func (p *patch) applyOnce(ctx context.Context, db dbdriver.DBTX, varRoot *os.Root) error {
-	result, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO patches (name, applied_at) VALUES (?, strftime("%s"))`, p.name)
-	if err != nil {
-		return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
-	}
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		dbtx := transaction.GetDBTX(ctx, db)
 
-	claimed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
-	}
+		result, err := dbtx.ExecContext(ctx, `INSERT OR IGNORE INTO patches (name, applied_at) VALUES (?, strftime("%s"))`, p.name)
+		if err != nil {
+			return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
+		}
 
-	if claimed == 0 {
+		claimed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("Failed claiming patch %q: %w", p.name, err)
+		}
+
+		if claimed == 0 {
+			return nil
+		}
+
+		slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
+
+		err = p.run(ctx, p.name, db, varRoot)
+		if err != nil {
+			// The next start runs the patch again. Without a transaction, the claim is not rolled back.
+			_, releaseErr := dbtx.ExecContext(ctx, `DELETE FROM patches WHERE name = ?`, p.name)
+
+			return errors.Join(fmt.Errorf("Failed applying patch %q: %w", p.name, err), releaseErr)
+		}
+
 		return nil
-	}
-
-	slog.InfoContext(ctx, "Applying patch", slog.String("name", p.name))
-
-	err = p.run(ctx, p.name, varRoot)
-	if err != nil {
-		// The next start runs the patch again.
-		_, releaseErr := db.ExecContext(ctx, `DELETE FROM patches WHERE name = ?`, p.name)
-
-		return errors.Join(fmt.Errorf("Failed applying patch %q: %w", p.name, err), releaseErr)
-	}
-
-	return nil
+	})
 }
 
 // getAppliedPatches returns the names of all patches currently applied on this system.
