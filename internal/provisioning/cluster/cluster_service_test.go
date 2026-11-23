@@ -21042,6 +21042,62 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 	}
 }
 
+func TestClusterService_UpdateSystemLogging_revertAfterClientWentAway(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	repo := &mock.ClusterRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+			return &provisioning.Cluster{Name: name, Status: api.ClusterStatusReady}, nil
+		},
+	}
+
+	servers := []queue.Item[provisioning.Servers]{
+		// GetByName
+		{},
+		// serverSvc.GetAllWithFilter
+		{
+			Value: provisioning.Servers{
+				{Name: "one", Cluster: new("one"), Status: api.ServerStatusReady, VersionData: api.ServerVersionData{InMaintenance: new(api.NotInMaintenance)}},
+				{Name: "two", Cluster: new("one"), Status: api.ServerStatusReady, VersionData: api.ServerVersionData{InMaintenance: new(api.NotInMaintenance)}},
+			},
+		},
+	}
+
+	var updates []error
+	serverSvc := &serviceMock.ServerServiceMock{
+		PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+			return nil
+		},
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+			return queue.Pop(t, &servers)
+		},
+		GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+			return provisioning.ServerSystemLogging{}, nil
+		},
+		UpdateSystemLoggingFunc: func(ctx context.Context, name string, config provisioning.ServerSystemLogging) error {
+			// The client goes away while server two is updated.
+			if len(updates) == 1 {
+				cancel()
+			}
+
+			updates = append(updates, ctx.Err())
+			return ctx.Err()
+		},
+	}
+
+	clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
+
+	err := clusterSvc.UpdateSystemLogging(ctx, "one", incusosapi.SystemLogging{})
+	require.ErrorIs(t, err, context.Canceled)
+
+	// Server one is updated, server two fails and server one is reverted.
+	require.Len(t, updates, 3)
+	require.NoError(t, updates[2], "the revert runs after the client went away")
+}
+
 func TestClusterService_UpdateSystemKernel(t *testing.T) {
 	t.Parallel()
 

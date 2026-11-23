@@ -775,6 +775,9 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	var previousServer *provisioning.Server
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -819,9 +822,9 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 	}
 
 	reverter.Add(func() {
-		err := s.repo.Update(ctx, *previousServer)
+		err := s.repo.Update(revertCtx, *previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update system update config", slog.String("server", server.Name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to update system update config", slog.String("server", server.Name), logger.Err(err))
 		}
 	})
 
@@ -847,6 +850,9 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 
 	reverter := revert.New()
 	defer reverter.Fail()
+
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -876,7 +882,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 	}
 
 	reverter.Add(func() {
-		revertErr := s.repo.Update(ctx, *server)
+		revertErr := s.repo.Update(revertCtx, *server)
 		if revertErr != nil {
 			err = errors.Join(err, revertErr)
 		}
@@ -916,6 +922,9 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -944,7 +953,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 	}
 
 	reverter.Add(func() {
-		revertErr := s.repo.Update(ctx, *server)
+		revertErr := s.repo.Update(revertCtx, *server)
 		if revertErr != nil {
 			err = errors.Join(err, revertErr)
 		}
@@ -1415,6 +1424,9 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	var server *provisioning.Server
 	var previousServer provisioning.Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1466,9 +1478,9 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	}
 
 	reverter.Add(func() {
-		err := s.repo.Update(ctx, previousServer)
+		err := s.repo.Update(revertCtx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger evacuation", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to trigger evacuation", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1527,10 +1539,13 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	reverter.Add(func() {
-		err := s.repo.Update(ctx, previousServer)
+		err := s.repo.Update(revertCtx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger poweroff", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to trigger poweroff", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1551,6 +1566,9 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	reverter := revert.New()
 	defer reverter.Fail()
+
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
@@ -1598,9 +1616,9 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	}
 
 	reverter.Add(func() {
-		err := s.repo.Update(ctx, previousServer)
+		err := s.repo.Update(revertCtx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger reboot", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to trigger reboot", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1623,6 +1641,9 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	reverter := revert.New()
 	defer reverter.Fail()
+
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
@@ -1676,9 +1697,9 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	}
 
 	reverter.Add(func() {
-		err := s.repo.Update(ctx, previousServer)
+		err := s.repo.Update(revertCtx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger restore", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to trigger restore", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1763,6 +1784,9 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	reverter := revert.New()
 	defer reverter.Fail()
+
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
 
 	var server *provisioning.Server
 	var previousServer provisioning.Server
@@ -1875,9 +1899,9 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	}
 
 	reverter.Add(func() {
-		err := s.Update(ctx, previousServer, false, false, false)
+		err := s.Update(revertCtx, previousServer, false, false, false)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update the system", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to update the system", slog.String("server", name), logger.Err(err))
 		}
 	})
 

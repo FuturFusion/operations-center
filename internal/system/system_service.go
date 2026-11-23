@@ -138,10 +138,12 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	// Restore the certificate and the key, even if the update wrote only one of
-	// them. This keeps the certificate and the key matching.
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
+	// Put the previous certificate back everywhere it has been replaced.
 	reverter.Add(func() {
-		revertErr := s.certificateRepo.UpdateServerKeyPair(ctx, currentServerCertificate, currentServerKey)
+		revertErr := s.storeCertificate(revertCtx, string(currentServerCertificate), string(currentServerKey))
 		if revertErr != nil {
 			err = errors.Join(err, fmt.Errorf("Failed to restore the server key pair: %w", revertErr))
 		}
@@ -184,7 +186,7 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	}
 
 	reverter.Add(func() {
-		revertErr := lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, currentCertificate)
+		revertErr := lifecycle.ServerCertificateUpdateSignal.TryEmit(revertCtx, currentCertificate)
 		if revertErr != nil {
 			err = errors.Join(err, fmt.Errorf("Failed to revert back to the original certificate: %w ", revertErr))
 		}

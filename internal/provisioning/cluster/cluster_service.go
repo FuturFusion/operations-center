@@ -2409,10 +2409,13 @@ func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Clu
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	reverter.Add(func() {
-		err = s.repo.Update(ctx, *previousCluster)
+		err = s.repo.Update(revertCtx, *previousCluster)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore previous cluster state after failed to update servers of the cluster", slog.String("cluster", newCluster.Name), logger.Err(err))
+			slog.ErrorContext(revertCtx, "Failed to restore previous cluster state after failed to update servers of the cluster", slog.String("cluster", newCluster.Name), logger.Err(err))
 		}
 	})
 
@@ -2426,9 +2429,9 @@ func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Clu
 
 		reverter.Add(func() {
 			server.Channel = previousChannel
-			err = s.serverSvc.Update(ctx, server, true, false, false)
+			err = s.serverSvc.Update(revertCtx, server, true, false, false)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
+				slog.ErrorContext(revertCtx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
 			}
 		})
 	}
@@ -2816,14 +2819,17 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	reverter.Add(func() {
 		cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
 			LastUpdated: s.now(),
 		}
 
-		err = s.Update(ctx, *cluster, false)
+		err = s.Update(revertCtx, *cluster, false)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to revert cluster update status", logger.Err(err), slog.String("cluster", cluster.Name))
+			slog.ErrorContext(revertCtx, "Failed to revert cluster update status", logger.Err(err), slog.String("cluster", cluster.Name))
 		}
 	})
 
@@ -2874,9 +2880,9 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	}
 
 	reverter.Add(func() {
-		err := s.serverSvc.EndUpdateRunByCluster(ctx, name)
+		err := s.serverSvc.EndUpdateRunByCluster(revertCtx, name)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to end the update run", logger.Err(err), slog.String("cluster", name))
+			slog.ErrorContext(revertCtx, "Failed to end the update run", logger.Err(err), slog.String("cluster", name))
 		}
 	})
 
@@ -3531,6 +3537,9 @@ func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clu
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		err = s.client.UpdateNetworkConfig(ctx, server)
 		if err != nil {
@@ -3539,9 +3548,9 @@ func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clu
 
 		reverter.Add(func() {
 			server.OSData.Network.Config = currentNetworkConfig[server.Name]
-			revertErr := s.client.UpdateNetworkConfig(ctx, server)
+			revertErr := s.client.UpdateNetworkConfig(revertCtx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3593,6 +3602,9 @@ func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, 
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		err = s.client.UpdateNetworkConfig(ctx, server)
 		if err != nil {
@@ -3601,9 +3613,9 @@ func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, 
 
 		reverter.Add(func() {
 			server.OSData.Network.Config = currentNetworkConfig[server.Name]
-			revertErr := s.client.UpdateNetworkConfig(ctx, server)
+			revertErr := s.client.UpdateNetworkConfig(revertCtx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3629,6 +3641,9 @@ func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName st
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		var currentLoggingConfig provisioning.ServerSystemLogging
 		currentLoggingConfig, err = s.serverSvc.GetSystemLogging(ctx, server.Name)
@@ -3642,9 +3657,9 @@ func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName st
 		}
 
 		reverter.Add(func() {
-			revertErr := s.serverSvc.UpdateSystemLogging(ctx, server.Name, currentLoggingConfig)
+			revertErr := s.serverSvc.UpdateSystemLogging(revertCtx, server.Name, currentLoggingConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging_config", currentLoggingConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging_config", currentLoggingConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3670,6 +3685,9 @@ func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName str
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		var currentKernelConfig provisioning.ServerSystemKernel
 		currentKernelConfig, err = s.serverSvc.GetSystemKernel(ctx, server.Name)
@@ -3683,9 +3701,9 @@ func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName str
 		}
 
 		reverter.Add(func() {
-			revertErr := s.serverSvc.UpdateSystemKernel(ctx, server.Name, currentKernelConfig)
+			revertErr := s.serverSvc.UpdateSystemKernel(revertCtx, server.Name, currentKernelConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated kernel config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("kernel_config", currentKernelConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated kernel config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("kernel_config", currentKernelConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3749,6 +3767,9 @@ func (s *clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName 
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentISCSIConfig := iscsiConfigs[server.Name]
 
@@ -3765,9 +3786,9 @@ func (s *clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName 
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "iscsi", currentISCSIConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3809,6 +3830,9 @@ func (s *clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNa
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentISCSIConfig := iscsiConfigs[server.Name]
 
@@ -3827,9 +3851,9 @@ func (s *clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNa
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "iscsi", currentISCSIConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3871,6 +3895,9 @@ func (s *clusterService) AddStorageTargetMultipath(ctx context.Context, clusterN
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentMultipathConfig := multipathConfigs[server.Name]
 
@@ -3887,9 +3914,9 @@ func (s *clusterService) AddStorageTargetMultipath(ctx context.Context, clusterN
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "multipath", currentMultipathConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3931,6 +3958,9 @@ func (s *clusterService) RemoveStorageTargetMultipath(ctx context.Context, clust
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentMultipathConfig := multipathConfigs[server.Name]
 
@@ -3949,9 +3979,9 @@ func (s *clusterService) RemoveStorageTargetMultipath(ctx context.Context, clust
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "multipath", currentMultipathConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -3993,6 +4023,9 @@ func (s *clusterService) AddStorageTargetNVME(ctx context.Context, clusterName s
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentNVMEConfig := nvmeConfigs[server.Name]
 
@@ -4009,9 +4042,9 @@ func (s *clusterService) AddStorageTargetNVME(ctx context.Context, clusterName s
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "nvme", currentNVMEConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -4053,6 +4086,9 @@ func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterNam
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	// Rollbacks still run after the client went away.
+	revertCtx := context.WithoutCancel(ctx)
+
 	for _, server := range servers {
 		currentNVMEConfig := nvmeConfigs[server.Name]
 
@@ -4071,9 +4107,9 @@ func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterNam
 		}
 
 		reverter.Add(func() {
-			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			revertErr := s.client.UpdateOSService(revertCtx, server, "nvme", currentNVMEConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
+				slog.ErrorContext(revertCtx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
