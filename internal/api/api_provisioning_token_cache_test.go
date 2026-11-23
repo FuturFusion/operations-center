@@ -247,9 +247,8 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 
 	ctx := context.Background()
 
-	fingerprintID, err := tokenSvc.ResolveTokenSeedImageID(ctx, tokenID, "test", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")
+	fingerprintID, err := tokenSvc.PrepareTokenSeedImage(ctx, tokenID, "test", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")
 	require.NoError(t, err)
-	require.NoError(t, tokenSvc.PrepareTokenSeedImage(ctx, tokenID, "test", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"))
 
 	basePath := "/" + tokenUUID + "/seeds/test/architecture/x86_64/channel/stable/type/iso/"
 	path := basePath + fingerprintID + ".iso"
@@ -320,10 +319,8 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	t.Run("an image of a token seed, which is not public, gets no address of its own", func(t *testing.T) {
 		public = false
 
-		_, err := tokenSvc.ResolveTokenSeedImageID(ctx, tokenID, "private", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")
+		_, err := tokenSvc.PrepareTokenSeedImage(ctx, tokenID, "private", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")
 		require.ErrorIs(t, err, domain.ErrOperationNotPermitted)
-
-		require.ErrorIs(t, tokenSvc.PrepareTokenSeedImage(ctx, tokenID, "private", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"), domain.ErrOperationNotPermitted)
 
 		before := cachedImages(t, cacheDir, true)
 
