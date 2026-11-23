@@ -81,12 +81,13 @@ func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, mr *multipar
 }
 
 // DeleteByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, source string, name string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 		)
 	}
@@ -108,7 +109,7 @@ func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, name strin
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByName(ctx, name)
+	return _d._base.DeleteByName(ctx, source, name)
 }
 
 // DeleteBySource implements image.ImageIncusService.
@@ -143,12 +144,13 @@ func (_d ImageIncusServiceWithSlog) DeleteBySource(ctx context.Context, sourceNa
 }
 
 // DeleteVersionByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, name string, version string) (err error) {
+func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, source string, name string, version string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 			slog.String("version", version),
 		)
@@ -171,7 +173,7 @@ func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, nam
 			log.DebugContext(ctx, "<= method DeleteVersionByName finished")
 		}
 	}()
-	return _d._base.DeleteVersionByName(ctx, name, version)
+	return _d._base.DeleteVersionByName(ctx, source, name, version)
 }
 
 // GetAll implements image.ImageIncusService.
@@ -205,21 +207,22 @@ func (_d ImageIncusServiceWithSlog) GetAll(ctx context.Context) (incusImages ima
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllNames implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+// GetAllBySource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) GetAllBySource(ctx context.Context, source string) (incusImages image.IncusImages, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 		)
 	}
-	log.DebugContext(ctx, "=> calling GetAllNames")
+	log.DebugContext(ctx, "=> calling GetAllBySource")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("strings", strings),
+				slog.Any("incusImages", incusImages),
 				slog.Any("err", err),
 			)
 		} else {
@@ -228,21 +231,22 @@ func (_d ImageIncusServiceWithSlog) GetAllNames(ctx context.Context) (strings []
 			}
 		}
 		if err != nil {
-			log.DebugContext(ctx, "<= method GetAllNames returned an error")
+			log.DebugContext(ctx, "<= method GetAllBySource returned an error")
 		} else {
-			log.DebugContext(ctx, "<= method GetAllNames finished")
+			log.DebugContext(ctx, "<= method GetAllBySource finished")
 		}
 	}()
-	return _d._base.GetAllNames(ctx)
+	return _d._base.GetAllBySource(ctx, source)
 }
 
 // GetByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, source string, name string) (incusImage *image.IncusImage, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 		)
 	}
@@ -265,16 +269,17 @@ func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, name string) 
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
 	}()
-	return _d._base.GetByName(ctx, name)
+	return _d._base.GetByName(ctx, source, name)
 }
 
 // GetVersionFileByName implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, source string, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 			slog.String("version", version),
 			slog.String("filename", filename),
@@ -300,7 +305,7 @@ func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, na
 			log.DebugContext(ctx, "<= method GetVersionFileByName finished")
 		}
 	}()
-	return _d._base.GetVersionFileByName(ctx, name, version, filename)
+	return _d._base.GetVersionFileByName(ctx, source, name, version, filename)
 }
 
 // RefreshFromSource implements image.ImageIncusService.

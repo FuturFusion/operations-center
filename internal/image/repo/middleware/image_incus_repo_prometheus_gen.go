@@ -53,7 +53,7 @@ func (_d ImageIncusRepoWithPrometheus) Create(ctx context.Context, newIncusImage
 }
 
 // DeleteByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ImageIncusRepoWithPrometheus) DeleteByName(ctx context.Context, source string, name string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,11 +63,11 @@ func (_d ImageIncusRepoWithPrometheus) DeleteByName(ctx context.Context, name st
 
 		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByName(ctx, name)
+	return _d.base.DeleteByName(ctx, source, name)
 }
 
 // ExistsByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithPrometheus) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+func (_d ImageIncusRepoWithPrometheus) ExistsByName(ctx context.Context, source string, name string) (b bool, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -77,7 +77,7 @@ func (_d ImageIncusRepoWithPrometheus) ExistsByName(ctx context.Context, name st
 
 		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "ExistsByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ExistsByName(ctx, name)
+	return _d.base.ExistsByName(ctx, source, name)
 }
 
 // GetAll implements image.ImageIncusRepo.
@@ -92,20 +92,6 @@ func (_d ImageIncusRepoWithPrometheus) GetAll(ctx context.Context) (incusImages 
 		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAll", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetAll(ctx)
-}
-
-// GetAllNames implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []string, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNames", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetAllNames(ctx)
 }
 
 // GetAllWithFilter implements image.ImageIncusRepo.
@@ -123,7 +109,7 @@ func (_d ImageIncusRepoWithPrometheus) GetAllWithFilter(ctx context.Context, fil
 }
 
 // GetByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithPrometheus) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+func (_d ImageIncusRepoWithPrometheus) GetByName(ctx context.Context, source string, name string) (incusImage *image.IncusImage, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -133,7 +119,7 @@ func (_d ImageIncusRepoWithPrometheus) GetByName(ctx context.Context, name strin
 
 		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByName(ctx, name)
+	return _d.base.GetByName(ctx, source, name)
 }
 
 // Update implements image.ImageIncusRepo.
