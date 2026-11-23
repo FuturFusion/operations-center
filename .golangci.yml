@@ -277,11 +277,6 @@ linters:
           - depguard
         path: '^internal/provisioning/cluster_ports\.go$'
         text: "incus/v7/client"
-      # Baseline. Remove each entry when the violation is fixed.
-      - linters:
-          - depguard
-        path: '^internal/provisioning/server/server_service\.go$'
-        text: "net/http"
       # File system access through os.Root. Tests, tools, the command line
       # client and low level helpers work with paths provided by the user.
       - linters:

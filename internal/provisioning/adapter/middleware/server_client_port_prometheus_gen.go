@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -107,6 +108,20 @@ func (_d ServerClientPortWithPrometheus) GetProviderConfig(ctx context.Context, 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProviderConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetProviderConfig(ctx, server)
+}
+
+// GetPublicCertificate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetPublicCertificate(ctx context.Context, publicURL string) (certificate *x509.Certificate, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetPublicCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetPublicCertificate(ctx, publicURL)
 }
 
 // GetResources implements provisioning.ServerClientPort.

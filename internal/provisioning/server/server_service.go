@@ -10,7 +10,6 @@ import (
 	"maps"
 	"math"
 	"net"
-	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -63,8 +62,6 @@ type serverService struct {
 
 	deploymentControlLoopMu   sync.Mutex
 	deploymentControlLoopRuns map[string]*deploymentRun
-
-	httpClient *http.Client
 
 	meshTunnelMu       sync.Mutex
 	meshTunnelInFlight map[string]struct{}
@@ -290,7 +287,6 @@ func New(
 		channelSvc:       channelSvc,
 		updateSvc:        updateSvc,
 		warning:          provisioning.LogWarningService{},
-		httpClient:       &http.Client{},
 
 		deploymentControlLoopRuns: map[string]*deploymentRun{},
 
@@ -2893,37 +2889,18 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 				}
 
 			case isStandaloneNonIncusServerWithPublicConnectionURL: // case 2, standalone non Incus server
-				req, retryErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, server.PublicConnectionURL, http.NoBody)
-				if retryErr != nil {
-					// Create request for certificate check failed, keep the original error.
-					break refreshAttempt
-				}
-
-				resp, retryErr := s.httpClient.Do(req)
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
-
+				peerCertificate, retryErr := s.client.GetPublicCertificate(ctxWithTimeout, server.PublicConnectionURL)
 				if retryErr != nil {
 					// Connection to public connection URL failed. This can be a network
-					// issue, an invalid or unreachable public connection URL or a
-					// certificate error. We don't care about the root cause in this
-					// case and break the refresh attempt and keep the original error.
+					// issue, an invalid or unreachable public connection URL, a
+					// certificate error or a connection without TLS. We don't care about
+					// the root cause in this case and break the refresh attempt and keep
+					// the original error.
 					log.DebugContext(ctx, "Refresh certificate connection attempt to public connection URL failed", logger.Err(retryErr))
 					break refreshAttempt
 				}
 
-				if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
-					// Connection was successful, but we don't have a TLS connection
-					// or no peer certificates (should not happen, as long as
-					// public connection URL is https).  We don't care about the root
-					// cause in this case and break the refresh attempt and keep the
-					// original error.
-					log.DebugContext(ctx, "Refresh certificate connection attempt did not return TLS connection or no peer certificates")
-					break refreshAttempt
-				}
-
-				serverCert := certificate.EncodeToPEM(resp.TLS.PeerCertificates[0].Raw)
+				serverCert := certificate.EncodeToPEM(peerCertificate.Raw)
 
 				retryErr = transaction.Do(ctx, func(ctx context.Context) error {
 					updateServer, err := s.repo.GetByName(ctx, server.Name)

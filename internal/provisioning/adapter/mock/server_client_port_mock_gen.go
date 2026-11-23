@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"crypto/x509"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -36,6 +37,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			},
 //			GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
 //				panic("mock out the GetProviderConfig method")
+//			},
+//			GetPublicCertificateFunc: func(ctx context.Context, publicURL string) (*x509.Certificate, error) {
+//				panic("mock out the GetPublicCertificate method")
 //			},
 //			GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
@@ -127,6 +131,9 @@ type ServerClientPortMock struct {
 
 	// GetProviderConfigFunc mocks the GetProviderConfig method.
 	GetProviderConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error)
+
+	// GetPublicCertificateFunc mocks the GetPublicCertificate method.
+	GetPublicCertificateFunc func(ctx context.Context, publicURL string) (*x509.Certificate, error)
 
 	// GetResourcesFunc mocks the GetResources method.
 	GetResourcesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error)
@@ -237,6 +244,13 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+		}
+		// GetPublicCertificate holds details about calls to the GetPublicCertificate method.
+		GetPublicCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// PublicURL is the publicURL argument value.
+			PublicURL string
 		}
 		// GetResources holds details about calls to the GetResources method.
 		GetResources []struct {
@@ -429,6 +443,7 @@ type ServerClientPortMock struct {
 	lockGetNetworkConfig     sync.RWMutex
 	lockGetOSData            sync.RWMutex
 	lockGetProviderConfig    sync.RWMutex
+	lockGetPublicCertificate sync.RWMutex
 	lockGetResources         sync.RWMutex
 	lockGetServerType        sync.RWMutex
 	lockGetStorageConfig     sync.RWMutex
@@ -639,6 +654,42 @@ func (mock *ServerClientPortMock) GetProviderConfigCalls() []struct {
 	mock.lockGetProviderConfig.RLock()
 	calls = mock.calls.GetProviderConfig
 	mock.lockGetProviderConfig.RUnlock()
+	return calls
+}
+
+// GetPublicCertificate calls GetPublicCertificateFunc.
+func (mock *ServerClientPortMock) GetPublicCertificate(ctx context.Context, publicURL string) (*x509.Certificate, error) {
+	if mock.GetPublicCertificateFunc == nil {
+		panic("ServerClientPortMock.GetPublicCertificateFunc: method is nil but ServerClientPort.GetPublicCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		PublicURL string
+	}{
+		Ctx:       ctx,
+		PublicURL: publicURL,
+	}
+	mock.lockGetPublicCertificate.Lock()
+	mock.calls.GetPublicCertificate = append(mock.calls.GetPublicCertificate, callInfo)
+	mock.lockGetPublicCertificate.Unlock()
+	return mock.GetPublicCertificateFunc(ctx, publicURL)
+}
+
+// GetPublicCertificateCalls gets all the calls that were made to GetPublicCertificate.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetPublicCertificateCalls())
+func (mock *ServerClientPortMock) GetPublicCertificateCalls() []struct {
+	Ctx       context.Context
+	PublicURL string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		PublicURL string
+	}
+	mock.lockGetPublicCertificate.RLock()
+	calls = mock.calls.GetPublicCertificate
+	mock.lockGetPublicCertificate.RUnlock()
 	return calls
 }
 
