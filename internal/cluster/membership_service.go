@@ -66,6 +66,9 @@ type membership struct {
 	// rolesMu serializes the changes of the raft roles and members on the leader.
 	rolesMu sync.Mutex
 
+	// postCertificate replaces the request applying a cluster certificate on another member in tests.
+	postCertificate func(ctx context.Context, address string, trusted *x509.Certificate, certificate apisystem.CertificatePost) error
+
 	// removalChecks refuse the removal of a member, which is not forced.
 	removalChecks []RemovalCheck
 
@@ -1687,6 +1690,13 @@ func (m *membership) reloadSharedConfigOnMembers(ctx context.Context, policy cow
 		WithCause(errors.Join(errs...))
 }
 
+// neverReached tells whether the error of a request to another member says that no connection to it was made, so it never saw the request.
+func neverReached(err error) bool {
+	var opErr *net.OpError
+
+	return errors.As(err, &opErr) && opErr.Op == "dial"
+}
+
 // memberNames returns the quoted names of the cluster members at addresses, sorted.
 func (m *membership) memberNames(ctx context.Context, addresses []string) ([]string, error) {
 	members, err := m.GetMembersByID(ctx)
@@ -1849,28 +1859,38 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 
 	var reverterMu sync.Mutex
 
+	skipped := map[string]bool{}
+
 	post := apisystem.CertificatePost{Certificate: certificatePEM, Key: keyPEM}
 	errs := notifier(func(notifyCtx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
-		err := m.postClusterCertificate(notifyCtx, address, currentCert, post)
-		if err != nil {
-			return err
-		}
-
+		// A member whose answer is lost may have applied the certificate, so it is put back whatever the answer.
+		// A member which could not be connected to never saw it.
 		reverterMu.Lock()
 		reverter.Add(func() {
-			err := m.postClusterCertificate(revertCtx, address, newCert, previous)
+			if skipped[address] {
+				return
+			}
+
+			err := m.postClusterCertificateTrusting(revertCtx, address, []*x509.Certificate{newCert, currentCert}, previous)
 			if err != nil {
 				slog.ErrorContext(revertCtx, "Failed to put back the previous cluster certificate on cluster member", slog.String("address", address), logger.Err(err))
 			}
 		})
 		reverterMu.Unlock()
 
-		return nil
+		err := m.postClusterCertificate(notifyCtx, address, currentCert, post)
+		if err != nil && neverReached(err) {
+			reverterMu.Lock()
+			skipped[address] = true
+			reverterMu.Unlock()
+		}
+
+		return err
 	})
 
 	err = errors.Join(errs...)
 	if err != nil {
-		return fmt.Errorf("Failed to update the cluster certificate on all cluster members: %w", err)
+		return domain.NewErrorf(domain.ErrUnavailable, "", "Failed to update the cluster certificate on all cluster members").WithCause(err).WithHintf("Retry once all cluster members are reachable.")
 	}
 
 	// This member is updated last, so it is unchanged if another one fails.
@@ -1886,6 +1906,10 @@ func (m *membership) UpdateClusterCertificate(ctx context.Context, certificatePE
 
 // postClusterCertificate applies the cluster certificate on the member at address, which must present trusted.
 func (m *membership) postClusterCertificate(ctx context.Context, address string, trusted *x509.Certificate, certificate apisystem.CertificatePost) error {
+	if m.postCertificate != nil {
+		return m.postCertificate(ctx, address, trusted, certificate)
+	}
+
 	certInfo, ok := m.gateway.ServerCert().(*incustls.CertInfo)
 	if !ok {
 		//domain-errors:internal The server certificate is always loaded by the daemon itself.
@@ -1900,6 +1924,22 @@ func (m *membership) postClusterCertificate(ctx context.Context, address string,
 	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:update-certificate", nil, certificate)
 
 	return err
+}
+
+// postClusterCertificateTrusting is postClusterCertificate for a member which presents one of the trusted certificates.
+func (m *membership) postClusterCertificateTrusting(ctx context.Context, address string, trusted []*x509.Certificate, certificate apisystem.CertificatePost) error {
+	var errs []error
+
+	for _, cert := range trusted {
+		err := m.postClusterCertificate(ctx, address, cert, certificate)
+		if err == nil {
+			return nil
+		}
+
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
 }
 
 // ApplyClusterCertificate applies the cluster certificate updated by another cluster member.
