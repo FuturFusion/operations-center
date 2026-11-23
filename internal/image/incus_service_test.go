@@ -2104,10 +2104,10 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 			// Image source presents 3 images.
 			// One image is filtered based on filter expression and therefore skipped.
 			// One is not present and is therefore downloaded with all files included.
-			// One is present but misses file and has supernumerous file.
+			// One is present but misses a file and has a file the source doesn't list.
 			// In the DB we have two images.
-			// One is obsolete and gets deleted.
-			// One is updated, because it misses a file and has a supernumerous file (see 3rd image from source).
+			// One is no longer listed by the source and gets deleted.
+			// One is updated, because it misses a file and has a file the source doesn't list (see 3rd image from source).
 			ctx:              t.Context(),
 			filterExpression: `architecture == "amd64"`,
 
@@ -2142,7 +2142,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 						},
 					},
 				},
-				// Present in DB, but misses file and has supernumerous file.
+				// Present in DB, but misses a file and has a file the source doesn't list.
 				{
 					Name:            "alpine:edge:amd64:cloud",
 					OperatingSystem: "Alpine",
@@ -2160,7 +2160,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 				},
 			},
 			repoGetAllWithFilter: image.IncusImages{
-				// Present in DB, but misses file and has supernumerous file.
+				// Present in DB, but misses a file and has a file the source doesn't list.
 				{
 					Name:            "alpine:edge:amd64:cloud",
 					OperatingSystem: "Alpine",
@@ -2170,8 +2170,8 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 					Versions: api.IncusImageVersions{
 						"20260101": api.IncusImageVersion{
 							Items: map[string]api.IncusImageVersionItem{
-								"incus.tar.xz":       {},
-								"supernumerous.file": {},
+								"incus.tar.xz":  {},
+								"unlisted.file": {},
 							},
 						},
 					},
@@ -2236,7 +2236,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 
 			simplestreamsGetImageList: image.IncusImages{},
 			repoGetAllWithFilter: image.IncusImages{
-				// Supernumerous image.
+				// Image the source doesn't list.
 				{
 					Name:            "alpine:edge:amd64:cloud",
 					OperatingSystem: "Alpine",
@@ -2278,7 +2278,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 				},
 			},
 			repoGetAllWithFilter: image.IncusImages{
-				// Present in DB, but has supernumerous file.
+				// Present in DB, but has a file the source doesn't list.
 				{
 					Name:            "alpine:edge:amd64:cloud",
 					OperatingSystem: "Alpine",
@@ -2777,4 +2777,97 @@ func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) file.UsageInformatio
 		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
 		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,
 	}
+}
+
+func TestImageIncusService_RefreshFromSource_fileTargets(t *testing.T) {
+	t.Parallel()
+
+	source := image.IncusImageSource{Name: "source", FilterExpression: "true"}
+	versions := api.IncusImageVersions{"1": {Items: map[string]api.IncusImageVersionItem{"incus.tar.xz": {Path: "incus.tar.xz", Size: 1}}}}
+	remote := image.IncusImage{Name: "debian:13:amd64:default", OperatingSystem: "debian", Release: "13", Architecture: "amd64", Variant: "default", Versions: versions, Source: new("source")}
+
+	repo := &mock.ImageIncusRepoMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+			dbImage := remote
+			dbImage.MemberID = 2
+			dbImage.Versions = api.IncusImageVersions{}
+
+			return image.IncusImages{dbImage}, nil
+		},
+		UpsertFunc: func(ctx context.Context, incusImage image.IncusImage) error {
+			t.Fatal("The image of another member is not stored by this member")
+			return nil
+		},
+	}
+
+	simplestreams := &adapterMock.SimplestreamsPortMock{
+		GetImageListFunc: func(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
+			return image.IncusImages{remote}, nil
+		},
+	}
+
+	var synced []image.IncusImage
+	fileTargets := &adapterMock.ImageFileTargetPortMock{
+		LocalMemberIDFunc: func(ctx context.Context) (int64, error) {
+			return 1, nil
+		},
+		SyncImageFunc: func(ctx context.Context, src image.IncusImageSource, img image.IncusImage) error {
+			require.Equal(t, source.Name, src.Name)
+			synced = append(synced, img)
+			return nil
+		},
+	}
+
+	imageSvc := image.NewIncusImage(repo, &mock.ImageIncusFileRepoMock{}, simplestreams, image.WithFileTargets(fileTargets))
+
+	err := imageSvc.RefreshFromSource(t.Context(), source)
+	require.NoError(t, err)
+
+	require.Len(t, synced, 1)
+	require.Equal(t, int64(2), synced[0].MemberID)
+	require.Equal(t, versions, synced[0].Versions)
+}
+
+func TestImageIncusService_RefreshFromSource_obsoleteImageOfOtherMember(t *testing.T) {
+	t.Parallel()
+
+	source := image.IncusImageSource{Name: "source", FilterExpression: "true"}
+	obsolete := image.IncusImage{Name: "debian:12:amd64:default", MemberID: 2, Source: new("source")}
+
+	var deletedRows []string
+	repo := &mock.ImageIncusRepoMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+			return image.IncusImages{obsolete}, nil
+		},
+		DeleteByNameFunc: func(ctx context.Context, name string) error {
+			deletedRows = append(deletedRows, name)
+			return nil
+		},
+	}
+
+	simplestreams := &adapterMock.SimplestreamsPortMock{
+		GetImageListFunc: func(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
+			return image.IncusImages{}, nil
+		},
+	}
+
+	var deletedFiles []image.IncusImage
+	fileTargets := &adapterMock.ImageFileTargetPortMock{
+		LocalMemberIDFunc: func(ctx context.Context) (int64, error) {
+			return 1, nil
+		},
+		DeleteFilesFunc: func(ctx context.Context, img image.IncusImage) error {
+			deletedFiles = append(deletedFiles, img)
+			return nil
+		},
+	}
+
+	imageSvc := image.NewIncusImage(repo, &mock.ImageIncusFileRepoMock{}, simplestreams, image.WithFileTargets(fileTargets))
+
+	err := imageSvc.RefreshFromSource(t.Context(), source)
+	require.NoError(t, err)
+
+	require.Equal(t, []string{obsolete.Name}, deletedRows)
+	require.Len(t, deletedFiles, 1, "the member storing the obsolete image deletes its files")
+	require.Equal(t, obsolete.Name, deletedFiles[0].Name)
 }

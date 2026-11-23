@@ -45,6 +45,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/imagefiletarget"
+	imageAdapterMiddleware "github.com/FuturFusion/operations-center/internal/image/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
@@ -571,6 +573,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
+	// File records deleted on other members while this one was offline should be removed.
+	err = d.pruneLocalFiles(ctx, incusImageSvc)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to prune stale local files", logger.Err(err))
+	}
+
 	membershipSvc.StartLeaderTasks()
 
 	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, _ apisystem.Updates) {
@@ -1056,6 +1064,11 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 				imageFilesRepo,
 			),
 			simplestreams.New(),
+			image.WithFileTargets(
+				imageAdapterMiddleware.NewImageFileTargetPortWithSlog(
+					imagefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+				),
+			),
 		),
 	)
 
@@ -1142,6 +1155,34 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
 	), nil
+}
+
+// pruneLocalFiles removes the local files of images not assigned to this member.
+func (d *Daemon) pruneLocalFiles(ctx context.Context, imageSvc image.ImageIncusService) error {
+	localMemberID, err := d.membershipSvc.LocalMemberID()
+	if err != nil {
+		return err
+	}
+
+	images, err := imageSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownImageFiles := map[string]bool{}
+	for _, img := range images {
+		if img.MemberID != localMemberID {
+			continue
+		}
+
+		for versionIdentifier, imageVersion := range img.Versions {
+			for filename := range imageVersion.Items {
+				knownImageFiles[path.Join(filepath.ToSlash(img.FilePath()), versionIdentifier, filename)] = true
+			}
+		}
+	}
+
+	return memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreImages, knownImageFiles)
 }
 
 func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher, error) {
@@ -1513,6 +1554,9 @@ func (d *Daemon) setupAPIRoutes(
 	refreshWarnings := memberRefreshWarnings{emitter: warningSvc, memberName: d.localMemberName}
 	registerInternalUpdateFilesHandler(internalUpdatesRouter, d.authorizer, updateSvc, refreshWarnings)
 
+	internalImagesRouter := internalRouter.SubGroup("/images").AddMiddlewares(requireClusterMemberOrLocal, requireDatabase)
+	registerInternalImageFilesHandler(internalImagesRouter, d.authorizer, incusImageSvc, imageSourceSvc, refreshWarnings)
+
 	internalFilesRouter := internalRouter.SubGroup("/files").AddMiddlewares(requireClusterMemberOrLocal)
 	isMemberAddress := func(ctx context.Context, address string) (bool, error) {
 		members, err := membershipSvc.GetMembersByID(ctx)
@@ -1658,7 +1702,7 @@ func (d *Daemon) setupAPIRoutes(
 	imageSourceRouter := imageRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
 	imageIncusRouter := imageRouter.SubGroup("/incus")
-	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
+	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc, forward)
 	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 

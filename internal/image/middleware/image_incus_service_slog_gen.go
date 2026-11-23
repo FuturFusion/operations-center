@@ -334,6 +334,38 @@ func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, sourc
 	return _d._base.RefreshFromSource(ctx, source)
 }
 
+// SyncLocalImage implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) SyncLocalImage(ctx context.Context, source image.IncusImageSource, image1 image.IncusImage) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("source", source),
+			slog.Any("image1", image1),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SyncLocalImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method SyncLocalImage returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method SyncLocalImage finished")
+		}
+	}()
+	return _d._base.SyncLocalImage(ctx, source, image1)
+}
+
 // Update implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -363,6 +395,38 @@ func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image
 		}
 	}()
 	return _d._base.Update(ctx, incusImage)
+}
+
+// UploadImageName implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) UploadImageName(ctx context.Context, mr *multipart.Reader) (name string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("mr", mr),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UploadImageName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("name", name),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method UploadImageName returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method UploadImageName finished")
+		}
+	}()
+	return _d._base.UploadImageName(ctx, mr)
 }
 
 // ValidateFilterExpression implements image.ImageIncusService.

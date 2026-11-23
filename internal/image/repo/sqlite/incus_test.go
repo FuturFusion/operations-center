@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/repo/sqlite"
@@ -24,6 +25,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "default",
 		Description:     "almalinux 10 (default) (amd64)",
+		MemberID:        1,
 	}
 
 	incusImageB := image.IncusImage{
@@ -33,6 +35,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "cloud",
 		Description:     "almalinux 10 (cloud) (amd64)",
+		MemberID:        1,
 	}
 
 	incusImageC := image.IncusImage{
@@ -42,6 +45,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "cloud",
 		Description:     "rocky 10 (cloud) (amd64)",
+		MemberID:        1,
 	}
 
 	ctx := context.Background()
@@ -126,6 +130,26 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 
 	err = incusImage.Upsert(ctx, incusImageC)
 	require.NoError(t, err)
+
+	// The member storing the files is only changed by the mover, an upsert carrying the old member keeps the new one.
+	_, err = db.ExecContext(ctx, `INSERT INTO cluster_members (id, name, description, address, schema) VALUES (2, 'm2', '', '192.0.2.2:8443', 1)`)
+	require.NoError(t, err)
+
+	dbIncusImageC, err := incusImage.GetByName(ctx, incusImageC.Name)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), dbIncusImageC.MemberID)
+
+	err = incusImage.SetUnitTarget(ctx, memberfiles.Unit{ID: dbIncusImageC.ID}, 2)
+	require.NoError(t, err)
+
+	incusImageC.Description = "description (updated)"
+	err = incusImage.Upsert(ctx, incusImageC)
+	require.NoError(t, err)
+
+	dbIncusImageC, err = incusImage.GetByName(ctx, incusImageC.Name)
+	require.NoError(t, err)
+	require.Equal(t, int64(2), dbIncusImageC.MemberID)
+	require.Equal(t, "description (updated)", dbIncusImageC.Description)
 
 	// Can't delete a incusImage that doesn't exist.
 	err = incusImage.DeleteByName(ctx, "three")

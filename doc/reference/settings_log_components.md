@@ -47,6 +47,7 @@ daemon:
 
 image:
 
+- `image.image_file_target_port`
 - `image.image_incus_file_repo`
 - `image.image_incus_repo`
 - `image.image_incus_service`

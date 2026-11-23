@@ -166,6 +166,20 @@ func (_d ImageIncusServiceWithPrometheus) RefreshFromSource(ctx context.Context,
 	return _d.base.RefreshFromSource(ctx, source)
 }
 
+// SyncLocalImage implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) SyncLocalImage(ctx context.Context, source image.IncusImageSource, image1 image.IncusImage) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncLocalImage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SyncLocalImage(ctx, source, image1)
+}
+
 // Update implements image.ImageIncusService.
 func (_d ImageIncusServiceWithPrometheus) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	_since := time.Now()
@@ -178,6 +192,20 @@ func (_d ImageIncusServiceWithPrometheus) Update(ctx context.Context, incusImage
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Update(ctx, incusImage)
+}
+
+// UploadImageName implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) UploadImageName(ctx context.Context, mr *multipart.Reader) (name string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UploadImageName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UploadImageName(ctx, mr)
 }
 
 // ValidateFilterExpression implements image.ImageIncusService.
