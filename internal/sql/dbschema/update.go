@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS cluster_join_tokens (
      UNIQUE (secret)
 );
 
+ALTER TABLE updates ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
 ALTER TABLE incus_images ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
 
 CREATE TABLE media (

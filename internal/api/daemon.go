@@ -71,6 +71,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updatefiletarget"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
 	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
@@ -574,7 +575,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// File records deleted on other members while this one was offline should be removed.
-	err = d.pruneLocalFiles(ctx, incusImageSvc)
+	err = d.pruneLocalFiles(ctx, updateSvc, incusImageSvc)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to prune stale local files", logger.Err(err))
 	}
@@ -1118,6 +1119,11 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 
 	updateServiceOptions := []provisioningUpdate.Option{
 		provisioningUpdate.WithLatestLimit(3),
+		provisioningUpdate.WithFileTargets(
+			provisioningAdapterMiddleware.NewUpdateFileTargetPortWithSlog(
+				updatefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+			),
+		),
 	}
 
 	updateServer := updateserver.New(
@@ -1157,11 +1163,27 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 	), nil
 }
 
-// pruneLocalFiles removes the local files of images not assigned to this member.
-func (d *Daemon) pruneLocalFiles(ctx context.Context, imageSvc image.ImageIncusService) error {
+// pruneLocalFiles removes the local files of updates and images not assigned to this member.
+func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.UpdateService, imageSvc image.ImageIncusService) error {
 	localMemberID, err := d.membershipSvc.LocalMemberID()
 	if err != nil {
 		return err
+	}
+
+	updates, err := updateSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownUpdateFiles := map[string]bool{}
+	for _, update := range updates {
+		if update.MemberID != localMemberID {
+			continue
+		}
+
+		for _, updateFile := range update.Files {
+			knownUpdateFiles[path.Join(update.UUID.String(), updateFile.Filename)] = true
+		}
 	}
 
 	images, err := imageSvc.GetAll(ctx)
@@ -1182,7 +1204,10 @@ func (d *Daemon) pruneLocalFiles(ctx context.Context, imageSvc image.ImageIncusS
 		}
 	}
 
-	return memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreImages, knownImageFiles)
+	return errors.Join(
+		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreUpdates, knownUpdateFiles),
+		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreImages, knownImageFiles),
+	)
 }
 
 func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher, error) {

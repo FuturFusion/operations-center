@@ -41,6 +41,8 @@ type Update struct {
 	URL              string                 `json:"url"`
 	Status           api.UpdateStatus       `json:"-" expr:"status"`
 	LastUpdated      time.Time              `json:"-" expr:"last_updated" db:"update_timestamp"`
+	// MemberID is the file target, the cluster member storing the files. Only the mover changes it.
+	MemberID int64 `json:"-" db:"omit=update"`
 }
 
 func (u Update) Validate() error {

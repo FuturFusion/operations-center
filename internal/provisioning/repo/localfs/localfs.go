@@ -251,29 +251,6 @@ func (l localfs) CleanupAll(ctx context.Context) error {
 	return nil
 }
 
-// DeleteUnknown removes the files of all updates, which are not in known.
-func (l localfs) DeleteUnknown(ctx context.Context, known []uuid.UUID) error {
-	dir, err := fs.ReadDir(l.root.FS(), ".")
-	if err != nil {
-		return fmt.Errorf("Failed to read storage directory %q: %w", l.root.Name(), err)
-	}
-
-	var errs []error
-	for _, entry := range dir {
-		id, err := uuid.Parse(entry.Name())
-		if err == nil && slices.Contains(known, id) {
-			continue
-		}
-
-		err = l.root.RemoveAll(entry.Name())
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
 const tmpUpdateDirPrefix = "tmp-update-*"
 
 func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.Update, err error) {

@@ -136,6 +136,7 @@ provisioning:
 - `provisioning.token_client_port`
 - `provisioning.token_repo`
 - `provisioning.token_service`
+- `provisioning.update_file_target_port`
 - `provisioning.update_files_repo`
 - `provisioning.update_repo`
 - `provisioning.update_service`

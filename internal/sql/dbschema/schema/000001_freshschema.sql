@@ -88,7 +88,9 @@ CREATE TABLE updates (
   "url" NOT NULL DEFAULT '',
   "status" NOT NULL DEFAULT 'ready',
   last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
-  UNIQUE(uuid)
+  member_id INTEGER NOT NULL,
+  UNIQUE(uuid),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE
 );
 
 CREATE TABLE channels (

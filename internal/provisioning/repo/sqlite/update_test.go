@@ -9,6 +9,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
@@ -32,6 +33,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UpstreamChannels: []string{"daily"},
 		Status:           api.UpdateStatusReady,
 		URL:              "/217816150",
+		MemberID:         1,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -56,6 +58,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UpstreamChannels: []string{"stable", "daily"},
 		Status:           api.UpdateStatusReady,
 		URL:              "/217808146",
+		MemberID:         1,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -101,6 +104,24 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	updates, err := update.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, updates, 2)
+
+	// The member storing the files is only changed by the mover, an upsert carrying the old member keeps the new one.
+	_, err = db.ExecContext(ctx, `INSERT INTO cluster_members (id, name, description, address, schema) VALUES (2, 'm2', '', '192.0.2.2:8443', 1)`)
+	require.NoError(t, err)
+
+	movedUpdateB, err := update.GetByUUID(ctx, updateB.UUID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), movedUpdateB.MemberID)
+
+	err = update.SetUnitTarget(ctx, memberfiles.Unit{ID: int64(movedUpdateB.ID)}, 2)
+	require.NoError(t, err)
+
+	err = update.Upsert(ctx, updateB)
+	require.NoError(t, err)
+
+	movedUpdateB, err = update.GetByUUID(ctx, updateB.UUID)
+	require.NoError(t, err)
+	require.Equal(t, int64(2), movedUpdateB.MemberID)
 
 	updateIDs, err := update.GetAllUUIDs(ctx)
 	require.NoError(t, err)
