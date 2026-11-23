@@ -603,6 +603,17 @@ func (m *membership) Accept(ctx context.Context, req api.ClusterAcceptPost) (*me
 
 	m.updateCertificateCacheFromGlobal(ctx)
 
+	// The other members learn the certificate of the joiner with the next heartbeat, which may come too late if the leader goes down first.
+	// go-cowsql's Accept restarts a heartbeat round only while one is running, so one is started otherwise.
+	if !m.gateway.HeartbeatRestart() {
+		heartbeatCtx := m.ctx
+		if heartbeatCtx == nil {
+			heartbeatCtx = context.Background()
+		}
+
+		go m.gateway.Heartbeat(heartbeatCtx, cowsqlheartbeat.HeartbeatImmediate)
+	}
+
 	clientCertificate, clientKey, err := securitytls.LoadClientKeypair(m.varRoot)
 	if err != nil {
 		return nil, err
