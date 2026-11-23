@@ -37,6 +37,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			OpenSeededImageFunc: func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 //				panic("mock out the OpenSeededImage method")
 //			},
+//			RemoveSeededImageRecordsFunc: func(ctx context.Context, cachePrefix string) error {
+//				panic("mock out the RemoveSeededImageRecords method")
+//			},
 //			RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
 //				panic("mock out the RemoveSeededImages method")
 //			},
@@ -45,6 +48,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			},
 //			SeedImageFingerprintIDFunc: func(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (string, error) {
 //				panic("mock out the SeedImageFingerprintID method")
+//			},
+//			SeededImageHolderFunc: func(ctx context.Context, cacheID string, fingerprintID string) (int64, bool, error) {
+//				panic("mock out the SeededImageHolder method")
 //			},
 //		}
 //
@@ -65,6 +71,9 @@ type FlasherPortMock struct {
 	// OpenSeededImageFunc mocks the OpenSeededImage method.
 	OpenSeededImageFunc func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error)
 
+	// RemoveSeededImageRecordsFunc mocks the RemoveSeededImageRecords method.
+	RemoveSeededImageRecordsFunc func(ctx context.Context, cachePrefix string) error
+
 	// RemoveSeededImagesFunc mocks the RemoveSeededImages method.
 	RemoveSeededImagesFunc func(ctx context.Context, cachePrefix string) error
 
@@ -73,6 +82,9 @@ type FlasherPortMock struct {
 
 	// SeedImageFingerprintIDFunc mocks the SeedImageFingerprintID method.
 	SeedImageFingerprintIDFunc func(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (string, error)
+
+	// SeededImageHolderFunc mocks the SeededImageHolder method.
+	SeededImageHolderFunc func(ctx context.Context, cacheID string, fingerprintID string) (int64, bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -122,6 +134,13 @@ type FlasherPortMock struct {
 			// FingerprintID is the fingerprintID argument value.
 			FingerprintID string
 		}
+		// RemoveSeededImageRecords holds details about calls to the RemoveSeededImageRecords method.
+		RemoveSeededImageRecords []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CachePrefix is the cachePrefix argument value.
+			CachePrefix string
+		}
 		// RemoveSeededImages holds details about calls to the RemoveSeededImages method.
 		RemoveSeededImages []struct {
 			// Ctx is the ctx argument value.
@@ -147,14 +166,25 @@ type FlasherPortMock struct {
 			// SeedConfig is the seedConfig argument value.
 			SeedConfig provisioning.TokenImageSeedConfigs
 		}
+		// SeededImageHolder holds details about calls to the SeededImageHolder method.
+		SeededImageHolder []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CacheID is the cacheID argument value.
+			CacheID string
+			// FingerprintID is the fingerprintID argument value.
+			FingerprintID string
+		}
 	}
 	lockGenerateCompressedSeededImage sync.RWMutex
 	lockGenerateSeededImage           sync.RWMutex
 	lockGetProviderConfig             sync.RWMutex
 	lockOpenSeededImage               sync.RWMutex
+	lockRemoveSeededImageRecords      sync.RWMutex
 	lockRemoveSeededImages            sync.RWMutex
 	lockSeedImageCacheGeneration      sync.RWMutex
 	lockSeedImageFingerprintID        sync.RWMutex
+	lockSeededImageHolder             sync.RWMutex
 }
 
 // GenerateCompressedSeededImage calls GenerateCompressedSeededImageFunc.
@@ -337,6 +367,42 @@ func (mock *FlasherPortMock) OpenSeededImageCalls() []struct {
 	return calls
 }
 
+// RemoveSeededImageRecords calls RemoveSeededImageRecordsFunc.
+func (mock *FlasherPortMock) RemoveSeededImageRecords(ctx context.Context, cachePrefix string) error {
+	if mock.RemoveSeededImageRecordsFunc == nil {
+		panic("FlasherPortMock.RemoveSeededImageRecordsFunc: method is nil but FlasherPort.RemoveSeededImageRecords was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		CachePrefix string
+	}{
+		Ctx:         ctx,
+		CachePrefix: cachePrefix,
+	}
+	mock.lockRemoveSeededImageRecords.Lock()
+	mock.calls.RemoveSeededImageRecords = append(mock.calls.RemoveSeededImageRecords, callInfo)
+	mock.lockRemoveSeededImageRecords.Unlock()
+	return mock.RemoveSeededImageRecordsFunc(ctx, cachePrefix)
+}
+
+// RemoveSeededImageRecordsCalls gets all the calls that were made to RemoveSeededImageRecords.
+// Check the length with:
+//
+//	len(mockedFlasherPort.RemoveSeededImageRecordsCalls())
+func (mock *FlasherPortMock) RemoveSeededImageRecordsCalls() []struct {
+	Ctx         context.Context
+	CachePrefix string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		CachePrefix string
+	}
+	mock.lockRemoveSeededImageRecords.RLock()
+	calls = mock.calls.RemoveSeededImageRecords
+	mock.lockRemoveSeededImageRecords.RUnlock()
+	return calls
+}
+
 // RemoveSeededImages calls RemoveSeededImagesFunc.
 func (mock *FlasherPortMock) RemoveSeededImages(ctx context.Context, cachePrefix string) error {
 	if mock.RemoveSeededImagesFunc == nil {
@@ -450,5 +516,45 @@ func (mock *FlasherPortMock) SeedImageFingerprintIDCalls() []struct {
 	mock.lockSeedImageFingerprintID.RLock()
 	calls = mock.calls.SeedImageFingerprintID
 	mock.lockSeedImageFingerprintID.RUnlock()
+	return calls
+}
+
+// SeededImageHolder calls SeededImageHolderFunc.
+func (mock *FlasherPortMock) SeededImageHolder(ctx context.Context, cacheID string, fingerprintID string) (int64, bool, error) {
+	if mock.SeededImageHolderFunc == nil {
+		panic("FlasherPortMock.SeededImageHolderFunc: method is nil but FlasherPort.SeededImageHolder was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		CacheID       string
+		FingerprintID string
+	}{
+		Ctx:           ctx,
+		CacheID:       cacheID,
+		FingerprintID: fingerprintID,
+	}
+	mock.lockSeededImageHolder.Lock()
+	mock.calls.SeededImageHolder = append(mock.calls.SeededImageHolder, callInfo)
+	mock.lockSeededImageHolder.Unlock()
+	return mock.SeededImageHolderFunc(ctx, cacheID, fingerprintID)
+}
+
+// SeededImageHolderCalls gets all the calls that were made to SeededImageHolder.
+// Check the length with:
+//
+//	len(mockedFlasherPort.SeededImageHolderCalls())
+func (mock *FlasherPortMock) SeededImageHolderCalls() []struct {
+	Ctx           context.Context
+	CacheID       string
+	FingerprintID string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		CacheID       string
+		FingerprintID string
+	}
+	mock.lockSeededImageHolder.RLock()
+	calls = mock.calls.SeededImageHolder
+	mock.lockSeededImageHolder.RUnlock()
 	return calls
 }

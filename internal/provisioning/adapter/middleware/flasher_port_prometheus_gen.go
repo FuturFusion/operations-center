@@ -97,6 +97,20 @@ func (_d FlasherPortWithPrometheus) OpenSeededImage(ctx context.Context, cacheID
 	return _d.base.OpenSeededImage(ctx, cacheID, fingerprintID)
 }
 
+// RemoveSeededImageRecords implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) RemoveSeededImageRecords(ctx context.Context, cachePrefix string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveSeededImageRecords", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveSeededImageRecords(ctx, cachePrefix)
+}
+
 // RemoveSeededImages implements provisioning.FlasherPort.
 func (_d FlasherPortWithPrometheus) RemoveSeededImages(ctx context.Context, cachePrefix string) (err error) {
 	_since := time.Now()
@@ -133,4 +147,18 @@ func (_d FlasherPortWithPrometheus) SeedImageFingerprintID(ctx context.Context, 
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedImageFingerprintID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
+}
+
+// SeededImageHolder implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) SeededImageHolder(ctx context.Context, cacheID string, fingerprintID string) (memberID int64, available bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeededImageHolder", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SeededImageHolder(ctx, cacheID, fingerprintID)
 }

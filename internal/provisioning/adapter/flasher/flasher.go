@@ -19,6 +19,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -47,6 +48,15 @@ type Option func(f *Flasher)
 func WithCacheRoot(root *os.Root) Option {
 	return func(f *Flasher) {
 		f.cache = newImageCache(root)
+	}
+}
+
+// WithMediaRecords records the cached images of public token seeds in records. It requires WithCacheRoot.
+func WithMediaRecords(records mediarecord.Records) Option {
+	return func(f *Flasher) {
+		if f.cache != nil {
+			f.cache.records = &records
+		}
 	}
 }
 

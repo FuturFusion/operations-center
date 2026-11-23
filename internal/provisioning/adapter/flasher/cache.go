@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -57,6 +59,9 @@ var cacheIDRegexp = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 type imageCache struct {
 	root *os.Root
 
+	// records tells which cluster member stores an image of a public token seed and until when, nil if not recorded.
+	records *mediarecord.Records
+
 	// usage reports the space situation of the filesystem holding the cache.
 	usage cacheUsageFunc
 
@@ -71,6 +76,12 @@ type imageCache struct {
 	// generations counts per cache prefix, how often the images have been
 	// removed on request.
 	generations map[string]uint64
+}
+
+// seedImageConfig is the config recorded with an image of a public token seed.
+type seedImageConfig struct {
+	CacheID       string `json:"cache_id"`
+	FingerprintID string `json:"fingerprint_id"`
 }
 
 type cacheEntry struct {
@@ -184,7 +195,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, gener
 			return nil, provisioning.SeedImageInfo{}, errSeedImageStale(fingerprintID)
 		}
 
-		image, info, err := f.cache.open(public, cacheID, fingerprintID)
+		image, info, err := f.cache.open(ctx, public, cacheID, fingerprintID)
 		if err == nil {
 			return image, info, nil
 		}
@@ -210,7 +221,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, gener
 		image, info, err = func() (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 			defer release()
 
-			image, info, err := f.cache.open(public, cacheID, fingerprintID)
+			image, info, err := f.cache.open(ctx, public, cacheID, fingerprintID)
 			if err == nil {
 				return image, info, nil
 			}
@@ -229,7 +240,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, gener
 				return nil, provisioning.SeedImageInfo{}, err
 			}
 
-			image, info, err = f.cache.open(public, cacheID, fingerprintID)
+			image, info, err = f.cache.open(ctx, public, cacheID, fingerprintID)
 			if err != nil {
 				return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
 			}
@@ -262,7 +273,7 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 	for {
 		wait := f.cache.generating(true, cacheID, fingerprintID)
 
-		image, info, err := f.cache.open(true, cacheID, fingerprintID)
+		image, info, err := f.cache.open(ctx, true, cacheID, fingerprintID)
 		if err == nil {
 			return image, info, nil
 		}
@@ -285,6 +296,26 @@ func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerpri
 	}
 }
 
+// SeededImageHolder returns the cluster member storing the image of a public
+// token seed addressed by cacheID and fingerprintID. available is false if no
+// member can serve the image, since none is recorded or it is offline.
+func (f *Flasher) SeededImageHolder(ctx context.Context, cacheID string, fingerprintID string) (memberID int64, available bool, _ error) {
+	if f.cache == nil || f.cache.records == nil {
+		return 0, false, nil
+	}
+
+	record, holder, err := f.cache.records.Holder(ctx, imageBasename(cacheID, fingerprintID))
+	if errors.Is(err, domain.ErrNotFound) {
+		return 0, false, nil
+	}
+
+	if err != nil {
+		return 0, false, err
+	}
+
+	return record.MemberID, !holder.Offline, nil
+}
+
 // RemoveSeededImages removes all cached images with a cache ID starting with
 // cachePrefix.
 //
@@ -299,6 +330,21 @@ func (f *Flasher) RemoveSeededImages(_ context.Context, cachePrefix string) erro
 	}
 
 	return f.cache.removeByPrefix(cachePrefix)
+}
+
+// RemoveSeededImageRecords removes the records of the images of public token
+// seeds with a cache ID starting with cachePrefix, so the members storing them
+// prune them. It runs in the transaction changing the token seed.
+func (f *Flasher) RemoveSeededImageRecords(ctx context.Context, cachePrefix string) error {
+	if f.cache == nil || f.cache.records == nil {
+		return nil
+	}
+
+	if len(cachePrefix) != provisioning.SeedImageCachePrefixLength || !cacheIDRegexp.MatchString(cachePrefix) {
+		return fmt.Errorf("Invalid seed image cache prefix %q", cachePrefix)
+	}
+
+	return f.cache.removeRecordsByPrefix(ctx, cachePrefix)
 }
 
 // PruneCache removes cached images, which have not been accessed within ttl,
@@ -403,7 +449,7 @@ func (c *imageCache) generating(public bool, cacheID string, fingerprintID strin
 }
 
 // open returns the cached image, or reports errCacheMiss, if it is not stored.
-func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
+func (c *imageCache) open(ctx context.Context, public bool, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
 	imageFile, err := c.root.Open(c.imageFilename(public, cacheID, fingerprintID))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -418,7 +464,10 @@ func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ 
 		return nil, provisioning.SeedImageInfo{}, errors.Join(fmt.Errorf("Failed to stat cached seed image %q: %w", fingerprintID, err), imageFile.Close())
 	}
 
-	c.touch(cacheKey(public, cacheID, fingerprintID))
+	err = c.used(ctx, public, cacheID, fingerprintID)
+	if err != nil {
+		return nil, provisioning.SeedImageInfo{}, errors.Join(err, imageFile.Close())
+	}
 
 	return imageFile, provisioning.SeedImageInfo{
 		Size:    fileInfo.Size(),
@@ -471,9 +520,30 @@ func (c *imageCache) write(ctx context.Context, public bool, cacheID string, gen
 
 	partialName = ""
 
-	c.touch(cacheKey(public, cacheID, fingerprintID))
+	return c.used(ctx, public, cacheID, fingerprintID)
+}
 
-	return nil
+// used records, that a cached image has been handed out or stored. An image of a
+// public token seed is recorded as stored by this member, which takes it over
+// from a member, whose lease ended or which is gone.
+func (c *imageCache) used(ctx context.Context, public bool, cacheID string, fingerprintID string) error {
+	if !public || c.records == nil {
+		c.touch(cacheKey(public, cacheID, fingerprintID))
+		return nil
+	}
+
+	name := imageBasename(cacheID, fingerprintID)
+
+	record, holder, err := c.records.Holder(ctx, name)
+	if err == nil && holder.Local {
+		return c.records.Renew(ctx, *record)
+	}
+
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return err
+	}
+
+	return c.records.Record(ctx, name, seedImageConfig{CacheID: cacheID, FingerprintID: fingerprintID})
 }
 
 // moveIntoPlace makes the generated image available, unless the images have
@@ -544,13 +614,51 @@ func (c *imageCache) removeByPrefix(prefix string) error {
 	return errors.Join(errs...)
 }
 
+// removeRecordsByPrefix removes the records of the images with a cache ID starting with prefix.
+func (c *imageCache) removeRecordsByPrefix(ctx context.Context, prefix string) error {
+	records, err := c.records.All(ctx)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, record := range records {
+		var config seedImageConfig
+
+		err := json.Unmarshal(record.Config, &config)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to decode the config of the seed image %q: %w", record.Name, err))
+			continue
+		}
+
+		if !strings.HasPrefix(config.CacheID, prefix) {
+			continue
+		}
+
+		errs = append(errs, c.records.Delete(ctx, record.Name))
+	}
+
+	return errors.Join(errs...)
+}
+
 // prune removes cached images not accessed within ttl and leftovers of
-// interrupted generations.
+// interrupted generations. The images of public token seeds are removed once
+// their lease ended or they are recorded for another member.
 func (c *imageCache) prune(ctx context.Context, ttl time.Duration) error {
 	var errs []error
 
+	var recorded map[string]bool
+	if c.records != nil {
+		var err error
+
+		recorded, err = c.pruneRecords(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, namespace := range []string{cachePublicDir, cachePrivateDir} {
-		err := c.pruneNamespace(ctx, namespace, ttl)
+		err := c.pruneNamespace(ctx, namespace, ttl, recorded)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -559,7 +667,29 @@ func (c *imageCache) prune(ctx context.Context, ttl time.Duration) error {
 	return errors.Join(errs...)
 }
 
-func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl time.Duration) error {
+// pruneRecords removes the records of this member, whose lease ended, and returns the names of the images still recorded for it.
+func (c *imageCache) pruneRecords(ctx context.Context) (map[string]bool, error) {
+	records, err := c.records.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var errs []error
+
+	recorded := map[string]bool{}
+	for _, record := range records {
+		if c.records.Expired(record) && !c.generatingKey(cachePublicDir+"/"+record.Name) {
+			errs = append(errs, c.records.Delete(ctx, record.Name))
+			continue
+		}
+
+		recorded[record.Name] = true
+	}
+
+	return recorded, errors.Join(errs...)
+}
+
+func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl time.Duration, recorded map[string]bool) error {
 	dirEntries, err := fs.ReadDir(c.root.FS(), namespace)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -596,6 +726,12 @@ func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl t
 				continue
 			}
 
+		case strings.HasSuffix(filename, cacheImageExt) && namespace == cachePublicDir && recorded != nil:
+			name := strings.TrimSuffix(filename, cacheImageExt)
+			if recorded[name] || c.generatingKey(namespace+"/"+name) {
+				continue
+			}
+
 		case strings.HasSuffix(filename, cacheImageExt):
 			key := namespace + "/" + strings.TrimSuffix(filename, cacheImageExt)
 
@@ -626,6 +762,16 @@ func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl t
 	}
 
 	return errors.Join(errs...)
+}
+
+// generatingKey reports whether the image of key is being generated right now.
+func (c *imageCache) generatingKey(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	entry, ok := c.entries[key]
+
+	return ok && entry.generating != nil
 }
 
 // keep reports, whether the file of a cached image is still in use. modTime is

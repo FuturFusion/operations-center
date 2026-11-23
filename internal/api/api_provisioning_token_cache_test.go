@@ -294,12 +294,9 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	})
 
 	t.Run("an image, which has never been generated, is not found", func(t *testing.T) {
-		lookups.Store(0)
-
+		// A miss checks whether the image can be generated again, so it does look up the token seed.
 		_, resp := doTokenRequestFull(t, tokenSvc, http.MethodGet, basePath+"0123456789ab.iso", "", nil)
 		require.Equal(t, http.StatusNotFound, resp.statusCode)
-
-		require.Equal(t, int64(0), lookups.Load())
 	})
 
 	t.Run("a filename not naming a generated image asks for the image of the token seed", func(t *testing.T) {
@@ -315,6 +312,19 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 
 		_, resp := doTokenRequestFull(t, tokenSvc, http.MethodGet, basePath+"..%2f..%2fetc%2fpasswd", "", nil)
 		require.Equal(t, http.StatusBadRequest, resp.statusCode)
+	})
+
+	t.Run("a prepared image, which no member stores anymore, is generated again", func(t *testing.T) {
+		before := cachedImages(t, cacheDir, true)
+		require.Len(t, before, 1)
+		require.NoError(t, os.Remove(filepath.Join(cacheDir, "public", before[0])))
+
+		// The generation is deterministic, so a range read before reads the same bytes.
+		body, resp := doTokenRequestFull(t, tokenSvc, http.MethodGet, path, "", http.Header{"Range": []string{"bytes=10-19"}})
+		require.Equal(t, http.StatusPartialContent, resp.statusCode)
+		require.Equal(t, imageContent[10:20], body)
+
+		require.Equal(t, before, cachedImages(t, cacheDir, true))
 	})
 
 	t.Run("an image of a token seed, which is not public, gets no address of its own", func(t *testing.T) {

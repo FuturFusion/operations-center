@@ -294,6 +294,20 @@ func (_d TokenServiceWithPrometheus) PrepareTokenSeedImage(ctx context.Context, 
 	return _d.base.PrepareTokenSeedImage(ctx, id, name, imageType, architecture, channel)
 }
 
+// PreparedTokenSeedImageHolder implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) PreparedTokenSeedImageHolder(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (memberID int64, available bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PreparedTokenSeedImageHolder", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PreparedTokenSeedImageHolder(ctx, id, name, imageType, architecture, channel, fingerprintID)
+}
+
 // RenameTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) (err error) {
 	_since := time.Now()

@@ -1868,6 +1868,9 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 			var removedCachePrefixes []string
 
 			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImageRecordsFunc: func(ctx context.Context, cachePrefix string) error {
+					return nil
+				},
 				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
 					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
 
@@ -2016,6 +2019,9 @@ func TestTokenService_RenameTokenSeed(t *testing.T) {
 			var removedCachePrefixes []string
 
 			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImageRecordsFunc: func(ctx context.Context, cachePrefix string) error {
+					return nil
+				},
 				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
 					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
 
@@ -2133,6 +2139,9 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 			var removedCachePrefixes []string
 
 			flasher := &adapterMock.FlasherPortMock{
+				RemoveSeededImageRecordsFunc: func(ctx context.Context, cachePrefix string) error {
+					return nil
+				},
 				RemoveSeededImagesFunc: func(ctx context.Context, cachePrefix string) error {
 					removedCachePrefixes = append(removedCachePrefixes, cachePrefix)
 

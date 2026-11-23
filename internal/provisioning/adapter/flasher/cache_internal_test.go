@@ -755,7 +755,7 @@ func TestImageCache_open(t *testing.T) {
 
 		cache := newImageCache(fsroot.Open(t, t.TempDir()))
 
-		_, _, err := cache.open(true, testCacheID, "0123456789ab")
+		_, _, err := cache.open(t.Context(), true, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, errCacheMiss)
 	})
 
@@ -768,7 +768,7 @@ func TestImageCache_open(t *testing.T) {
 
 		require.NoError(t, cache.write(ctx, true, testCacheID, 0, "0123456789ab", bytes.NewReader([]byte("incus-os-image"))))
 
-		image, info, err := cache.open(true, testCacheID, "0123456789ab")
+		image, info, err := cache.open(t.Context(), true, testCacheID, "0123456789ab")
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 
@@ -783,10 +783,10 @@ func TestImageCache_open(t *testing.T) {
 
 		require.NoError(t, cache.write(ctx, false, testCacheID, 0, "0123456789ab", bytes.NewReader([]byte("private"))))
 
-		_, _, err := cache.open(true, testCacheID, "0123456789ab")
+		_, _, err := cache.open(t.Context(), true, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, errCacheMiss)
 
-		image, _, err := cache.open(false, testCacheID, "0123456789ab")
+		image, _, err := cache.open(t.Context(), false, testCacheID, "0123456789ab")
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 	})
@@ -827,7 +827,7 @@ func TestImageCache_symlinkOutsideOfRoot(t *testing.T) {
 			name: "open",
 			run: func(t *testing.T, cache *imageCache) error {
 				t.Helper()
-				_, _, err := cache.open(true, testCacheID, "fingerprint")
+				_, _, err := cache.open(t.Context(), true, testCacheID, "fingerprint")
 				return err
 			},
 		},

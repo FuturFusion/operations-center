@@ -647,6 +647,44 @@ func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uui
 	return _d._base.PrepareTokenSeedImage(ctx, id, name, imageType, architecture, channel)
 }
 
+// PreparedTokenSeedImageHolder implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) PreparedTokenSeedImageHolder(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (memberID int64, available bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+			slog.String("fingerprintID", fingerprintID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PreparedTokenSeedImageHolder")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Int64("memberID", memberID),
+				slog.Bool("available", available),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method PreparedTokenSeedImageHolder returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method PreparedTokenSeedImageHolder finished")
+		}
+	}()
+	return _d._base.PreparedTokenSeedImageHolder(ctx, id, name, imageType, architecture, channel, fingerprintID)
+}
+
 // RenameTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) RenameTokenSeed(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

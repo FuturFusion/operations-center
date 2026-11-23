@@ -80,6 +80,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
 //				panic("mock out the PrepareTokenSeedImage method")
 //			},
+//			PreparedTokenSeedImageHolderFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error) {
+//				panic("mock out the PreparedTokenSeedImageHolder method")
+//			},
 //			RenameTokenSeedFunc: func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error {
 //				panic("mock out the RenameTokenSeed method")
 //			},
@@ -155,6 +158,9 @@ type TokenServiceMock struct {
 
 	// PrepareTokenSeedImageFunc mocks the PrepareTokenSeedImage method.
 	PrepareTokenSeedImageFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error
+
+	// PreparedTokenSeedImageHolderFunc mocks the PreparedTokenSeedImageHolder method.
+	PreparedTokenSeedImageHolderFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error)
 
 	// RenameTokenSeedFunc mocks the RenameTokenSeed method.
 	RenameTokenSeedFunc func(ctx context.Context, id uuid.UUID, oldName string, newName string, force bool) error
@@ -343,6 +349,23 @@ type TokenServiceMock struct {
 			// Channel is the channel argument value.
 			Channel string
 		}
+		// PreparedTokenSeedImageHolder holds details about calls to the PreparedTokenSeedImageHolder method.
+		PreparedTokenSeedImageHolder []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Name is the name argument value.
+			Name string
+			// ImageType is the imageType argument value.
+			ImageType api.ImageType
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+			// Channel is the channel argument value.
+			Channel string
+			// FingerprintID is the fingerprintID argument value.
+			FingerprintID string
+		}
 		// RenameTokenSeed holds details about calls to the RenameTokenSeed method.
 		RenameTokenSeed []struct {
 			// Ctx is the ctx argument value.
@@ -411,6 +434,7 @@ type TokenServiceMock struct {
 	lockGetTokenSeedByName                   sync.RWMutex
 	lockPreparePreSeededImage                sync.RWMutex
 	lockPrepareTokenSeedImage                sync.RWMutex
+	lockPreparedTokenSeedImageHolder         sync.RWMutex
 	lockRenameTokenSeed                      sync.RWMutex
 	lockResolveTokenSeedImageID              sync.RWMutex
 	lockSetServerService                     sync.RWMutex
@@ -1151,6 +1175,62 @@ func (mock *TokenServiceMock) PrepareTokenSeedImageCalls() []struct {
 	mock.lockPrepareTokenSeedImage.RLock()
 	calls = mock.calls.PrepareTokenSeedImage
 	mock.lockPrepareTokenSeedImage.RUnlock()
+	return calls
+}
+
+// PreparedTokenSeedImageHolder calls PreparedTokenSeedImageHolderFunc.
+func (mock *TokenServiceMock) PreparedTokenSeedImageHolder(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error) {
+	if mock.PreparedTokenSeedImageHolderFunc == nil {
+		panic("TokenServiceMock.PreparedTokenSeedImageHolderFunc: method is nil but TokenService.PreparedTokenSeedImageHolder was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ID            uuid.UUID
+		Name          string
+		ImageType     api.ImageType
+		Architecture  images.UpdateFileArchitecture
+		Channel       string
+		FingerprintID string
+	}{
+		Ctx:           ctx,
+		ID:            id,
+		Name:          name,
+		ImageType:     imageType,
+		Architecture:  architecture,
+		Channel:       channel,
+		FingerprintID: fingerprintID,
+	}
+	mock.lockPreparedTokenSeedImageHolder.Lock()
+	mock.calls.PreparedTokenSeedImageHolder = append(mock.calls.PreparedTokenSeedImageHolder, callInfo)
+	mock.lockPreparedTokenSeedImageHolder.Unlock()
+	return mock.PreparedTokenSeedImageHolderFunc(ctx, id, name, imageType, architecture, channel, fingerprintID)
+}
+
+// PreparedTokenSeedImageHolderCalls gets all the calls that were made to PreparedTokenSeedImageHolder.
+// Check the length with:
+//
+//	len(mockedTokenService.PreparedTokenSeedImageHolderCalls())
+func (mock *TokenServiceMock) PreparedTokenSeedImageHolderCalls() []struct {
+	Ctx           context.Context
+	ID            uuid.UUID
+	Name          string
+	ImageType     api.ImageType
+	Architecture  images.UpdateFileArchitecture
+	Channel       string
+	FingerprintID string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ID            uuid.UUID
+		Name          string
+		ImageType     api.ImageType
+		Architecture  images.UpdateFileArchitecture
+		Channel       string
+		FingerprintID string
+	}
+	mock.lockPreparedTokenSeedImageHolder.RLock()
+	calls = mock.calls.PreparedTokenSeedImageHolder
+	mock.lockPreparedTokenSeedImageHolder.RUnlock()
 	return calls
 }
 
