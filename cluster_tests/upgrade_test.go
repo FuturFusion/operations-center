@@ -172,10 +172,10 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	m.mustAPI(t, http.MethodPost, "/1.0/images/incus/sources", map[string]string{"name": "source-before", "url": "https://192.0.2.11", "filter_expression": "false"})
 	filePath, apiPath := uploadImage(t, m, "before", "20260101")
 
+	images := metadata(t, m, "/1.0/images/incus?recursion=1")
 	sources := metadata(t, m, "/1.0/images/incus/sources?recursion=1")
 
 	lists := []string{
-		"/1.0/images/incus?recursion=1",
 		"/1.0/provisioning/channels?recursion=1",
 		"/1.0/provisioning/servers?recursion=1",
 		"/1.0/provisioning/tokens?recursion=1",
@@ -204,6 +204,7 @@ func TestUpgradeFromSQLite(t *testing.T) {
 		require.Equal(t, before[path], metadata(t, m, path), path)
 	}
 
+	require.Equal(t, withField(t, images, "source", ""), metadata(t, m, "/1.0/images/incus?recursion=1"), "The images are expected to get the field source")
 	require.Equal(t, withField(t, sources, "name", "source_before"), sourcesWithoutLocal(t, m, "/1.0/images/incus/sources?recursion=1"), "Invalid source names are expected to be sanitized")
 
 	require.Equal(t, "https://"+m.address, field(t, m, "/1.0/system/network", "address"))
