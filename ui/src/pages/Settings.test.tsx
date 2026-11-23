@@ -376,8 +376,8 @@ test.each(
 
     expect(
       api.calls(get),
-      "Expect a failed save to keep the cached settings",
-    ).toHaveLength(1);
+      "Expect the initial load and one reload for a fresh ETag",
+    ).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Submit" }),
       "Expect the form to stay visible",

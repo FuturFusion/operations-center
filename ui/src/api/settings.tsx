@@ -8,6 +8,25 @@ import {
 } from "types/settings";
 import { processResponse } from "util/response";
 
+// WithETag holds a config and the ETag of its part shared by the cluster members.
+export interface WithETag<T> {
+  data: T;
+  etag: string;
+}
+
+const fetchWithETag = async <T,>(url: string): Promise<WithETag<T>> => {
+  const response = await fetch(url);
+  const etag = response.headers.get("ETag") ?? "";
+  const data = await processResponse(response);
+
+  return { data: data.metadata as T, etag: etag };
+};
+
+// ifMatch returns the header, which refuses an update if the config changed since it was fetched.
+const ifMatch = (etag: string): Record<string, string> => {
+  return etag ? { "If-Match": etag } : {};
+};
+
 export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/certificate`)
@@ -17,40 +36,20 @@ export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
   });
 };
 
-export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
-  return new Promise((resolve, reject) => {
-    fetch(`/1.0/system/network`)
-      .then(processResponse)
-      .then((data) => resolve(data.metadata))
-      .catch(reject);
-  });
+export const fetchSystemNetwork = (): Promise<WithETag<SystemNetwork>> => {
+  return fetchWithETag(`/1.0/system/network`);
 };
 
-export const fetchSystemSecurity = (): Promise<SystemSecurity> => {
-  return new Promise((resolve, reject) => {
-    fetch(`/1.0/system/security`)
-      .then(processResponse)
-      .then((data) => resolve(data.metadata))
-      .catch(reject);
-  });
+export const fetchSystemSecurity = (): Promise<WithETag<SystemSecurity>> => {
+  return fetchWithETag(`/1.0/system/security`);
 };
 
-export const fetchSystemSettings = (): Promise<SystemSettings> => {
-  return new Promise((resolve, reject) => {
-    fetch(`/1.0/system/settings`)
-      .then(processResponse)
-      .then((data) => resolve(data.metadata))
-      .catch(reject);
-  });
+export const fetchSystemSettings = (): Promise<WithETag<SystemSettings>> => {
+  return fetchWithETag(`/1.0/system/settings`);
 };
 
-export const fetchSystemUpdates = (): Promise<SystemUpdates> => {
-  return new Promise((resolve, reject) => {
-    fetch(`/1.0/system/updates`)
-      .then(processResponse)
-      .then((data) => resolve(data.metadata))
-      .catch(reject);
-  });
+export const fetchSystemUpdates = (): Promise<WithETag<SystemUpdates>> => {
+  return fetchWithETag(`/1.0/system/updates`);
 };
 
 export const updateSystemCertificate = (
@@ -72,6 +71,7 @@ export const updateSystemCertificate = (
 
 export const updateSystemNetwork = (
   body: string,
+  etag: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/network`, {
@@ -79,6 +79,7 @@ export const updateSystemNetwork = (
       body: body,
       headers: {
         "Content-Type": "application/json",
+        ...ifMatch(etag),
       },
     })
       .then((response) => response.json())
@@ -89,6 +90,7 @@ export const updateSystemNetwork = (
 
 export const updateSystemSecurity = (
   body: string,
+  etag: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/security`, {
@@ -96,6 +98,7 @@ export const updateSystemSecurity = (
       body: body,
       headers: {
         "Content-Type": "application/json",
+        ...ifMatch(etag),
       },
     })
       .then((response) => response.json())
@@ -106,6 +109,7 @@ export const updateSystemSecurity = (
 
 export const updateSystemSettings = (
   body: string,
+  etag: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/settings`, {
@@ -113,6 +117,7 @@ export const updateSystemSettings = (
       body: body,
       headers: {
         "Content-Type": "application/json",
+        ...ifMatch(etag),
       },
     })
       .then((response) => response.json())
@@ -123,6 +128,7 @@ export const updateSystemSettings = (
 
 export const updateSystemUpdates = (
   body: string,
+  etag: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/updates`, {
@@ -130,6 +136,7 @@ export const updateSystemUpdates = (
       body: body,
       headers: {
         "Content-Type": "application/json",
+        ...ifMatch(etag),
       },
     })
       .then((response) => response.json())

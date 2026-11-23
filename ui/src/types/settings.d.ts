@@ -3,6 +3,7 @@ import { ACMEChallengeValues } from "util/settings";
 export interface SystemNetwork {
   address: string;
   rest_server_address: string;
+  cluster_address: string;
 }
 
 export interface SystemSecurity {
