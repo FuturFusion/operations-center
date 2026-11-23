@@ -7,18 +7,18 @@ import { IncusImageFormValues } from "types/image_incus";
 import { errorMessage } from "util/response";
 
 const IncusImageConfiguration = () => {
-  const { name } = useParams() as { name: string };
+  const { source, name } = useParams() as { source: string; name: string };
   const { notify } = useNotification();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const onSubmit = (values: IncusImageFormValues) => {
-    updateIncusImage(name, JSON.stringify(values, null, 2))
+    updateIncusImage(source, name, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Image ${name} updated`);
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
-          navigate(`/ui/images/incus/${name}/configuration`);
+          queryClient.invalidateQueries({ queryKey: ["incus-images", source] });
+          navigate(`/ui/images/incus/${source}/images/${name}/configuration`);
           return;
         }
         notify.error(errorMessage(response));
@@ -33,8 +33,8 @@ const IncusImageConfiguration = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["incus-images", name],
-    queryFn: () => fetchIncusImage(name),
+    queryKey: ["incus-images", source, name],
+    queryFn: () => fetchIncusImage(source, name),
   });
 
   if (isLoading) {

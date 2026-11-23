@@ -9,6 +9,7 @@ import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { IncusImage } from "types/image_incus";
+import { localImageSourceName } from "util/image_source";
 import { errorMessage } from "util/response";
 
 const architectures = ["amd64", "arm64", "armhf", "loong64", "riscv64"];
@@ -91,7 +92,9 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
         setOpInProgress(false);
         if (response.error_code == 0) {
           notify.success(`Image uploaded`);
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
+          queryClient.invalidateQueries({
+            queryKey: ["incus-images", localImageSourceName],
+          });
           reset();
           return;
         }

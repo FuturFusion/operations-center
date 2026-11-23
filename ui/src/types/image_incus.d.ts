@@ -1,4 +1,5 @@
 export interface IncusImage {
+  source: string;
   name: string;
   aliases: string[];
   description: string;

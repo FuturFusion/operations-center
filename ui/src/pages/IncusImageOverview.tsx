@@ -4,15 +4,15 @@ import { fetchIncusImage } from "api/image_incus";
 import { formatDate } from "util/date";
 
 const IncusImageOverview = () => {
-  const { name } = useParams();
+  const { source, name } = useParams();
 
   const {
     data: image = null,
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["incus-images", name],
-    queryFn: () => fetchIncusImage(name || ""),
+    queryKey: ["incus-images", source, name],
+    queryFn: () => fetchIncusImage(source || "", name || ""),
   });
 
   if (isLoading) {
@@ -25,6 +25,10 @@ const IncusImageOverview = () => {
 
   return (
     <div className="container">
+      <div className="row">
+        <div className="col-2 detail-table-header">Source</div>
+        <div className="col-10 detail-table-cell">{image?.source}</div>
+      </div>
       <div className="row">
         <div className="col-2 detail-table-header">Name</div>
         <div className="col-10 detail-table-cell">{image?.name}</div>
