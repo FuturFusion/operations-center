@@ -53,6 +53,7 @@ image:
 - `image.incus_image_source_repo`
 - `image.incus_image_source_service`
 - `image.simplestreams_port`
+- `image.xz_port`
 
 inventory:
 

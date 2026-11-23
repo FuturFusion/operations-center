@@ -44,6 +44,7 @@ import (
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
+	imageXZ "github.com/FuturFusion/operations-center/internal/image/adapter/xz"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
 	imageRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
@@ -958,6 +959,7 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 				imageFilesRepo,
 			),
 			simplestreams.New(),
+			imageXZ.New(),
 		),
 	)
 

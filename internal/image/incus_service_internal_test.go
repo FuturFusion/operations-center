@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/xz"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -217,10 +217,12 @@ func Test_metadataFromRequestJSON(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			svc := &imageIncusService{xz: xz.New()}
+
 			part, err := tc.multipartReader.NextPart()
 			require.NoError(t, err)
 
-			metadata, incusTarXZ, err := metadataFromRequestJSON(t.Context(), part)
+			metadata, incusTarXZ, err := svc.metadataFromRequestJSON(t.Context(), part)
 
 			tc.assertErr(t, err)
 
@@ -242,7 +244,7 @@ func Test_metadataFromRequestJSON(t *testing.T) {
 			roundTripPart, err := multipartReaderRawIncusTarXZ(t, incusTarXZ).NextPart()
 			require.NoError(t, err)
 
-			roundTripMetadata, roundTripIncusTarXZ, err := metadataFromIncusTarXZ(t.Context(), roundTripPart)
+			roundTripMetadata, roundTripIncusTarXZ, err := svc.metadataFromIncusTarXZ(t.Context(), roundTripPart)
 			require.NoError(t, err)
 			require.Equal(t, metadata.Architecture, roundTripMetadata.Architecture)
 			require.Equal(t, metadata.Properties, roundTripMetadata.Properties)
@@ -347,10 +349,12 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			svc := &imageIncusService{xz: xz.New()}
+
 			part, err := tc.multipartReader.NextPart()
 			require.NoError(t, err)
 
-			metadata, incusTarXZ, err := metadataFromIncusTarXZ(t.Context(), part)
+			metadata, incusTarXZ, err := svc.metadataFromIncusTarXZ(t.Context(), part)
 
 			tc.assertErr(t, err)
 
@@ -376,7 +380,7 @@ func multipartReaderIncusTarXZ(t *testing.T, metadataFilename string, metadataBo
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)
-	xzw, err := xz.NewWriter(t.Context(), buf)
+	xzw, err := xz.New().NewWriter(t.Context(), buf)
 	require.NoError(t, err)
 	tw := tar.NewWriter(xzw)
 	err = tw.WriteHeader(&tar.Header{
