@@ -9,8 +9,10 @@ import (
 	"crypto/x509"
 	"net/http"
 	"sync"
+	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db"
 
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
@@ -54,20 +56,38 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			GatewayFunc: func() cluster0.Gateway {
 //				panic("mock out the Gateway method")
 //			},
+//			GetMembersFunc: func(ctx context.Context) ([]api.ClusterMember, error) {
+//				panic("mock out the GetMembers method")
+//			},
+//			GetMembersByIDFunc: func(ctx context.Context) (map[int64]db.NodeInfo, error) {
+//				panic("mock out the GetMembersByID method")
+//			},
 //			GetTokenByServerNameFunc: func(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error) {
 //				panic("mock out the GetTokenByServerName method")
 //			},
 //			GetTokensFunc: func(ctx context.Context) (entities.ClusterJoinTokens, error) {
 //				panic("mock out the GetTokens method")
 //			},
+//			HandOverRoleFunc: func(ctx context.Context) error {
+//				panic("mock out the HandOverRole method")
+//			},
 //			HandlerFuncsFunc: func() map[string]http.HandlerFunc {
 //				panic("mock out the HandlerFuncs method")
+//			},
+//			HandoverFunc: func(ctx context.Context, address string) error {
+//				panic("mock out the Handover method")
+//			},
+//			HeartbeatOfflineThresholdFunc: func() time.Duration {
+//				panic("mock out the HeartbeatOfflineThreshold method")
 //			},
 //			IsMemberCertificateFunc: func(certificatePEM string) bool {
 //				panic("mock out the IsMemberCertificate method")
 //			},
 //			JoinFunc: func(ctx context.Context, cfg api.ClusterJoinPost) error {
 //				panic("mock out the Join method")
+//			},
+//			LocalMemberIDFunc: func() (int64, error) {
+//				panic("mock out the LocalMemberID method")
 //			},
 //			MemberClientFunc: func(address string) (client.OperationsCenterClient, error) {
 //				panic("mock out the MemberClient method")
@@ -77,6 +97,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			},
 //			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
 //				panic("mock out the PersistSharedConfig method")
+//			},
+//			RebalanceFunc: func(ctx context.Context) error {
+//				panic("mock out the Rebalance method")
 //			},
 //			SetGlobalDBFunc: func(repo cluster.GlobalRaftRepo)  {
 //				panic("mock out the SetGlobalDB method")
@@ -124,20 +147,38 @@ type MembershipServiceMock struct {
 	// GatewayFunc mocks the Gateway method.
 	GatewayFunc func() cluster0.Gateway
 
+	// GetMembersFunc mocks the GetMembers method.
+	GetMembersFunc func(ctx context.Context) ([]api.ClusterMember, error)
+
+	// GetMembersByIDFunc mocks the GetMembersByID method.
+	GetMembersByIDFunc func(ctx context.Context) (map[int64]db.NodeInfo, error)
+
 	// GetTokenByServerNameFunc mocks the GetTokenByServerName method.
 	GetTokenByServerNameFunc func(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error)
 
 	// GetTokensFunc mocks the GetTokens method.
 	GetTokensFunc func(ctx context.Context) (entities.ClusterJoinTokens, error)
 
+	// HandOverRoleFunc mocks the HandOverRole method.
+	HandOverRoleFunc func(ctx context.Context) error
+
 	// HandlerFuncsFunc mocks the HandlerFuncs method.
 	HandlerFuncsFunc func() map[string]http.HandlerFunc
+
+	// HandoverFunc mocks the Handover method.
+	HandoverFunc func(ctx context.Context, address string) error
+
+	// HeartbeatOfflineThresholdFunc mocks the HeartbeatOfflineThreshold method.
+	HeartbeatOfflineThresholdFunc func() time.Duration
 
 	// IsMemberCertificateFunc mocks the IsMemberCertificate method.
 	IsMemberCertificateFunc func(certificatePEM string) bool
 
 	// JoinFunc mocks the Join method.
 	JoinFunc func(ctx context.Context, cfg api.ClusterJoinPost) error
+
+	// LocalMemberIDFunc mocks the LocalMemberID method.
+	LocalMemberIDFunc func() (int64, error)
 
 	// MemberClientFunc mocks the MemberClient method.
 	MemberClientFunc func(address string) (client.OperationsCenterClient, error)
@@ -147,6 +188,9 @@ type MembershipServiceMock struct {
 
 	// PersistSharedConfigFunc mocks the PersistSharedConfig method.
 	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
+
+	// RebalanceFunc mocks the Rebalance method.
+	RebalanceFunc func(ctx context.Context) error
 
 	// SetGlobalDBFunc mocks the SetGlobalDB method.
 	SetGlobalDBFunc func(repo cluster.GlobalRaftRepo)
@@ -223,6 +267,16 @@ type MembershipServiceMock struct {
 		// Gateway holds details about calls to the Gateway method.
 		Gateway []struct {
 		}
+		// GetMembers holds details about calls to the GetMembers method.
+		GetMembers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetMembersByID holds details about calls to the GetMembersByID method.
+		GetMembersByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetTokenByServerName holds details about calls to the GetTokenByServerName method.
 		GetTokenByServerName []struct {
 			// Ctx is the ctx argument value.
@@ -235,8 +289,23 @@ type MembershipServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// HandOverRole holds details about calls to the HandOverRole method.
+		HandOverRole []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// HandlerFuncs holds details about calls to the HandlerFuncs method.
 		HandlerFuncs []struct {
+		}
+		// Handover holds details about calls to the Handover method.
+		Handover []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Address is the address argument value.
+			Address string
+		}
+		// HeartbeatOfflineThreshold holds details about calls to the HeartbeatOfflineThreshold method.
+		HeartbeatOfflineThreshold []struct {
 		}
 		// IsMemberCertificate holds details about calls to the IsMemberCertificate method.
 		IsMemberCertificate []struct {
@@ -249,6 +318,9 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg api.ClusterJoinPost
+		}
+		// LocalMemberID holds details about calls to the LocalMemberID method.
+		LocalMemberID []struct {
 		}
 		// MemberClient holds details about calls to the MemberClient method.
 		MemberClient []struct {
@@ -266,6 +338,11 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 			// Change is the change argument value.
 			Change config.SharedChange
+		}
+		// Rebalance holds details about calls to the Rebalance method.
+		Rebalance []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// SetGlobalDB holds details about calls to the SetGlobalDB method.
 		SetGlobalDB []struct {
@@ -293,27 +370,34 @@ type MembershipServiceMock struct {
 		TrustedClients []struct {
 		}
 	}
-	lockAccept                 sync.RWMutex
-	lockAuth                   sync.RWMutex
-	lockBootstrap              sync.RWMutex
-	lockCreateToken            sync.RWMutex
-	lockDeleteTokenByName      sync.RWMutex
-	lockDetermineNodeID        sync.RWMutex
-	lockEnable                 sync.RWMutex
-	lockGateway                sync.RWMutex
-	lockGetTokenByServerName   sync.RWMutex
-	lockGetTokens              sync.RWMutex
-	lockHandlerFuncs           sync.RWMutex
-	lockIsMemberCertificate    sync.RWMutex
-	lockJoin                   sync.RWMutex
-	lockMemberClient           sync.RWMutex
-	lockNotifyUpgradeCompleted sync.RWMutex
-	lockPersistSharedConfig    sync.RWMutex
-	lockSetGlobalDB            sync.RWMutex
-	lockStartLeaderTasks       sync.RWMutex
-	lockStop                   sync.RWMutex
-	lockTrust                  sync.RWMutex
-	lockTrustedClients         sync.RWMutex
+	lockAccept                    sync.RWMutex
+	lockAuth                      sync.RWMutex
+	lockBootstrap                 sync.RWMutex
+	lockCreateToken               sync.RWMutex
+	lockDeleteTokenByName         sync.RWMutex
+	lockDetermineNodeID           sync.RWMutex
+	lockEnable                    sync.RWMutex
+	lockGateway                   sync.RWMutex
+	lockGetMembers                sync.RWMutex
+	lockGetMembersByID            sync.RWMutex
+	lockGetTokenByServerName      sync.RWMutex
+	lockGetTokens                 sync.RWMutex
+	lockHandOverRole              sync.RWMutex
+	lockHandlerFuncs              sync.RWMutex
+	lockHandover                  sync.RWMutex
+	lockHeartbeatOfflineThreshold sync.RWMutex
+	lockIsMemberCertificate       sync.RWMutex
+	lockJoin                      sync.RWMutex
+	lockLocalMemberID             sync.RWMutex
+	lockMemberClient              sync.RWMutex
+	lockNotifyUpgradeCompleted    sync.RWMutex
+	lockPersistSharedConfig       sync.RWMutex
+	lockRebalance                 sync.RWMutex
+	lockSetGlobalDB               sync.RWMutex
+	lockStartLeaderTasks          sync.RWMutex
+	lockStop                      sync.RWMutex
+	lockTrust                     sync.RWMutex
+	lockTrustedClients            sync.RWMutex
 }
 
 // Accept calls AcceptFunc.
@@ -607,6 +691,70 @@ func (mock *MembershipServiceMock) GatewayCalls() []struct {
 	return calls
 }
 
+// GetMembers calls GetMembersFunc.
+func (mock *MembershipServiceMock) GetMembers(ctx context.Context) ([]api.ClusterMember, error) {
+	if mock.GetMembersFunc == nil {
+		panic("MembershipServiceMock.GetMembersFunc: method is nil but MembershipService.GetMembers was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetMembers.Lock()
+	mock.calls.GetMembers = append(mock.calls.GetMembers, callInfo)
+	mock.lockGetMembers.Unlock()
+	return mock.GetMembersFunc(ctx)
+}
+
+// GetMembersCalls gets all the calls that were made to GetMembers.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetMembersCalls())
+func (mock *MembershipServiceMock) GetMembersCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetMembers.RLock()
+	calls = mock.calls.GetMembers
+	mock.lockGetMembers.RUnlock()
+	return calls
+}
+
+// GetMembersByID calls GetMembersByIDFunc.
+func (mock *MembershipServiceMock) GetMembersByID(ctx context.Context) (map[int64]db.NodeInfo, error) {
+	if mock.GetMembersByIDFunc == nil {
+		panic("MembershipServiceMock.GetMembersByIDFunc: method is nil but MembershipService.GetMembersByID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetMembersByID.Lock()
+	mock.calls.GetMembersByID = append(mock.calls.GetMembersByID, callInfo)
+	mock.lockGetMembersByID.Unlock()
+	return mock.GetMembersByIDFunc(ctx)
+}
+
+// GetMembersByIDCalls gets all the calls that were made to GetMembersByID.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetMembersByIDCalls())
+func (mock *MembershipServiceMock) GetMembersByIDCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetMembersByID.RLock()
+	calls = mock.calls.GetMembersByID
+	mock.lockGetMembersByID.RUnlock()
+	return calls
+}
+
 // GetTokenByServerName calls GetTokenByServerNameFunc.
 func (mock *MembershipServiceMock) GetTokenByServerName(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error) {
 	if mock.GetTokenByServerNameFunc == nil {
@@ -675,6 +823,38 @@ func (mock *MembershipServiceMock) GetTokensCalls() []struct {
 	return calls
 }
 
+// HandOverRole calls HandOverRoleFunc.
+func (mock *MembershipServiceMock) HandOverRole(ctx context.Context) error {
+	if mock.HandOverRoleFunc == nil {
+		panic("MembershipServiceMock.HandOverRoleFunc: method is nil but MembershipService.HandOverRole was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockHandOverRole.Lock()
+	mock.calls.HandOverRole = append(mock.calls.HandOverRole, callInfo)
+	mock.lockHandOverRole.Unlock()
+	return mock.HandOverRoleFunc(ctx)
+}
+
+// HandOverRoleCalls gets all the calls that were made to HandOverRole.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandOverRoleCalls())
+func (mock *MembershipServiceMock) HandOverRoleCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockHandOverRole.RLock()
+	calls = mock.calls.HandOverRole
+	mock.lockHandOverRole.RUnlock()
+	return calls
+}
+
 // HandlerFuncs calls HandlerFuncsFunc.
 func (mock *MembershipServiceMock) HandlerFuncs() map[string]http.HandlerFunc {
 	if mock.HandlerFuncsFunc == nil {
@@ -699,6 +879,69 @@ func (mock *MembershipServiceMock) HandlerFuncsCalls() []struct {
 	mock.lockHandlerFuncs.RLock()
 	calls = mock.calls.HandlerFuncs
 	mock.lockHandlerFuncs.RUnlock()
+	return calls
+}
+
+// Handover calls HandoverFunc.
+func (mock *MembershipServiceMock) Handover(ctx context.Context, address string) error {
+	if mock.HandoverFunc == nil {
+		panic("MembershipServiceMock.HandoverFunc: method is nil but MembershipService.Handover was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Address string
+	}{
+		Ctx:     ctx,
+		Address: address,
+	}
+	mock.lockHandover.Lock()
+	mock.calls.Handover = append(mock.calls.Handover, callInfo)
+	mock.lockHandover.Unlock()
+	return mock.HandoverFunc(ctx, address)
+}
+
+// HandoverCalls gets all the calls that were made to Handover.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandoverCalls())
+func (mock *MembershipServiceMock) HandoverCalls() []struct {
+	Ctx     context.Context
+	Address string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Address string
+	}
+	mock.lockHandover.RLock()
+	calls = mock.calls.Handover
+	mock.lockHandover.RUnlock()
+	return calls
+}
+
+// HeartbeatOfflineThreshold calls HeartbeatOfflineThresholdFunc.
+func (mock *MembershipServiceMock) HeartbeatOfflineThreshold() time.Duration {
+	if mock.HeartbeatOfflineThresholdFunc == nil {
+		panic("MembershipServiceMock.HeartbeatOfflineThresholdFunc: method is nil but MembershipService.HeartbeatOfflineThreshold was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockHeartbeatOfflineThreshold.Lock()
+	mock.calls.HeartbeatOfflineThreshold = append(mock.calls.HeartbeatOfflineThreshold, callInfo)
+	mock.lockHeartbeatOfflineThreshold.Unlock()
+	return mock.HeartbeatOfflineThresholdFunc()
+}
+
+// HeartbeatOfflineThresholdCalls gets all the calls that were made to HeartbeatOfflineThreshold.
+// Check the length with:
+//
+//	len(mockedMembershipService.HeartbeatOfflineThresholdCalls())
+func (mock *MembershipServiceMock) HeartbeatOfflineThresholdCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockHeartbeatOfflineThreshold.RLock()
+	calls = mock.calls.HeartbeatOfflineThreshold
+	mock.lockHeartbeatOfflineThreshold.RUnlock()
 	return calls
 }
 
@@ -767,6 +1010,33 @@ func (mock *MembershipServiceMock) JoinCalls() []struct {
 	mock.lockJoin.RLock()
 	calls = mock.calls.Join
 	mock.lockJoin.RUnlock()
+	return calls
+}
+
+// LocalMemberID calls LocalMemberIDFunc.
+func (mock *MembershipServiceMock) LocalMemberID() (int64, error) {
+	if mock.LocalMemberIDFunc == nil {
+		panic("MembershipServiceMock.LocalMemberIDFunc: method is nil but MembershipService.LocalMemberID was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockLocalMemberID.Lock()
+	mock.calls.LocalMemberID = append(mock.calls.LocalMemberID, callInfo)
+	mock.lockLocalMemberID.Unlock()
+	return mock.LocalMemberIDFunc()
+}
+
+// LocalMemberIDCalls gets all the calls that were made to LocalMemberID.
+// Check the length with:
+//
+//	len(mockedMembershipService.LocalMemberIDCalls())
+func (mock *MembershipServiceMock) LocalMemberIDCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockLocalMemberID.RLock()
+	calls = mock.calls.LocalMemberID
+	mock.lockLocalMemberID.RUnlock()
 	return calls
 }
 
@@ -867,6 +1137,38 @@ func (mock *MembershipServiceMock) PersistSharedConfigCalls() []struct {
 	mock.lockPersistSharedConfig.RLock()
 	calls = mock.calls.PersistSharedConfig
 	mock.lockPersistSharedConfig.RUnlock()
+	return calls
+}
+
+// Rebalance calls RebalanceFunc.
+func (mock *MembershipServiceMock) Rebalance(ctx context.Context) error {
+	if mock.RebalanceFunc == nil {
+		panic("MembershipServiceMock.RebalanceFunc: method is nil but MembershipService.Rebalance was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockRebalance.Lock()
+	mock.calls.Rebalance = append(mock.calls.Rebalance, callInfo)
+	mock.lockRebalance.Unlock()
+	return mock.RebalanceFunc(ctx)
+}
+
+// RebalanceCalls gets all the calls that were made to Rebalance.
+// Check the length with:
+//
+//	len(mockedMembershipService.RebalanceCalls())
+func (mock *MembershipServiceMock) RebalanceCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockRebalance.RLock()
+	calls = mock.calls.Rebalance
+	mock.lockRebalance.RUnlock()
 	return calls
 }
 

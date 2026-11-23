@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"net/http"
+	"time"
 
 	"github.com/cowsql/go-cowsql/cluster"
 	cowdb "github.com/cowsql/go-cowsql/cluster/db"
@@ -28,13 +29,20 @@ type MembershipService interface {
 	NotifyUpgradeCompleted(ctx context.Context) error
 	HandlerFuncs() map[string]http.HandlerFunc
 
+	HandOverRole(ctx context.Context) error
 	Stop(ctx context.Context) error
 
 	Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) error
 	Join(ctx context.Context, cfg api.ClusterJoinPost) error
 	Trust(ctx context.Context, token string, fingerprint string) error
 	Accept(ctx context.Context, cfg api.ClusterAcceptPost) (*membershipapi.InternalClusterAcceptResponse, error)
+	GetMembers(ctx context.Context) ([]api.ClusterMember, error)
+	GetMembersByID(ctx context.Context) (map[int64]cowdb.NodeInfo, error)
+	HeartbeatOfflineThreshold() time.Duration
+	LocalMemberID() (int64, error)
 	MemberClient(address string) (client.OperationsCenterClient, error)
+	Handover(ctx context.Context, address string) error
+	Rebalance(ctx context.Context) error
 
 	GetTokens(ctx context.Context) (entities.ClusterJoinTokens, error)
 	GetTokenByServerName(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error)

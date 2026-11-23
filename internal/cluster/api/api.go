@@ -2,6 +2,12 @@ package api
 
 import "github.com/FuturFusion/operations-center/shared/api"
 
+// InternalClusterPostHandoverRequest is a request for the /internal/membership/:handover endpoint.
+type InternalClusterPostHandoverRequest struct {
+	// Address of the server whose role should be transferred.
+	Address string `json:"address" yaml:"address"`
+}
+
 // InternalClusterPostTrustRequest is a request for the /internal/membership/:trust endpoint.
 type InternalClusterPostTrustRequest struct {
 	// Token is the join token of the joining server.
@@ -14,6 +20,11 @@ type InternalRaftNode struct {
 	Address string `json:"address" yaml:"address"`
 	Role    int    `json:"role" yaml:"role"`
 	Name    string `json:"name" yaml:"name"`
+}
+
+// InternalClusterPostAssignRequest is a request for the /internal/membership/:assign endpoint.
+type InternalClusterPostAssignRequest struct {
+	RaftNodes []InternalRaftNode `json:"raft_nodes" yaml:"raft_nodes"`
 }
 
 type InternalClusterAcceptResponse struct {

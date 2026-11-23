@@ -43,6 +43,8 @@ func registerClusterMembershipHandler(
 	router.HandleFunc("POST /:enable", response.With(handler.enablePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 	// Enable clustering by joining a cluster.
 	router.HandleFunc("POST /:join", response.With(handler.joinPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	// Get cluster members.
+	router.HandleFunc("GET /members", response.With(handler.membersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 
 	// Tokens:
 	//
@@ -102,6 +104,26 @@ func (m *membershipHandler) joinPost(r *http.Request) response.Response {
 	m.restart()
 
 	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) membersGet(r *http.Request) response.Response {
+	if m.service.Gateway().Cluster() == nil {
+		return response.InternalError(errors.New("Cluster is still initializing"))
+	}
+
+	members, err := m.service.GetMembers(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	for i := range members {
+		members[i].FileSets, err = m.mover.CountByTarget(r.Context(), members[i].Name)
+		if err != nil {
+			return response.SmartError(err)
+		}
+	}
+
+	return response.SyncResponse(true, members)
 }
 
 func (m *membershipHandler) tokenPost(r *http.Request) response.Response {

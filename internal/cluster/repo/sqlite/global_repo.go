@@ -143,7 +143,16 @@ func (g *globalDB) GetNodeByAddress(ctx context.Context, address string, pending
 
 // GetNodeOfflineThreshold implements [db.Cluster].
 func (g *globalDB) GetNodeOfflineThreshold(ctx context.Context) (time.Duration, error) {
-	return config.DefaultOfflineThresholdSeconds * time.Second, nil
+	var t time.Duration
+	err := transaction.ForceTx(ctx, g, func(ctx context.Context, tx transaction.TX) error {
+		t = time.Duration(config.GetCluster().OfflineThresholdSeconds) * time.Second
+		return nil
+	})
+	if err != nil {
+		return -1, err
+	}
+
+	return t, nil
 }
 
 // GetNodes implements [db.Cluster].

@@ -8,8 +8,10 @@ import (
 	"crypto/x509"
 	"log/slog"
 	"net/http"
+	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db"
 
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
@@ -297,6 +299,68 @@ func (_d MembershipServiceWithSlog) Gateway() (gateway cluster0.Gateway) {
 	return _d._base.Gateway()
 }
 
+// GetMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetMembers(ctx context.Context) (clusterMembers []api.ClusterMember, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetMembers")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("clusterMembers", clusterMembers),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetMembers returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetMembers finished")
+		}
+	}()
+	return _d._base.GetMembers(ctx)
+}
+
+// GetMembersByID implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetMembersByID(ctx context.Context) (int64ToNodeInfo map[int64]db.NodeInfo, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetMembersByID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("int64ToNodeInfo", int64ToNodeInfo),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetMembersByID returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetMembersByID finished")
+		}
+	}()
+	return _d._base.GetMembersByID(ctx)
+}
+
 // GetTokenByServerName implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) GetTokenByServerName(ctx context.Context, serverName string) (clusterJoinToken *entities.ClusterJoinToken, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -360,6 +424,36 @@ func (_d MembershipServiceWithSlog) GetTokens(ctx context.Context) (clusterJoinT
 	return _d._base.GetTokens(ctx)
 }
 
+// HandOverRole implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HandOverRole(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling HandOverRole")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method HandOverRole returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method HandOverRole finished")
+		}
+	}()
+	return _d._base.HandOverRole(ctx)
+}
+
 // HandlerFuncs implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
 	ctx := logger.ContextWithComponent(context.Background(), _d._component)
@@ -376,6 +470,55 @@ func (_d MembershipServiceWithSlog) HandlerFuncs() (stringToHandlerFunc map[stri
 		log.DebugContext(ctx, "<= method HandlerFuncs finished")
 	}()
 	return _d._base.HandlerFuncs()
+}
+
+// Handover implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Handover(ctx context.Context, address string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("address", address),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Handover")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Handover returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Handover finished")
+		}
+	}()
+	return _d._base.Handover(ctx, address)
+}
+
+// HeartbeatOfflineThreshold implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HeartbeatOfflineThreshold() (duration time.Duration) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling HeartbeatOfflineThreshold")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Duration("duration", duration),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method HeartbeatOfflineThreshold finished")
+	}()
+	return _d._base.HeartbeatOfflineThreshold()
 }
 
 // IsMemberCertificate implements cluster.MembershipService.
@@ -430,6 +573,32 @@ func (_d MembershipServiceWithSlog) Join(ctx context.Context, cfg api.ClusterJoi
 		}
 	}()
 	return _d._base.Join(ctx, cfg)
+}
+
+// LocalMemberID implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LocalMemberID() (n int64, err error) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling LocalMemberID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Int64("n", n),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method LocalMemberID returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method LocalMemberID finished")
+		}
+	}()
+	return _d._base.LocalMemberID()
 }
 
 // MemberClient implements cluster.MembershipService.
@@ -523,6 +692,36 @@ func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, cha
 		}
 	}()
 	return _d._base.PersistSharedConfig(ctx, change)
+}
+
+// Rebalance implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Rebalance(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Rebalance")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Rebalance returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Rebalance finished")
+		}
+	}()
+	return _d._base.Rebalance(ctx)
 }
 
 // SetGlobalDB implements cluster.MembershipService.

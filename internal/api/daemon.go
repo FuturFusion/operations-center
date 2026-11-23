@@ -489,7 +489,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Handler: componentMiddleware(
 			logger.RequestIDMiddleware(
 				logger.AccessLogMiddleware(
-					serveMux,
+					shutdownGate(&d.shuttingDown, serveMux),
 				),
 			),
 		),
@@ -561,6 +561,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Stop the membership after the heartbeats, which need the database.
 	d.shutdownFuncs = append(d.shutdownFuncs, membershipSvc.Stop)
+
+	// Hand over the role first, since the leader changes the role of this member through its API.
+	// A restart to enable, join or reset the membership has no role to hand over and stops the API first.
+	d.shutdownFuncs = append([]func(context.Context) error{func(ctx context.Context) error {
+		if d.restarting.Load() {
+			return nil
+		}
+
+		return membershipSvc.HandOverRole(ctx)
+	}}, d.shutdownFuncs...)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -2519,6 +2529,8 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 
 func (d *Daemon) Stop(ctx context.Context) error {
 	ctx = logger.ContextWithComponent(ctx, componentDaemon)
+
+	d.shuttingDown.Store(true)
 
 	d.configReloadMu.Lock()
 	if d.securityRetryCancel != nil {

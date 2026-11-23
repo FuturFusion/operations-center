@@ -63,6 +63,9 @@ type membership struct {
 
 	mu sync.Mutex
 
+	// rolesMu serializes the changes of the raft roles and members on the leader.
+	rolesMu sync.Mutex
+
 	stopOnce sync.Once
 	stopErr  error
 
@@ -72,7 +75,11 @@ type membership struct {
 	configRepo atomic.Pointer[ConfigRepo]
 
 	// joinCheck refuses a join, which is not forced, while this server still manages something.
-	joinCheck func(ctx context.Context) error
+	joinCheck    func(ctx context.Context) error
+	lastNodeList atomic.Pointer[cowsqlheartbeat.APIHeartbeat]
+
+	clientCertMu    sync.RWMutex
+	clientCertCache map[string]x509.Certificate
 
 	// ctx is the lifetime of the service.
 	ctx    context.Context
@@ -143,6 +150,15 @@ func NewClusterMembershipService(ctx context.Context, env environment, varRoot *
 		return nil, err
 	}
 
+	g.SetHeartbeatNodeHook(func(heartbeatData *cowsqlheartbeat.APIHeartbeat, isLeader bool, unavailableMembers []string) {
+		m.onClusterHeartbeat(ctx, g, localRepo, m.global(), heartbeatData, isLeader, unavailableMembers)
+	})
+
+	lifecycle.SharedClusterUpdateSignal.AddListener(func(_ context.Context, cfg apisystem.Cluster) {
+		g.SetHeartbeatOfflineThreshold(time.Duration(cfg.OfflineThresholdSeconds) * time.Second)
+	})
+
+	m.localRepo = localRepo
 	m.gateway = g
 
 	m.updateCertificateCacheFromLocal(ctx)
@@ -178,6 +194,85 @@ func (m *membership) sharedConfig() ConfigRepo {
 	}
 
 	return *repo
+}
+
+func (m *membership) GetMembers(ctx context.Context) ([]api.ClusterMember, error) {
+	localMembers, err := m.localRepo.GetRaftNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	localMembersByAddress := make(map[string]cowsqldb.RaftNode, len(localMembers))
+	for _, m := range localMembers {
+		localMembersByAddress[m.Address] = m
+	}
+
+	leaderAddress, err := m.LeaderAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := m.global().GetNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	offlineThreshold := m.gateway.HeartbeatOfflineThreshold()
+
+	apiMembers := make([]api.ClusterMember, 0, len(members))
+	for _, member := range members {
+		localMember, ok := localMembersByAddress[member.Address]
+		if !ok {
+			continue
+		}
+
+		isLeader := leaderAddress == member.Address
+
+		apiMembers = append(apiMembers, api.ClusterMember{
+			Name:          member.Name,
+			Address:       member.Address,
+			LastHeartbeat: member.Heartbeat,
+			Roles:         []string{localMember.Role.String()},
+			Leader:        isLeader,
+			// The leader is online without heartbeats.
+			Offline: !isLeader && member.IsOffline(offlineThreshold),
+		})
+	}
+
+	return apiMembers, nil
+}
+
+// LocalMemberID returns the ID of this member in the global database.
+func (m *membership) LocalMemberID() (int64, error) {
+	if m.global() == nil {
+		return 0, errors.New("Global database is not available")
+	}
+
+	return m.global().GetNodeID(), nil
+}
+
+// GetMembersByID returns the cluster members by their ID from the global database.
+func (m *membership) GetMembersByID(ctx context.Context) (map[int64]cowsqldb.NodeInfo, error) {
+	if m.global() == nil {
+		return nil, errors.New("Global database is not available")
+	}
+
+	members, err := m.global().GetNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	membersByID := make(map[int64]cowsqldb.NodeInfo, len(members))
+	for _, member := range members {
+		membersByID[member.ID] = member
+	}
+
+	return membersByID, nil
+}
+
+// HeartbeatOfflineThreshold returns the time after which a member without heartbeat is offline.
+func (m *membership) HeartbeatOfflineThreshold() time.Duration {
+	return m.gateway.HeartbeatOfflineThreshold()
 }
 
 // Auth implements Auther to trust a joiner by the fingerprint /:trust recorded with its token, which any leader reads.
@@ -846,6 +941,21 @@ func (m *membership) NotifyUpgradeCompleted(ctx context.Context) error {
 	return errors.Join(notifyErrs...)
 }
 
+// HandOverRole stops the leader tasks and hands over the role of this member to another one.
+func (m *membership) HandOverRole(ctx context.Context) error {
+	errs := m.stopLeaderTasks(ctx)
+
+	// Hand over the role unless this member is being reset.
+	if m.global() != nil && !m.resetPending.Load() {
+		err := m.handoverRole(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to hand over cluster member role: %w", err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
 // Stop stops the membership service. Further calls return the first result.
 func (m *membership) Stop(ctx context.Context) error {
 	m.stopOnce.Do(func() {
@@ -1040,6 +1150,339 @@ func (m *membership) MemberClient(address string) (client.OperationsCenterClient
 	}
 
 	return client.New("https://"+address, client.WithClientCertificate(certInfo), client.WithTrustedServerCertificate(networkCert), client.WithDialTimeout(MemberDialTimeout))
+}
+
+func (m *membership) isLeader(ctx context.Context) error {
+	leader, err := m.Gateway().IsLeader(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to check for leader status: %w", err)
+	}
+
+	// Requests are forwarded to the leader, so this only happens during a leader change.
+	if !leader {
+		return domain.NewErrorf(domain.ErrUnavailable, "", "Cluster member %q is not the cluster leader anymore", m.gateway.RaftNode().Name).
+			WithHintf("Retry the request.")
+	}
+
+	return nil
+}
+
+func (m *membership) handoverRole(ctx context.Context) error {
+	// Give the handover its own timeout, since the shutdown may have used up the deadline.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+
+	// If we aren't clustered, there's nothing to do.
+	clustered := m.gateway.NetworkCert().Fingerprint() != m.gateway.ServerCert().Fingerprint()
+	if !clustered {
+		return nil
+	}
+
+	enabled, err := cowsqlmembership.Enabled(m.gateway.Node())
+	if err != nil || !enabled {
+		return err
+	}
+
+	// Figure out our own cluster address.
+	localClusterAddress, err := m.gateway.Node().GetClusterAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	log := slog.With(slog.String("local_address", localClusterAddress))
+
+	// Retry for a while on transient errors (leader changes, unreachable
+	// leader or another configuration change in progress), as leaving
+	// without a successful handover can cost the cluster its quorum.
+	// Individual attempts can be slow (each internal call has its own
+	// timeout), so bound the retries by time rather than count to avoid
+	// hanging shutdown when the cluster has lost quorum.
+	for i := 0; ctx.Err() == nil; i++ {
+		if i > 0 {
+			select {
+			case <-ctx.Done():
+				return errors.Join(err, ctx.Err())
+
+			case <-time.After(time.Second):
+			}
+		}
+
+		// Find the cluster leader, which may change between attempts.
+		var leader string
+		leader, err = m.gateway.LeaderAddress()
+		if err != nil {
+			continue
+		}
+
+		if leader == "" {
+			err = errors.New("No leader address found")
+			continue
+		}
+
+		if leader == localClusterAddress {
+			log.InfoContext(ctx, "Transferring leadership")
+			transferCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			err = m.Gateway().TransferLeadership(transferCtx)
+			cancel()
+
+			if errors.Is(err, cowsqlmembership.ErrNoOnlineVoter) {
+				log.InfoContext(ctx, "No other online voter to transfer leadership to")
+				return nil
+			}
+
+			if err != nil {
+				err = fmt.Errorf("Failed to transfer leadership: %w", err)
+
+				continue
+			}
+
+			leader, err = m.gateway.LeaderAddress()
+			if err != nil {
+				continue
+			}
+
+			if leader == "" || leader == localClusterAddress {
+				err = errors.New("No leader address found")
+				continue
+			}
+		}
+
+		log.InfoContext(ctx, "Handing over cluster member role")
+		post := &membershipapi.InternalClusterPostHandoverRequest{
+			Address: localClusterAddress,
+		}
+
+		c, err := m.MemberClient(leader)
+		if err != nil {
+			return err
+		}
+
+		requestCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		_, err = c.DoInternalRequest(requestCtx, http.MethodPost, "/membership/:handover", nil, post)
+		cancel()
+		if err == nil {
+			return nil
+		}
+
+		// Give up right away on errors that won't resolve by retrying.
+		// The errors come back from the leader as text, usually wrapped in extra context and with
+		// inconsistent capitalization ("Not leader", "503 not leader", "not leader (10250)"), so
+		// case-insensitive substring matching is the best we can do.
+		errText := strings.ToLower(err.Error())
+		if !cowsqlmembership.IsClusterBusyErr(err) && !strings.Contains(errText, "not leader") && !strings.Contains(errText, "unable to connect") && !strings.Contains(errText, "client.timeout") {
+			return err
+		}
+	}
+
+	return err
+}
+
+func (m *membership) onClusterHeartbeat(ctx context.Context, gateway cowsqlcluster.Gateway, localDB LocalRaftRepo, globalDB GlobalRaftRepo, heartbeatData *cowsqlheartbeat.APIHeartbeat, isLeader bool, unavailableMembers []string) {
+	// Don't process the heartbeat until we're fully online.
+	if gateway.Cluster() == nil || globalDB.GetNodeID() == 0 {
+		return
+	}
+
+	localClusterAddress, err := localDB.GetClusterAddress(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to get cluster address during heartbeat", logger.Err(err))
+		return
+	}
+
+	if !heartbeatData.FullStateList || len(heartbeatData.Members) <= 0 {
+		slog.ErrorContext(ctx, "Heartbeat member refresh task called with partial state list", slog.String("local_address", localClusterAddress))
+		return
+	}
+
+	// FIXME: API extensions
+
+	lastNodeList := m.lastNodeList.Load()
+	if lastNodeList == nil || lastNodeList.Version.Schema != heartbeatData.Version.Schema {
+		err := cowsqlmembership.MaybeUpdate(gateway)
+		if err != nil {
+			slog.ErrorContext(ctx, "Error updating cluster", logger.Err(err))
+			return
+		}
+	}
+
+	m.lastNodeList.Store(heartbeatData)
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	// The rebalance waits for other role changes, and does nothing if this member lost the leadership meanwhile.
+	if isLeader && unavailableMembers != nil {
+		m.rolesMu.Lock()
+		defer m.rolesMu.Unlock()
+	}
+
+	cowsqlmembership.RebalanceMembersHook(ctx, m.Gateway(), localClusterAddress, heartbeatData, isLeader, unavailableMembers, nil, m.changeMemberRole)
+}
+
+// transferLeadership hands the leadership of this member, named name, over to another voter.
+// It holds the lock of the role changes, so a heartbeat rebalance can't undo the promotion of the remaining member of a two member cluster.
+func (m *membership) transferLeadership(ctx context.Context, name string) error {
+	m.rolesMu.Lock()
+	defer m.rolesMu.Unlock()
+
+	localAddress := m.Gateway().State().ClusterAddress()
+
+	nodes, err := m.gateway.CurrentRaftNodes(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Promote the remaining member of a two member cluster.
+	if len(nodes) == 2 {
+		for i := range nodes {
+			if nodes[i].Address == localAddress || nodes[i].Role == cowsqldb.RaftVoter {
+				continue
+			}
+
+			nodes[i].Role = cowsqldb.RaftVoter
+			err = m.changeMemberRole(ctx, nodes[i].Address, nodes)
+			if err != nil {
+				return fmt.Errorf("Failed to promote remaining cluster member: %w", err)
+			}
+
+			break
+		}
+	}
+
+	err = m.Gateway().TransferLeadership(ctx)
+	if errors.Is(err, cowsqlmembership.ErrNoOnlineVoter) {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster member %q is the leader and there is no other online voter to take over", name)
+	}
+
+	if err != nil {
+		return fmt.Errorf("Failed to transfer leadership: %w", err)
+	}
+
+	return nil
+}
+
+// Handover hands the raft role of the member with the given address over to
+// another member. It must be called on the leader.
+func (m *membership) Handover(ctx context.Context, address string) error {
+	m.rolesMu.Lock()
+	defer m.rolesMu.Unlock()
+
+	target, nodes, err := cowsqlmembership.Handover(m.gateway, address)
+	if err != nil {
+		return err
+	}
+
+	if target == "" {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "Promoting member during handover", slog.String("losing_address", address), slog.String("candidate_address", target))
+	err = m.changeMemberRole(ctx, target, nodes)
+	if err != nil {
+		return err
+	}
+
+	for i, raftNode := range nodes {
+		if raftNode.Address == address {
+			nodes[i].Role = cowsqldb.RaftSpare
+		}
+	}
+
+	slog.InfoContext(ctx, "Demoting member during handover", slog.String("losing_address", address))
+
+	return m.changeMemberRole(ctx, address, nodes)
+}
+
+// Rebalance promotes and demotes members until the raft roles match the
+// desired number of voters and stand-bys. It must be called on the leader.
+func (m *membership) Rebalance(ctx context.Context) error {
+	m.rolesMu.Lock()
+	defer m.rolesMu.Unlock()
+
+	for ctx.Err() == nil {
+		address, nodes, err := cowsqlmembership.Rebalance(m.gateway, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		// Nothing to do.
+		if address == "" {
+			return nil
+		}
+
+		demoted := false
+		for _, member := range nodes {
+			if member.Address != address {
+				continue
+			}
+
+			reachable := cowsqlcluster.HasConnectivity(m.gateway.NetworkCert(), m.gateway.ServerCert(), address, m.gateway.Options().RestrictTLS())
+			if member.Role != cowsqldb.RaftSpare {
+				if !reachable {
+					return nil
+				}
+
+				slog.InfoContext(ctx, "Promoting cluster member", slog.String("name", member.Name), slog.String("role", member.Role.String()))
+				break
+			}
+
+			if reachable {
+				break
+			}
+
+			slog.InfoContext(ctx, "Demoting cluster member", slog.String("name", member.Name), slog.String("role", member.Role.String()))
+
+			err := m.gateway.DemoteOfflineNode(member.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to demote cluster member %q: %w", member.Name, err)
+			}
+
+			demoted = true
+			break
+		}
+
+		if demoted {
+			continue
+		}
+
+		err = m.changeMemberRole(ctx, address, nodes)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ctx.Err()
+}
+
+// Post a change role request to the member with the given address. The nodes
+// slice contains details about all members, including the one being changed.
+func (m *membership) changeMemberRole(ctx context.Context, address string, nodes []cowsqldb.RaftNode) error {
+	post := &membershipapi.InternalClusterPostAssignRequest{}
+	for _, raftNode := range nodes {
+		post.RaftNodes = append(post.RaftNodes, membershipapi.InternalRaftNode{
+			ID:      raftNode.ID,
+			Address: raftNode.Address,
+			Role:    int(raftNode.Role),
+			Name:    raftNode.Name,
+		})
+	}
+
+	c, err := m.MemberClient(address)
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(post)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:assign", nil, b)
+
+	return err
 }
 
 // gatewayAuthenticator validates that the connection is from a trusted server.

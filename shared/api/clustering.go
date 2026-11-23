@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+type ClusterMember struct {
+	Name          string    `json:"name" yaml:"name"`
+	Address       string    `json:"address" yaml:"address"`
+	Roles         []string  `json:"roles" yaml:"roles"`
+	LastHeartbeat time.Time `json:"last_heartbeat" yaml:"last_heartbeat"`
+	Leader        bool      `json:"leader" yaml:"leader"`
+
+	// Offline is true if the member missed its heartbeats for longer than the offline threshold.
+	Offline bool `json:"offline" yaml:"offline"`
+
+	// FileSets is the number of file sets of updates, image versions and cluster artifacts only stored by this member.
+	FileSets int `json:"file_sets" yaml:"file_sets"`
+}
+
 type ClusterBootstrapPost struct {
 	ServerName string `json:"server_name" yaml:"server_name"`
 

@@ -160,10 +160,75 @@ func registerInternalClusterMembershipHandler(
 	joinerAuthenticator := authn.New([]authn.Auther{service})
 	leaderWithJoinerTrust := leaderUntrusted.SubGroup("").AddMiddlewares(joinerAuthenticator.Middleware())
 
+	// Assign a cluster role.
+	authenticated.HandleFunc("POST /:assign", response.With(handler.assignPost))
+	// Handover the cluster member's role.
+	leaderAuthenticated.HandleFunc("POST /:handover", response.With(handler.handoverPost))
+	// Rebalance cluster roles.
+	leaderAuthenticated.HandleFunc("POST /:rebalance", response.With(handler.rebalancePost))
 	// Trust a supplied join token.
 	leaderUntrusted.HandleFunc("POST /:trust", response.With(handler.trustPost))
 	// Accept a new cluster member.
 	leaderWithJoinerTrust.HandleFunc("POST /:accept", response.With(handler.acceptPost))
+}
+
+func (m *membershipHandler) assignPost(r *http.Request) response.Response {
+	req := membershipapi.InternalClusterPostAssignRequest{}
+
+	// Parse the request
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Quick checks.
+	if len(req.RaftNodes) == 0 {
+		return response.BadRequest(errors.New("No raft members provided"))
+	}
+
+	nodes := make([]db.RaftNode, len(req.RaftNodes))
+	for i, raftNode := range req.RaftNodes {
+		nodes[i].ID = raftNode.ID
+		nodes[i].Address = raftNode.Address
+		nodes[i].Role = db.RaftRole(raftNode.Role)
+		nodes[i].Name = raftNode.Name
+	}
+
+	err = cowsqlmembership.Assign(m.service.Gateway(), nodes)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, nil)
+}
+
+func (m *membershipHandler) handoverPost(r *http.Request) response.Response {
+	var req membershipapi.InternalClusterPostHandoverRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	if req.Address == "" {
+		return response.BadRequest(errors.New("No address provided"))
+	}
+
+	err = m.service.Handover(r.Context(), req.Address)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) rebalancePost(r *http.Request) response.Response {
+	err := m.service.Rebalance(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
 }
 
 func (m *membershipHandler) trustPost(r *http.Request) response.Response {
