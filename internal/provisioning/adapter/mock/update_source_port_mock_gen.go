@@ -28,6 +28,9 @@ var _ provisioning.UpdateSourcePort = &UpdateSourcePortMock{}
 //			GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetUpdateFileByFilenameUnverified method")
 //			},
+//			GetUpdateManifestFunc: func(ctx context.Context, update provisioning.Update) ([]byte, error) {
+//				panic("mock out the GetUpdateManifest method")
+//			},
 //		}
 //
 //		// use mockedUpdateSourcePort in code that requires provisioning.UpdateSourcePort
@@ -40,6 +43,9 @@ type UpdateSourcePortMock struct {
 
 	// GetUpdateFileByFilenameUnverifiedFunc mocks the GetUpdateFileByFilenameUnverified method.
 	GetUpdateFileByFilenameUnverifiedFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
+
+	// GetUpdateManifestFunc mocks the GetUpdateManifest method.
+	GetUpdateManifestFunc func(ctx context.Context, update provisioning.Update) ([]byte, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -59,9 +65,17 @@ type UpdateSourcePortMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// GetUpdateManifest holds details about calls to the GetUpdateManifest method.
+		GetUpdateManifest []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Update is the update argument value.
+			Update provisioning.Update
+		}
 	}
 	lockGetLatest                         sync.RWMutex
 	lockGetUpdateFileByFilenameUnverified sync.RWMutex
+	lockGetUpdateManifest                 sync.RWMutex
 }
 
 // GetLatest calls GetLatestFunc.
@@ -137,5 +151,41 @@ func (mock *UpdateSourcePortMock) GetUpdateFileByFilenameUnverifiedCalls() []str
 	mock.lockGetUpdateFileByFilenameUnverified.RLock()
 	calls = mock.calls.GetUpdateFileByFilenameUnverified
 	mock.lockGetUpdateFileByFilenameUnverified.RUnlock()
+	return calls
+}
+
+// GetUpdateManifest calls GetUpdateManifestFunc.
+func (mock *UpdateSourcePortMock) GetUpdateManifest(ctx context.Context, update provisioning.Update) ([]byte, error) {
+	if mock.GetUpdateManifestFunc == nil {
+		panic("UpdateSourcePortMock.GetUpdateManifestFunc: method is nil but UpdateSourcePort.GetUpdateManifest was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}{
+		Ctx:    ctx,
+		Update: update,
+	}
+	mock.lockGetUpdateManifest.Lock()
+	mock.calls.GetUpdateManifest = append(mock.calls.GetUpdateManifest, callInfo)
+	mock.lockGetUpdateManifest.Unlock()
+	return mock.GetUpdateManifestFunc(ctx, update)
+}
+
+// GetUpdateManifestCalls gets all the calls that were made to GetUpdateManifest.
+// Check the length with:
+//
+//	len(mockedUpdateSourcePort.GetUpdateManifestCalls())
+func (mock *UpdateSourcePortMock) GetUpdateManifestCalls() []struct {
+	Ctx    context.Context
+	Update provisioning.Update
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}
+	mock.lockGetUpdateManifest.RLock()
+	calls = mock.calls.GetUpdateManifest
+	mock.lockGetUpdateManifest.RUnlock()
 	return calls
 }

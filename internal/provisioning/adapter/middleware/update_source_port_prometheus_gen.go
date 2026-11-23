@@ -66,3 +66,17 @@ func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilenameUnverified(ctx c
 	}()
 	return _d.base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
 }
+
+// GetUpdateManifest implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithPrometheus) GetUpdateManifest(ctx context.Context, update provisioning.Update) (bytes []byte, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateManifest", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdateManifest(ctx, update)
+}
