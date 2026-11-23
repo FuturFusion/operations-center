@@ -14,6 +14,11 @@ Several global settings are available to be configured in Operations Center:
 | :---                  | :---                                                                     | :---              | :---                          |
 | `address`             | Address of Operations Center which is used by managed servers to connect | https:\/\/address | same as `rest_server_address` |
 | `rest_server_address` | Address/port over which the REST API will be served                      | address:port      | `*:8443`                      |
+| Configuration         | Description                                                                                                                 | Value(s)          | Default                                                        |
+| :---                  | :---                                                                                                                        | :---              | :---                                                           |
+| `address`             | Address of Operations Center which is used by managed servers to connect, required if clustered or listening on the network | https:\/\/address | `https://` and the cluster address of the first cluster member |
+| `rest_server_address` | Address/port over which the REST API will be served                                                                         | address:port      | `*:7443`                                                       |
+| `cluster_address`     | Address/port of this cluster member for the communication within the cluster, can not be changed while clustered            | address:port      |                                                                |
 
 ## Security settings
 
@@ -366,3 +371,13 @@ The log namespace provides functions to log messages during server registration.
 | `file_filter_expression`         | Filter expression to filter update files, see [update] for details       | string   | `applies_to_architecture(architecture, "x86_64")`           |
 | `updates_default_channel`        | Default channel for updates, see [channel] for details                   | string   | `stable`                                                    |
 | `server_default_channel`         | Default channel for servers/clusters, see [channel] for details          | string   | `stable`                                                    |
+
+## Cluster settings
+
+The cluster settings are shared by all members of a cluster, see
+[high availability](high-availability.md). They are changed through
+`/1.0/system/cluster` or `operations-center system cluster edit`.
+
+| Configuration               | Description                                                                                         | Value(s)              | Default |
+| :---                        | :---                                                                                                | :---                  | :---    |
+| `offline_threshold_seconds` | Time without a heartbeat, after which a member counts as offline. The heartbeats run at half of it. | integer, more than 10 | `20`    |

@@ -3601,6 +3601,10 @@ definitions:
         x-go-package: github.com/lxc/incus/v7/shared/api
     NetworkLocal:
         properties:
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -3613,6 +3617,10 @@ definitions:
             NetworkLocalPut represents the fields available for an update of the
             network configuration of this member.
         properties:
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -3687,6 +3695,10 @@ definitions:
                 description: Address of Operations Center which is used by managed servers to connect.
                 type: string
                 x-go-name: OperationsCenterAddress
+            cluster_address:
+                description: Address and port used for intra-cluster communication. Is set when enabling clustering, and cannot be changed once set.
+                type: string
+                x-go-name: ClusterAddress
             rest_server_address:
                 description: Address and port to bind the REST API to.
                 type: string
@@ -12209,7 +12221,8 @@ paths:
 
                 The media is addressed by its content alone, so the endpoint requires no
                 authentication. A media, that has not been generated, is reported as
-                "404 Not Found".
+                "404 Not Found". Any cluster member serves the media, which is stored by
+                the member that generated it.
 
                 The filename is the ID of the media with the extension of its image type,
                 e.g. ".iso" or ".raw".

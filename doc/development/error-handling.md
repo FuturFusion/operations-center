@@ -81,7 +81,7 @@ The status code is derived from the kind:
 | `ErrNotAuthenticated`                           | 401 Unauthorized          |
 | `ErrNotAuthorized`                              | 403 Forbidden             |
 | `ErrPreconditionFailed`                         | 412 Precondition Failed   |
-| `ErrRetryable`                                  | 503 Service Unavailable   |
+| `ErrUnavailable`, `ErrRetryable`                | 503 Service Unavailable   |
 | Error of an Incus server                        | 502 Bad Gateway           |
 | everything else                                 | 500 Internal Server Error |
 
