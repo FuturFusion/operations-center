@@ -1,4 +1,4 @@
-package archive_test
+package iox_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/util/archive"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
@@ -96,7 +96,7 @@ func TestDetectType(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			extension, content, err := archive.DetectType(tc.reader)
+			extension, content, err := iox.DetectType(tc.reader)
 
 			tc.assertErr(t, err)
 			if err != nil {

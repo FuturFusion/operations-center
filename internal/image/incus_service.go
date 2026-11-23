@@ -25,7 +25,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/archive"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -405,7 +404,7 @@ func (s *imageIncusService) metadataFromIncusTarXZ(ctx context.Context, part *mu
 // versionItemFromPart determines the canonical file name and the simplestreams
 // file type of an image version item from the content of the given part.
 func versionItemFromPart(part *multipart.Part) (filename string, fileType string, _ io.ReadCloser, err error) {
-	extension, content, err := archive.DetectType(part)
+	extension, content, err := iox.DetectType(part)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("Failed to read content: %w", err)
 	}
