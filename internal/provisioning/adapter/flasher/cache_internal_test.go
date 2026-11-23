@@ -77,10 +77,10 @@ func gzipSource(t *testing.T, content string) io.ReadCloser {
 func fingerprintID(t *testing.T, flasher *Flasher, fingerprint string) string {
 	t.Helper()
 
-	id, err := flasher.SeedImageFingerprintID(context.Background(), fingerprint, uuid.Nil, provisioning.TokenImageSeedConfigs{})
+	_, tarball, err := flasher.seedTarball(context.Background(), uuid.Nil, provisioning.TokenImageSeedConfigs{})
 	require.NoError(t, err)
 
-	return id
+	return seedImageFingerprintID(fingerprint, tarball)
 }
 
 func requireNoLeftovers(t *testing.T, flasher *Flasher, public bool) {
@@ -876,4 +876,246 @@ func TestImageCache_symlinkOutsideOfRoot(t *testing.T) {
 			require.Equal(t, filepath.Base(outsideImage), entries[0].Name())
 		})
 	}
+}
+
+func TestFlasher_PrepareSeededImage(t *testing.T) {
+	t.Parallel()
+
+	const (
+		cachePrefix = "abcdef012345"
+		cacheID     = cachePrefix + "variant00001"
+	)
+
+	content := testContent
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		cacheID string
+		setup   func(t *testing.T) (*Flasher, uint64)
+
+		assertErr  require.ErrorAssertionFunc
+		wantID     func(t *testing.T, flasher *Flasher) string
+		wantReads  int64
+		wantClosed int64
+	}{
+		{
+			name:    "returns the ID of a stored image without consuming the source",
+			cacheID: cacheID,
+			setup: func(t *testing.T) (*Flasher, uint64) {
+				t.Helper()
+
+				flasher := testFlasher(t)
+
+				image, _, err := flasher.GenerateSeededImage(ctx, cacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
+				require.NoError(t, err)
+				require.NoError(t, image.Close())
+
+				return flasher, 0
+			},
+
+			assertErr: require.NoError,
+			wantID: func(t *testing.T, flasher *Flasher) string {
+				t.Helper()
+
+				return fingerprintID(t, flasher, "fingerprint")
+			},
+			wantReads:  0,
+			wantClosed: 1,
+		},
+		{
+			name:    "returns the ID of an image being generated without consuming the source",
+			cacheID: cacheID,
+			setup: func(t *testing.T) (*Flasher, uint64) {
+				t.Helper()
+
+				flasher := testFlasher(t)
+
+				_, release := flasher.cache.acquire(true, cacheID, fingerprintID(t, flasher, "fingerprint"))
+				t.Cleanup(release)
+
+				return flasher, 0
+			},
+
+			assertErr: require.NoError,
+			wantID: func(t *testing.T, flasher *Flasher) string {
+				t.Helper()
+
+				return fingerprintID(t, flasher, "fingerprint")
+			},
+			wantReads:  0,
+			wantClosed: 1,
+		},
+		{
+			name:    "rejects a request, which has read the generation before the removal",
+			cacheID: cacheID,
+			setup: func(t *testing.T) (*Flasher, uint64) {
+				t.Helper()
+
+				flasher := testFlasher(t)
+
+				generation := flasher.SeedImageCacheGeneration(ctx, cachePrefix)
+				require.NoError(t, flasher.RemoveSeededImages(ctx, cachePrefix))
+
+				return flasher, generation
+			},
+
+			assertErr: errassert.OperationNotPermittedError,
+			wantID: func(t *testing.T, flasher *Flasher) string {
+				t.Helper()
+
+				return ""
+			},
+			wantReads:  0,
+			wantClosed: 1,
+		},
+		{
+			name:    "rejects a cache ID, which is not usable as a filename",
+			cacheID: "../../etc/passwd",
+			setup: func(t *testing.T) (*Flasher, uint64) {
+				t.Helper()
+
+				return testFlasher(t), 0
+			},
+
+			assertErr: require.Error,
+			wantID: func(t *testing.T, flasher *Flasher) string {
+				t.Helper()
+
+				return ""
+			},
+			wantReads:  0,
+			wantClosed: 1,
+		},
+		{
+			name:    "reports the cache as unavailable, if it is not configured",
+			cacheID: cacheID,
+			setup: func(t *testing.T) (*Flasher, uint64) {
+				t.Helper()
+
+				return &Flasher{serverURL: "https://operations-center.local:7443"}, 0
+			},
+
+			assertErr: require.Error,
+			wantID: func(t *testing.T, flasher *Flasher) string {
+				t.Helper()
+
+				return ""
+			},
+			wantReads:  0,
+			wantClosed: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			flasher, generation := tc.setup(t)
+
+			source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
+
+			// Run test
+			id, err := flasher.PrepareSeededImage(ctx, tc.cacheID, generation, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantID(t, flasher), id, "expect the ID of the image")
+			require.Equal(t, tc.wantReads, source.reads.Load(), "expect the source to be consumed only for a generation")
+			require.Equal(t, tc.wantClosed, source.closed.Load(), "expect the source to be closed in all cases")
+		})
+	}
+}
+
+func TestFlasher_PrepareSeededImage_background(t *testing.T) {
+	t.Parallel()
+
+	content := testContent
+
+	ctx := context.Background()
+
+	t.Run("a request for the image waits for the generation in the background", func(t *testing.T) {
+		t.Parallel()
+
+		synctest.Test(t, func(t *testing.T) {
+			// Setup
+			flasher := testFlasher(t)
+
+			var started atomic.Int64
+
+			release := make(chan struct{})
+
+			source := &blockingReadCloser{
+				ReadCloser: gzipSource(t, content),
+				started:    &started,
+				release:    release,
+			}
+
+			// Run test
+			id, err := flasher.PrepareSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+			require.NoError(t, err)
+			require.Equal(t, fingerprintID(t, flasher, "fingerprint"), id, "expect the ID of the image before it is generated")
+
+			synctest.Wait()
+			require.Equal(t, int64(1), started.Load(), "expect the generation to run in the background")
+
+			opened := make(chan string, 1)
+
+			go func() {
+				image, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
+				if err != nil {
+					opened <- err.Error()
+
+					return
+				}
+
+				body, err := io.ReadAll(image)
+				err = errors.Join(err, image.Close())
+				if err != nil {
+					opened <- err.Error()
+
+					return
+				}
+
+				opened <- string(body)
+			}()
+
+			synctest.Wait()
+
+			// Assert
+			require.Empty(t, opened, "expect the image not to be served before it is generated")
+
+			close(release)
+
+			require.Equal(t, content, <-opened, "expect the image to be served after the generation completed")
+		})
+	})
+
+	t.Run("a request for the image is not found, if the generation in the background fails", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		flasher := testFlasher(t)
+		flasher.cache.usage = func() (file.UsageInformation, error) {
+			return file.UsageInformation{
+				TotalSpaceBytes:     100,
+				AvailableSpaceBytes: 1,
+			}, nil
+		}
+
+		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
+
+		// Run test
+		id, err := flasher.PrepareSeededImage(ctx, testCacheID, 0, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		require.NoError(t, err, "expect the failure to happen in the background")
+
+		_, _, err = flasher.OpenSeededImage(ctx, testCacheID, id)
+
+		// Assert
+		errassert.NotFoundError(t, err)
+		require.Equal(t, int64(1), source.closed.Load(), "expect the source to be closed")
+		requireNoLeftovers(t, flasher, true)
+	})
 }
