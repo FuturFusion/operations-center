@@ -288,10 +288,6 @@ linters:
           - forbidigo
         path: '^internal/provisioning/server_model\.go$'
         text: "Pure packages must"
-      - linters:
-          - forbidigo
-        path: '^internal/provisioning/server/server_service\.go$'
-        text: "Pure packages must"
       # File system access through os.Root. Tests, tools, the command line
       # client and low level helpers work with paths provided by the user.
       - linters:
