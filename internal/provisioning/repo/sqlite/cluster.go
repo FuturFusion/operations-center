@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -27,6 +28,10 @@ func NewCluster(db sqlite.DBTX) *cluster {
 
 func (c cluster) Create(ctx context.Context, in provisioning.Cluster) (int64, error) {
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
+		if in.UUID == uuid.Nil {
+			in.UUID = uuid.New()
+		}
+
 		return entities.CreateCluster(ctx, transaction.GetDBTX(ctx, c.db), in)
 	})
 }

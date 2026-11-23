@@ -453,7 +453,18 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter)
+	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
+	if err != nil {
+		return err
+	}
+
+	clusterArtifactRepo := provisioningClusterArtifactRepo.New(
+		dbWithTransaction,
+		artifactsRoot,
+		memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	)
+
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter, clusterArtifactRepo)
 	if err != nil {
 		return err
 	}
@@ -574,8 +585,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
+	err = clusterArtifactRepo.MigrateNameLayout(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to migrate cluster artifacts: %w", err)
+	}
+
 	// File records deleted on other members while this one was offline should be removed.
-	err = d.pruneLocalFiles(ctx, updateSvc, incusImageSvc)
+	err = d.pruneLocalFiles(ctx, updateSvc, incusImageSvc, clusterArtifactRepo.Prune)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to prune stale local files", logger.Err(err))
 	}
@@ -1163,8 +1179,8 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 	), nil
 }
 
-// pruneLocalFiles removes the local files of updates and images not assigned to this member.
-func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.UpdateService, imageSvc image.ImageIncusService) error {
+// pruneLocalFiles removes the local files of updates, images and cluster artifacts not assigned to this member.
+func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.UpdateService, imageSvc image.ImageIncusService, pruneClusterArtifacts func(ctx context.Context) error) error {
 	localMemberID, err := d.membershipSvc.LocalMemberID()
 	if err != nil {
 		return err
@@ -1207,6 +1223,7 @@ func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.Upd
 	return errors.Join(
 		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreUpdates, knownUpdateFiles),
 		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreImages, knownImageFiles),
+		pruneClusterArtifacts(ctx),
 	)
 }
 
@@ -1361,14 +1378,8 @@ func (d *Daemon) setupClusterService(
 	tokenSvc provisioning.TokenService,
 	inventoryAggregateSvc inventory.InventoryAggregateService,
 	warningSvc provisioning.WarningServicePort,
+	clusterArtifactRepo provisioning.ClusterArtifactRepo,
 ) (provisioning.ClusterService, error) {
-	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
-	if err != nil {
-		return nil, err
-	}
-
-	localClusterArtifactRepo := provisioningClusterArtifactRepo.New(db, artifactsRoot)
-
 	// Terraform runs as an external tool, which requires an absolute path. The
 	// directory is created in the temporary directory of the system.
 	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*") //nolint:forbidigo // External tool needs an absolute path.
@@ -1397,7 +1408,7 @@ func (d *Daemon) setupClusterService(
 				provisioningSqlite.NewCluster(db),
 			),
 			provisioningRepoMiddleware.NewClusterArtifactRepoWithSlog(
-				localClusterArtifactRepo,
+				clusterArtifactRepo,
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
 				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
@@ -1746,7 +1757,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc, forward)
 
 	provisioningClusterTemplateRouter := provisioningRouter.SubGroup("/cluster-templates")
 	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)

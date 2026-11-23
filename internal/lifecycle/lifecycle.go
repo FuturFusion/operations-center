@@ -49,6 +49,9 @@ type ClusterUpdateMessage struct {
 	Operation ClusterUpdateOperation
 	Name      string
 	OldName   string
+
+	// UUID of the cluster, only set on delete.
+	UUID uuid.UUID
 }
 
 type ClusterUpdateOperation string

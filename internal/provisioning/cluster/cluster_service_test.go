@@ -17318,6 +17318,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoGetByNameCluster: &provisioning.Cluster{
+				UUID:   uuidgen.FromPattern(t, "1"),
 				Status: api.ClusterStatusPending,
 			},
 
@@ -17329,6 +17330,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			nameArg: "one",
 			force:   true,
 			repoGetByNameCluster: &provisioning.Cluster{
+				UUID:   uuidgen.FromPattern(t, "1"),
 				Status: api.ClusterStatusPending,
 			},
 
@@ -17345,10 +17347,20 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name:                "error - force - repo.DeleteByName",
-			nameArg:             "one",
-			force:               true,
-			repoDeleteByNameErr: boom.Error,
+			name:                 "error - force - repo.DeleteByName",
+			nameArg:              "one",
+			force:                true,
+			repoGetByNameCluster: &provisioning.Cluster{},
+			repoDeleteByNameErr:  boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:             "error - force - repo.GetByName",
+			nameArg:          "one",
+			force:            true,
+			repoGetByNameErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -17453,12 +17465,22 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
+			var deletedUUID uuid.UUID
+			lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
+				deletedUUID = cum.UUID
+			})
+
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
+
+			// The UUID allows to remove the files of the cluster.
+			if err == nil {
+				require.Equal(t, tc.repoGetByNameCluster.UUID, deletedUUID)
+			}
 		})
 	}
 }
@@ -17732,6 +17754,9 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			})
 
 			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return &provisioning.Cluster{UUID: uuidgen.FromPattern(t, "1")}, nil
+				},
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
 				},

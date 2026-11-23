@@ -132,6 +132,35 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 	require.Equal(t, identifiers{}, got[3], "rows without identifiers are left untouched")
 }
 
+func TestSchemaEnsure_clusterUUID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO clusters (id, name, connection_url, status, last_updated, channel_id) VALUES
+  (1, 'one', 'https://one/', 'ready', '2025-03-12 10:57:43+00:00', 1),
+  (2, 'two', 'https://two/', 'ready', '2025-03-12 10:57:43+00:00', 1);
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var one, two string
+	err = db.QueryRow(`SELECT (SELECT uuid FROM clusters WHERE id = 1), (SELECT uuid FROM clusters WHERE id = 2)`).Scan(&one, &two)
+	require.NoError(t, err)
+
+	require.NoError(t, uuid.Validate(one))
+	require.NoError(t, uuid.Validate(two))
+	require.NotEqual(t, one, two, "each existing cluster gets its own UUID")
+}
+
 func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	t.Parallel()
 

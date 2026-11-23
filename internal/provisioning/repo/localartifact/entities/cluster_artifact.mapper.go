@@ -14,14 +14,14 @@ import (
 )
 
 var clusterArtifactObjects = RegisterStmt(`
-SELECT cluster_artifacts.id, clusters.name AS cluster, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.last_updated
+SELECT cluster_artifacts.id, clusters.name AS cluster, clusters.uuid AS cluster_uuid, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.member_id, cluster_artifacts.last_updated
   FROM cluster_artifacts
   JOIN clusters ON cluster_artifacts.cluster_id = clusters.id
   ORDER BY clusters.id, cluster_artifacts.name
 `)
 
 var clusterArtifactObjectsByCluster = RegisterStmt(`
-SELECT cluster_artifacts.id, clusters.name AS cluster, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.last_updated
+SELECT cluster_artifacts.id, clusters.name AS cluster, clusters.uuid AS cluster_uuid, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.member_id, cluster_artifacts.last_updated
   FROM cluster_artifacts
   JOIN clusters ON cluster_artifacts.cluster_id = clusters.id
   WHERE ( cluster = ? )
@@ -29,7 +29,7 @@ SELECT cluster_artifacts.id, clusters.name AS cluster, cluster_artifacts.name, c
 `)
 
 var clusterArtifactObjectsByClusterAndName = RegisterStmt(`
-SELECT cluster_artifacts.id, clusters.name AS cluster, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.last_updated
+SELECT cluster_artifacts.id, clusters.name AS cluster, clusters.uuid AS cluster_uuid, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.member_id, cluster_artifacts.last_updated
   FROM cluster_artifacts
   JOIN clusters ON cluster_artifacts.cluster_id = clusters.id
   WHERE ( cluster = ? AND cluster_artifacts.name = ? )
@@ -43,8 +43,8 @@ SELECT cluster_artifacts.id FROM cluster_artifacts
 `)
 
 var clusterArtifactCreate = RegisterStmt(`
-INSERT INTO cluster_artifacts (cluster_id, name, description, properties, files, last_updated)
-  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?)
+INSERT INTO cluster_artifacts (cluster_id, name, description, properties, files, member_id, last_updated)
+  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?, ?)
 `)
 
 // GetClusterArtifactID return the ID of the cluster_artifact with the given key.
@@ -128,7 +128,7 @@ func GetClusterArtifact(ctx context.Context, db dbtx, cluster string, name strin
 // clusterArtifactColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the ClusterArtifact entity.
 func clusterArtifactColumns() string {
-	return "cluster_artifacts.id, clusters.name AS cluster, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.last_updated"
+	return "cluster_artifacts.id, clusters.name AS cluster, clusters.uuid AS cluster_uuid, cluster_artifacts.name, cluster_artifacts.description, cluster_artifacts.properties, cluster_artifacts.files, cluster_artifacts.member_id, cluster_artifacts.last_updated"
 }
 
 // getClusterArtifacts can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -137,7 +137,7 @@ func getClusterArtifacts(ctx context.Context, stmt *sql.Stmt, args ...any) ([]pr
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.ClusterArtifact{}
-		err := scan(&c.ID, &c.Cluster, &c.Name, &c.Description, &c.Properties, &c.Files, &c.LastUpdated)
+		err := scan(&c.ID, &c.Cluster, &c.ClusterUUID, &c.Name, &c.Description, &c.Properties, &c.Files, &c.MemberID, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -161,7 +161,7 @@ func getClusterArtifactsRaw(ctx context.Context, db dbtx, sql string, args ...an
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.ClusterArtifact{}
-		err := scan(&c.ID, &c.Cluster, &c.Name, &c.Description, &c.Properties, &c.Files, &c.LastUpdated)
+		err := scan(&c.ID, &c.Cluster, &c.ClusterUUID, &c.Name, &c.Description, &c.Properties, &c.Files, &c.MemberID, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func CreateClusterArtifact(ctx context.Context, db dbtx, object provisioning.Clu
 		_err = mapErr(_err, "Cluster_artifact")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 7)
 
 	// Populate the statement arguments.
 	args[0] = object.Cluster
@@ -289,7 +289,8 @@ func CreateClusterArtifact(ctx context.Context, db dbtx, object provisioning.Clu
 	args[2] = object.Description
 	args[3] = object.Properties
 	args[4] = object.Files
-	args[5] = time.Now().UTC().Format(time.RFC3339)
+	args[5] = object.MemberID
+	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := StmtContext(ctx, db, clusterArtifactCreate)

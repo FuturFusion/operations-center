@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS cluster_join_tokens (
 
 ALTER TABLE updates ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
 ALTER TABLE incus_images ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
+ALTER TABLE cluster_artifacts ADD COLUMN member_id INTEGER NOT NULL DEFAULT 1 REFERENCES cluster_members (id) ON DELETE CASCADE;
 
 CREATE TABLE media (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -165,6 +166,33 @@ CREATE TABLE media (
   FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE,
   CHECK (name <> '')
 );
+
+CREATE TABLE clusters_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT,
+  status TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  description TEXT NOT NULL DEFAULT '',
+  properties TEXT NOT NULL DEFAULT '',
+  update_status TEXT NOT NULL DEFAULT '',
+  config TEXT NOT NULL DEFAULT '',
+  uuid TEXT NOT NULL,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  UNIQUE (uuid),
+  CHECK (name <> ''),
+  CHECK (uuid <> ''),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
+);
+
+INSERT INTO clusters_new SELECT id, name, connection_url, certificate, status, last_updated, channel_id, description, properties, update_status, config,
+  lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))
+  FROM clusters;
+DROP TABLE clusters;
+ALTER TABLE clusters_new RENAME TO clusters;
 `))
 	return MapDBError(err)
 }
