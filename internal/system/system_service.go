@@ -18,7 +18,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -249,7 +248,7 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 	}
 
 	if newCert == nil {
-		if !acme.IsEnabled(cfg) {
+		if !config.IsACMEEnabled(cfg) {
 			slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
 		}
 
