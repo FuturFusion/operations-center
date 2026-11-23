@@ -25,6 +25,7 @@ Furo
 futurfusion
 FuturFusion
 gapped
+GiB
 github
 GitHub
 goroutine
