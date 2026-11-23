@@ -22,67 +22,48 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type CmdSource struct {
-	ocClient *client.OperationsCenterClient
-}
-
-func (c *CmdSource) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "source"
-	cmd.Short = "Interact with image sources"
-	cmd.Long = `Description:
-  Interact with image sources
-
-  Manage image sources.
-`
-
-	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
-	cmd.Args = cobra.NoArgs
-	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
-
+func addImageSourceCommands(cmd *cobra.Command, ocClient *client.OperationsCenterClient) {
 	// List
 	imageSourceListCmd := cmdImageSourceList{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceListCmd.Command())
 
 	// Show
 	imageSourceShowCmd := cmdImageSourceShow{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceShowCmd.Command())
 
 	// Add
 	imageSourceAddCmd := cmdImageSourceAdd{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceAddCmd.Command())
 
 	// Edit
 	imageSourceEditCmd := cmdImageSourceEdit{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceEditCmd.Command())
 
 	// Remove
 	imageSourceRemoveCmd := cmdImageSourceRemove{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceRemoveCmd.Command())
 
 	// Refresh
 	imageSourceRefreshCmd := cmdImageSourceRefresh{
-		ocClient: c.ocClient,
+		ocClient: ocClient,
 	}
 
 	cmd.AddCommand(imageSourceRefreshCmd.Command())
-
-	return cmd
 }
 
 // List image sources.
@@ -299,7 +280,6 @@ func (c *cmdImageSourceEdit) helpTemplate() string {
 ### A sample configuration looks like:
 ###
 ### url: ""
-### type: incus
 ### filter_expression: ""
 `
 }
