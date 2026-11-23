@@ -267,11 +267,17 @@ linters:
           - depguard
         path: '^internal/domain/errors\.go$'
         text: "syscall"
-      # Baseline. Remove each entry when the violation is fixed.
+      # Only http.StatusText is used. It does not do any I/O.
       - linters:
           - depguard
         path: '^shared/api/error\.go$'
         text: "net/http"
+      # The alias exposes the Incus interface. The adapter hides the implementation.
+      - linters:
+          - depguard
+        path: '^internal/provisioning/cluster_ports\.go$'
+        text: "incus/v7/client"
+      # Baseline. Remove each entry when the violation is fixed.
       - linters:
           - depguard
         path: '^internal/provisioning/cluster/cluster_service\.go$'
@@ -280,10 +286,6 @@ linters:
           - depguard
         path: '^internal/provisioning/server/server_service\.go$'
         text: "net/http"
-      - linters:
-          - depguard
-        path: '^internal/provisioning/cluster_ports\.go$'
-        text: "incus/v7/client"
       # File system access through os.Root. Tests, tools, the command line
       # client and low level helpers work with paths provided by the user.
       - linters:

@@ -67,11 +67,15 @@ A model may use types from `shared/api` to keep the code simple.
 
 * Services do not import adapters, `repo` packages, the API or the client.
 * Pure packages do not import `os`, `os/exec`, `os/signal`, `io/fs`,
-  `io/ioutil`, `net/http`, `syscall`, `database/sql` or Incus client packages.
+  `io/ioutil`, `net/http`, `syscall`, `database/sql` or Incus client packages (`incus/v7/client`).
 * Pure packages do not call functions that read files, open network
   connections, or load certificates from disk. They do not call `time.Sleep`.
 * `shared/api` and `internal/domain` import no service or adapter packages.
 * Adapters and `repo` packages do not import the API.
+* Code opens files through `os.Root`. Tests, tools, the command line and
+  `internal/environment/osenv` are exempt.
+* Services import only pure utilities from `internal/util`. They do not import
+  utilities that do I/O.
 * `internal/domain` may import packages from the common components.
 
 ## Rules that the code review enforces
@@ -81,17 +85,19 @@ The lint tools do not check these rules. Follow them when you write code.
 * Only the composition root (`internal/api/daemon.go`) wires adapters into
   services. The composition root is the code that creates and connects all
   parts at start.
+* `internal/environment` defines the `Environment` interface. Services use it.
+  `internal/environment/osenv` implements it with OS access. Only the
+  composition root creates it.
 
 ## Known exceptions
 
-The lint configuration lists these exceptions. The baseline entries in
-`.golangci.yml` and the `TODO` comments in `.go-arch-lint.yml` mark the open
-work. Remove an exception when its code is fixed.
+The lint configuration lists these exceptions. Remove an exception when its
+code is fixed.
 
-* Some pure packages use `net/http`, `os` or `time.Sleep`. These should use
-  ports or injected clocks.
-* The Incus client is used by the cluster ports file. It should move behind an
-  adapter.
+* `shared/api/error.go` imports `net/http`. It only uses `http.StatusText`.
+  This is accepted.
+* `internal/provisioning/cluster_ports.go` exposes the Incus client interface
+  as an alias. The Incus adapter hides the implementation. This is accepted.
 * `internal/domain` classifies network errors with `syscall` error numbers.
   This is accepted.
 * Services may import packages from the common components. Some of them do file,
