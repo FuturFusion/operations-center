@@ -1579,13 +1579,18 @@ func (m *membership) HandlerFuncs() map[string]http.HandlerFunc {
 	return m.Gateway().HandlerFuncs(m.gatewayAuthenticator())
 }
 
-// PersistSharedConfig stores the section changed by change in the global database.
+// PersistSharedConfig stores the section changed by change in the global database, if the ETag carried by ctx matches.
 // The other sections are kept as stored, so a member which missed a change of them can't overwrite it.
 func (m *membership) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
 	var previous config.SharedConfig
 	var merged config.SharedConfig
 	err := transaction.ForceTx(ctx, m.global(), func(ctx context.Context, _ transaction.TX) error {
 		stored, err := m.sharedConfig().GetSharedConfig(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = change.CheckETag(ctx, *stored)
 		if err != nil {
 			return err
 		}

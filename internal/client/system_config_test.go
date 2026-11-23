@@ -17,12 +17,12 @@ import (
 func Test_GetSystemNetworkConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	networkConfig, err := d.socketClient.GetSystemNetworkConfig(t.Context())
+	networkConfig, _, err := d.socketClient.GetSystemNetworkConfig(t.Context())
 	require.NoError(t, err)
 	require.NotEmpty(t, networkConfig.OperationsCenterAddress)
 	require.NotEmpty(t, networkConfig.RestServerAddress)
 
-	_, err = d.unauthorizedHTTPClient.GetSystemNetworkConfig(t.Context())
+	_, _, err = d.unauthorizedHTTPClient.GetSystemNetworkConfig(t.Context())
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 }
 
@@ -31,7 +31,7 @@ func Test_GetSystemNetworkConfig(t *testing.T) {
 func Test_UpdateSystemNetworkConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	currentConfig, err := d.socketClient.GetSystemNetworkConfig(t.Context())
+	currentConfig, _, err := d.socketClient.GetSystemNetworkConfig(t.Context())
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -86,14 +86,14 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemNetworkConfig(t.Context(), tc.networkConfig)
+			err := tc.client.UpdateSystemNetworkConfig(t.Context(), tc.networkConfig, "")
 
 			tc.assertErr(t, err)
 		})
 	}
 
 	// The network configuration is unchanged.
-	unchangedConfig, err := d.socketClient.GetSystemNetworkConfig(t.Context())
+	unchangedConfig, _, err := d.socketClient.GetSystemNetworkConfig(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, currentConfig, unchangedConfig)
 }
@@ -101,11 +101,11 @@ func Test_UpdateSystemNetworkConfig(t *testing.T) {
 func Test_GetSystemSecurityConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	securityConfig, err := d.socketClient.GetSystemSecurityConfig(t.Context())
+	securityConfig, _, err := d.socketClient.GetSystemSecurityConfig(t.Context())
 	require.NoError(t, err)
 	require.Len(t, securityConfig.TrustedTLSClientCertFingerprints, 1)
 
-	_, err = d.unauthorizedHTTPClient.GetSystemSecurityConfig(t.Context())
+	_, _, err = d.unauthorizedHTTPClient.GetSystemSecurityConfig(t.Context())
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 }
 
@@ -115,20 +115,20 @@ func Test_GetSystemSecurityConfig(t *testing.T) {
 func Test_UpdateSystemSecurityConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	currentConfig, err := d.socketClient.GetSystemSecurityConfig(t.Context())
+	currentConfig, _, err := d.socketClient.GetSystemSecurityConfig(t.Context())
 	require.NoError(t, err)
 
-	err = d.unauthorizedHTTPClient.UpdateSystemSecurityConfig(t.Context(), currentConfig.SecurityPut)
+	err = d.unauthorizedHTTPClient.UpdateSystemSecurityConfig(t.Context(), currentConfig.SecurityPut, "")
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 
 	securityConfig := currentConfig.SecurityPut
 	securityConfig.TrustedTLSClientCertificates = []string{"not a PEM encoded certificate"}
 
-	err = d.socketClient.UpdateSystemSecurityConfig(t.Context(), securityConfig)
+	err = d.socketClient.UpdateSystemSecurityConfig(t.Context(), securityConfig, "")
 	require.Error(t, err)
 
 	// The security configuration is unchanged.
-	unchangedConfig, err := d.socketClient.GetSystemSecurityConfig(t.Context())
+	unchangedConfig, _, err := d.socketClient.GetSystemSecurityConfig(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, currentConfig, unchangedConfig)
 }
@@ -136,11 +136,11 @@ func Test_UpdateSystemSecurityConfig(t *testing.T) {
 func Test_GetSystemSettingsConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	settingsConfig, err := d.socketClient.GetSystemSettingsConfig(t.Context())
+	settingsConfig, _, err := d.socketClient.GetSystemSettingsConfig(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, settingsConfig.ServerRegistrationScriptlet)
 
-	_, err = d.unauthorizedHTTPClient.GetSystemSettingsConfig(t.Context())
+	_, _, err = d.unauthorizedHTTPClient.GetSystemSettingsConfig(t.Context())
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 }
 
@@ -168,7 +168,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				settingsConfig, err := d.socketClient.GetSystemSettingsConfig(t.Context())
+				settingsConfig, _, err := d.socketClient.GetSystemSettingsConfig(t.Context())
 				require.NoError(t, err)
 				require.Equal(t, "DEBUG", settingsConfig.LogLevel)
 			},
@@ -200,11 +200,11 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				settingsConfig, err := d.socketClient.GetSystemSettingsConfig(t.Context())
+				settingsConfig, _, err := d.socketClient.GetSystemSettingsConfig(t.Context())
 				require.NoError(t, err)
 				require.Equal(t, map[string]string{"provisioning": "ERROR"}, settingsConfig.LogLevels)
 
-				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{}))
+				require.NoError(t, d.socketClient.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{}, ""))
 			},
 		},
 		{
@@ -250,7 +250,7 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{SettingsLocalPut: tc.settingsConfig})
+			err := tc.client.UpdateSystemSettingsConfig(t.Context(), system.SettingsPut{SettingsLocalPut: tc.settingsConfig}, "")
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -261,13 +261,13 @@ func Test_UpdateSystemSettingsConfig(t *testing.T) {
 func Test_GetSystemUpdatesConfig(t *testing.T) {
 	d := daemonSetup(t)
 
-	updatesConfig, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
+	updatesConfig, _, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
 	require.NoError(t, err)
 	require.NotEmpty(t, updatesConfig.Source)
 	require.Equal(t, defaultChannelName, updatesConfig.UpdatesDefaultChannel)
 	require.Equal(t, defaultChannelName, updatesConfig.ServerDefaultChannel)
 
-	_, err = d.unauthorizedHTTPClient.GetSystemUpdatesConfig(t.Context())
+	_, _, err = d.unauthorizedHTTPClient.GetSystemUpdatesConfig(t.Context())
 	require.ErrorIs(t, err, domain.ErrNotAuthenticated)
 }
 
@@ -289,7 +289,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 	}))
 	t.Cleanup(updatesSource.Close)
 
-	currentConfig, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
+	currentConfig, _, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
 	require.NoError(t, err)
 
 	baseConfig := currentConfig.UpdatesPut
@@ -321,7 +321,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				updatesConfig, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
+				updatesConfig, _, err := d.socketClient.GetSystemUpdatesConfig(t.Context())
 				require.NoError(t, err)
 				require.Equal(t, updatesSource.URL, updatesConfig.Source)
 				require.Equal(t, `"stable" in upstream_channels`, updatesConfig.FilterExpression)
@@ -373,7 +373,7 @@ func Test_UpdateSystemUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.client.UpdateSystemUpdatesConfig(t.Context(), tc.updatesConfig)
+			err := tc.client.UpdateSystemUpdatesConfig(t.Context(), tc.updatesConfig, "")
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)

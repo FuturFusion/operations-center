@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/response"
@@ -151,7 +152,9 @@ func (s *systemHandler) certificateRenewPost(r *http.Request) response.Response 
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) networkGet(r *http.Request) response.Response {
 	networkConfig := s.service.GetNetworkConfig(r.Context())
-	return response.SyncResponse(true, networkConfig)
+
+	// The ETag covers the part shared by the cluster members.
+	return response.SyncResponseETag(true, networkConfig, config.GetNetwork())
 }
 
 // swagger:operation PUT /1.0/system/network system system_network_put
@@ -179,6 +182,8 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) networkPut(r *http.Request) response.Response {
@@ -189,7 +194,10 @@ func (s *systemHandler) networkPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = s.service.UpdateNetworkConfig(r.Context(), networkConfig)
+	// Without an If-Match header the change replaces whatever is stored.
+	ctx := config.WithIfMatch(r.Context(), r.Header.Get("If-Match"))
+
+	err = s.service.UpdateNetworkConfig(ctx, networkConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update network configuration: %w", err))
 	}
@@ -217,7 +225,9 @@ func (s *systemHandler) networkPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) securityGet(r *http.Request) response.Response {
 	securityConfig := s.service.GetSecurityConfig(r.Context())
-	return response.SyncResponse(true, securityConfig)
+
+	// The ETag covers the part shared by the cluster members.
+	return response.SyncResponseETag(true, securityConfig, config.GetSecurity())
 }
 
 // swagger:operation PUT /1.0/system/security system system_security_put
@@ -245,6 +255,8 @@ func (s *systemHandler) securityGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) securityPut(r *http.Request) response.Response {
@@ -255,7 +267,10 @@ func (s *systemHandler) securityPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = s.service.UpdateSecurityConfig(r.Context(), securityConfig)
+	// Without an If-Match header the change replaces whatever is stored.
+	ctx := config.WithIfMatch(r.Context(), r.Header.Get("If-Match"))
+
+	err = s.service.UpdateSecurityConfig(ctx, securityConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update security configuration: %w", err))
 	}
@@ -283,7 +298,9 @@ func (s *systemHandler) securityPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 	settingsConfig := s.service.GetSettingsConfig(r.Context())
-	return response.SyncResponse(true, settingsConfig)
+
+	// The ETag covers the part shared by the cluster members.
+	return response.SyncResponseETag(true, settingsConfig, config.GetSettings())
 }
 
 // swagger:operation PUT /1.0/system/settings system system_settings_put
@@ -311,6 +328,8 @@ func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) settingsPut(r *http.Request) response.Response {
@@ -321,7 +340,10 @@ func (s *systemHandler) settingsPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = s.service.UpdateSettingsConfig(r.Context(), settingsConfig)
+	// Without an If-Match header the change replaces whatever is stored.
+	ctx := config.WithIfMatch(r.Context(), r.Header.Get("If-Match"))
+
+	err = s.service.UpdateSettingsConfig(ctx, settingsConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update settings configuration: %w", err))
 	}
@@ -349,7 +371,9 @@ func (s *systemHandler) settingsPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) updatesGet(r *http.Request) response.Response {
 	updatesConfig := s.service.GetUpdatesConfig(r.Context())
-	return response.SyncResponse(true, updatesConfig)
+
+	// The ETag covers the part shared by the cluster members.
+	return response.SyncResponseETag(true, updatesConfig, config.GetUpdates())
 }
 
 // swagger:operation PUT /1.0/system/updates system system_updates_put
@@ -377,6 +401,8 @@ func (s *systemHandler) updatesGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) updatesPut(r *http.Request) response.Response {
@@ -387,7 +413,10 @@ func (s *systemHandler) updatesPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = s.service.UpdateUpdatesConfig(r.Context(), updatesConfig)
+	// Without an If-Match header the change replaces whatever is stored.
+	ctx := config.WithIfMatch(r.Context(), r.Header.Get("If-Match"))
+
+	err = s.service.UpdateUpdatesConfig(ctx, updatesConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update updates configuration: %w", err))
 	}

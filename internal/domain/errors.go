@@ -25,6 +25,8 @@ var (
 
 	ErrUnavailable = errors.New("Unavailable")
 
+	ErrPreconditionFailed = errors.New("Precondition failed")
+
 	ErrInvalidArgument = ErrValidation("Invalid argument")
 )
 

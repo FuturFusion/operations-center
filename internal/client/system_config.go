@@ -5,26 +5,29 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (system.Network, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, "/system/network", nil, nil)
+// GetSystemNetworkConfig returns the network config and the ETag of its part shared by the cluster members.
+func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (system.Network, string, error) {
+	response, etag, err := c.doRequestETag(ctx, http.MethodGet, "/system/network", nil, "")
 	if err != nil {
-		return system.Network{}, err
+		return system.Network{}, "", err
 	}
 
 	cfg := system.Network{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Network{}, err
+		return system.Network{}, "", err
 	}
 
-	return cfg, nil
+	return cfg, etag, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg system.NetworkPut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, "/system/network", nil, cfg)
+// UpdateSystemNetworkConfig updates the network config, if the ETag is not empty only while its shared part is unchanged.
+func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg system.NetworkPut, etag string) error {
+	_, _, err := c.doRequestETag(ctx, http.MethodPut, "/system/network", cfg, etag)
 	if err != nil {
 		return err
 	}
@@ -32,23 +35,25 @@ func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, c
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (system.Security, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, "/system/security", nil, nil)
+// GetSystemSecurityConfig returns the security config and the ETag of its part shared by the cluster members.
+func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (system.Security, string, error) {
+	response, etag, err := c.doRequestETag(ctx, http.MethodGet, "/system/security", nil, "")
 	if err != nil {
-		return system.Security{}, err
+		return system.Security{}, "", err
 	}
 
 	cfg := system.Security{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Security{}, err
+		return system.Security{}, "", err
 	}
 
-	return cfg, nil
+	return cfg, etag, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, cfg system.SecurityPut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, "/system/security", nil, cfg)
+// UpdateSystemSecurityConfig updates the security config, if the ETag is not empty only while its shared part is unchanged.
+func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, cfg system.SecurityPut, etag string) error {
+	_, _, err := c.doRequestETag(ctx, http.MethodPut, "/system/security", cfg, etag)
 	if err != nil {
 		return err
 	}
@@ -56,23 +61,25 @@ func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (system.Settings, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, "/system/settings", nil, nil)
+// GetSystemSettingsConfig returns the settings config and the ETag of its part shared by the cluster members.
+func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (system.Settings, string, error) {
+	response, etag, err := c.doRequestETag(ctx, http.MethodGet, "/system/settings", nil, "")
 	if err != nil {
-		return system.Settings{}, err
+		return system.Settings{}, "", err
 	}
 
 	cfg := system.Settings{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Settings{}, err
+		return system.Settings{}, "", err
 	}
 
-	return cfg, nil
+	return cfg, etag, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg system.SettingsPut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, "/system/settings", nil, cfg)
+// UpdateSystemSettingsConfig updates the settings config, if the ETag is not empty only while its shared part is unchanged.
+func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg system.SettingsPut, etag string) error {
+	_, _, err := c.doRequestETag(ctx, http.MethodPut, "/system/settings", cfg, etag)
 	if err != nil {
 		return err
 	}
@@ -80,23 +87,25 @@ func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (system.Updates, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, "/system/updates", nil, nil)
+// GetSystemUpdatesConfig returns the updates config and the ETag of its part shared by the cluster members.
+func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (system.Updates, string, error) {
+	response, etag, err := c.doRequestETag(ctx, http.MethodGet, "/system/updates", nil, "")
 	if err != nil {
-		return system.Updates{}, err
+		return system.Updates{}, "", err
 	}
 
 	cfg := system.Updates{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return system.Updates{}, err
+		return system.Updates{}, "", err
 	}
 
-	return cfg, nil
+	return cfg, etag, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, "/system/updates", nil, cfg)
+// UpdateSystemUpdatesConfig updates the updates config, if the ETag is not empty only while its shared part is unchanged.
+func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, cfg system.UpdatesPut, etag string) error {
+	_, _, err := c.doRequestETag(ctx, http.MethodPut, "/system/updates", cfg, etag)
 	if err != nil {
 		return err
 	}
@@ -144,4 +153,23 @@ func (c OperationsCenterClient) CleanSystemCache(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// doRequestETag sends a request with the ETag as If-Match header, if not empty, and returns the ETag of the response.
+func (c OperationsCenterClient) doRequestETag(ctx context.Context, method string, endpoint string, content any, etag string) (*api.Response, string, error) {
+	resp, err := c.doRequestRawResponse(ctx, method, endpoint, nil, content, func(req *http.Request) {
+		if etag != "" {
+			req.Header.Set("If-Match", etag)
+		}
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	response, err := processResponse(resp)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return response, resp.Header.Get("ETag"), nil
 }
