@@ -1429,6 +1429,12 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not of type %q", name, api.ServerTypeIncus)
 		}
 
+		// Without a cluster, the status detail stays "evacuating" forever.
+		// Polling reads the maintenance state only for cluster members.
+		if server.Cluster == nil {
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not a cluster member", name)
+		}
+
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return lifecycleOperationNotPermittedErr(server)
 		}
@@ -1637,6 +1643,12 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 		if !server.Type.IsIncus() {
 			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not of type %q", name, api.ServerTypeIncus)
+		}
+
+		// Without a cluster, the status detail stays "restoring" forever.
+		// Polling clears it only for cluster members.
+		if server.Cluster == nil {
+			return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q is not a cluster member", name)
 		}
 
 		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
