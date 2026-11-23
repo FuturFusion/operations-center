@@ -36,6 +36,7 @@ import (
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	clusterServiceMiddleware "github.com/FuturFusion/operations-center/internal/cluster/middleware"
 	clusterRepoMiddleware "github.com/FuturFusion/operations-center/internal/cluster/repo/middleware"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
@@ -61,6 +62,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bios"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
@@ -1480,6 +1482,24 @@ func (d *Daemon) setupAPIRoutes(
 		}
 	}
 
+	// The files stored on a member are only accessed by the other cluster members and through the local unix socket.
+	requireClusterMemberOrLocal := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			protocol, ok := r.Context().Value(authn.CtxProtocol).(string)
+			local := ok && protocol == api.AuthenticationMethodUnix
+			if !local && !d.isClusterMemberRequest(r) {
+				err := response.Forbidden(nil).Render(w)
+				if err != nil {
+					slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
+				}
+
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
 	// The internal API is not versioned. It can change at any time.
 	internalRouter := router.SubGroup("/internal").AddMiddlewares(
 		d.authenticator.Middleware(),
@@ -1492,6 +1512,24 @@ func (d *Daemon) setupAPIRoutes(
 	internalUpdatesRouter := internalRouter.SubGroup("/updates").AddMiddlewares(requireClusterMemberOrLocal, requireDatabase)
 	refreshWarnings := memberRefreshWarnings{emitter: warningSvc, memberName: d.localMemberName}
 	registerInternalUpdateFilesHandler(internalUpdatesRouter, d.authorizer, updateSvc, refreshWarnings)
+
+	internalFilesRouter := internalRouter.SubGroup("/files").AddMiddlewares(requireClusterMemberOrLocal)
+	isMemberAddress := func(ctx context.Context, address string) (bool, error) {
+		members, err := membershipSvc.GetMembersByID(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		for _, member := range members {
+			if member.Address == address {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	}
+
+	registerInternalMemberFilesHandler(internalFilesRouter, d.authorizer, memberfiles.NewLocal(d.varRoot), membershipSvc.MemberClient, isMemberAddress)
 
 	internalMembershipRouter := router.SubGroup("/internal/membership")
 	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart, serverSvc)
@@ -1766,6 +1804,16 @@ func (d *Daemon) selfRegisterClusterMember(ctx context.Context, serverSvc provis
 	}
 }
 
+// mediaRecords returns the records of the generated media of mediaType, whose lease lasts for ttl.
+func (d *Daemon) mediaRecords(db dbdriver.DBTX, mediaType provisioning.MediaType, ttl time.Duration) mediarecord.Records {
+	return mediarecord.New(
+		provisioningRepoMiddleware.NewMediaRepoWithSlog(provisioningSqlite.NewMedia(db)),
+		memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+		mediaType,
+		ttl,
+	)
+}
+
 // isClusterLeader reports whether this member is the cluster leader.
 func (d *Daemon) isClusterLeader(ctx context.Context, leaderLog *slog.Logger) bool {
 	leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
@@ -1830,6 +1878,24 @@ func (d *Daemon) leaderTask(component logger.Component, f task.Func, schedule ta
 // taskName returns the name of the leader task logging as component.
 func taskName(component logger.Component) string {
 	return strings.TrimPrefix(string(component), "daemon.task.")
+}
+
+// localMemberName returns the name of this cluster member, or its cluster address if the name can't be looked up.
+func (d *Daemon) localMemberName(ctx context.Context) string {
+	address := config.GetLocalNetwork().ClusterAddress
+
+	members, err := d.membershipSvc.GetMembers(ctx)
+	if err != nil {
+		return address
+	}
+
+	for _, member := range members {
+		if member.Address == address {
+			return member.Name
+		}
+	}
+
+	return address
 }
 
 // isClusterMemberRequest reports whether r is sent by another cluster member.

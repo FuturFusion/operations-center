@@ -151,6 +151,17 @@ CREATE TABLE IF NOT EXISTS cluster_join_tokens (
      UNIQUE (secret)
 );
 
+CREATE TABLE media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}',
+  expires_at DATETIME NOT NULL,
+  UNIQUE (type, name),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE,
+  CHECK (name <> '')
+);
 `))
 	return MapDBError(err)
 }

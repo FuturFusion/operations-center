@@ -433,6 +433,18 @@ CREATE TABLE IF NOT EXISTS config (
 -- UNIQUE (node_id) doesn't cover NULL, the shared config row.
 CREATE UNIQUE INDEX IF NOT EXISTS config_shared ON config ((node_id IS NULL)) WHERE node_id IS NULL;
 
+CREATE TABLE media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}',
+  expires_at DATETIME NOT NULL,
+  UNIQUE (type, name),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE,
+  CHECK (name <> '')
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, images.uuid, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images

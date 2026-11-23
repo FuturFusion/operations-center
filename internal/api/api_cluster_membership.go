@@ -24,6 +24,9 @@ type membershipHandler struct {
 	// restart restarts the daemon, so it comes up clustered.
 	restart func()
 
+	// mover moves the files of a member to another one.
+	mover memberfiles.Mover
+
 	// serverSvc holds the server records of the members.
 	serverSvc provisioning.ServerService
 }
@@ -33,6 +36,7 @@ func registerClusterMembershipHandler(
 	authorizer *authz.Authorizer,
 	service clusterSvc.MembershipService,
 	restart func(),
+	mover memberfiles.Mover,
 	serverSvc provisioning.ServerService,
 ) {
 	handler := &membershipHandler{
@@ -53,6 +57,8 @@ func registerClusterMembershipHandler(
 	router.HandleFunc("GET /members", response.With(handler.membersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	// Remove a cluster member.
 	router.HandleFunc("DELETE /members/{name}", response.With(handler.memberDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
+	// Move the files of a cluster member to another one.
+	router.HandleFunc("POST /members/{name}/:move-files", response.With(handler.memberMoveFilesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 
 	// Tokens:
 	//
@@ -274,6 +280,22 @@ func (m *membershipHandler) checkServerNameUnused(ctx context.Context, name stri
 	return domain.NewErrorf(domain.ErrConstraintViolation, "", "The name %q is used by a server already", name).
 		WithHintf("Use another name for the cluster member or rename the server.").
 		WithDetail("server", name)
+}
+
+func (m *membershipHandler) memberMoveFilesPost(r *http.Request) response.Response {
+	var req api.ClusterMemberMoveFilesPost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = m.mover.Move(r.Context(), r.PathValue("name"), req.Target)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
 }
 
 func (m *membershipHandler) tokenDelete(r *http.Request) response.Response {

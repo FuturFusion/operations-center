@@ -20,6 +20,12 @@ type ClusterMember struct {
 	FileSets int `json:"file_sets" yaml:"file_sets"`
 }
 
+// ClusterMemberMoveFilesPost moves the files of a cluster member to another one.
+type ClusterMemberMoveFilesPost struct {
+	// Target is the name of the cluster member taking over the files.
+	Target string `json:"target" yaml:"target"`
+}
+
 type ClusterBootstrapPost struct {
 	ServerName string `json:"server_name" yaml:"server_name"`
 

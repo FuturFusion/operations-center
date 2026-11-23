@@ -123,6 +123,7 @@ provisioning:
 - `provisioning.cluster_template_repo`
 - `provisioning.cluster_template_service`
 - `provisioning.flasher_port`
+- `provisioning.media_repo`
 - `provisioning.secure_boot_certificate_catalog_port`
 - `provisioning.secure_boot_certificate_source_port`
 - `provisioning.secure_boot_media_port`
