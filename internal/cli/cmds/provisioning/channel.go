@@ -215,8 +215,13 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		}
 
 		servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), api.ServerFilter{
-			Expression: new(fmt.Sprintf(`version_data.update_channel == %q`, name)),
+			Expression: new(fmt.Sprintf(`channel == %q`, name)),
 		})
+		if err != nil {
+			return err
+		}
+
+		tokens, err := c.ocClient.GetTokens(cmd.Context())
 		if err != nil {
 			return err
 		}
@@ -232,7 +237,7 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Description: %s\n", channel.Description)
 		fmt.Printf("Last Updated: %s\n", channel.LastUpdated.Truncate(time.Second).String())
 
-		fmt.Printf("Assigned Clusters\n")
+		fmt.Printf("Assigned Clusters:\n")
 		for _, cluster := range clusters {
 			fmt.Printf("- %s (%s)\n", cluster.Name, cluster.ConnectionURL)
 		}
@@ -240,6 +245,15 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Assigned Servers:\n")
 		for _, server := range servers {
 			fmt.Printf("- %s (%s)\n", server.Name, server.ConnectionURL)
+		}
+
+		fmt.Printf("Assigned Tokens:\n")
+		for _, token := range tokens {
+			if token.Channel != name {
+				continue
+			}
+
+			fmt.Printf("- %s (%s)\n", token.UUID.String(), token.Description)
 		}
 
 		fmt.Printf("Linked Updates:\n")

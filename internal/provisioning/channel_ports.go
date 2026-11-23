@@ -10,6 +10,8 @@ import (
 
 type ChannelService interface {
 	SetServerService(serverSvc ServerService)
+	SetClusterService(clusterSvc ClusterService)
+	SetTokenService(tokenSvc TokenService)
 
 	Create(ctx context.Context, newChannel Channel) (Channel, error)
 	GetAll(ctx context.Context) (Channels, error)

@@ -42,8 +42,14 @@ var _ provisioning.ChannelService = &ChannelServiceMock{}
 //			GetChangelogByNameFunc: func(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
 //				panic("mock out the GetChangelogByName method")
 //			},
+//			SetClusterServiceFunc: func(clusterSvc provisioning.ClusterService)  {
+//				panic("mock out the SetClusterService method")
+//			},
 //			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
 //				panic("mock out the SetServerService method")
+//			},
+//			SetTokenServiceFunc: func(tokenSvc provisioning.TokenService)  {
+//				panic("mock out the SetTokenService method")
 //			},
 //			UpdateFunc: func(ctx context.Context, newChannel provisioning.Channel) error {
 //				panic("mock out the Update method")
@@ -73,8 +79,14 @@ type ChannelServiceMock struct {
 	// GetChangelogByNameFunc mocks the GetChangelogByName method.
 	GetChangelogByNameFunc func(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error)
 
+	// SetClusterServiceFunc mocks the SetClusterService method.
+	SetClusterServiceFunc func(clusterSvc provisioning.ClusterService)
+
 	// SetServerServiceFunc mocks the SetServerService method.
 	SetServerServiceFunc func(serverSvc provisioning.ServerService)
+
+	// SetTokenServiceFunc mocks the SetTokenService method.
+	SetTokenServiceFunc func(tokenSvc provisioning.TokenService)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, newChannel provisioning.Channel) error
@@ -121,10 +133,20 @@ type ChannelServiceMock struct {
 			// Architecture is the architecture argument value.
 			Architecture images.UpdateFileArchitecture
 		}
+		// SetClusterService holds details about calls to the SetClusterService method.
+		SetClusterService []struct {
+			// ClusterSvc is the clusterSvc argument value.
+			ClusterSvc provisioning.ClusterService
+		}
 		// SetServerService holds details about calls to the SetServerService method.
 		SetServerService []struct {
 			// ServerSvc is the serverSvc argument value.
 			ServerSvc provisioning.ServerService
+		}
+		// SetTokenService holds details about calls to the SetTokenService method.
+		SetTokenService []struct {
+			// TokenSvc is the tokenSvc argument value.
+			TokenSvc provisioning.TokenService
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -140,7 +162,9 @@ type ChannelServiceMock struct {
 	lockGetAllNames        sync.RWMutex
 	lockGetByName          sync.RWMutex
 	lockGetChangelogByName sync.RWMutex
+	lockSetClusterService  sync.RWMutex
 	lockSetServerService   sync.RWMutex
+	lockSetTokenService    sync.RWMutex
 	lockUpdate             sync.RWMutex
 }
 
@@ -356,6 +380,38 @@ func (mock *ChannelServiceMock) GetChangelogByNameCalls() []struct {
 	return calls
 }
 
+// SetClusterService calls SetClusterServiceFunc.
+func (mock *ChannelServiceMock) SetClusterService(clusterSvc provisioning.ClusterService) {
+	if mock.SetClusterServiceFunc == nil {
+		panic("ChannelServiceMock.SetClusterServiceFunc: method is nil but ChannelService.SetClusterService was just called")
+	}
+	callInfo := struct {
+		ClusterSvc provisioning.ClusterService
+	}{
+		ClusterSvc: clusterSvc,
+	}
+	mock.lockSetClusterService.Lock()
+	mock.calls.SetClusterService = append(mock.calls.SetClusterService, callInfo)
+	mock.lockSetClusterService.Unlock()
+	mock.SetClusterServiceFunc(clusterSvc)
+}
+
+// SetClusterServiceCalls gets all the calls that were made to SetClusterService.
+// Check the length with:
+//
+//	len(mockedChannelService.SetClusterServiceCalls())
+func (mock *ChannelServiceMock) SetClusterServiceCalls() []struct {
+	ClusterSvc provisioning.ClusterService
+} {
+	var calls []struct {
+		ClusterSvc provisioning.ClusterService
+	}
+	mock.lockSetClusterService.RLock()
+	calls = mock.calls.SetClusterService
+	mock.lockSetClusterService.RUnlock()
+	return calls
+}
+
 // SetServerService calls SetServerServiceFunc.
 func (mock *ChannelServiceMock) SetServerService(serverSvc provisioning.ServerService) {
 	if mock.SetServerServiceFunc == nil {
@@ -385,6 +441,38 @@ func (mock *ChannelServiceMock) SetServerServiceCalls() []struct {
 	mock.lockSetServerService.RLock()
 	calls = mock.calls.SetServerService
 	mock.lockSetServerService.RUnlock()
+	return calls
+}
+
+// SetTokenService calls SetTokenServiceFunc.
+func (mock *ChannelServiceMock) SetTokenService(tokenSvc provisioning.TokenService) {
+	if mock.SetTokenServiceFunc == nil {
+		panic("ChannelServiceMock.SetTokenServiceFunc: method is nil but ChannelService.SetTokenService was just called")
+	}
+	callInfo := struct {
+		TokenSvc provisioning.TokenService
+	}{
+		TokenSvc: tokenSvc,
+	}
+	mock.lockSetTokenService.Lock()
+	mock.calls.SetTokenService = append(mock.calls.SetTokenService, callInfo)
+	mock.lockSetTokenService.Unlock()
+	mock.SetTokenServiceFunc(tokenSvc)
+}
+
+// SetTokenServiceCalls gets all the calls that were made to SetTokenService.
+// Check the length with:
+//
+//	len(mockedChannelService.SetTokenServiceCalls())
+func (mock *ChannelServiceMock) SetTokenServiceCalls() []struct {
+	TokenSvc provisioning.TokenService
+} {
+	var calls []struct {
+		TokenSvc provisioning.TokenService
+	}
+	mock.lockSetTokenService.RLock()
+	calls = mock.calls.SetTokenService
+	mock.lockSetTokenService.RUnlock()
 	return calls
 }
 

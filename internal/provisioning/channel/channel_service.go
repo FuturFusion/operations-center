@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -20,9 +21,11 @@ import (
 )
 
 type channelService struct {
-	repo      provisioning.ChannelRepo
-	serverSvc provisioning.ServerService
-	updateSvc provisioning.UpdateService
+	repo       provisioning.ChannelRepo
+	clusterSvc provisioning.ClusterService
+	serverSvc  provisioning.ServerService
+	tokenSvc   provisioning.TokenService
+	updateSvc  provisioning.UpdateService
 }
 
 var _ provisioning.ChannelService = &channelService{}
@@ -47,6 +50,14 @@ func New(repo provisioning.ChannelRepo, updateSvc provisioning.UpdateService) *c
 
 func (s *channelService) SetServerService(serverSvc provisioning.ServerService) {
 	s.serverSvc = serverSvc
+}
+
+func (s *channelService) SetClusterService(clusterSvc provisioning.ClusterService) {
+	s.clusterSvc = clusterSvc
+}
+
+func (s *channelService) SetTokenService(tokenSvc provisioning.TokenService) {
+	s.tokenSvc = tokenSvc
 }
 
 func (s *channelService) Create(ctx context.Context, newChannel provisioning.Channel) (provisioning.Channel, error) {
@@ -93,6 +104,13 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel name cannot be empty")
 	}
 
+	updatesConfig := config.GetUpdates()
+	if name == updatesConfig.UpdatesDefaultChannel || name == updatesConfig.ServerDefaultChannel {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is configured as default channel and can not be deleted", name).
+			WithHintf(`Change "updates.updates_default_channel" and "updates.server_default_channel" to another channel first.`).
+			WithDetail("channel", name)
+	}
+
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		updates, err := s.updateSvc.GetUpdatesByAssignedChannelName(ctx, name)
 		if err != nil {
@@ -112,11 +130,40 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		for _, server := range servers {
-			if name == server.VersionData.UpdateChannel {
+			// The database references the assigned channel. The channel reported in the version data can differ.
+			if name == server.Channel {
 				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is used by server %q and can not be deleted", name, server.Name).
 					WithHintf("Move the server to another update channel first.").
 					WithDetail("channel", name).
 					WithDetail("server", server.Name)
+			}
+		}
+
+		clusters, err := s.clusterSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch clusters: %w", err)
+		}
+
+		for _, cluster := range clusters {
+			if name == cluster.Channel {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is used by cluster %q and can not be deleted", name, cluster.Name).
+					WithHintf("Move the cluster to another update channel first.").
+					WithDetail("channel", name).
+					WithDetail("cluster", cluster.Name)
+			}
+		}
+
+		tokens, err := s.tokenSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch tokens: %w", err)
+		}
+
+		for _, token := range tokens {
+			if name == token.Channel {
+				return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Channel %q is used by token %q and can not be deleted", name, token.UUID.String()).
+					WithHintf("Move the token to another update channel or remove the token first.").
+					WithDetail("channel", name).
+					WithDetail("token", token.UUID.String())
 			}
 		}
 

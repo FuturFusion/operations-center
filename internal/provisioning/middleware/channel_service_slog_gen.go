@@ -239,6 +239,23 @@ func (_d ChannelServiceWithSlog) GetChangelogByName(ctx context.Context, name st
 	return _d._base.GetChangelogByName(ctx, name, architecture)
 }
 
+// SetClusterService implements provisioning.ChannelService.
+func (_d ChannelServiceWithSlog) SetClusterService(clusterSvc provisioning.ClusterService) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("clusterSvc", clusterSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetClusterService")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method SetClusterService finished")
+	}()
+	_d._base.SetClusterService(clusterSvc)
+}
+
 // SetServerService implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
 	ctx := logger.ContextWithComponent(context.Background(), _d._component)
@@ -254,6 +271,23 @@ func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerS
 		log.DebugContext(ctx, "<= method SetServerService finished")
 	}()
 	_d._base.SetServerService(serverSvc)
+}
+
+// SetTokenService implements provisioning.ChannelService.
+func (_d ChannelServiceWithSlog) SetTokenService(tokenSvc provisioning.TokenService) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("tokenSvc", tokenSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetTokenService")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method SetTokenService finished")
+	}()
+	_d._base.SetTokenService(tokenSvc)
 }
 
 // Update implements provisioning.ChannelService.
