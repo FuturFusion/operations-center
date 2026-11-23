@@ -239,6 +239,93 @@ func TestPathExistsIn(t *testing.T) {
 	}
 }
 
+func TestExistsIn(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		setup    func(t *testing.T, dir string)
+		pathname string
+
+		assertErr require.ErrorAssertionFunc
+		want      bool
+	}{
+		{
+			name: "file exists",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				err := os.WriteFile(filepath.Join(dir, "file"), nil, 0o600)
+				require.NoError(t, err)
+			},
+			pathname: "file",
+
+			assertErr: require.NoError,
+			want:      true,
+		},
+		{
+			name: "dangling symlink exists",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				err := os.Symlink("missing", filepath.Join(dir, "link"))
+				require.NoError(t, err)
+			},
+			pathname: "link",
+
+			assertErr: require.NoError,
+			want:      true,
+		},
+		{
+			name: "file does not exist",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+			},
+			pathname: "missing",
+
+			assertErr: require.NoError,
+			want:      false,
+		},
+		{
+			name: "error - parent is a file",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				err := os.WriteFile(filepath.Join(dir, "file"), nil, 0o600)
+				require.NoError(t, err)
+			},
+			pathname: "file/child",
+
+			assertErr: require.Error,
+			want:      false,
+		},
+		{
+			name: "error - path escaping the root",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+			},
+			pathname: "../missing",
+
+			assertErr: require.Error,
+			want:      false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			root := openTestRoot(t, t.TempDir(), "root")
+			tc.setup(t, root.Name())
+
+			// Run test
+			got, err := file.ExistsIn(root, tc.pathname)
+
+			// Assert
+			tc.assertErr(t, err, "only a missing path is not an error")
+			require.Equal(t, tc.want, got, "existence of the path")
+		})
+	}
+}
+
 func TestCreateTempIn(t *testing.T) {
 	t.Parallel()
 
