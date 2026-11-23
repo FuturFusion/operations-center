@@ -7,6 +7,7 @@ import (
 	"github.com/cowsql/go-cowsql/cluster"
 	cowdb "github.com/cowsql/go-cowsql/cluster/db"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -35,6 +36,14 @@ type GlobalRaftRepo interface {
 	DetermineNodeID(ctx context.Context, address string) error
 	GetNodeID() int64
 	SchemaVersion() int
+}
+
+type JoinTokenRepo interface {
+	GetTokens(ctx context.Context) ([]entities.ClusterJoinToken, error)
+	GetTokenByServerName(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error)
+	CreateToken(ctx context.Context, token entities.ClusterJoinToken) error
+	SetJoinerFingerprint(ctx context.Context, serverName string, fingerprint string) error
+	DeleteTokenByName(ctx context.Context, serverName string) error
 }
 
 type ConfigRepo interface {

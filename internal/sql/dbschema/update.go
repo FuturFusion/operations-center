@@ -133,6 +133,26 @@ var updates = map[int]update{
 	42: updateFromV41,
 	43: updateFromV42,
 	44: updateFromV43,
+	45: updateFromV44,
+}
+
+func updateFromV44(ctx context.Context, tx *sql.Tx) error {
+	// v44..v45 add the join tokens of new cluster members, the member storing the files of updates, images, cluster artifacts and generated media, and the uuid of clusters.
+	_, err := tx.ExecContext(ctx, withResourcesView(`
+CREATE TABLE IF NOT EXISTS cluster_join_tokens (
+     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+     server_name TEXT NOT NULL,
+     secret TEXT NOT NULL,
+     cluster_fingerprint TEXT NOT NULL,
+     cluster_addresses TEXT NOT NULL,
+     expiration_date DATETIME NOT NULL,
+     joiner_fingerprint TEXT NOT NULL DEFAULT '',
+     UNIQUE (server_name),
+     UNIQUE (secret)
+);
+
+`))
+	return MapDBError(err)
 }
 
 func updateFromV43(ctx context.Context, tx *sql.Tx) error {

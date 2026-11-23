@@ -1,11 +1,13 @@
 package dbschema_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"

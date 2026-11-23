@@ -410,6 +410,18 @@ CREATE TABLE IF NOT EXISTS cluster_members (
   UNIQUE (address)
 );
 
+CREATE TABLE IF NOT EXISTS cluster_join_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  server_name TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  cluster_fingerprint TEXT NOT NULL,
+  cluster_addresses TEXT NOT NULL,
+  expiration_date DATETIME NOT NULL,
+  joiner_fingerprint TEXT NOT NULL DEFAULT '',
+  UNIQUE (server_name),
+  UNIQUE (secret)
+);
+
 CREATE TABLE IF NOT EXISTS config (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     node_id INTEGER,
@@ -485,4 +497,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (44, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (45, strftime("%s"));
