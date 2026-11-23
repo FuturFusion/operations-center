@@ -83,7 +83,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, nil, certificateRepo)
+			systemSvc := system.NewSystemService(nil, nil, nil, certificateRepo, nil)
 
 			// Execute test
 			gotCertificate, err := systemSvc.GetCertificate(context.Background())
@@ -754,7 +754,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo)
+			systemSvc := system.NewSystemService(env, serverSvc, nil, certificateRepo, nil)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -912,19 +912,14 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				serverSvc,
 				nil,
 				certificateRepo,
-				system.WithACMEUpdateCertificateFunc(
-					func(
-						ctx context.Context,
-						fsEnv interface {
-							CacheDir() string
-						},
-						cfg systemapi.SecurityACME,
-						current *x509.Certificate,
-						force bool,
-					) (*systemapi.CertificatePost, error) {
-						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
-					},
-				),
+				func(
+					ctx context.Context,
+					cfg systemapi.SecurityACME,
+					current *x509.Certificate,
+					force bool,
+				) (*systemapi.CertificatePost, error) {
+					return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
+				},
 			)
 
 			// Run test
@@ -1327,7 +1322,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil)
+			systemSvc := system.NewSystemService(nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig)
@@ -1380,7 +1375,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err = config.UpdateNetwork(t.Context(), networkConfig.NetworkGlobalPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1513,7 +1508,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SecurityPut)
@@ -1582,7 +1577,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig)
@@ -1606,7 +1601,7 @@ func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	systemSvc := system.NewSystemService(nil, nil, nil, nil)
+	systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 	before := systemSvc.GetSettingsConfig(t.Context())
 
 	err = systemSvc.UpdateSettingsConfig(t.Context(), systemapi.SettingsPut{
@@ -1684,7 +1679,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.UpdatesPut)
@@ -1730,7 +1725,7 @@ func TestSystemService_CleanCache(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(nil, nil, cacheRepo, nil)
+			systemSvc := system.NewSystemService(nil, nil, cacheRepo, nil, nil)
 
 			// Run test
 			err := systemSvc.CleanCache(t.Context())
