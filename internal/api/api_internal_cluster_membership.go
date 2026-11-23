@@ -176,6 +176,8 @@ func registerInternalClusterMembershipHandler(
 	leaderWithJoinerTrust.HandleFunc("POST /:accept", response.With(handler.acceptPost))
 	// Reset this member to an empty standalone server after it has been removed from the cluster.
 	authenticated.HandleFunc("POST /:reset", response.With(handler.resetPost))
+	// Report the state of the leader tasks of this member, or of the member named by "target".
+	authenticated.HandleFunc("POST /tasks/:status", response.With(handler.taskStatusPost))
 }
 
 func (m *membershipHandler) assignPost(r *http.Request) response.Response {
@@ -282,6 +284,51 @@ func (m *membershipHandler) trustPost(r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) taskStatusPost(r *http.Request) response.Response {
+	status := m.service.TaskStatus()
+
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		return response.SyncResponse(true, status)
+	}
+
+	members, err := m.service.GetMembersByID(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	for _, member := range members {
+		if member.Name != target {
+			continue
+		}
+
+		if member.Address == status.Address {
+			return response.SyncResponse(true, status)
+		}
+
+		c, err := m.service.MemberClient(member.Address)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		resp, err := c.DoInternalRequest(r.Context(), http.MethodPost, "/membership/tasks/:status", nil, nil)
+		if err != nil {
+			return response.SmartError(domain.NewErrorf(domain.ErrUnavailable, "", "Cluster member %q is unreachable", target).WithCause(err))
+		}
+
+		var targetStatus membershipapi.InternalClusterTaskStatus
+
+		err = resp.MetadataAsStruct(&targetStatus)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.SyncResponse(true, targetStatus)
+	}
+
+	return response.SmartError(domain.NewErrorf(domain.ErrNotFound, "", "Cluster member %q not found", target))
 }
 
 func (m *membershipHandler) resetPost(r *http.Request) response.Response {

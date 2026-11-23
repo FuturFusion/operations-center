@@ -117,6 +117,20 @@ func (_d MembershipServiceWithPrometheus) CheckMembersOnline(ctx context.Context
 	return _d.base.CheckMembersOnline(ctx)
 }
 
+// ContactMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ContactMembers(ctx context.Context, except ...string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ContactMembers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ContactMembers(ctx, except...)
+}
+
 // CreateToken implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) CreateToken(ctx context.Context, req api.ClusterTokenPost) (err error) {
 	_since := time.Now()
@@ -325,6 +339,16 @@ func (_d MembershipServiceWithPrometheus) LeaderAddress(ctx context.Context) (s 
 	return _d.base.LeaderAddress(ctx)
 }
 
+// LeaderContext implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) LeaderContext(name string) (context1 context.Context, fn func(), b bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LeaderContext", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LeaderContext(name)
+}
+
 // LocalMemberID implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) LocalMemberID() (n int64, err error) {
 	_since := time.Now()
@@ -479,6 +503,16 @@ func (_d MembershipServiceWithPrometheus) Stop(ctx context.Context) (err error) 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Stop", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Stop(ctx)
+}
+
+// TaskStatus implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) TaskStatus() (internalClusterTaskStatus api0.InternalClusterTaskStatus) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TaskStatus", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TaskStatus()
 }
 
 // Trust implements cluster.MembershipService.

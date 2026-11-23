@@ -216,6 +216,37 @@ func (_d MembershipServiceWithSlog) CheckMembersOnline(ctx context.Context) (err
 	return _d._base.CheckMembersOnline(ctx)
 }
 
+// ContactMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ContactMembers(ctx context.Context, except ...string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("except", except),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ContactMembers")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ContactMembers returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ContactMembers finished")
+		}
+	}()
+	return _d._base.ContactMembers(ctx, except...)
+}
+
 // CreateToken implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) CreateToken(ctx context.Context, req api.ClusterTokenPost) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -668,6 +699,31 @@ func (_d MembershipServiceWithSlog) LeaderAddress(ctx context.Context) (s string
 	return _d._base.LeaderAddress(ctx)
 }
 
+// LeaderContext implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LeaderContext(name string) (context1 context.Context, fn func(), b bool) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LeaderContext")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("context1", context1),
+				slog.Any("fn", fn),
+				slog.Bool("b", b),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method LeaderContext finished")
+	}()
+	return _d._base.LeaderContext(name)
+}
+
 // LocalMemberID implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) LocalMemberID() (n int64, err error) {
 	ctx := logger.ContextWithComponent(context.Background(), _d._component)
@@ -986,6 +1042,24 @@ func (_d MembershipServiceWithSlog) Stop(ctx context.Context) (err error) {
 		}
 	}()
 	return _d._base.Stop(ctx)
+}
+
+// TaskStatus implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) TaskStatus() (internalClusterTaskStatus api0.InternalClusterTaskStatus) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling TaskStatus")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("internalClusterTaskStatus", internalClusterTaskStatus),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method TaskStatus finished")
+	}()
+	return _d._base.TaskStatus()
 }
 
 // Trust implements cluster.MembershipService.

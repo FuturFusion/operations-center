@@ -71,6 +71,10 @@ const (
 	// WarningTypeServerCertificateSyncFailed indicates a warning where Operations
 	// Center failed to update its server certificate on a server.
 	WarningTypeServerCertificateSyncFailed WarningType = "Server certificate sync failed"
+
+	// WarningTypeLeaderHandoverIncomplete indicates a warning where a new cluster
+	// leader started a leader task, while another member still ran it.
+	WarningTypeLeaderHandoverIncomplete WarningType = "Leader handover incomplete"
 )
 
 // WarningScope represents a scope for a warning.

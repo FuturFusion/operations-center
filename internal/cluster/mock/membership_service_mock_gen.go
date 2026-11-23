@@ -47,6 +47,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			CheckMembersOnlineFunc: func(ctx context.Context) error {
 //				panic("mock out the CheckMembersOnline method")
 //			},
+//			ContactMembersFunc: func(ctx context.Context, except ...string) error {
+//				panic("mock out the ContactMembers method")
+//			},
 //			CreateTokenFunc: func(ctx context.Context, req api.ClusterTokenPost) error {
 //				panic("mock out the CreateToken method")
 //			},
@@ -95,6 +98,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			LeaderAddressFunc: func(ctx context.Context) (string, error) {
 //				panic("mock out the LeaderAddress method")
 //			},
+//			LeaderContextFunc: func(name string) (context.Context, func(), bool) {
+//				panic("mock out the LeaderContext method")
+//			},
 //			LocalMemberIDFunc: func() (int64, error) {
 //				panic("mock out the LocalMemberID method")
 //			},
@@ -131,6 +137,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			StopFunc: func(ctx context.Context) error {
 //				panic("mock out the Stop method")
 //			},
+//			TaskStatusFunc: func() api0.InternalClusterTaskStatus {
+//				panic("mock out the TaskStatus method")
+//			},
 //			TrustFunc: func(ctx context.Context, token string, fingerprint string) error {
 //				panic("mock out the Trust method")
 //			},
@@ -161,6 +170,9 @@ type MembershipServiceMock struct {
 
 	// CheckMembersOnlineFunc mocks the CheckMembersOnline method.
 	CheckMembersOnlineFunc func(ctx context.Context) error
+
+	// ContactMembersFunc mocks the ContactMembers method.
+	ContactMembersFunc func(ctx context.Context, except ...string) error
 
 	// CreateTokenFunc mocks the CreateToken method.
 	CreateTokenFunc func(ctx context.Context, req api.ClusterTokenPost) error
@@ -210,6 +222,9 @@ type MembershipServiceMock struct {
 	// LeaderAddressFunc mocks the LeaderAddress method.
 	LeaderAddressFunc func(ctx context.Context) (string, error)
 
+	// LeaderContextFunc mocks the LeaderContext method.
+	LeaderContextFunc func(name string) (context.Context, func(), bool)
+
 	// LocalMemberIDFunc mocks the LocalMemberID method.
 	LocalMemberIDFunc func() (int64, error)
 
@@ -245,6 +260,9 @@ type MembershipServiceMock struct {
 
 	// StopFunc mocks the Stop method.
 	StopFunc func(ctx context.Context) error
+
+	// TaskStatusFunc mocks the TaskStatus method.
+	TaskStatusFunc func() api0.InternalClusterTaskStatus
 
 	// TrustFunc mocks the Trust method.
 	TrustFunc func(ctx context.Context, token string, fingerprint string) error
@@ -291,6 +309,13 @@ type MembershipServiceMock struct {
 		CheckMembersOnline []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// ContactMembers holds details about calls to the ContactMembers method.
+		ContactMembers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Except is the except argument value.
+			Except []string
 		}
 		// CreateToken holds details about calls to the CreateToken method.
 		CreateToken []struct {
@@ -386,6 +411,11 @@ type MembershipServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// LeaderContext holds details about calls to the LeaderContext method.
+		LeaderContext []struct {
+			// Name is the name argument value.
+			Name string
+		}
 		// LocalMemberID holds details about calls to the LocalMemberID method.
 		LocalMemberID []struct {
 		}
@@ -452,6 +482,9 @@ type MembershipServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// TaskStatus holds details about calls to the TaskStatus method.
+		TaskStatus []struct {
+		}
 		// Trust holds details about calls to the Trust method.
 		Trust []struct {
 			// Ctx is the ctx argument value.
@@ -479,6 +512,7 @@ type MembershipServiceMock struct {
 	lockAuth                      sync.RWMutex
 	lockBootstrap                 sync.RWMutex
 	lockCheckMembersOnline        sync.RWMutex
+	lockContactMembers            sync.RWMutex
 	lockCreateToken               sync.RWMutex
 	lockDeleteTokenByName         sync.RWMutex
 	lockDetermineNodeID           sync.RWMutex
@@ -495,6 +529,7 @@ type MembershipServiceMock struct {
 	lockIsMemberCertificate       sync.RWMutex
 	lockJoin                      sync.RWMutex
 	lockLeaderAddress             sync.RWMutex
+	lockLeaderContext             sync.RWMutex
 	lockLocalMemberID             sync.RWMutex
 	lockMemberClient              sync.RWMutex
 	lockNotifyUpgradeCompleted    sync.RWMutex
@@ -507,6 +542,7 @@ type MembershipServiceMock struct {
 	lockSetGlobalDB               sync.RWMutex
 	lockStartLeaderTasks          sync.RWMutex
 	lockStop                      sync.RWMutex
+	lockTaskStatus                sync.RWMutex
 	lockTrust                     sync.RWMutex
 	lockTrustedClients            sync.RWMutex
 	lockUpdateClusterCertificate  sync.RWMutex
@@ -689,6 +725,42 @@ func (mock *MembershipServiceMock) CheckMembersOnlineCalls() []struct {
 	mock.lockCheckMembersOnline.RLock()
 	calls = mock.calls.CheckMembersOnline
 	mock.lockCheckMembersOnline.RUnlock()
+	return calls
+}
+
+// ContactMembers calls ContactMembersFunc.
+func (mock *MembershipServiceMock) ContactMembers(ctx context.Context, except ...string) error {
+	if mock.ContactMembersFunc == nil {
+		panic("MembershipServiceMock.ContactMembersFunc: method is nil but MembershipService.ContactMembers was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Except []string
+	}{
+		Ctx:    ctx,
+		Except: except,
+	}
+	mock.lockContactMembers.Lock()
+	mock.calls.ContactMembers = append(mock.calls.ContactMembers, callInfo)
+	mock.lockContactMembers.Unlock()
+	return mock.ContactMembersFunc(ctx, except...)
+}
+
+// ContactMembersCalls gets all the calls that were made to ContactMembers.
+// Check the length with:
+//
+//	len(mockedMembershipService.ContactMembersCalls())
+func (mock *MembershipServiceMock) ContactMembersCalls() []struct {
+	Ctx    context.Context
+	Except []string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Except []string
+	}
+	mock.lockContactMembers.RLock()
+	calls = mock.calls.ContactMembers
+	mock.lockContactMembers.RUnlock()
 	return calls
 }
 
@@ -1229,6 +1301,38 @@ func (mock *MembershipServiceMock) LeaderAddressCalls() []struct {
 	return calls
 }
 
+// LeaderContext calls LeaderContextFunc.
+func (mock *MembershipServiceMock) LeaderContext(name string) (context.Context, func(), bool) {
+	if mock.LeaderContextFunc == nil {
+		panic("MembershipServiceMock.LeaderContextFunc: method is nil but MembershipService.LeaderContext was just called")
+	}
+	callInfo := struct {
+		Name string
+	}{
+		Name: name,
+	}
+	mock.lockLeaderContext.Lock()
+	mock.calls.LeaderContext = append(mock.calls.LeaderContext, callInfo)
+	mock.lockLeaderContext.Unlock()
+	return mock.LeaderContextFunc(name)
+}
+
+// LeaderContextCalls gets all the calls that were made to LeaderContext.
+// Check the length with:
+//
+//	len(mockedMembershipService.LeaderContextCalls())
+func (mock *MembershipServiceMock) LeaderContextCalls() []struct {
+	Name string
+} {
+	var calls []struct {
+		Name string
+	}
+	mock.lockLeaderContext.RLock()
+	calls = mock.calls.LeaderContext
+	mock.lockLeaderContext.RUnlock()
+	return calls
+}
+
 // LocalMemberID calls LocalMemberIDFunc.
 func (mock *MembershipServiceMock) LocalMemberID() (int64, error) {
 	if mock.LocalMemberIDFunc == nil {
@@ -1620,6 +1724,33 @@ func (mock *MembershipServiceMock) StopCalls() []struct {
 	mock.lockStop.RLock()
 	calls = mock.calls.Stop
 	mock.lockStop.RUnlock()
+	return calls
+}
+
+// TaskStatus calls TaskStatusFunc.
+func (mock *MembershipServiceMock) TaskStatus() api0.InternalClusterTaskStatus {
+	if mock.TaskStatusFunc == nil {
+		panic("MembershipServiceMock.TaskStatusFunc: method is nil but MembershipService.TaskStatus was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTaskStatus.Lock()
+	mock.calls.TaskStatus = append(mock.calls.TaskStatus, callInfo)
+	mock.lockTaskStatus.Unlock()
+	return mock.TaskStatusFunc()
+}
+
+// TaskStatusCalls gets all the calls that were made to TaskStatus.
+// Check the length with:
+//
+//	len(mockedMembershipService.TaskStatusCalls())
+func (mock *MembershipServiceMock) TaskStatusCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTaskStatus.RLock()
+	calls = mock.calls.TaskStatus
+	mock.lockTaskStatus.RUnlock()
 	return calls
 }
 

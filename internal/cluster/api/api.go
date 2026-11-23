@@ -38,3 +38,29 @@ type InternalClusterAcceptResponse struct {
 	ClientCertificate string `json:"client_certificate" yaml:"client_certificate"`
 	ClientKey         string `json:"client_key" yaml:"client_key"`
 }
+
+// States of a leader task on a cluster member.
+const (
+	// TaskRunning is a leader task started on the member.
+	TaskRunning = "running"
+
+	// TaskStopping is a leader task stopped on the member, while some of its work is still in flight.
+	TaskStopping = "stopping"
+
+	// TaskStopped is a leader task neither started nor working on the member.
+	TaskStopped = "stopped"
+)
+
+// InternalClusterTask is the state of a leader task on a cluster member.
+type InternalClusterTask struct {
+	Name  string `json:"name" yaml:"name"`
+	State string `json:"state" yaml:"state"`
+}
+
+// InternalClusterTaskStatus is a response of the /internal/membership/tasks/:status endpoint.
+type InternalClusterTaskStatus struct {
+	// Address is the cluster address of the member.
+	Address string `json:"address" yaml:"address"`
+
+	Tasks []InternalClusterTask `json:"tasks" yaml:"tasks"`
+}

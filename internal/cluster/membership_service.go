@@ -105,14 +105,38 @@ type membership struct {
 	pendingClusterCert cowsqltls.CertInfo
 
 	// The background tasks run on the cluster leader only.
-	backgroundTasks []task.TaskFunc
+	backgroundTasks []LeaderTask
 
+	// taskStatus records the leader work of this member for the next leader.
+	taskStatus leaderTaskStatus
+
+	// busyMemberTasks returns the addresses of the other members still running or stopping each leader task, by task name.
+	busyMemberTasks func(ctx context.Context) (map[string][]string, error)
+
+	handoverTimeout  time.Duration
+	handoverInterval time.Duration
+	handover         sync.WaitGroup
+
+	warnings      warning.WarningEmitter
 	shutdownFuncs []func(context.Context) error
 	leading       bool
+
+	termMu  sync.Mutex
+	term    context.Context
+	endTerm context.CancelFunc
 }
 
 // leadershipCheckInterval is the interval of the cluster leadership check.
 const leadershipCheckInterval = 5 * time.Second
+
+// leaderHandoverTimeout is how long a new leader waits for the other members to stop a leader task, before it starts it anyway.
+const leaderHandoverTimeout = 30 * time.Second
+
+// leaderHandoverInterval is the interval in which a new leader asks the other members about their leader tasks.
+const leaderHandoverInterval = time.Second
+
+// leaderHandoverScope is the scope of the warning about a leader task started while another member still ran it.
+var leaderHandoverScope = api.WarningScope{Scope: "leader_handover", EntityType: "system", Entity: "operations-center"}
 
 // Option configures the membership service.
 type Option func(m *membership)
@@ -155,6 +179,7 @@ func NewClusterMembershipService(ctx context.Context, env environment, varRoot *
 	}
 
 	m.serverCert.Store(serverCert)
+	m.busyMemberTasks = m.busyLeaderTasks
 
 	g, err := cowsqlgateway.NewGateway(
 		context.TODO(),
@@ -1213,9 +1238,9 @@ func (m *membership) StartLeaderTasks() {
 func (m *membership) checkLeadership(ctx context.Context) {
 	isLeader, err := m.gateway.IsLeader(ctx)
 	if err != nil {
-		// Stop the tasks, so they don't run on two members.
+		// The leadership is unknown, so the tasks keep their state: every run checks the leadership itself.
 		slog.WarnContext(ctx, "Failed to check for cluster leadership", logger.Err(err))
-		isLeader = false
+		return
 	}
 
 	m.mu.Lock()
@@ -1225,19 +1250,25 @@ func (m *membership) checkLeadership(ctx context.Context) {
 		return
 	}
 
-	if isLeader == m.leading {
+	// A leader whose term ended without the leadership moving starts a new one.
+	if isLeader == m.leading && (!isLeader || m.termRunning()) {
 		return
 	}
 
 	m.leading = isLeader
 
 	if isLeader {
-		slog.InfoContext(ctx, "Starting background tasks on the cluster leader")
+		slog.InfoContext(ctx, "Starting background tasks on the cluster leader, once the other members stopped them")
+
+		term, endTerm := context.WithCancel(m.ctx)
+		m.termMu.Lock()
+		m.term, m.endTerm = term, endTerm
+		m.termMu.Unlock()
 
 		m.shutdownFuncs = make([]func(context.Context) error, 0, len(m.backgroundTasks))
-		for _, taskFunc := range m.backgroundTasks {
-			m.shutdownFuncs = append(m.shutdownFuncs, taskFunc(m.ctx))
-		}
+
+		// The handover runs beside the leadership check, so the check keeps noticing a leadership change meanwhile.
+		m.handover.Go(func() { m.handOverTasks(term) })
 
 		return
 	}
@@ -1247,10 +1278,236 @@ func (m *membership) checkLeadership(ctx context.Context) {
 	m.stopBackgroundTasks(ctx)
 }
 
+// termRunning reports whether the leader tasks have a term, which has not ended.
+func (m *membership) termRunning() bool {
+	m.termMu.Lock()
+	defer m.termMu.Unlock()
+
+	return m.term != nil && m.term.Err() == nil
+}
+
+// LeaderContext returns a context for work of the leader task name, ended when this member stops running the leader tasks, and the function marking the work done.
+// It returns false, if the task is not running on this member.
+func (m *membership) LeaderContext(name string) (context.Context, func(), bool) {
+	m.termMu.Lock()
+	term := m.term
+	m.termMu.Unlock()
+
+	if term == nil || term.Err() != nil {
+		return nil, nil, false
+	}
+
+	done, ok := m.taskStatus.begin(name)
+	if !ok {
+		return nil, nil, false
+	}
+
+	return term, done, true
+}
+
+// TaskStatus returns the state of the leader tasks of this member.
+func (m *membership) TaskStatus() membershipapi.InternalClusterTaskStatus {
+	names := make([]string, 0, len(m.backgroundTasks))
+	for _, t := range m.backgroundTasks {
+		names = append(names, t.Name)
+	}
+
+	return membershipapi.InternalClusterTaskStatus{
+		Address: m.gateway.State().ClusterAddress(),
+		Tasks:   m.taskStatus.list(names),
+	}
+}
+
+// handOverTasks starts each leader task of the term, once no other member runs or stops it anymore, or once the handover timed out.
+func (m *membership) handOverTasks(term context.Context) {
+	pending := slices.Clone(m.backgroundTasks)
+	deadline := time.Now().Add(m.handoverTimeout)
+	busyAtTimeout := map[string][]string{}
+
+	for len(pending) > 0 {
+		// The leadership can move again while the other members stop their tasks.
+		isLeader, err := m.gateway.IsLeader(term)
+		if term.Err() != nil {
+			return
+		}
+
+		if err == nil && !isLeader {
+			m.checkLeadership(m.ctx)
+			return
+		}
+
+		// While the leadership is unknown, no task is started and the round is repeated.
+		var busy map[string][]string
+		if err != nil {
+			slog.WarnContext(term, "Failed to check for cluster leadership during the handover of the leader tasks", logger.Err(err))
+		} else {
+			busy, err = m.busyMemberTasks(term)
+			if err != nil {
+				slog.WarnContext(term, "Failed to get the leader tasks of the other cluster members", logger.Err(err))
+			}
+		}
+
+		timedOut := !time.Now().Before(deadline)
+
+		waiting := make([]LeaderTask, 0, len(pending))
+		for _, t := range pending {
+			free := err == nil && len(busy[t.Name]) == 0
+			if !free && !timedOut {
+				waiting = append(waiting, t)
+				continue
+			}
+
+			if !free {
+				busyAtTimeout[t.Name] = busy[t.Name]
+			}
+
+			if t.BeforeStart != nil {
+				t.BeforeStart(term)
+			}
+
+			if !m.startLeaderTask(term, t) {
+				return
+			}
+		}
+
+		pending = waiting
+		if len(pending) == 0 {
+			break
+		}
+
+		select {
+		case <-term.Done():
+			return
+
+		case <-time.After(m.handoverInterval):
+		}
+	}
+
+	slog.InfoContext(term, "Started background tasks on the cluster leader")
+	m.reportHandover(term, busyAtTimeout)
+}
+
+// startLeaderTask starts the leader task t of term, false if the term has ended.
+func (m *membership) startLeaderTask(term context.Context, t LeaderTask) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if term.Err() != nil || !m.leading {
+		return false
+	}
+
+	// Marked first, so the first run of the task already counts as its work.
+	m.taskStatus.setStarted(t.Name, true)
+	m.shutdownFuncs = append(m.shutdownFuncs, t.Start(term))
+
+	return true
+}
+
+// reportHandover warns about the leader tasks started while other members still ran them, and removes the warning after a clean handover.
+func (m *membership) reportHandover(ctx context.Context, busyAtTimeout map[string][]string) {
+	if m.warnings == nil {
+		return
+	}
+
+	if len(busyAtTimeout) == 0 {
+		m.warnings.RemoveStale(ctx, leaderHandoverScope, nil)
+		return
+	}
+
+	var addresses []string
+	tasks := make([]string, 0, len(busyAtTimeout))
+	for name, taskAddresses := range busyAtTimeout {
+		tasks = append(tasks, name)
+		for _, address := range taskAddresses {
+			if !slices.Contains(addresses, address) {
+				addresses = append(addresses, address)
+			}
+		}
+	}
+
+	slices.Sort(tasks)
+
+	members, err := m.memberNames(ctx, addresses)
+	if err != nil {
+		members = make([]string, 0, len(addresses))
+		for _, address := range addresses {
+			members = append(members, strconv.Quote(address))
+		}
+	}
+
+	message := fmt.Sprintf("Background tasks %s were started, while cluster members %s still ran them", strings.Join(tasks, ", "), strings.Join(members, ", "))
+	if len(addresses) == 0 {
+		message = fmt.Sprintf("Background tasks %s were started, without knowing whether the other cluster members still ran them", strings.Join(tasks, ", "))
+	}
+
+	m.warnings.Emit(ctx, warning.NewWarning(api.WarningTypeLeaderHandoverIncomplete, leaderHandoverScope, message))
+}
+
+// busyLeaderTasks returns the addresses of the other members still running or stopping each leader task, by task name.
+// Members counted as offline and unreachable members are skipped.
+func (m *membership) busyLeaderTasks(ctx context.Context) (map[string][]string, error) {
+	notifier, err := m.gateway.NewNotifier(ctx, m.gateway.NetworkCert(), m.gateway.ServerCert(), cowsqlcluster.NotifyAlive)
+	if err != nil {
+		return nil, err
+	}
+
+	var busyMu sync.Mutex
+	busy := map[string][]string{}
+
+	errs := notifier(func(ctx context.Context, address string, _ cowsqltls.CertInfo, _ cowsqltls.CertInfo) error {
+		status, err := m.memberTaskStatus(ctx, address)
+		if err != nil {
+			slog.InfoContext(ctx, "Skipping the leader tasks of an unreachable cluster member", slog.String("address", address), logger.Err(err))
+			return nil
+		}
+
+		busyMu.Lock()
+		defer busyMu.Unlock()
+
+		for _, t := range status.Tasks {
+			if t.State != membershipapi.TaskStopped {
+				busy[t.Name] = append(busy[t.Name], address)
+			}
+		}
+
+		return nil
+	})
+
+	return busy, errors.Join(errs...)
+}
+
+// memberTaskStatus returns the state of the leader tasks of the member at address.
+func (m *membership) memberTaskStatus(ctx context.Context, address string) (*membershipapi.InternalClusterTaskStatus, error) {
+	c, err := m.MemberClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := c.DoInternalRequest(ctx, http.MethodPost, "/membership/tasks/:status", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var status membershipapi.InternalClusterTaskStatus
+
+	err = resp.MetadataAsStruct(&status)
+	if err != nil {
+		return nil, err
+	}
+
+	return &status, nil
+}
+
 // stopLeaderTasks stops the background tasks until the next restart.
 func (m *membership) stopLeaderTasks(ctx context.Context) []error {
 	// Cancel first, so the leadership check does not start the tasks again.
 	m.cancel()
+
+	// A handover in progress ends with the term, it needs mu to start a task.
+	m.handover.Wait()
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -1263,6 +1520,18 @@ func (m *membership) stopLeaderTasks(ctx context.Context) []error {
 
 // stopBackgroundTasks stops the running background tasks in parallel. The caller must hold mu.
 func (m *membership) stopBackgroundTasks(ctx context.Context) []error {
+	m.termMu.Lock()
+	if m.endTerm != nil {
+		m.endTerm()
+	}
+
+	m.termMu.Unlock()
+
+	// The tasks count as stopping, while work of them is still in flight.
+	for _, t := range m.backgroundTasks {
+		m.taskStatus.setStarted(t.Name, false)
+	}
+
 	var errsMu sync.Mutex
 	errs := make([]error, 0, len(m.shutdownFuncs))
 

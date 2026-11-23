@@ -464,7 +464,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Background tasks
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
-	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
+	tasks := append([]clusteringSvc.LeaderTask{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, warningLogEmitter)...)
 
 	// The mover and the removal checks reach the membership service once it is set up.
 	fileMover := memberfiles.NewMover(
@@ -1632,7 +1632,9 @@ func (d *Daemon) setupAPIRoutes(
 	)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
+	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc, forward, func(ctx context.Context) (context.Context, context.CancelFunc, bool) {
+		return d.leaderContext(ctx, taskName(componentTaskRefreshUpdates), slog.Default())
+	})
 
 	provisioningChannelRouter := provisioningRouter.SubGroup("/channels")
 	registerChannelsHandler(provisioningChannelRouter, d.authorizer, channelSvc)
@@ -1656,6 +1658,72 @@ var (
 	lifecycleMonitorRetryMax = time.Minute
 )
 
+// isClusterLeader reports whether this member is the cluster leader.
+func (d *Daemon) isClusterLeader(ctx context.Context, leaderLog *slog.Logger) bool {
+	leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
+	if err != nil {
+		leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership", logger.Err(err))
+		return false
+	}
+
+	return isLeader
+}
+
+// leaderContext returns a context with the values of ctx for work of the leader task name, which ends when this member stops being the leader.
+// The work counts as work of the task until the returned function is called.
+func (d *Daemon) leaderContext(ctx context.Context, name string, leaderLog *slog.Logger) (context.Context, context.CancelFunc, bool) {
+	if !d.isClusterLeader(ctx, leaderLog) {
+		return nil, nil, false
+	}
+
+	term, workDone, ok := d.membershipSvc.LeaderContext(name)
+	if !ok {
+		return nil, nil, false
+	}
+
+	leaderCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	stop := context.AfterFunc(term, cancel)
+
+	return leaderCtx, func() {
+		stop()
+		cancel()
+		workDone()
+	}, true
+}
+
+// leaderOnly skips a run of f once this member is no longer the cluster leader, and counts a run as work of the leader task name.
+func (d *Daemon) leaderOnly(name string, f task.Func) task.Func {
+	return func(ctx context.Context) {
+		if !d.isClusterLeader(ctx, slog.Default()) {
+			return
+		}
+
+		_, done, ok := d.membershipSvc.LeaderContext(name)
+		if !ok {
+			return
+		}
+
+		defer done()
+
+		f(ctx)
+	}
+}
+
+// leaderTask returns the leader task named after component.
+func (d *Daemon) leaderTask(component logger.Component, f task.Func, schedule task.Schedule, stopDeadline time.Duration) clusteringSvc.LeaderTask {
+	name := taskName(component)
+
+	return clusteringSvc.LeaderTask{Name: name, Start: task.New(d.leaderOnly(name, f), schedule, stopDeadline)}
+}
+
+// taskName returns the name of the leader task logging as component.
+func taskName(component logger.Component) string {
+	return strings.TrimPrefix(string(component), "daemon.task.")
+}
+
 // isClusterMemberRequest reports whether r is sent by another cluster member.
 func (d *Daemon) isClusterMemberRequest(r *http.Request) bool {
 	if d.membershipSvc == nil || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
@@ -1669,8 +1737,8 @@ func (d *Daemon) isClusterMemberRequest(r *http.Request) bool {
 }
 
 // lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
-func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {
-	return func(ctx context.Context) func(context.Context) error {
+func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) clusteringSvc.LeaderTask {
+	return clusteringSvc.LeaderTask{Name: "lifecycle_events_monitor", Start: func(ctx context.Context) func(context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
 		done := make(chan struct{})
 
@@ -1691,7 +1759,7 @@ func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.Tas
 				return fmt.Errorf("Failed to stop lifecycle events monitor: %w", stopCtx.Err())
 			}
 		}
-	}
+	}}
 }
 
 // startLifecycleEventsMonitor retries with backoff until the start succeeds or ctx is done.
@@ -1742,6 +1810,56 @@ func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.Membe
 	return clusterTaskStop
 }
 
+// memberTasks returns the background tasks every cluster member runs for its own caches.
+func (d *Daemon) memberTasks(serverSvc provisioning.ServerService, imageFlasher *flasher.Flasher, secureBootMedia provisioning.SecureBootMediaPort) []task.TaskFunc {
+	if config.IsBackgroundTasksDisabled() {
+		return []task.TaskFunc{}
+	}
+
+	// Start background task to prune the cache of generated seed images.
+	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
+		slog.InfoContext(ctx, "Seed image cache prune triggered")
+
+		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
+		if err != nil {
+			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Seed image cache prune completed")
+	})
+
+	// Start background task to prune the generated secure boot enrollment media.
+	pruneSecureBootMediaTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
+
+		// A media, that a deployment has attached to a BMC, is kept: the BMC
+		// reads it only when the server boots, so it would otherwise be pruned
+		// while the server still needs it.
+		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
+	}
+
+	return []task.TaskFunc{
+		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
+		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
+	}
+}
+
 // firstRunDelay runs prepare and waits for delay on the first call, false if the context ends while waiting.
 func firstRunDelay(prepare func(context.Context), delay time.Duration) func(context.Context) bool {
 	var mu sync.Mutex
@@ -1780,14 +1898,13 @@ func (d *Daemon) backgroundTasks(
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
-	imageFlasher *flasher.Flasher,
-	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
-) []task.TaskFunc {
+) []clusteringSvc.LeaderTask {
 	if config.IsBackgroundTasksDisabled() {
-		return []task.TaskFunc{}
+		return []clusteringSvc.LeaderTask{}
 	}
 
+	// A new leader removes the downloads of a former leader, which are left pending, before it refreshes the updates.
 	pruneUpdates := func(ctx context.Context) {
 		err := updateSvc.Prune(ctx)
 		if err != nil {
@@ -1797,10 +1914,9 @@ func (d *Daemon) backgroundTasks(
 
 	// Give IncusOS some time to apply seed data before actually starting to
 	// perform the refresh of the updates.
-	delayFirstUpdates := firstRunDelay(pruneUpdates, 0)
+	delayFirstUpdates := firstRunDelay(nil, 0)
 	if d.env.IsIncusOS() {
 		delayFirstUpdates = firstRunDelay(func(ctx context.Context) {
-			pruneUpdates(ctx)
 			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
 		}, 30*time.Second)
 	}
@@ -1933,19 +2049,6 @@ func (d *Daemon) backgroundTasks(
 		runServerDeploymentControlLoop(ctx, "tick", nil)
 	})
 
-	checkClusterLeader := func(ctx context.Context, leaderLog *slog.Logger) bool {
-		leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-		defer cancel()
-
-		isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
-		if err != nil {
-			leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership background task signal", logger.Err(err))
-			return false
-		}
-
-		return isLeader
-	}
-
 	// Trigger the server deployment control loop from the virtual media events,
 	// so attaching and detaching the installation media resolves promptly.
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
@@ -1953,25 +2056,31 @@ func (d *Daemon) backgroundTasks(
 			return
 		}
 
-		isLeader := checkClusterLeader(ctx, slog.Default())
-		if !isLeader {
+		leaderCtx, done, ok := d.leaderContext(ctx, taskName(componentTaskServerDeployment), slog.Default())
+		if !ok {
 			return
 		}
 
 		name := msg.Server
 
 		go func() {
-			time.Sleep(config.ServerDeploymentVirtualMediaTriggerDelay)
+			defer done()
 
-			runServerDeploymentControlLoop(context.WithoutCancel(ctx), "virtual media", &name)
+			select {
+			case <-time.After(config.ServerDeploymentVirtualMediaTriggerDelay):
+			case <-leaderCtx.Done():
+				return
+			}
+
+			runServerDeploymentControlLoop(leaderCtx, "virtual media", &name)
 		}()
 	})
 
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
 	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
 		log := slog.With(slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
-		isLeader := checkClusterLeader(ctx, log)
-		if !isLeader {
+		leaderCtx, done, ok := d.leaderContext(ctx, taskName(componentTaskServerDeployment), log)
+		if !ok {
 			return
 		}
 
@@ -1982,9 +2091,21 @@ func (d *Daemon) backgroundTasks(
 		// own goroutine, since it blocks on the BMC of the server.
 		name := slm.Server
 
-		go runServerDeploymentControlLoop(context.WithoutCancel(ctx), "server lifecycle", &name)
+		go func() {
+			defer done()
 
-		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+			runServerDeploymentControlLoop(leaderCtx, "server lifecycle", &name)
+		}()
+
+		// The cluster update loop gets its own term context, since the deployment loop ends leaderCtx when it is done.
+		clusterCtx, clusterDone, ok := d.leaderContext(ctx, taskName(componentTaskClusterUpdate), log)
+		if !ok {
+			return
+		}
+
+		defer clusterDone()
+
+		err := clusterSvc.ClusterUpdateControlLoop(clusterCtx, slm.Cluster)
 		if err != nil {
 			logCtx := slog.ErrorContext
 			if domain.IsRetryableError(err) {
@@ -2057,44 +2178,6 @@ func (d *Daemon) backgroundTasks(
 
 		slog.InfoContext(ctx, "BMC data resync completed")
 	})
-
-	// Start background task to prune the cache of generated seed images.
-	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
-		slog.InfoContext(ctx, "Seed image cache prune triggered")
-
-		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
-		if err != nil {
-			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Seed image cache prune completed")
-	})
-
-	// Start background task to prune the generated secure boot enrollment media.
-	pruneSecureBootMediaTask := func(ctx context.Context) {
-		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
-
-		// A media, that a deployment has attached to a BMC, is kept: the BMC
-		// reads it only when the server boots, so it would otherwise be pruned
-		// while the server still needs it.
-		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
-	}
 
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
@@ -2210,18 +2293,19 @@ func (d *Daemon) backgroundTasks(
 		slog.InfoContext(ctx, "Certificates validity check completed")
 	})
 
-	return []task.TaskFunc{
-		task.New(refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second),
-		task.New(refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
-		task.New(clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
-		task.New(serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
-		task.New(pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
-		task.New(refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
-		task.New(refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
-		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
-		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
-		task.New(renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
-		task.New(certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
+	refreshUpdatesTask := d.leaderTask(componentTaskRefreshUpdates, refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second)
+	refreshUpdatesTask.BeforeStart = pruneUpdates
+
+	return []clusteringSvc.LeaderTask{
+		refreshUpdatesTask,
+		d.leaderTask(componentTaskRefreshImageSources, refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
+		d.leaderTask(componentTaskClusterUpdate, clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
+		d.leaderTask(componentTaskServerDeployment, serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
+		d.leaderTask(componentTaskPollReadyServers, pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
+		d.leaderTask(componentTaskRefreshInventory, refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
+		d.leaderTask(componentTaskRefreshBMCData, refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
+		d.leaderTask(componentTaskRenewACMECertificate, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
+		d.leaderTask(componentTaskCertificatesValidityCheck, certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
 
 		// Start background task to poll servers in pending state to become available.
 		d.backgroundPollingTask(
@@ -2349,7 +2433,7 @@ func (d *Daemon) backgroundPollingTask(
 	serverFilter provisioning.ServerFilter,
 	updateServerConfiguration bool,
 	interval time.Duration,
-) task.TaskFunc {
+) clusteringSvc.LeaderTask {
 	backgroundTask := componentTask(component, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
 		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
@@ -2367,7 +2451,7 @@ func (d *Daemon) backgroundPollingTask(
 		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
 	})
 
-	return task.New(backgroundTask, task.Every(interval), time.Second)
+	return d.leaderTask(component, backgroundTask, task.Every(interval), time.Second)
 }
 
 func (d *Daemon) setupSocketListener(ctx context.Context) error {

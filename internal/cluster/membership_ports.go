@@ -23,6 +23,8 @@ type MembershipService interface {
 
 	Enable(ctx context.Context, clusterAddress string, tokenRepo JoinTokenRepo, configRepo ConfigRepo, globalRepo GlobalRaftRepo) error
 	StartLeaderTasks()
+	LeaderContext(name string) (context.Context, func(), bool)
+	TaskStatus() membershipapi.InternalClusterTaskStatus
 	SetGlobalDB(repo GlobalRaftRepo)
 	DetermineNodeID(ctx context.Context, address string) error
 	Gateway() cluster.Gateway
@@ -61,6 +63,8 @@ type MembershipService interface {
 	UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	ReloadSharedConfig(ctx context.Context) error
+
+	ContactMembers(ctx context.Context, except ...string) error
 }
 
 type GlobalRaftRepo interface {

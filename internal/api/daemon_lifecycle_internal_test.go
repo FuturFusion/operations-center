@@ -69,7 +69,7 @@ func TestLifecycleEventsMonitorTask(t *testing.T) {
 			}
 
 			// Run test
-			stop := lifecycleEventsMonitorTask(clusterSvc)(t.Context())
+			stop := lifecycleEventsMonitorTask(clusterSvc).Start(t.Context())
 			require.Eventually(t, func() bool {
 				return calls.Load() >= tc.waitForCalls
 			}, time.Second, time.Millisecond, "expect the start to be retried until the wanted number of calls")
