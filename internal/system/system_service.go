@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/lxc/incus/v7/shared/revert"
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -24,6 +25,9 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
+// Matches the threshold of github.com/lxc/incus/v7/shared/tls.CertificateNeedsUpdate.
+const acmeRenewalLifetimeRatio = 0.8
+
 type environment interface {
 	VarDir() string
 	IsIncusOS() bool
@@ -35,25 +39,17 @@ type systemService struct {
 	cacheRepo       CacheRepo
 	certificateRepo CertificateRepo
 
-	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc
+	acme ACMEPort
 }
 
 var _ SystemService = &systemService{}
-
-// ACMEUpdateCertificateFunc requests a certificate from the ACME server.
-type ACMEUpdateCertificateFunc func(
-	ctx context.Context,
-	cfg system.SecurityACME,
-	current *x509.Certificate,
-	force bool,
-) (*system.CertificatePost, error)
 
 func NewSystemService(
 	env environment,
 	serverSvc ProvisioningServerService,
 	cacheRepo CacheRepo,
 	certificateRepo CertificateRepo,
-	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc,
+	acme ACMEPort,
 ) *systemService {
 	return &systemService{
 		env:             env,
@@ -61,7 +57,7 @@ func NewSystemService(
 		cacheRepo:       cacheRepo,
 		certificateRepo: certificateRepo,
 
-		acmeUpdateCertificateFunc: acmeUpdateCertificateFunc,
+		acme: acme,
 	}
 }
 
@@ -230,6 +226,12 @@ func (s *systemService) pushServerCertificateAll(ctx context.Context, certificat
 }
 
 func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
+	cfg := config.GetSecurity().ACME
+	if !config.IsACMEEnabled(cfg) {
+		slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
+		return false, nil
+	}
+
 	certificatePEM, err := s.certificateRepo.GetServerCertificate(ctx)
 	if err != nil {
 		return false, fmt.Errorf("Failed to read the server certificate: %w", err)
@@ -240,19 +242,15 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 		return false, fmt.Errorf("Failed to parse certificate: %w", err)
 	}
 
-	cfg := config.GetSecurity().ACME
-
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, cfg, current, force)
-	if err != nil {
-		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
+	if !force && !incustls.CertificateNeedsUpdate(cfg.Domain, current) {
+		renewalAfter := current.NotBefore.Add(time.Duration(float64(current.NotAfter.Sub(current.NotBefore)) * acmeRenewalLifetimeRatio))
+		slog.InfoContext(ctx, "ACME server certificate renewal skipped, certificate is not due for renewal", slog.String("domain", cfg.Domain), slog.Time("renewal_after", renewalAfter), slog.Time("not_after", current.NotAfter))
+		return false, nil
 	}
 
-	if newCert == nil {
-		if !config.IsACMEEnabled(cfg) {
-			slog.InfoContext(ctx, "ACME server certificate renewal skipped, ACME is not configured")
-		}
-
-		return false, nil
+	newCert, err := s.acme.RequestCertificate(ctx, cfg)
+	if err != nil {
+		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}
 
 	err = s.UpdateCertificate(ctx, newCert.Certificate, newCert.Key)

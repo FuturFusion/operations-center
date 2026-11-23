@@ -122,6 +122,34 @@ func GenerateWithValidity(t *testing.T, notBefore time.Time, notAfter time.Time)
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
 
+// GenerateForDomain returns a PEM encoded self signed certificate and key for
+// dnsName with the given validity period.
+func GenerateForDomain(t *testing.T, dnsName string, notBefore time.Time, notAfter time.Time) (certPEM string, keyPEM string) {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: serialNumber(t),
+		Subject:      pkix.Name{CommonName: dnsName},
+		DNSNames:     []string{dnsName},
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+
+	certPEM = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+	keyPEM = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}))
+
+	return certPEM, keyPEM
+}
+
 func serialNumber(t *testing.T) *big.Int {
 	t.Helper()
 

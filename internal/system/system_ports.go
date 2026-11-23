@@ -52,3 +52,9 @@ type ProvisioningServerService interface {
 	UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error
 	RestartApplication(ctx context.Context, name string, applicationName string) error
 }
+
+// ACMEPort requests server certificates from an ACME server.
+type ACMEPort interface {
+	// RequestCertificate requests a new certificate and key for the configured domain.
+	RequestCertificate(ctx context.Context, cfg system.SecurityACME) (*system.CertificatePost, error)
+}

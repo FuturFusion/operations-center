@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -81,7 +80,6 @@ import (
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
-	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	authnmiddleware "github.com/FuturFusion/operations-center/internal/security/authn/middleware"
 	authnoidc "github.com/FuturFusion/operations-center/internal/security/authn/oidc"
@@ -100,6 +98,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	internalTx "github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
+	systemACME "github.com/FuturFusion/operations-center/internal/system/adapter/acme"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
@@ -434,10 +433,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	d.systemSvc, err = d.setupSystemService(serverSvc)
-	if err != nil {
-		return err
-	}
+	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Background tasks
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
@@ -1271,12 +1267,7 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) (system.SystemService, error) {
-	acmeRoot, err := d.openSubRoot(d.cacheRoot, "acme")
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open acme directory: %w", err)
-	}
-
+func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
 			d.env, serverSvc,
@@ -1285,16 +1276,10 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) (syste
 			),
 			// Do not wrap with slog. This repo handles the private key of the server.
 			systemLocalfs.NewCertificate(d.varRoot),
-			func(
-				ctx context.Context,
-				cfg apisystem.SecurityACME,
-				current *x509.Certificate,
-				force bool,
-			) (*apisystem.CertificatePost, error) {
-				return acme.UpdateCertificate(ctx, acmeRoot, cfg, current, force)
-			},
+			// Do not wrap with slog. The port handles the private key of the server and provider credentials.
+			systemACME.New(d.cacheRoot),
 		),
-	), nil
+	)
 }
 
 // RestartRequested is signaled, once the daemon asks to be restarted.
