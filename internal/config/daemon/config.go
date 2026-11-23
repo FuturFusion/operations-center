@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -171,7 +171,7 @@ func sharedEqual(a SharedConfig, b SharedConfig) bool {
 }
 
 func init() {
-	env := environment.New(ApplicationName, ApplicationEnvPrefix)
+	env := osenv.New(ApplicationName, ApplicationEnvPrefix)
 	defaultStore.Store(newLocalStore(env, diskPersister(env), localConfig{}))
 	sharedStore.Store(newStore(env, persistSharedNotLoaded, notifyShared, normalizeShared, sharedConfigValidator(), SharedConfig{}))
 }

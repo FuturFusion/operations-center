@@ -1,6 +1,6 @@
 //go:build windows
 
-package environment
+package osenv
 
 import (
 	"golang.org/x/sys/windows"

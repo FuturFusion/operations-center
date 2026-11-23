@@ -40,7 +40,7 @@ import (
 	clusterEntities "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
-	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
+	internalenvironment "github.com/FuturFusion/operations-center/internal/environment/osenv"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
 	imageXZ "github.com/FuturFusion/operations-center/internal/image/adapter/xz"
