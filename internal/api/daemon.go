@@ -367,6 +367,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		d.clientKeypair,
 		incusAdapter.WithEnvironment(d.env),
 		incusAdapter.WithSkipGetServer(true),
+		incusAdapter.WithOperationsCenterCluster(d.isClusterMemberCertificate, d.operationsCenterCertificate),
 	)
 
 	loader := incusScriptlet.NewLoader()
@@ -570,11 +571,28 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	membershipSvc.StartLeaderTasks()
 
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, _ apisystem.Updates) {
+		d.selfRegisterClusterMember(ctx, serverSvc)
+	})
+
+	d.selfRegisterClusterMember(ctx, serverSvc)
+
+	for _, memberTask := range d.memberTasks(serverSvc, imageFlasher, secureBootMedia) {
+		d.shutdownFuncs = append(d.shutdownFuncs, memberTask(ctx))
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("IncusOS self registration: %w", err)
+	}
+
+	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSDisableAutoReboot(timeoutCtx)
+	cancel()
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to disable IncusOS auto-reboot on cluster member", logger.Err(err))
 	}
 
 	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
@@ -1221,6 +1239,10 @@ func (d *Daemon) setupServerService(
 		d.apiCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBackgroundTasks(d.serverBackgroundTasks),
+		provisioningServer.WithOperationsCenterMember(d.operationsCenterMember),
+		provisioningServer.WithOperationsCenterMembersContact(d.contactOperationsCenterMembers),
+		provisioningServer.WithOperationsCenterMemberCertificates(d.isClusterMemberCertificate),
+		provisioningServer.WithClustered(d.env.Clustered),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
@@ -1657,6 +1679,92 @@ var (
 	lifecycleMonitorRetryMin = time.Second
 	lifecycleMonitorRetryMax = time.Minute
 )
+
+// contactOperationsCenterMembers checks that the other cluster members can be reached.
+func (d *Daemon) contactOperationsCenterMembers(ctx context.Context, except string) error {
+	if !d.env.Clustered() || d.membershipSvc == nil {
+		return nil
+	}
+
+	return d.membershipSvc.ContactMembers(ctx, except)
+}
+
+// operationsCenterMember returns this cluster member as server of type "operations-center", nil if not clustered.
+func (d *Daemon) operationsCenterMember(ctx context.Context) (*provisioning.OperationsCenterMember, error) {
+	if !d.env.Clustered() {
+		return nil, nil
+	}
+
+	if d.membershipSvc == nil {
+		//domain-errors:internal The membership is set up, before servers are registered.
+		return nil, errors.New("Cluster membership is not available yet")
+	}
+
+	memberID, err := d.membershipSvc.LocalMemberID()
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := d.membershipSvc.GetMembersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	member, ok := members[memberID]
+	if !ok {
+		//domain-errors:internal The local member is always part of the cluster.
+		return nil, fmt.Errorf("Cluster member %d not found", memberID)
+	}
+
+	// The member record holds its own certificate while the member presents the cluster certificate.
+	certificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
+	if err != nil {
+		return nil, err
+	}
+
+	return &provisioning.OperationsCenterMember{
+		Name:          member.Name,
+		ConnectionURL: "https://" + member.Address,
+		Certificate:   string(certificatePEM),
+	}, nil
+}
+
+// isClusterMemberCertificate reports whether certificatePEM is the certificate of a cluster member.
+func (d *Daemon) isClusterMemberCertificate(certificatePEM string) bool {
+	if !d.env.Clustered() || d.membershipSvc == nil {
+		return false
+	}
+
+	return d.membershipSvc.IsMemberCertificate(certificatePEM)
+}
+
+// operationsCenterCertificate returns the certificate presented by all cluster members, empty if not clustered.
+func (d *Daemon) operationsCenterCertificate() string {
+	if !d.env.Clustered() {
+		return ""
+	}
+
+	d.configReloadMu.Lock()
+	defer d.configReloadMu.Unlock()
+
+	if len(d.apiCertificate.Certificate) == 0 {
+		return ""
+	}
+
+	return certificate.EncodeToPEM(d.apiCertificate.Certificate[0])
+}
+
+// selfRegisterClusterMember updates the server record of this cluster member.
+func (d *Daemon) selfRegisterClusterMember(ctx context.Context, serverSvc provisioning.ServerService) {
+	if !d.env.Clustered() {
+		return
+	}
+
+	err := serverSvc.SelfRegisterOperationsCenter(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to update the server record of this cluster member", logger.Err(err))
+	}
+}
 
 // isClusterLeader reports whether this member is the cluster leader.
 func (d *Daemon) isClusterLeader(ctx context.Context, leaderLog *slog.Logger) bool {
@@ -2258,6 +2366,21 @@ func (d *Daemon) backgroundTasks(
 
 		acmeCfg := config.GetSecurity().ACME
 		warnings = warning.Warnings{}
+
+		// Check the cluster certificate presented by all members once.
+		clusterCertificate := d.operationsCenterCertificate()
+		if clusterCertificate != "" {
+			servers = slices.DeleteFunc(servers, func(server provisioning.Server) bool {
+				return server.Type == api.ServerTypeOperationsCenter && d.isClusterMemberCertificate(ptr.From(server.Certificate))
+			})
+
+			servers = append(servers, provisioning.Server{
+				Name:        api.ServerNameOperationsCenter,
+				Type:        api.ServerTypeOperationsCenter,
+				Certificate: &clusterCertificate,
+			})
+		}
+
 		for _, server := range servers {
 			if server.Certificate == nil {
 				continue
@@ -2618,20 +2741,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return nil
 	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
-				raddr, err := net.ResolveUnixAddr("unix", internalenvironment.IncusOSSocket)
-				if err != nil {
-					return nil, err
-				}
-
-				return net.DialUnix("unix", nil, raddr)
-			},
-
-			DisableKeepAlives: true,
-		},
-	}
+	client := incusOSClient()
 
 	// Special IncusOS provider configuration with provider "operations-center"
 	// but without URL, token and certificate.
@@ -2683,6 +2793,89 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 	return nil
 }
 
+// incusOSClient returns a client of the IncusOS API through its unix socket.
+func incusOSClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
+				raddr, err := net.ResolveUnixAddr("unix", internalenvironment.IncusOSSocket)
+				if err != nil {
+					return nil, err
+				}
+
+				return net.DialUnix("unix", nil, raddr)
+			},
+
+			DisableKeepAlives: true,
+		},
+	}
+}
+
+// incusOSDisableAutoReboot disables the auto-reboot after IncusOS updates, so cluster members reboot one at a time.
+func (d *Daemon) incusOSDisableAutoReboot(ctx context.Context) error {
+	if !d.env.IsIncusOS() || !d.env.Clustered() {
+		return nil
+	}
+
+	client := incusOSClient()
+
+	var update incusosapi.SystemUpdate
+
+	err := incusOSRequest(ctx, client, http.MethodGet, "http://unix/1.0/system/update", nil, &update)
+	if err != nil {
+		return err
+	}
+
+	if !update.Config.AutoReboot {
+		return nil
+	}
+
+	update.Config.AutoReboot = false
+
+	return incusOSRequest(ctx, client, http.MethodPut, "http://unix/1.0/system/update", update, nil)
+}
+
+// incusOSRequest sends content to the IncusOS API and decodes the response metadata to target, each if not nil.
+func incusOSRequest(ctx context.Context, client *http.Client, method string, url string, content any, target any) error {
+	var body io.Reader = http.NoBody
+	if content != nil {
+		data, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	apiResponse := api.Response{}
+	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch %s: %s: %w", url, resp.Status, err)
+	}
+
+	if apiResponse.Type == api.ErrorResponse {
+		return api.StatusErrorf(resp.StatusCode, "%v", apiResponse.Error)
+	}
+
+	if target == nil {
+		return nil
+	}
+
+	return json.Unmarshal(apiResponse.Metadata, target)
+}
+
 func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.SecurityACME) (valid bool, _ error) {
 	// ACME renews late in the validity period. A fixed threshold warns before the renewal starts.
 	if server.Type == api.ServerTypeOperationsCenter && acme.IsEnabled(acmeCfg) {
@@ -2692,6 +2885,42 @@ func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.Sec
 	return certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
 }
 
+// getLocalServer returns the server record of this Operations Center.
+func (d *Daemon) getLocalServer(ctx context.Context, serverSvc provisioning.ServerService) (*provisioning.Server, error) {
+	member, err := d.operationsCenterMember(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if member != nil {
+		return serverSvc.GetByName(ctx, member.Name)
+	}
+
+	d.configReloadMu.Lock()
+	var leaf []byte
+	if len(d.apiCertificate.Certificate) > 0 {
+		leaf = d.apiCertificate.Certificate[0]
+	}
+
+	d.configReloadMu.Unlock()
+
+	servers, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Type: new(api.ServerTypeOperationsCenter),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, server := range servers {
+		cert, err := certificate.Decode([]byte(ptr.From(server.Certificate)))
+		if err == nil && bytes.Equal(cert.Raw, leaf) {
+			return &server, nil
+		}
+	}
+
+	return nil, domain.NewErrorf(domain.ErrNotFound, "", `No server of type "operations-center" holds the certificate of this Operations Center`)
+}
+
 func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.ServerService) error {
 	if !d.env.IsIncusOS() {
 		return nil
@@ -2699,20 +2928,12 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 
 	slog.DebugContext(ctx, "Self poll server status on IncusOS to update own inventory record")
 
-	operationCenters, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Type: new(api.ServerTypeOperationsCenter),
-	})
+	ocServer, err := d.getLocalServer(ctx, serverSvc)
 	if err != nil {
 		return fmt.Errorf("Failed to get self server instance: %w", err)
 	}
 
-	if len(operationCenters) != 1 {
-		return fmt.Errorf(`Expected exactly 1 server of type "operations-center", got: %d`, len(operationCenters))
-	}
-
-	serverSelf := operationCenters[0]
-
-	err = serverSvc.PollServer(ctx, serverSelf, true)
+	err = serverSvc.PollServer(ctx, *ocServer, true)
 	if err != nil {
 		return fmt.Errorf("Failed to self poll server instalce: %w", err)
 	}

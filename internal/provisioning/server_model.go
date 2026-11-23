@@ -245,6 +245,13 @@ func (s Server) SignalLifecycleEvent() {
 	}()
 }
 
+// OperationsCenterMember describes the cluster member running the code as server of type "operations-center".
+type OperationsCenterMember struct {
+	Name          string
+	ConnectionURL string
+	Certificate   string
+}
+
 var ServerSelf = Server{
 	Name:          "operations-center",
 	Type:          api.ServerTypeOperationsCenter,

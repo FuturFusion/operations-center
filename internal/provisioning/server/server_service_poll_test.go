@@ -1564,6 +1564,130 @@ func TestServerService_PollServer(t *testing.T) {
 			wantServerConnectionURL: new("https://192.168.0.100:8443"),
 		},
 		{
+			name: "success - server takes the address of its management interface as connection URL",
+			serverArg: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusPending,
+				Channel:       "stable",
+				ConnectionURL: "https://10.0.0.1:8443",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusPending,
+				ConnectionURL: "https://10.0.0.1:8443",
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "stable",
+			},
+
+			assertErr:               require.NoError,
+			assertLog:               log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerConnectionURL: new("https://192.168.0.100:8443"),
+		},
+		{
+			name: "success - cluster member of Operations Center keeps the connection URL it registered",
+			serverArg: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeOperationsCenter,
+				Status:        api.ServerStatusPending,
+				Channel:       "stable",
+				ConnectionURL: "https://10.0.0.1:7443",
+				Certificate:   new("member-certificate"),
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeOperationsCenter,
+				Status:        api.ServerStatusPending,
+				ConnectionURL: "https://10.0.0.1:7443",
+				Certificate:   new("member-certificate"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "stable",
+			},
+
+			assertErr:               require.NoError,
+			assertLog:               log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerConnectionURL: new("https://10.0.0.1:7443"),
+		},
+		{
+			name: "success - deployed Operations Center follows its management address",
+			serverArg: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeOperationsCenter,
+				Status:        api.ServerStatusPending,
+				Channel:       "stable",
+				ConnectionURL: "https://10.0.0.1:7443",
+				Certificate:   new("remote-certificate"),
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeOperationsCenter,
+				Status:        api.ServerStatusPending,
+				ConnectionURL: "https://10.0.0.1:7443",
+				Certificate:   new("remote-certificate"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "stable",
+			},
+
+			assertErr:               require.NoError,
+			assertLog:               log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerConnectionURL: new("https://192.168.0.100:8443"),
+		},
+		{
 			name: "error - client GetVersionData",
 			serverArg: provisioning.Server{
 				Name:   "one",
@@ -1871,6 +1995,9 @@ func TestServerService_PollServer(t *testing.T) {
 				repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithRebootStatusUpdateGracePeriod(5*time.Second),
+				provisioningServer.WithOperationsCenterMemberCertificates(func(certificatePEM string) bool {
+					return certificatePEM == "member-certificate"
+				}),
 			)
 
 			// Run test

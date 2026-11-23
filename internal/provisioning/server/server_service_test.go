@@ -52,6 +52,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 	tests := []struct {
 		name                    string
 		argCertificate          tls.Certificate
+		clustered               bool
 		repoGetAllWithFilter    provisioning.Servers
 		repoGetAllWithFilterErr error
 		repoGetByName           provisioning.Server
@@ -93,6 +94,14 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                    "success - cluster member - the record is left as it is",
+			argCertificate:          serverCertificate,
+			clustered:               true,
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: require.NoError,
 		},
 		{
 			name:           "error - operations center self update - multiple servers of type operations center",
@@ -194,6 +203,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			serverSvc := provisioningServer.New(
 				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.WithClustered(func() bool { return tc.clustered }),
 			)
 
 			// Run test
