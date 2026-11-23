@@ -32,7 +32,7 @@ func TestLocalfs_Exists(t *testing.T) {
 			name: "file exists",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
-				imagePath := filepath.Join("os", "release", "arch", "variant")
+				imagePath := filepath.Join("source", "os", "release", "arch", "variant")
 
 				err := os.MkdirAll(filepath.Join(destDir, imagePath, "1"), 0o700)
 				require.NoError(t, err)
@@ -41,6 +41,7 @@ func TestLocalfs_Exists(t *testing.T) {
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -57,6 +58,7 @@ func TestLocalfs_Exists(t *testing.T) {
 				t.Helper()
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -72,10 +74,11 @@ func TestLocalfs_Exists(t *testing.T) {
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
 
-				err := os.WriteFile(filepath.Join(destDir, "os"), []byte(`not a directory`), 0o600)
+				err := os.WriteFile(filepath.Join(destDir, "source"), []byte(`not a directory`), 0o600)
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -123,7 +126,7 @@ func TestLocalfs_Get(t *testing.T) {
 			name: "success",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
-				imagePath := filepath.Join("os", "release", "arch", "variant")
+				imagePath := filepath.Join("source", "os", "release", "arch", "variant")
 
 				err := os.MkdirAll(filepath.Join(destDir, imagePath, "1"), 0o700)
 				require.NoError(t, err)
@@ -132,6 +135,7 @@ func TestLocalfs_Get(t *testing.T) {
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -152,12 +156,13 @@ func TestLocalfs_Get(t *testing.T) {
 			name: "error - file not found",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
-				imagePath := filepath.Join("os", "release", "arch", "variant")
+				imagePath := filepath.Join("source", "os", "release", "arch", "variant")
 
 				err := os.MkdirAll(filepath.Join(destDir, imagePath, "1"), 0o700)
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -276,6 +281,7 @@ func TestLocalfs_Put(t *testing.T) {
 			tmpDir := t.TempDir()
 			lfs := New(fsroot.Open(t, tmpDir))
 			img := &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -334,12 +340,13 @@ func TestLocalfs_Delete(t *testing.T) {
 			name: "success",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
-				imagePath := filepath.Join("os", "release", "arch", "variant")
+				imagePath := filepath.Join("source", "os", "release", "arch", "variant")
 
 				err := os.MkdirAll(filepath.Join(destDir, imagePath), 0o700)
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -383,12 +390,13 @@ func TestLocalfs_DeleteVersion(t *testing.T) {
 			name: "success",
 			setupTmpDir: func(t *testing.T, destDir string) {
 				t.Helper()
-				imagePath := filepath.Join("os", "release", "arch", "variant")
+				imagePath := filepath.Join("source", "os", "release", "arch", "variant")
 
 				err := os.MkdirAll(filepath.Join(destDir, imagePath, "1"), 0o700)
 				require.NoError(t, err)
 			},
 			img: &image.IncusImage{
+				Source:          "source",
 				Name:            "os:release:arch:variant",
 				OperatingSystem: "os",
 				Release:         "release",
@@ -423,7 +431,7 @@ func TestLocalfs_DeleteVersionFile(t *testing.T) {
 
 	// Setup
 	tmpDir := t.TempDir()
-	versionDir := filepath.Join(tmpDir, "os", "release", "arch", "variant", "1")
+	versionDir := filepath.Join(tmpDir, "source", "os", "release", "arch", "variant", "1")
 	err := os.MkdirAll(versionDir, 0o700)
 	require.NoError(t, err)
 	for _, filename := range []string{"file1.txt", "file2.txt"} {
@@ -433,6 +441,7 @@ func TestLocalfs_DeleteVersionFile(t *testing.T) {
 
 	lfs := New(fsroot.Open(t, tmpDir))
 	img := &image.IncusImage{
+		Source:          "source",
 		Name:            "os:release:arch:variant",
 		OperatingSystem: "os",
 		Release:         "release",
@@ -454,6 +463,7 @@ func TestLocalfs_invalidPath(t *testing.T) {
 
 	validImage := func() *image.IncusImage {
 		return &image.IncusImage{
+			Source:          "source",
 			Name:            "os:release:arch:variant",
 			OperatingSystem: "os",
 			Release:         "release",
@@ -499,6 +509,14 @@ func TestLocalfs_invalidPath(t *testing.T) {
 			},
 		},
 		{
+			name: "Delete - source is parent directory",
+			run: func(ctx context.Context, lfs *localfs) error {
+				img := validImage()
+				img.Source = ".."
+				return lfs.Delete(ctx, img)
+			},
+		},
+		{
 			name: "Delete - operating system is parent directory",
 			run: func(ctx context.Context, lfs *localfs) error {
 				img := validImage()
@@ -527,7 +545,7 @@ func TestLocalfs_invalidPath(t *testing.T) {
 			// Setup
 			parentDir := t.TempDir()
 			storageDir := filepath.Join(parentDir, "storage")
-			otherFile := filepath.Join(storageDir, "os", "release", "arch", "other", "1", "file1.txt")
+			otherFile := filepath.Join(storageDir, "source", "os", "release", "arch", "other", "1", "file1.txt")
 			err := os.MkdirAll(filepath.Dir(otherFile), 0o700)
 			require.NoError(t, err)
 			err = os.WriteFile(otherFile, []byte(`file1 body`), 0o600)
