@@ -4,8 +4,13 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
+	"regexp"
+	"strings"
+	"time"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -133,6 +138,315 @@ var updates = map[int]update{
 	42: updateFromV41,
 	43: updateFromV42,
 	44: updateFromV43,
+	45: updateFromV44,
+}
+
+// rowDecreaseAllowed lists the tables per update version, where the update
+// may delete rows. Without an entry, the update fails if a table loses rows.
+var rowDecreaseAllowed = map[int]map[string]struct{}{
+	45: {"incus_images": {}},
+}
+
+func updateFromV44(ctx context.Context, tx *sql.Tx) error {
+	// v44..v45 make incus images unique per source.
+	// Images without a source get the source "local".
+	// The name is rebuilt as lower case "os:release:architecture:variant".
+	// Rows of one source with the same os, release, architecture and variant
+	// (ignoring case) are merged into one row with the versions of all rows.
+	// For a version in more than one row, the preferred row wins. The preferred
+	// row has the rebuilt name, else it is the oldest row.
+	// The aliases of all rows are merged. The first description that is not
+	// empty wins, starting with the preferred row.
+	// The versions are cast to text, because they might be stored as blob.
+	// Invalid versions cannot be merged. They are dropped and logged.
+	err := sanitizeIncusImageSourceNames(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	err = replaceEmptyIncusImageSourceURL(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	result, err := tx.ExecContext(ctx, `INSERT INTO incus_image_sources (name, url, filter_expression, last_updated) VALUES ('local', '', '', ?)`, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("Failed to create local image source: %w", MapDBError(err))
+	}
+
+	localSourceID, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("Failed to get ID of local image source: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE incus_images SET incus_image_source_id = ? WHERE incus_image_source_id IS NULL`, localSourceID)
+	if err != nil {
+		return fmt.Errorf("Failed to assign images without source to local image source: %w", MapDBError(err))
+	}
+
+	_, err = tx.ExecContext(ctx, `
+CREATE TEMP TABLE incus_images_ranked AS
+  SELECT
+    id,
+    ROW_NUMBER() OVER duplicates AS rank,
+    FIRST_VALUE(id) OVER duplicates AS keep_id
+  FROM incus_images
+  WINDOW duplicates AS (
+    PARTITION BY incus_image_source_id, lower(operating_system), lower(release), lower(architecture), lower(variant)
+    ORDER BY name <> lower(operating_system || ':' || release || ':' || architecture || ':' || variant), id
+  );
+`)
+	if err != nil {
+		return fmt.Errorf("Failed to rank duplicate incus images: %w", MapDBError(err))
+	}
+
+	err = logMergedIncusImages(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	err = logDroppedIncusImageVersions(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	stmt := `
+UPDATE incus_images SET versions = (
+  SELECT json_group_object(key, json(value)) FROM (
+    SELECT version.key, version.value, ROW_NUMBER() OVER (PARTITION BY version.key ORDER BY ranked.rank) AS n
+    FROM incus_images_ranked AS ranked
+    JOIN incus_images AS duplicate ON duplicate.id = ranked.id
+    JOIN json_each(iif(json_valid(CAST(duplicate.versions AS TEXT)), CAST(duplicate.versions AS TEXT), '{}')) AS version
+    WHERE ranked.keep_id = incus_images.id
+  ) WHERE n = 1
+)
+WHERE id IN (SELECT keep_id FROM incus_images_ranked WHERE rank > 1);
+
+UPDATE incus_images SET aliases = (
+  SELECT json_group_array(alias) FROM (
+    SELECT alias.value AS alias, MIN(ranked.rank * 1000000 + alias.key) AS position
+    FROM incus_images_ranked AS ranked
+    JOIN incus_images AS duplicate ON duplicate.id = ranked.id
+    JOIN json_each(
+      CASE WHEN json_valid(CAST(duplicate.aliases AS TEXT))
+        THEN CASE WHEN json_type(CAST(duplicate.aliases AS TEXT)) = 'array' THEN CAST(duplicate.aliases AS TEXT) ELSE '[]' END
+        ELSE '[]'
+      END
+    ) AS alias
+    WHERE ranked.keep_id = incus_images.id
+    GROUP BY alias.value
+    ORDER BY position
+  )
+)
+WHERE id IN (SELECT keep_id FROM incus_images_ranked WHERE rank > 1);
+
+UPDATE incus_images SET description = COALESCE((
+  SELECT duplicate.description
+  FROM incus_images_ranked AS ranked
+  JOIN incus_images AS duplicate ON duplicate.id = ranked.id
+  WHERE ranked.keep_id = incus_images.id AND duplicate.description <> ''
+  ORDER BY ranked.rank
+  LIMIT 1
+), '')
+WHERE id IN (SELECT keep_id FROM incus_images_ranked WHERE rank > 1);
+
+DELETE FROM incus_images WHERE id IN (SELECT id FROM incus_images_ranked WHERE rank > 1);
+
+DROP TABLE incus_images_ranked;
+
+CREATE TABLE incus_images_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  operating_system TEXT NOT NULL,
+  release TEXT NOT NULL,
+  architecture TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  versions TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  aliases TEXT NOT NULL DEFAULT '',
+  incus_image_source_id INTEGER NOT NULL,
+  UNIQUE (incus_image_source_id, name),
+  FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
+  CHECK (name <> '')
+);
+
+INSERT INTO incus_images_new SELECT
+  id,
+  lower(operating_system || ':' || release || ':' || architecture || ':' || variant),
+  description, operating_system, release, architecture, variant, versions, last_updated, aliases, incus_image_source_id
+FROM incus_images;
+DROP TABLE incus_images;
+ALTER TABLE incus_images_new RENAME TO incus_images;
+`
+	_, err = tx.ExecContext(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("Failed to merge duplicate incus images: %w", MapDBError(err))
+	}
+
+	return nil
+}
+
+func replaceEmptyIncusImageSourceURL(ctx context.Context, tx *sql.Tx) error {
+	// The URL is unique and the local source uses the empty URL. Older versions
+	// accepted the empty URL for other sources.
+	var id int64
+	var name string
+	err := tx.QueryRowContext(ctx, `SELECT id, name FROM incus_image_sources WHERE url = ''`).Scan(&id, &name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("Failed to get image source with empty URL: %w", MapDBError(err))
+	}
+
+	newURL := fmt.Sprintf("invalid://source_%d", id)
+	_, err = tx.ExecContext(ctx, `UPDATE incus_image_sources SET url = ? WHERE id = ?`, newURL, id)
+	if err != nil {
+		return fmt.Errorf("Failed to replace empty URL of image source %q: %w", name, MapDBError(err))
+	}
+
+	slog.WarnContext(ctx, "Replaced empty URL of image source, update the URL", slog.String("source", name), slog.String("url", newURL))
+
+	return nil
+}
+
+func logMergedIncusImages(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `
+SELECT source.name, duplicate.name, kept.name
+  FROM incus_images_ranked AS ranked
+  JOIN incus_images AS duplicate ON duplicate.id = ranked.id
+  JOIN incus_images AS kept ON kept.id = ranked.keep_id
+  JOIN incus_image_sources AS source ON source.id = duplicate.incus_image_source_id
+  WHERE ranked.rank > 1
+  ORDER BY duplicate.id`)
+	if err != nil {
+		return fmt.Errorf("Failed to get duplicate incus images: %w", MapDBError(err))
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var source, duplicate, kept string
+		err = rows.Scan(&source, &duplicate, &kept)
+		if err != nil {
+			return fmt.Errorf("Failed to scan duplicate incus image: %w", err)
+		}
+
+		slog.WarnContext(ctx, "Merged duplicate incus image", slog.String("source", source), slog.String("image", duplicate), slog.String("merged_into", kept))
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return fmt.Errorf("Failed to get duplicate incus images: %w", err)
+	}
+
+	return nil
+}
+
+func logDroppedIncusImageVersions(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `
+SELECT source.name, image.name
+  FROM incus_images_ranked AS ranked
+  JOIN incus_images AS image ON image.id = ranked.id
+  JOIN incus_image_sources AS source ON source.id = image.incus_image_source_id
+  WHERE ranked.keep_id IN (SELECT keep_id FROM incus_images_ranked WHERE rank > 1)
+    AND NOT json_valid(CAST(image.versions AS TEXT))
+  ORDER BY image.id`)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus images with invalid versions: %w", MapDBError(err))
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var source, name string
+		err = rows.Scan(&source, &name)
+		if err != nil {
+			return fmt.Errorf("Failed to scan incus image with invalid versions: %w", err)
+		}
+
+		slog.WarnContext(ctx, "Dropped invalid versions of incus image", slog.String("source", source), slog.String("image", name))
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return fmt.Errorf("Failed to get incus images with invalid versions: %w", err)
+	}
+
+	return nil
+}
+
+func sanitizeIncusImageSourceNames(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id, name FROM incus_image_sources ORDER BY id`)
+	if err != nil {
+		return fmt.Errorf("Failed to get image sources: %w", MapDBError(err))
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	type source struct {
+		id   int64
+		name string
+	}
+
+	var sources []source
+	for rows.Next() {
+		var src source
+		err = rows.Scan(&src.id, &src.name)
+		if err != nil {
+			return fmt.Errorf("Failed to scan image source: %w", err)
+		}
+
+		sources = append(sources, src)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return fmt.Errorf("Failed to get image sources: %w", err)
+	}
+
+	// Source names are part of API paths and file paths. Upper case letters
+	// become lower case. Other invalid characters become "_". If the result is
+	// empty, reserved or taken, the name becomes "source_<id>".
+	invalidChars := regexp.MustCompile(`[^a-z0-9_]`)
+	// "create" clashes with the UI route to create a source.
+	reserved := map[string]bool{"local": true, "create": true}
+
+	// Valid names keep their name, so they are taken first.
+	taken := map[string]bool{}
+	for _, src := range sources {
+		if src.name != "" && !invalidChars.MatchString(src.name) && !reserved[src.name] {
+			taken[src.name] = true
+		}
+	}
+
+	for _, src := range sources {
+		if taken[src.name] {
+			continue
+		}
+
+		name := invalidChars.ReplaceAllString(strings.ToLower(src.name), "_")
+		if name == "" || reserved[name] || taken[name] {
+			name = fmt.Sprintf("source_%d", src.id)
+		}
+
+		for taken[name] {
+			name = fmt.Sprintf("%s_%d", name, src.id)
+		}
+
+		taken[name] = true
+
+		_, err = tx.ExecContext(ctx, `UPDATE incus_image_sources SET name = ? WHERE id = ?`, name, src.id)
+		if err != nil {
+			return fmt.Errorf("Failed to rename image source %q: %w", src.name, MapDBError(err))
+		}
+
+		slog.WarnContext(ctx, "Renamed image source", slog.String("old_name", src.name), slog.String("new_name", name))
+	}
+
+	return nil
 }
 
 func updateFromV43(ctx context.Context, tx *sql.Tx) error {

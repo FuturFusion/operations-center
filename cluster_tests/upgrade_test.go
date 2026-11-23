@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -102,6 +103,51 @@ func checksum(t *testing.T, m *member, name string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// withField returns a copy of the list of objects with name set to value in each object.
+func withField(t *testing.T, list any, name string, value any) []any {
+	t.Helper()
+
+	objects, ok := list.([]any)
+	require.True(t, ok, "%v is not a list", list)
+
+	result := make([]any, 0, len(objects))
+	for _, object := range objects {
+		fields, ok := object.(map[string]any)
+		require.True(t, ok, "%v is not an object", object)
+
+		updated := maps.Clone(fields)
+		updated[name] = value
+		result = append(result, updated)
+	}
+
+	return result
+}
+
+// sourcesWithoutLocal returns the image sources of m at path without the source "local", which the upgrade adds.
+func sourcesWithoutLocal(t *testing.T, m *member, path string) []any {
+	t.Helper()
+
+	sources, ok := metadata(t, m, path).([]any)
+	require.True(t, ok, "The image sources are not a list")
+
+	result := make([]any, 0, len(sources))
+	for _, source := range sources {
+		fields, ok := source.(map[string]any)
+		require.True(t, ok, "%v is not an object", source)
+
+		if fields["name"] == "local" {
+			require.Empty(t, fields["url"], "The source local has no URL")
+			continue
+		}
+
+		result = append(result, source)
+	}
+
+	require.Len(t, result, len(sources)-1, "The upgrade is expected to add the source local")
+
+	return result
+}
+
 func TestUpgradeFromSQLite(t *testing.T) {
 	binary, ip, basePort := testEnvironment(t)
 	legacy := legacyBinary(t)
@@ -126,9 +172,10 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	m.mustAPI(t, http.MethodPost, "/1.0/images/incus/sources", map[string]string{"name": "source-before", "url": "https://192.0.2.11", "filter_expression": "false"})
 	filePath, apiPath := uploadImage(t, m, "before", "20260101")
 
+	sources := metadata(t, m, "/1.0/images/incus/sources?recursion=1")
+
 	lists := []string{
 		"/1.0/images/incus?recursion=1",
-		"/1.0/images/incus/sources?recursion=1",
 		"/1.0/provisioning/channels?recursion=1",
 		"/1.0/provisioning/servers?recursion=1",
 		"/1.0/provisioning/tokens?recursion=1",
@@ -156,6 +203,8 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	for _, path := range lists {
 		require.Equal(t, before[path], metadata(t, m, path), path)
 	}
+
+	require.Equal(t, withField(t, sources, "name", "source_before"), sourcesWithoutLocal(t, m, "/1.0/images/incus/sources?recursion=1"), "Invalid source names are expected to be sanitized")
 
 	require.Equal(t, "https://"+m.address, field(t, m, "/1.0/system/network", "address"))
 	require.Equal(t, m.address, field(t, m, "/1.0/system/network", "rest_server_address"))
