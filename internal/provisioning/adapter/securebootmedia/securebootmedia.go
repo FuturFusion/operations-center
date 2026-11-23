@@ -30,6 +30,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -49,36 +50,36 @@ type Media struct {
 	root          *os.Root
 	bootLoaderDir string
 
+	// records tells which cluster member stores an image and until when.
+	records mediarecord.Records
+
 	runTool       func(ctx context.Context, name string, args ...string) error
 	lookPath      func(name string) (string, error)
 	newSigningKey func() (*rsa.PrivateKey, error)
 
-	mu      sync.Mutex
-	entries map[string]*cacheEntry
+	mu sync.Mutex
+
+	// generating holds a channel per image being generated, which is closed as soon as it is done.
+	generating map[string]chan struct{}
 }
 
-// cacheEntry tracks one image of the cache.
-type cacheEntry struct {
-	// generating is non nil while a caller is generating the image and is closed
-	// as soon as it is done, successfully or not.
-	generating chan struct{}
-
-	// lastAccess is the time the image has been handed out for the last time. It
-	// is zero for an entry, which has not been accessed since the last restart,
-	// in which case the modification time of the file is used instead.
-	lastAccess time.Time
+// mediaConfig is the config recorded with an image.
+type mediaConfig struct {
+	ImageType    api.ImageType                 `json:"image_type"`
+	Architecture images.UpdateFileArchitecture `json:"architecture"`
 }
 
 var _ provisioning.SecureBootMediaPort = &Media{}
 
 type Option func(m *Media)
 
-// New returns the generator, storing the generated media in root.
-func New(root *os.Root, opts ...Option) *Media {
+// New returns the generator, storing the generated media in root and recording it in records.
+func New(root *os.Root, records mediarecord.Records, opts ...Option) *Media {
 	media := &Media{
 		root:          root,
 		bootLoaderDir: bootLoaderDir,
-		entries:       map[string]*cacheEntry{},
+		records:       records,
+		generating:    map[string]chan struct{}{},
 		runTool:       runTool,
 		lookPath:      exec.LookPath,
 		newSigningKey: func() (*rsa.PrivateKey, error) {
@@ -187,15 +188,35 @@ func (m *Media) Generate(ctx context.Context, imageType api.ImageType, architect
 	id := MediaID(imageType, architecture, certificates)
 
 	for {
-		_, err := m.root.Stat(m.filename(imageType, id))
-		if err == nil {
-			m.touch(ctx, imageType, id)
-
-			return id, nil
+		record, holder, err := m.records.Holder(ctx, id)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return "", err
 		}
 
-		if !errors.Is(err, fs.ErrNotExist) {
-			return "", fmt.Errorf("Failed to look for the cached secure boot enrollment media %q: %w", id, err)
+		// The images of the same ID differ, since each is signed by its own key, so only the recorded one is used.
+		if err == nil && !holder.Local {
+			// The member might only be restarting, so a deployment tries again.
+			if holder.Offline {
+				return "", domain.NewRetryableErr(domain.NewErrorf(domain.ErrUnavailable, "", "The secure boot enrollment media %q is stored by the cluster member %q, which is offline", id, holder.Name).
+					WithHintf("Bring the cluster member back online.").
+					WithDetail("id", id).
+					WithDetail("member", holder.Name))
+			}
+
+			return id, m.records.Renew(ctx, *record)
+		}
+
+		_, statErr := m.root.Stat(m.filename(imageType, id))
+		if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
+			return "", fmt.Errorf("Failed to look for the cached secure boot enrollment media %q: %w", id, statErr)
+		}
+
+		if statErr == nil {
+			if err == nil {
+				return id, m.records.Renew(ctx, *record)
+			}
+
+			return id, m.records.Record(ctx, id, mediaConfig{ImageType: imageType, Architecture: architecture})
 		}
 
 		wait, release := m.acquire(id)
@@ -215,24 +236,44 @@ func (m *Media) Generate(ctx context.Context, imageType api.ImageType, architect
 		err = func() error {
 			defer release()
 
-			return m.generate(ctx, imageType, id, loader, certificates)
+			err := m.generate(ctx, imageType, id, loader, certificates)
+			if err != nil {
+				return err
+			}
+
+			return m.records.Record(ctx, id, mediaConfig{ImageType: imageType, Architecture: architecture})
 		}()
 		if err != nil {
 			return "", err
 		}
 
-		m.touch(ctx, imageType, id)
-
 		return id, nil
 	}
+}
+
+// Holder returns the ID of the cluster member storing the enrollment media of an image type addressed by id.
+func (m *Media) Holder(ctx context.Context, imageType api.ImageType, id string) (int64, error) {
+	if !mediaIDRegexp.MatchString(id) || !imageType.IsValid() {
+		return 0, errNotAvailable(id)
+	}
+
+	record, _, err := m.records.Holder(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		return 0, errNotAvailable(id)
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return record.MemberID, nil
 }
 
 // Open returns the already generated enrollment media of an image type
 // addressed by id. An image being generated right now is waited for.
 func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*provisioning.SecureBootMediaImage, error) {
 	if !mediaIDRegexp.MatchString(id) || !imageType.IsValid() {
-		return nil, domain.NewErrorf(domain.ErrNotFound, "", "No secure boot enrollment media %q is available", id).
-			WithDetail("id", id)
+		return nil, errNotAvailable(id)
 	}
 
 	for {
@@ -245,10 +286,9 @@ func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*
 			return nil, err
 		}
 
-		wait := m.generating(id)
+		wait := m.generatingNow(id)
 		if wait == nil {
-			return nil, domain.NewErrorf(domain.ErrNotFound, "", "No secure boot enrollment media %q is available", id).
-				WithDetail("id", id)
+			return nil, errNotAvailable(id)
 		}
 
 		select {
@@ -260,20 +300,47 @@ func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*
 	}
 }
 
-// Prune removes the generated media, which has not been accessed within ttl,
-// together with leftovers of interrupted generations. A media named by inUse is
-// kept however old it is.
+// Prune removes the generated media stored by this member, whose lease ended,
+// the media recorded for another member, and leftovers of interrupted
+// generations older than ttl. A media named by inUse is kept and its lease
+// extended, it is recorded for this member, if it is not recorded at all.
 func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) error {
-	dirEntries, err := fs.ReadDir(m.root.FS(), ".")
+	records, err := m.records.Local(ctx)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fmt.Errorf("Failed to read the secure boot enrollment media directory %q: %w", m.root.Name(), err)
+		return err
 	}
 
 	var errs []error
+
+	kept := map[string]bool{}
+	for _, record := range records {
+		switch {
+		case slices.Contains(inUse, record.Name):
+			err = m.records.Renew(ctx, record)
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+		case m.records.Expired(record) && m.generatingNow(record.Name) == nil:
+			err = m.records.Delete(ctx, record.Name)
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			continue
+		}
+
+		kept[record.Name] = true
+	}
+
+	dirEntries, err := fs.ReadDir(m.root.FS(), ".")
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return errors.Join(errs...)
+		}
+
+		return errors.Join(append(errs, fmt.Errorf("Failed to read the secure boot enrollment media directory %q: %w", m.root.Name(), err))...)
+	}
 
 	for _, dirEntry := range dirEntries {
 		if dirEntry.IsDir() {
@@ -301,17 +368,13 @@ func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) er
 			}
 
 		case isMedia:
+			if kept[id] || m.generatingNow(id) != nil {
+				continue
+			}
+
+			// Generating it again would sign it with another key, while a BMC reads it.
 			if slices.Contains(inUse, id) {
-				continue
-			}
-
-			keep, err := m.keep(id, fileInfo.ModTime(), ttl)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			if keep {
+				errs = append(errs, m.recordUnrecorded(ctx, id, filename))
 				continue
 			}
 
@@ -430,7 +493,7 @@ func (m *Media) open(ctx context.Context, imageType api.ImageType, id string) (*
 		return nil, errors.Join(fmt.Errorf("Failed to stat the secure boot enrollment media %q: %w", id, err), imageFile.Close())
 	}
 
-	m.touch(ctx, imageType, id)
+	m.renew(ctx, id)
 
 	return &provisioning.SecureBootMediaImage{
 		Content:  imageFile,
@@ -447,94 +510,56 @@ func (m *Media) acquire(id string) (wait <-chan struct{}, release func()) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	entry, ok := m.entries[id]
-	if !ok {
-		entry = &cacheEntry{}
-		m.entries[id] = entry
+	generating, ok := m.generating[id]
+	if ok {
+		return generating, nil
 	}
 
-	if entry.generating != nil {
-		return entry.generating, nil
-	}
-
-	generating := make(chan struct{})
-	entry.generating = generating
+	generating = make(chan struct{})
+	m.generating[id] = generating
 
 	return nil, func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		entry.generating = nil
+		delete(m.generating, id)
 		close(generating)
 	}
 }
 
-// generating returns a channel closed as soon as the image is done being
+// generatingNow returns a channel closed as soon as the image is done being
 // generated, or nil, if nobody is generating it.
-func (m *Media) generating(id string) <-chan struct{} {
+func (m *Media) generatingNow(id string) <-chan struct{} {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	entry, ok := m.entries[id]
-	if !ok {
-		return nil
-	}
-
-	return entry.generating
+	return m.generating[id]
 }
 
-// keep reports, whether a stored image is still in use. modTime is used as the
-// last access for an entry, which has not been accessed since the last restart.
-func (m *Media) keep(id string, modTime time.Time, ttl time.Duration) (bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	entry, ok := m.entries[id]
-	if ok && entry.generating != nil {
-		return true, nil
+// recordUnrecorded records an image stored by this member, which is not recorded at all.
+func (m *Media) recordUnrecorded(ctx context.Context, id string, filename string) error {
+	_, _, err := m.records.Holder(ctx, id)
+	if err == nil || !errors.Is(err, domain.ErrNotFound) {
+		return err
 	}
 
-	lastAccess := modTime
-	if ok && entry.lastAccess.After(lastAccess) {
-		lastAccess = entry.lastAccess
-	}
+	imageType, _ := api.ImageTypeForFileExt(filepath.Ext(filename))
 
-	if time.Since(lastAccess) < ttl {
-		return true, nil
-	}
-
-	delete(m.entries, id)
-
-	return false, nil
+	return m.records.Record(ctx, id, mediaConfig{ImageType: imageType})
 }
 
-// touch records, that an image has been used.
-//
-// The modification time of the file is moved along with the in-memory entry, so
-// the last access survives a restart: an entry, that does not, has the image
-// fall back to the time it has been generated at and be pruned right away,
-// however recently a BMC has read it.
-func (m *Media) touch(ctx context.Context, imageType api.ImageType, id string) {
-	now := time.Now()
-
-	m.mu.Lock()
-
-	entry, ok := m.entries[id]
-	if !ok {
-		entry = &cacheEntry{}
-		m.entries[id] = entry
+// renew extends the lease of an image read from this member.
+func (m *Media) renew(ctx context.Context, id string) {
+	err := m.records.RenewLocal(ctx, id)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to extend the lease of the secure boot enrollment media", slog.String("id", id), logger.Err(err))
 	}
+}
 
-	entry.lastAccess = now
-
-	m.mu.Unlock()
-
-	// The image is only missing, where it has just been pruned, in which case
-	// there is nothing left to record the access on.
-	err := m.root.Chtimes(m.filename(imageType, id), now, now)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		slog.WarnContext(ctx, "Failed to record the access to the secure boot enrollment media", slog.String("id", id), logger.Err(err))
-	}
+// errNotAvailable reports the enrollment media addressed by id as not available.
+func errNotAvailable(id string) error {
+	return domain.NewErrorf(domain.ErrNotFound, "", "No secure boot enrollment media %q is available", id).
+		WithDetail("id", id)
 }
 
 // filename returns the name of the stored image relative to the root.

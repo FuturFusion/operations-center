@@ -372,6 +372,24 @@ func (d *ServerDeployment) IsActive() bool {
 	return d != nil && !d.State.IsTerminal()
 }
 
+// BootsSecureBootMedia reports whether the server reads its secure boot
+// enrollment media right now, from attaching it until it has been powered off
+// after the enrollment.
+func (d *ServerDeployment) BootsSecureBootMedia() bool {
+	if !d.IsActive() || d.SecureBootMediaID == "" {
+		return false
+	}
+
+	return slices.Contains([]api.ServerDeploymentState{
+		api.ServerDeploymentStateAttachSecureBootMedia,
+		api.ServerDeploymentStateWaitSecureBootMediaAttached,
+		api.ServerDeploymentStatePowerOnSecureBootMedia,
+		api.ServerDeploymentStateWaitSecureBootEnrolled,
+		api.ServerDeploymentStatePowerOffSecureBootMedia,
+		api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
+	}, d.State)
+}
+
 // EnterState moves the deployment to the given state, records the state left
 // behind in the history and resets the retry budget.
 func (d *ServerDeployment) EnterState(now time.Time, state api.ServerDeploymentState) {

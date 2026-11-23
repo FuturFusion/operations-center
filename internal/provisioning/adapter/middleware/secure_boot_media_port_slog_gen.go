@@ -116,6 +116,39 @@ func (_d SecureBootMediaPortWithSlog) Generate(ctx context.Context, imageType ap
 	return _d._base.Generate(ctx, imageType, architecture, certificates)
 }
 
+// Holder implements provisioning.SecureBootMediaPort.
+func (_d SecureBootMediaPortWithSlog) Holder(ctx context.Context, imageType api.ImageType, id string) (n int64, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("imageType", imageType),
+			slog.String("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Holder")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Int64("n", n),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Holder returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Holder finished")
+		}
+	}()
+	return _d._base.Holder(ctx, imageType, id)
+}
+
 // Open implements provisioning.SecureBootMediaPort.
 func (_d SecureBootMediaPortWithSlog) Open(ctx context.Context, imageType api.ImageType, id string) (secureBootMediaImage *provisioning.SecureBootMediaImage, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

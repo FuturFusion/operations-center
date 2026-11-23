@@ -31,6 +31,9 @@ var _ provisioning.SecureBootMediaPort = &SecureBootMediaPortMock{}
 //			GenerateFunc: func(ctx context.Context, imageType api.ImageType, architecture images.UpdateFileArchitecture, certificates provisioning.SecureBootCertificates) (string, error) {
 //				panic("mock out the Generate method")
 //			},
+//			HolderFunc: func(ctx context.Context, imageType api.ImageType, id string) (int64, error) {
+//				panic("mock out the Holder method")
+//			},
 //			OpenFunc: func(ctx context.Context, imageType api.ImageType, id string) (*provisioning.SecureBootMediaImage, error) {
 //				panic("mock out the Open method")
 //			},
@@ -49,6 +52,9 @@ type SecureBootMediaPortMock struct {
 
 	// GenerateFunc mocks the Generate method.
 	GenerateFunc func(ctx context.Context, imageType api.ImageType, architecture images.UpdateFileArchitecture, certificates provisioning.SecureBootCertificates) (string, error)
+
+	// HolderFunc mocks the Holder method.
+	HolderFunc func(ctx context.Context, imageType api.ImageType, id string) (int64, error)
 
 	// OpenFunc mocks the Open method.
 	OpenFunc func(ctx context.Context, imageType api.ImageType, id string) (*provisioning.SecureBootMediaImage, error)
@@ -78,6 +84,15 @@ type SecureBootMediaPortMock struct {
 			// Certificates is the certificates argument value.
 			Certificates provisioning.SecureBootCertificates
 		}
+		// Holder holds details about calls to the Holder method.
+		Holder []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ImageType is the imageType argument value.
+			ImageType api.ImageType
+			// ID is the id argument value.
+			ID string
+		}
 		// Open holds details about calls to the Open method.
 		Open []struct {
 			// Ctx is the ctx argument value.
@@ -99,6 +114,7 @@ type SecureBootMediaPortMock struct {
 	}
 	lockCheckSupported sync.RWMutex
 	lockGenerate       sync.RWMutex
+	lockHolder         sync.RWMutex
 	lockOpen           sync.RWMutex
 	lockPrune          sync.RWMutex
 }
@@ -184,6 +200,46 @@ func (mock *SecureBootMediaPortMock) GenerateCalls() []struct {
 	mock.lockGenerate.RLock()
 	calls = mock.calls.Generate
 	mock.lockGenerate.RUnlock()
+	return calls
+}
+
+// Holder calls HolderFunc.
+func (mock *SecureBootMediaPortMock) Holder(ctx context.Context, imageType api.ImageType, id string) (int64, error) {
+	if mock.HolderFunc == nil {
+		panic("SecureBootMediaPortMock.HolderFunc: method is nil but SecureBootMediaPort.Holder was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		ImageType api.ImageType
+		ID        string
+	}{
+		Ctx:       ctx,
+		ImageType: imageType,
+		ID:        id,
+	}
+	mock.lockHolder.Lock()
+	mock.calls.Holder = append(mock.calls.Holder, callInfo)
+	mock.lockHolder.Unlock()
+	return mock.HolderFunc(ctx, imageType, id)
+}
+
+// HolderCalls gets all the calls that were made to Holder.
+// Check the length with:
+//
+//	len(mockedSecureBootMediaPort.HolderCalls())
+func (mock *SecureBootMediaPortMock) HolderCalls() []struct {
+	Ctx       context.Context
+	ImageType api.ImageType
+	ID        string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		ImageType api.ImageType
+		ID        string
+	}
+	mock.lockHolder.RLock()
+	calls = mock.calls.Holder
+	mock.lockHolder.RUnlock()
 	return calls
 }
 

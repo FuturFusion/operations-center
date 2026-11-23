@@ -13,11 +13,14 @@ import (
 	"testing"
 	"time"
 
+	cowsqldb "github.com/cowsql/go-cowsql/cluster/db"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord/mediarecordtest"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -50,7 +53,7 @@ func testCertificates(t *testing.T) provisioning.SecureBootCertificates {
 func skipWithoutTools(t *testing.T) {
 	t.Helper()
 
-	err := securebootmedia.New(fsroot.Open(t, t.TempDir())).CheckSupported(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86)
+	err := newMedia(t, t.TempDir()).CheckSupported(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86)
 	if err != nil {
 		t.Skipf("The secure boot enrollment media can not be generated here: %v", err)
 	}
@@ -158,7 +161,7 @@ func TestMediaCheckSupported(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			media := securebootmedia.New(fsroot.Open(t, t.TempDir()),
+			media := newMedia(t, t.TempDir(),
 				securebootmedia.WithBootLoaderDir(tc.bootLoaderDir),
 				securebootmedia.WithLookPath(tc.lookPath),
 			)
@@ -210,7 +213,7 @@ func TestMedia_GenerateBootsTheArchitectureOfTheServer(t *testing.T) {
 	certificates := testCertificates(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(fsroot.Open(t, dir))
+	media := newMedia(t, dir)
 
 	id, err := media.Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 	require.NoError(t, err)
@@ -226,7 +229,7 @@ func TestMedia_GenerateRejectsAnUnsupportedArchitecture(t *testing.T) {
 	certificates := testCertificates(t)
 
 	for _, architecture := range []images.UpdateFileArchitecture{images.UpdateFileArchitectureUndefined, images.UpdateFileArchitecture64BitARM} {
-		media := securebootmedia.New(fsroot.Open(t, t.TempDir()))
+		media := newMedia(t, t.TempDir())
 
 		_, err := media.Generate(t.Context(), api.ImageTypeISO, architecture, certificates)
 		require.ErrorIs(t, err, domain.ErrOperationNotPermitted, "An architecture without a boot loader must not be served the boot loader of another one")
@@ -264,7 +267,7 @@ func TestMedia_Generate(t *testing.T) {
 			t.Parallel()
 
 			dir := t.TempDir()
-			media := securebootmedia.New(fsroot.Open(t, dir))
+			media := newMedia(t, dir)
 
 			certificates := testCertificates(t)
 
@@ -296,7 +299,7 @@ func TestMedia_GenerateEnrollsThePlatformKeyUpdateAsItIs(t *testing.T) {
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(fsroot.Open(t, dir))
+	media := newMedia(t, dir)
 
 	certificates := testCertificates(t)
 	certificates.PKUpdate = []byte("a signed platform key update")
@@ -328,7 +331,7 @@ func TestMedia_GenerateIsReproducible(t *testing.T) {
 	generate := func() []byte {
 		dir := t.TempDir()
 
-		media := securebootmedia.New(fsroot.Open(t, dir), securebootmedia.WithSigningKey(key))
+		media := newMedia(t, dir, securebootmedia.WithSigningKey(key))
 
 		id, err := media.Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 		require.NoError(t, err)
@@ -351,7 +354,7 @@ func TestMedia_GenerateCaches(t *testing.T) {
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
-	media := securebootmedia.New(fsroot.Open(t, dir))
+	media := newMedia(t, dir)
 
 	certificates := testCertificates(t)
 
@@ -437,7 +440,7 @@ func TestMedia_GenerateErrors(t *testing.T) {
 			t.Parallel()
 
 			dir := t.TempDir()
-			media := securebootmedia.New(fsroot.Open(t, dir), tc.opts...)
+			media := newMedia(t, dir, tc.opts...)
 
 			_, err := media.Generate(t.Context(), tc.imageType, images.UpdateFileArchitecture64BitX86, tc.certificates)
 			tc.assertErr(t, err)
@@ -452,7 +455,7 @@ func TestMedia_GenerateErrors(t *testing.T) {
 func TestMedia_Open(t *testing.T) {
 	t.Parallel()
 
-	media := securebootmedia.New(fsroot.Open(t, t.TempDir()))
+	media := newMedia(t, t.TempDir())
 
 	_, err := media.Open(t.Context(), api.ImageTypeISO, "not an ID")
 	require.ErrorIs(t, err, domain.ErrNotFound, "An ID, that can not address an image, has to be rejected")
@@ -468,56 +471,149 @@ func TestMedia_Prune(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	media := securebootmedia.New(fsroot.Open(t, dir))
+	repo := mediarecordtest.NewRepo()
+	records := mediarecordtest.Records(repo, provisioning.MediaTypeSecureBoot, time.Hour)
+	media := securebootmedia.New(fsroot.Open(t, dir), records)
 
-	stale := writeInto(t, dir, "AAAAAAAAAAAA.iso", time.Now().Add(-2*time.Hour))
-	fresh := writeInto(t, dir, "BBBBBBBBBBBB.iso", time.Now())
-	staleRaw := writeInto(t, dir, "EEEEEEEEEEEE.raw", time.Now().Add(-2*time.Hour))
-	freshRaw := writeInto(t, dir, "FFFFFFFFFFFF.raw", time.Now())
+	record := func(id string) {
+		require.NoError(t, records.Record(t.Context(), id, map[string]string{}))
+	}
+
+	for _, id := range []string{"AAAAAAAAAAAA", "EEEEEEEEEEEE", "GGGGGGGGGGGG"} {
+		record(id)
+	}
+
+	repo.Expire()
+
+	for _, id := range []string{"BBBBBBBBBBBB", "FFFFFFFFFFFF"} {
+		record(id)
+	}
+
+	expired := writeInto(t, dir, "AAAAAAAAAAAA.iso", time.Now())
+	recorded := writeInto(t, dir, "BBBBBBBBBBBB.iso", time.Now())
+	expiredRaw := writeInto(t, dir, "EEEEEEEEEEEE.raw", time.Now())
+	recordedRaw := writeInto(t, dir, "FFFFFFFFFFFF.raw", time.Now())
+	unrecorded := writeInto(t, dir, "HHHHHHHHHHHH.iso", time.Now())
 	stalePartial := writeInto(t, dir, "CCCCCCCCCCCC.1.partial", time.Now().Add(-2*time.Hour))
 	freshPartial := writeInto(t, dir, "DDDDDDDDDDDD.1.partial", time.Now())
 	foreign := writeInto(t, dir, "unrelated.txt", time.Now().Add(-2*time.Hour))
 	foreignID := writeInto(t, dir, "not an ID.iso", time.Now().Add(-2*time.Hour))
-	attached := writeInto(t, dir, "GGGGGGGGGGGG.iso", time.Now().Add(-2*time.Hour))
+	attached := writeInto(t, dir, "GGGGGGGGGGGG.iso", time.Now())
+	attachedUnrecorded := writeInto(t, dir, "IIIIIIIIIIII.iso", time.Now())
 
-	err := media.Prune(t.Context(), time.Hour, []string{"GGGGGGGGGGGG"})
+	err := media.Prune(t.Context(), time.Hour, []string{"GGGGGGGGGGGG", "IIIIIIIIIIII"})
 	require.NoError(t, err)
 
-	require.FileExists(t, attached, "An image, that a BMC has attached, has to be kept however old it is")
-	require.NoFileExists(t, stale, "An image, that has not been accessed within the TTL, has to be removed")
-	require.NoFileExists(t, staleRaw, "An image of every type the generator writes has to be pruned")
+	require.FileExists(t, attached, "An image, that a BMC has attached, has to be kept after its lease ended")
+	require.FileExists(t, attachedUnrecorded, "An image, that a BMC has attached, has to be kept without a record")
+	require.NoFileExists(t, expired, "An image, whose lease ended, has to be removed")
+	require.NoFileExists(t, expiredRaw, "An image of every type the generator writes has to be pruned")
+	require.NoFileExists(t, unrecorded, "An image, which is not recorded for this member, has to be removed")
 	require.NoFileExists(t, stalePartial, "The leftover of an interrupted generation has to be removed")
-	require.FileExists(t, fresh, "An image within the TTL has to be kept")
-	require.FileExists(t, freshRaw, "An image of every type the generator writes has to be kept within the TTL")
+	require.FileExists(t, recorded, "An image within its lease has to be kept")
+	require.FileExists(t, recordedRaw, "An image of every type the generator writes has to be kept within its lease")
 	require.FileExists(t, freshPartial, "A generation in flight must not be removed")
 	require.FileExists(t, foreign, "A file, that the generator has not written, has to be left alone")
 	require.FileExists(t, foreignID, "A file, whose name is no media ID, has to be left alone")
+
+	_, err = media.Holder(t.Context(), api.ImageTypeISO, "AAAAAAAAAAAA")
+	require.ErrorIs(t, err, domain.ErrNotFound, "The record of a pruned image is removed")
+
+	_, err = media.Holder(t.Context(), api.ImageTypeISO, "GGGGGGGGGGGG")
+	require.NoError(t, err, "The lease of an attached image is extended")
+
+	_, err = media.Holder(t.Context(), api.ImageTypeISO, "IIIIIIIIIIII")
+	require.NoError(t, err, "An attached image without a record is recorded for this member")
 }
 
-func TestMedia_PruneKeepsWhatHasBeenReadAfterARestart(t *testing.T) {
+func TestMedia_PruneKeepsWhatHasBeenReadAfterItsLeaseEnded(t *testing.T) {
 	t.Parallel()
 
 	skipWithoutTools(t)
 
 	dir := t.TempDir()
 	certificates := testCertificates(t)
+	repo := mediarecordtest.NewRepo()
+	records := mediarecordtest.Records(repo, provisioning.MediaTypeSecureBoot, time.Hour)
 
-	id, err := securebootmedia.New(fsroot.Open(t, dir)).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	id, err := securebootmedia.New(fsroot.Open(t, dir), records).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
 	require.NoError(t, err)
 
 	filename := filepath.Join(dir, id+".iso")
 
-	stale := time.Now().Add(-2 * time.Hour)
-	require.NoError(t, os.Chtimes(filename, stale, stale))
+	repo.Expire()
 
-	image, err := securebootmedia.New(fsroot.Open(t, dir)).Open(t.Context(), api.ImageTypeISO, id)
+	// Another instance stands in for a restart of the member.
+	image, err := securebootmedia.New(fsroot.Open(t, dir), records).Open(t.Context(), api.ImageTypeISO, id)
 	require.NoError(t, err)
 	require.NoError(t, image.Content.Close())
 
-	err = securebootmedia.New(fsroot.Open(t, dir)).Prune(t.Context(), time.Hour, nil)
+	err = securebootmedia.New(fsroot.Open(t, dir), records).Prune(t.Context(), time.Hour, nil)
 	require.NoError(t, err)
 
-	require.FileExists(t, filename, "An image, that has been read, has to survive the prune of the generator, that has not generated it")
+	require.FileExists(t, filename, "An image, that has been read, has its lease extended")
+}
+
+func TestMedia_GenerateUsesTheImageOfAnotherMember(t *testing.T) {
+	t.Parallel()
+
+	skipWithoutTools(t)
+
+	repo := mediarecordtest.NewRepo()
+	records := mediarecordtest.Records(repo, provisioning.MediaTypeSecureBoot, time.Hour)
+	certificates := testCertificates(t)
+
+	id, err := securebootmedia.New(fsroot.Open(t, t.TempDir()), records).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	require.NoError(t, err)
+
+	// The image is recorded for a member, which this one does not know, and so treats as gone.
+	repo.SetMember(2)
+
+	dir := t.TempDir()
+	again, err := securebootmedia.New(fsroot.Open(t, dir), records).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	require.NoError(t, err)
+	require.Equal(t, id, again)
+	require.FileExists(t, filepath.Join(dir, id+".iso"), "An image of a member, which is gone, is generated again")
+
+	memberID, err := securebootmedia.New(fsroot.Open(t, dir), records).Holder(t.Context(), api.ImageTypeISO, id)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), memberID, "The image generated again is recorded for this member")
+}
+
+// offlineMemberCluster is a cluster of the local member 1 and the offline member 2.
+type offlineMemberCluster struct {
+	memberfiles.Cluster
+}
+
+func (offlineMemberCluster) LocalMemberID() (int64, error) {
+	return 1, nil
+}
+
+func (offlineMemberCluster) GetMembersByID(context.Context) (map[int64]cowsqldb.NodeInfo, error) {
+	return map[int64]cowsqldb.NodeInfo{
+		1: {ID: 1, Name: "m1", Heartbeat: time.Now()},
+		2: {ID: 2, Name: "m2", Heartbeat: time.Now().Add(-time.Hour)},
+	}, nil
+}
+
+func (offlineMemberCluster) HeartbeatOfflineThreshold() time.Duration {
+	return time.Minute
+}
+
+func TestMedia_GenerateRetriesWhileTheMemberStoringItIsOffline(t *testing.T) {
+	t.Parallel()
+
+	repo := mediarecordtest.NewRepo()
+	records := mediarecordtest.ClusterRecords(repo, offlineMemberCluster{}, provisioning.MediaTypeSecureBoot, time.Hour)
+	certificates := testCertificates(t)
+	id := securebootmedia.MediaID(api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+
+	require.NoError(t, records.Record(t.Context(), id, map[string]string{}))
+	repo.SetMember(2)
+
+	_, err := securebootmedia.New(fsroot.Open(t, t.TempDir()), records).Generate(t.Context(), api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, certificates)
+	require.ErrorIs(t, err, domain.ErrUnavailable)
+	require.True(t, domain.IsRetryableError(err), "A deployment tries again, while the member storing the media might only restart")
 }
 
 // isoBlockSize and rawBlockSize are the logical block sizes the media of an
@@ -702,7 +798,7 @@ func TestMedia_Open_symlinkOutsideOfRoot(t *testing.T) {
 	err = os.Symlink(outsideFile, filepath.Join(dir, id+api.ImageTypeISO.FileExt()))
 	require.NoError(t, err)
 
-	media := securebootmedia.New(fsroot.Open(t, dir))
+	media := newMedia(t, dir)
 
 	// Run test
 	image, err := media.Open(t.Context(), api.ImageTypeISO, id)
@@ -710,4 +806,11 @@ func TestMedia_Open_symlinkOutsideOfRoot(t *testing.T) {
 	// Assert
 	require.ErrorContains(t, err, "path escapes from parent", "a symlink must not be followed out of the root")
 	require.Nil(t, image)
+}
+
+// newMedia returns a generator storing its media in dir, recorded for a standalone member.
+func newMedia(t *testing.T, dir string, opts ...securebootmedia.Option) *securebootmedia.Media {
+	t.Helper()
+
+	return securebootmedia.New(fsroot.Open(t, dir), mediarecordtest.Records(mediarecordtest.NewRepo(), provisioning.MediaTypeSecureBoot, time.Hour), opts...)
 }

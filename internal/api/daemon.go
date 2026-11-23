@@ -449,7 +449,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
-		securebootmedia.New(secureBootMediaRoot),
+		securebootmedia.New(secureBootMediaRoot, d.mediaRecords(dbWithTransaction, provisioning.MediaTypeSecureBoot, config.SecureBootMediaCacheTTL)),
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
@@ -1754,7 +1754,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
 
 	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
-	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
+	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia, forward)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc, forward)
