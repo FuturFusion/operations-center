@@ -30,6 +30,27 @@ export const fetchUpdateFiles = (uuid: string): Promise<UpdateFile[]> => {
   });
 };
 
+export const updateArchiveURL = (uuid: string): string =>
+  `/1.0/provisioning/updates/${uuid}/archive`;
+
+// checkUpdateArchive fails with the error of the server if the export of the
+// update fails. A HEAD request transfers no archive. Its response has no body,
+// so a GET request fetches the error message after a failure.
+export const checkUpdateArchive = async (uuid: string): Promise<void> => {
+  const head = await fetch(updateArchiveURL(uuid), { method: "HEAD" });
+  if (head.ok) {
+    return;
+  }
+
+  const response = await fetch(updateArchiveURL(uuid));
+  if (!response.ok) {
+    await processResponse(response);
+  }
+
+  // The export works again, for example after a refresh.
+  await response.body?.cancel();
+};
+
 export const fetchUpdateChangelog = (
   uuid: string,
   channel: string,
@@ -122,6 +143,24 @@ export const cleanupUpdates = (): Promise<APIResponse<object>> => {
       method: "DELETE",
     })
       .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const downloadUpdate = (
+  version: string,
+  channels: string[],
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates/:download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ version, channels }),
+    })
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });

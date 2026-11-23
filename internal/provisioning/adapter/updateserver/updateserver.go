@@ -3,10 +3,12 @@ package updateserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -98,33 +101,7 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
 	for _, indexUpdate := range updates.Updates {
-		update := provisioning.Update{
-			Format:      indexUpdate.Format,
-			Origin:      indexUpdate.Origin,
-			PublishedAt: indexUpdate.PublishedAt,
-			Severity:    indexUpdate.Severity,
-			Version:     indexUpdate.Version,
-			URL:         indexUpdate.URL,
-
-			UpstreamChannels: indexUpdate.Channels,
-			Status:           api.UpdateStatusUnknown,
-			UUID:             uuidFromUpdateServer(indexUpdate),
-		}
-
-		// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
-		files := make(provisioning.UpdateFiles, 0, len(indexUpdate.Files))
-		for _, file := range indexUpdate.Files {
-			_, ok := images.UpdateFileComponents[file.Component]
-			if !ok {
-				// Skip unknown file components.
-				continue
-			}
-
-			files = append(files, file)
-		}
-
-		update.Files = files
-		updatesList = append(updatesList, update)
+		updatesList = append(updatesList, toProvisioningUpdate(indexUpdate))
 	}
 
 	sort.Slice(updatesList, func(i, j int) bool {
@@ -136,16 +113,89 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 	return provisioning.Updates(updatesList[:limit]), nil
 }
 
+func toProvisioningUpdate(indexUpdate Update) provisioning.Update {
+	update := provisioning.Update{
+		Format:      indexUpdate.Format,
+		Origin:      indexUpdate.Origin,
+		PublishedAt: indexUpdate.PublishedAt,
+		Severity:    indexUpdate.Severity,
+		Version:     indexUpdate.Version,
+		URL:         indexUpdate.URL,
+
+		UpstreamChannels: indexUpdate.Channels,
+		Status:           api.UpdateStatusUnknown,
+		UUID:             uuidFromUpdateServer(indexUpdate),
+	}
+
+	// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
+	files := make(provisioning.UpdateFiles, 0, len(indexUpdate.Files))
+	for _, file := range indexUpdate.Files {
+		_, ok := images.UpdateFileComponents[file.Component]
+		if !ok {
+			// Skip unknown file components.
+			continue
+		}
+
+		files = append(files, file)
+	}
+
+	update.Files = files
+
+	return update
+}
+
+// GetByVersion returns the update with the given version. The update server
+// provides updates, which are no longer in its index, as long as it keeps
+// their files.
+func (u *updateServer) GetByVersion(ctx context.Context, version string) (provisioning.Update, error) {
+	_, contentVerified, err := u.fetchAndVerify(ctx, path.Join("/", version, provisioning.UpdateManifestFilename))
+	if errors.Is(err, errStatusNotFound) {
+		return provisioning.Update{}, domain.NewErrorf(domain.ErrNotFound, "", "Update source does not provide version %q", version).
+			WithHintf("The update source keeps only recent versions. Export the update from another Operations Center, which has it.").
+			WithDetail("version", version).
+			WithCause(err)
+	}
+
+	if err != nil {
+		return provisioning.Update{}, fmt.Errorf("Failed to get update %q: %w", version, err)
+	}
+
+	manifest := Update{}
+	err = json.Unmarshal(contentVerified, &manifest)
+	if err != nil {
+		return provisioning.Update{}, fmt.Errorf("Failed to read manifest of update %q: %w", version, err)
+	}
+
+	if manifest.Version != version {
+		return provisioning.Update{}, fmt.Errorf("Manifest version %q does not match requested version %q", manifest.Version, version)
+	}
+
+	// The manifest does not contain the URL. The update server provides the
+	// files of an update below its version.
+	manifest.URL = "/" + version
+
+	return toProvisioningUpdate(manifest), nil
+}
+
+var errStatusNotFound = errors.New("Not found on update server")
+
 func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
+	_, contentVerified, err := u.fetchAndVerify(ctx, "/index.sjson")
+	return contentVerified, err
+}
+
+// fetchAndVerify fetches the signed file at urlPath and verifies its
+// signature. It returns the signed and the verified content.
+func (u *updateServer) fetchAndVerify(ctx context.Context, urlPath string) (contentSig []byte, contentVerified []byte, _ error) {
 	u.configUpdateMu.Lock()
 	baseURL := u.baseURL
 	authenticationByQueryParam := u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
 
-	indexURL := baseURL + "/index.sjson"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
+	fileURL := baseURL + urlPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create request for %q: %w", indexURL, err)
+		return nil, nil, fmt.Errorf("Failed to create request for %q: %w", fileURL, err)
 	}
 
 	token, err := u.tokenProvider.GetToken(ctx)
@@ -163,28 +213,74 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to query latest updates: %w", err)
+		return nil, nil, fmt.Errorf("Failed to query %q: %w", urlPath, redactURLError(err))
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil, fmt.Errorf("Failed to query %q: %w", urlPath, errStatusNotFound)
 	}
 
-	contentSig, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("Failed to query %q: unexpected status code %d", urlPath, resp.StatusCode)
+	}
+
+	contentSig, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf(`Failed to read "index.sjson" response: %w`, err)
+		return nil, nil, fmt.Errorf("Failed to read %q response: %w", urlPath, err)
 	}
 
 	u.configUpdateMu.Lock()
-	contentVerified, err := u.verifier.Verify(contentSig)
+	contentVerified, err = u.verifier.Verify(contentSig)
 	u.configUpdateMu.Unlock()
 	if err != nil {
-		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
+		return nil, nil, fmt.Errorf("Failed to verify signature of %q: %w", urlPath, err)
 	}
 
-	return contentVerified, err
+	return contentSig, contentVerified, nil
+}
+
+// GetUpdateManifest returns the signed manifest of the update. It verifies
+// the signature and that the manifest belongs to the update.
+func (u *updateServer) GetUpdateManifest(ctx context.Context, update provisioning.Update) ([]byte, error) {
+	contentSig, contentVerified, err := u.fetchAndVerify(ctx, path.Join(update.URL, provisioning.UpdateManifestFilename))
+	if err != nil {
+		return nil, err
+	}
+
+	manifest := Update{}
+	err = json.Unmarshal(contentVerified, &manifest)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read manifest of update %q: %w", update.Version, err)
+	}
+
+	if manifest.Version != update.Version {
+		return nil, fmt.Errorf("Manifest version %q does not match update version %q", manifest.Version, update.Version)
+	}
+
+	return contentSig, nil
+}
+
+// redactURLError removes the query from the URL in err. The query can contain
+// the authentication token.
+func redactURLError(err error) error {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		return err
+	}
+
+	redacted := *urlErr
+	parsed, parseErr := url.Parse(urlErr.URL)
+	if parseErr != nil {
+		redacted.URL = ""
+		return &redacted
+	}
+
+	parsed.RawQuery = ""
+	redacted.URL = parsed.String()
+
+	return &redacted
 }
 
 const idSeparator = ":"
@@ -233,7 +329,7 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to get %q of update %q: %w", filename, inUpdate.Version, err)
+		return nil, 0, fmt.Errorf("Failed to get %q of update %q: %w", filename, inUpdate.Version, redactURLError(err))
 	}
 
 	if resp.StatusCode != http.StatusOK {

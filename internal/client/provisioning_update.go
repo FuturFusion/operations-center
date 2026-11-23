@@ -112,6 +112,17 @@ func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
 	return nil
 }
 
+// DownloadUpdate downloads an update with the given version from the update
+// source.
+func (c OperationsCenterClient) DownloadUpdate(ctx context.Context, request api.UpdateDownloadPost) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/updates/:download", nil, request)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) error {
 	query := url.Values{}
 	query.Add("wait", strconv.FormatBool(wait))
@@ -122,6 +133,22 @@ func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) e
 	}
 
 	return nil
+}
+
+// GetUpdateArchive returns the update as tar archive. CreateUpdate accepts
+// this archive. The caller must close the returned reader.
+func (c OperationsCenterClient) GetUpdateArchive(ctx context.Context, id string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "archive"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
 
 func (c OperationsCenterClient) GetUpdatesFile(ctx context.Context, id string, filename string) (io.ReadCloser, error) {

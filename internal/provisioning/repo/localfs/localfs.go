@@ -190,7 +190,8 @@ func (l localfs) PruneFiles(ctx context.Context, update provisioning.Update) err
 	// Remove all files from the update, that are not required by the update.
 	basePath := update.UUID.String()
 
-	filesLookup := make(map[string]bool, len(update.Files))
+	filesLookup := make(map[string]bool, len(update.Files)+1)
+	filesLookup[provisioning.UpdateManifestFilename] = true
 	for _, updateFile := range update.Files {
 		filesLookup[updateFile.Filename] = true
 	}
@@ -308,7 +309,7 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 	}
 
 	// Verify update.sjson signature.
-	updateSJSONBody, err := tmpRoot.ReadFile("update.sjson")
+	updateSJSONBody, err := tmpRoot.ReadFile(provisioning.UpdateManifestFilename)
 	if err != nil {
 		return nil, fmt.Errorf(`Invalid archive, failed to read "update.sjson": %w`, err)
 	}
@@ -486,7 +487,7 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, extractedFiles map[string
 
 	update.Files = files
 
-	delete(extractedFiles, "update.sjson")
+	delete(extractedFiles, provisioning.UpdateManifestFilename)
 	delete(extractedFiles, "update.json")
 
 	return update, nil

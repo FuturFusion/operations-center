@@ -39,6 +39,20 @@ func NewUpdateSourcePortWithPrometheus(base provisioning.UpdateSourcePort, insta
 	}
 }
 
+// GetByVersion implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithPrometheus) GetByVersion(ctx context.Context, version string) (update provisioning.Update, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByVersion", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetByVersion(ctx, version)
+}
+
 // GetLatest implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithPrometheus) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
 	_since := time.Now()
@@ -65,4 +79,18 @@ func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilenameUnverified(ctx c
 		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateFileByFilenameUnverified", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
+}
+
+// GetUpdateManifest implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithPrometheus) GetUpdateManifest(ctx context.Context, update provisioning.Update) (bytes []byte, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateManifest", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdateManifest(ctx, update)
 }

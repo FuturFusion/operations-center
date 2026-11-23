@@ -35,6 +35,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 	// no authentication required for all GET routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{uuid}/archive", response.With(handler.updateArchiveGet))
 	router.HandleFunc("GET /{uuid}/changelog", response.With(handler.updateChangelogGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
 	router.HandleFunc("GET /{uuid}/files/{filename...}", response.With(handler.updateFileGet))
@@ -43,6 +44,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("DELETE /{$}", response.With(handler.updatesDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /:refresh", response.With(handler.updatesRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("POST /:download", response.With(handler.updatesDownloadPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{uuid}", response.With(handler.updatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
@@ -647,4 +649,103 @@ func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
 	}
 
 	return response.ReadCloserResponse(r, rc, false, filename, fileSize, nil)
+}
+
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/archive updates update_archive_get
+//
+//	Get the update archive
+//
+//	Gets the update as tar archive. The archive contains the signed manifest
+//	and all files of the update. Use the archive to add the update to another
+//	Operations Center with POST /1.0/provisioning/updates.
+//
+//	---
+//	produces:
+//	  - application/octet-stream
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	responses:
+//	  "200":
+//	    description: Tar archive of the update
+//	    schema:
+//	      type: file
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updateArchiveGet(r *http.Request) response.Response {
+	UUID, err := uuid.Parse(r.PathValue("uuid"))
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	rc, size, err := u.service.GetArchive(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ReadCloserResponse(r, rc, false, UUID.String()+".tar", size, nil)
+}
+
+// swagger:operation POST /1.0/provisioning/updates/:download updates updates_download_post
+//
+//	Download an update
+//
+//	Downloads the update with the given version from the update source. The
+//	update source might provide versions, which are no longer listed in its
+//	index. The request completes, after the download is complete.
+//
+//	The update is assigned to the given channels, or to the default channel.
+//	A refresh removes updates, which are neither in use by a server nor among
+//	the most recent updates of a channel.
+//
+//	The filter_expression does not apply to this download. The
+//	file_filter_expression still applies and selects the architectures.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: update
+//	    description: Update to download
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/UpdateDownloadPost"
+//	responses:
+//	  "201":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatesDownloadPost(r *http.Request) response.Response {
+	var request api.UpdateDownloadPost
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	id, err := u.service.Download(r.Context(), request.Version, request.Channels)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/updates/"+id.String())
 }
