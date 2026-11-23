@@ -682,6 +682,12 @@ func (m *membership) RemoveMember(ctx context.Context, name string, force bool) 
 	return nil
 }
 
+// leaveAttempts and leaveRetryWait bound the retries of a removal while raft takes another configuration change.
+const (
+	leaveAttempts  = 10
+	leaveRetryWait = time.Second
+)
+
 // leave removes the member name from the raft cluster and the database and rebalances the roles.
 // It holds the lock of the role changes, so no join, handover or rebalance runs meanwhile, and runs the removal checks under it.
 func (m *membership) leave(ctx context.Context, name string, force bool, pending bool) (string, error) {
@@ -698,7 +704,28 @@ func (m *membership) leave(ctx context.Context, name string, force bool, pending
 		}
 	}
 
-	address, err := cowsqlmembership.Leave[struct{}](m.gateway, name, force, pending)
+	var err error
+
+	// The heartbeat changes the raft roles of the members on its own, and raft takes one configuration change at a time.
+	var address string
+	for attempt := 1; ; attempt++ {
+		address, err = cowsqlmembership.Leave[struct{}](m.gateway, name, force, pending)
+		if err == nil || !cowsqlmembership.IsClusterBusyErr(err) {
+			break
+		}
+
+		if attempt == leaveAttempts {
+			return "", domain.NewErrorf(domain.ErrUnavailable, "", "Another change of the cluster members is in progress").WithCause(err).WithHintf("Retry the removal.")
+		}
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+
+		case <-time.After(leaveRetryWait):
+		}
+	}
+
 	if err != nil {
 		return "", err
 	}
