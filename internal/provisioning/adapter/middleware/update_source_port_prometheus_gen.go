@@ -39,6 +39,20 @@ func NewUpdateSourcePortWithPrometheus(base provisioning.UpdateSourcePort, insta
 	}
 }
 
+// GetByVersion implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithPrometheus) GetByVersion(ctx context.Context, version string) (update provisioning.Update, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByVersion", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetByVersion(ctx, version)
+}
+
 // GetLatest implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithPrometheus) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
 	_since := time.Now()
