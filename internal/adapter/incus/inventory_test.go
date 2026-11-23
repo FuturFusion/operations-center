@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/adapter/incus"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -88,7 +89,7 @@ func TestClient_HasExtension(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 
-			client := incus.New(certPEM, keyPEM)
+			client := incus.New(securitytls.NewClientKeypairHolder(certPEM, keyPEM))
 
 			serverCert := pem.EncodeToMemory(&pem.Block{
 				Type:  "CERTIFICATE",
@@ -136,7 +137,7 @@ func TestClient_in_transaction(t *testing.T) {
 	server.StartTLS()
 	defer server.Close()
 
-	client := incus.New(certPEM, keyPEM)
+	client := incus.New(securitytls.NewClientKeypairHolder(certPEM, keyPEM))
 
 	serverCert := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",

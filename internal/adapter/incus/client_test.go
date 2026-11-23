@@ -20,6 +20,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -129,7 +130,7 @@ func runMethodTestSets(t *testing.T, methods []methodTestSet) {
 					server.StartTLS()
 					defer server.Close()
 
-					client := incus.New(certPEM, keyPEM, incus.WithSkipGetServer(true))
+					client := incus.New(securitytls.NewClientKeypairHolder(certPEM, keyPEM), incus.WithSkipGetServer(true))
 
 					serverCert := pem.EncodeToMemory(&pem.Block{
 						Type:  "CERTIFICATE",
@@ -217,7 +218,7 @@ func getClientErr(t *testing.T, method methodTestSet, caPool *x509.CertPool, cer
 	server.StartTLS()
 	defer server.Close()
 
-	client := incus.New(certPEM, certPEM, incus.WithSkipGetServer(true)) // invalid key
+	client := incus.New(securitytls.NewClientKeypairHolder(certPEM, certPEM), incus.WithSkipGetServer(true)) // invalid key
 
 	serverCert := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
@@ -550,7 +551,7 @@ func setupCerts(t *testing.T) (caPool *x509.CertPool, certPEM string, keyPEM str
 func TestClient_input_validation(t *testing.T) {
 	t.Parallel()
 
-	client := incus.New("", "", incus.WithSkipGetServer(true))
+	client := incus.New(securitytls.NewClientKeypairHolder("", ""), incus.WithSkipGetServer(true))
 
 	_, err := client.GetSystem(t.Context(), provisioning.Server{}, "invalid/resource")
 	require.ErrorContains(t, err, "must not contain forward slashes")
