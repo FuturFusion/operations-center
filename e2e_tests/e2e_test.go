@@ -77,6 +77,11 @@ func TestE2E_StableServers(t *testing.T) {
 			run:     clusterRollingReboot,
 		},
 		{
+			name:    "manual_evacuate_and_restore",
+			cluster: names,
+			run:     manualEvacuateAndRestore,
+		},
+		{
 			name:    "factory_reset_cluster",
 			cluster: names,
 			run:     factoryResetCluster,
