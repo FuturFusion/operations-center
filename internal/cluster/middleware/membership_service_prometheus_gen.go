@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"net/http"
 	"time"
 
@@ -12,7 +13,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
+	api0 "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -42,6 +46,34 @@ func NewMembershipServiceWithPrometheus(base cluster.MembershipService, instance
 	}
 }
 
+// Accept implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Accept(ctx context.Context, cfg api.ClusterAcceptPost) (internalClusterAcceptResponse *api0.InternalClusterAcceptResponse, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Accept", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Accept(ctx, cfg)
+}
+
+// Auth implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, username string, protocol string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Auth", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Auth(w, r)
+}
+
 // Bootstrap implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) (err error) {
 	_since := time.Now()
@@ -54,6 +86,34 @@ func (_d MembershipServiceWithPrometheus) Bootstrap(ctx context.Context, cfg api
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Bootstrap", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Bootstrap(ctx, cfg)
+}
+
+// CreateToken implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) CreateToken(ctx context.Context, req api.ClusterTokenPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateToken", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateToken(ctx, req)
+}
+
+// DeleteTokenByName implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) DeleteTokenByName(ctx context.Context, serverName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteTokenByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteTokenByName(ctx, serverName)
 }
 
 // DetermineNodeID implements cluster.MembershipService.
@@ -71,7 +131,7 @@ func (_d MembershipServiceWithPrometheus) DetermineNodeID(ctx context.Context, a
 }
 
 // Enable implements cluster.MembershipService.
-func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
+func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -81,7 +141,7 @@ func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAdd
 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Enable", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	return _d.base.Enable(ctx, clusterAddress, tokenRepo, configRepo, globalRepo)
 }
 
 // Gateway implements cluster.MembershipService.
@@ -94,6 +154,34 @@ func (_d MembershipServiceWithPrometheus) Gateway() (gateway cluster0.Gateway) {
 	return _d.base.Gateway()
 }
 
+// GetTokenByServerName implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetTokenByServerName(ctx context.Context, serverName string) (clusterJoinToken *entities.ClusterJoinToken, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenByServerName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenByServerName(ctx, serverName)
+}
+
+// GetTokens implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetTokens(ctx context.Context) (clusterJoinTokens entities.ClusterJoinTokens, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokens", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokens(ctx)
+}
+
 // HandlerFuncs implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
 	_since := time.Now()
@@ -102,6 +190,44 @@ func (_d MembershipServiceWithPrometheus) HandlerFuncs() (stringToHandlerFunc ma
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "HandlerFuncs", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.HandlerFuncs()
+}
+
+// IsMemberCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) IsMemberCertificate(certificatePEM string) (b bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "IsMemberCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IsMemberCertificate(certificatePEM)
+}
+
+// Join implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Join(ctx context.Context, cfg api.ClusterJoinPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Join", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Join(ctx, cfg)
+}
+
+// MemberClient implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) MemberClient(address string) (operationsCenterClient client.OperationsCenterClient, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "MemberClient", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.MemberClient(address)
 }
 
 // NotifyUpgradeCompleted implements cluster.MembershipService.
@@ -164,4 +290,28 @@ func (_d MembershipServiceWithPrometheus) Stop(ctx context.Context) (err error) 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Stop", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Stop(ctx)
+}
+
+// Trust implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Trust(ctx context.Context, token string, fingerprint string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Trust", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Trust(ctx, token, fingerprint)
+}
+
+// TrustedClients implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) TrustedClients() (stringToCertificate map[string]x509.Certificate) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TrustedClients", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TrustedClients()
 }

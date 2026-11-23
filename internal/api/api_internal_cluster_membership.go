@@ -160,4 +160,51 @@ func registerInternalClusterMembershipHandler(
 	joinerAuthenticator := authn.New([]authn.Auther{service})
 	leaderWithJoinerTrust := leaderUntrusted.SubGroup("").AddMiddlewares(joinerAuthenticator.Middleware())
 
+	// Trust a supplied join token.
+	leaderUntrusted.HandleFunc("POST /:trust", response.With(handler.trustPost))
+	// Accept a new cluster member.
+	leaderWithJoinerTrust.HandleFunc("POST /:accept", response.With(handler.acceptPost))
+}
+
+func (m *membershipHandler) trustPost(r *http.Request) response.Response {
+	var req membershipapi.InternalClusterPostTrustRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return response.BadRequest(errors.New("Request is not a TLS request"))
+	}
+
+	fingerprint := incustls.CertFingerprint(r.TLS.PeerCertificates[0])
+
+	err = m.service.Trust(r.Context(), req.Token, fingerprint)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) acceptPost(r *http.Request) response.Response {
+	var req api.ClusterAcceptPost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = m.checkServerNameUnused(r.Context(), req.ServerName)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	resp, err := m.service.Accept(r.Context(), req)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	return response.SyncResponse(true, resp)
 }

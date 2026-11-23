@@ -104,6 +104,21 @@ func (m *membership) takePendingClusterCertificate() cowsqltls.CertInfo {
 	return certInfo
 }
 
+// applyClientKeypair persists the client keypair and lets the daemon use it.
+func (m *membership) applyClientKeypair(ctx context.Context, certificatePEM string, keyPEM string) error {
+	_, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return domain.NewValidationErrf("Failed to validate client keypair: %v", err)
+	}
+
+	err = securitytls.WriteClientKeypair(m.varRoot, certificatePEM, keyPEM)
+	if err != nil {
+		return err
+	}
+
+	return lifecycle.ClientKeypairUpdateSignal.TryEmit(ctx, lifecycle.ClientKeypairMessage{Certificate: certificatePEM, Key: keyPEM})
+}
+
 // generateClientKeypair replaces the client keypair with a newly generated one.
 func (m *membership) generateClientKeypair(ctx context.Context) error {
 	certificatePEM, keyPEM, err := securitytls.GenerateClientKeypair(m.varRoot)

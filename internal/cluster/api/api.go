@@ -2,10 +2,28 @@ package api
 
 import "github.com/FuturFusion/operations-center/shared/api"
 
+// InternalClusterPostTrustRequest is a request for the /internal/membership/:trust endpoint.
+type InternalClusterPostTrustRequest struct {
+	// Token is the join token of the joining server.
+	Token string `json:"token" yaml:"token"`
+}
+
 // InternalRaftNode represents a node that is part of the cowsql raft cluster.
 type InternalRaftNode struct {
 	ID      uint64 `json:"id" yaml:"id"`
 	Address string `json:"address" yaml:"address"`
 	Role    int    `json:"role" yaml:"role"`
 	Name    string `json:"name" yaml:"name"`
+}
+
+type InternalClusterAcceptResponse struct {
+	LeaderAddress      string                  `json:"leader_address" yaml:"leader_address"`
+	RaftNodes          []InternalRaftNode      `json:"raft_nodes" yaml:"raft_nodes"`
+	PublicKey          string                  `json:"public_key" yaml:"public_key"`
+	PrivateKey         string                  `json:"private_key" yaml:"private_key"`
+	ServerCertificates []api.ServerCertificate `json:"server_certificates" yaml:"server_certificates"`
+
+	// ClientCertificate and ClientKey are the client keypair shared by the cluster members.
+	ClientCertificate string `json:"client_certificate" yaml:"client_certificate"`
+	ClientKey         string `json:"client_key" yaml:"client_key"`
 }

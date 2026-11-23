@@ -281,6 +281,9 @@ const (
 
 	// Amount of time in seconds before an unresponsive cluster member is considered offline.
 	DefaultOfflineThresholdSeconds = 20
+
+	// Default lifetime of a cluster membership join token.
+	DefaultMembershipJoinTokenExpiry = 3 * time.Hour
 )
 
 //go:embed default.yml

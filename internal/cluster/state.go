@@ -111,6 +111,8 @@ func (s *state) HasListener(_ context.Context) error {
 
 // UpdateAuthenticator implements [state.State].
 func (s *state) UpdateAuthenticator(ctx context.Context) error {
+	s.svc.updateCertificateCacheFromGlobal(ctx)
+
 	return nil
 }
 

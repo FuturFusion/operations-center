@@ -2,19 +2,25 @@ package cluster
 
 import (
 	"context"
+	"crypto/x509"
 	"net/http"
 
 	"github.com/cowsql/go-cowsql/cluster"
 	cowdb "github.com/cowsql/go-cowsql/cluster/db"
 
+	"github.com/FuturFusion/operations-center/internal/client"
+	membershipapi "github.com/FuturFusion/operations-center/internal/cluster/api"
 	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type MembershipService interface {
-	Enable(ctx context.Context, clusterAddress string, configRepo ConfigRepo, globalRepo GlobalRaftRepo) error
+	authn.Auther
+
+	Enable(ctx context.Context, clusterAddress string, tokenRepo JoinTokenRepo, configRepo ConfigRepo, globalRepo GlobalRaftRepo) error
 	StartLeaderTasks()
 	SetGlobalDB(repo GlobalRaftRepo)
 	DetermineNodeID(ctx context.Context, address string) error
@@ -25,6 +31,18 @@ type MembershipService interface {
 	Stop(ctx context.Context) error
 
 	Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) error
+	Join(ctx context.Context, cfg api.ClusterJoinPost) error
+	Trust(ctx context.Context, token string, fingerprint string) error
+	Accept(ctx context.Context, cfg api.ClusterAcceptPost) (*membershipapi.InternalClusterAcceptResponse, error)
+	MemberClient(address string) (client.OperationsCenterClient, error)
+
+	GetTokens(ctx context.Context) (entities.ClusterJoinTokens, error)
+	GetTokenByServerName(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error)
+	CreateToken(ctx context.Context, req api.ClusterTokenPost) error
+	DeleteTokenByName(ctx context.Context, serverName string) error
+
+	TrustedClients() map[string]x509.Certificate
+	IsMemberCertificate(certificatePEM string) bool
 
 	PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
 }
