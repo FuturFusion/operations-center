@@ -15,6 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // componentLocalRaftRepo identifies the log records of this decorator and allows the
@@ -236,6 +237,29 @@ func (_d LocalRaftRepoWithSlog) GetClusterAddress(ctx context.Context) (s string
 		}
 	}()
 	return _d._base.GetClusterAddress(ctx)
+}
+
+// GetNetworkConfig implements cluster.LocalRaftRepo.
+func (_d LocalRaftRepoWithSlog) GetNetworkConfig(ctx context.Context) (networkLocal system.NetworkLocal) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetNetworkConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("networkLocal", networkLocal),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method GetNetworkConfig finished")
+	}()
+	return _d._base.GetNetworkConfig(ctx)
 }
 
 // GetRaftNode implements cluster.LocalRaftRepo.

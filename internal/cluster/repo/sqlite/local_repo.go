@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -12,13 +11,16 @@ import (
 	"github.com/cowsql/go-cowsql/cluster/db/transaction"
 
 	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities/cowsql"
+	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/shared/api"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type raft struct {
 	db         transaction.DBTX
 	internalDB *sql.DB
 	dir        string
+	system     system.SystemService
 }
 
 type LocalDB struct {
@@ -29,8 +31,8 @@ func (l *LocalDB) BeginTx(ctx context.Context) (transaction.TX, error) {
 	return l.DB.BeginTx(ctx, nil)
 }
 
-func NewRaftRepo(internalDB *LocalDB, dir string) *raft {
-	return &raft{db: transaction.Enable(internalDB), internalDB: internalDB.DB, dir: dir}
+func NewRaftRepo(internalDB *LocalDB, dir string, s system.SystemService) *raft {
+	return &raft{db: transaction.Enable(internalDB), internalDB: internalDB.DB, dir: dir, system: s}
 }
 
 // MaxRetries implements [cluster.LocalRaftRepo].
@@ -71,14 +73,20 @@ func (r *raft) LogPath() string {
 	return filepath.Join(r.GlobalDatabaseDir(), "logs.db")
 }
 
-// GetClusterAddress implements [cluster.LocalRaftRepo]. A standalone member has no cluster address.
+// GetClusterAddress implements [cluster.LocalRaftRepo].
 func (r *raft) GetClusterAddress(ctx context.Context) (string, error) {
-	return "", nil
+	n := r.system.GetNetworkConfig(ctx)
+	return n.ClusterAddress, nil
 }
 
-// SetClusterAddress implements [cluster.LocalRaftRepo]. A standalone member has no cluster address.
+// SetClusterAddress implements [cluster.LocalRaftRepo].
 func (r *raft) SetClusterAddress(ctx context.Context, address string) error {
-	return errors.New("A standalone member has no cluster address")
+	n := r.system.GetNetworkConfig(ctx)
+	n.ClusterAddress = address
+	return r.system.UpdateNetworkConfig(ctx, apisystem.NetworkPut{
+		NetworkLocalPut:  n.NetworkLocalPut,
+		NetworkGlobalPut: n.NetworkGlobalPut,
+	})
 }
 
 // CreateFirstRaftNode implements [cluster.LocalRaftRepo].
@@ -143,6 +151,10 @@ func (r *raft) ReplaceRaftNodes(ctx context.Context, nodes []db.RaftNode) error 
 	return transaction.ForceTx(ctx, r, func(ctx context.Context, tx transaction.TX) error {
 		return cowsql.ReplaceRaftNodes(ctx, tx, nodes)
 	})
+}
+
+func (r *raft) GetNetworkConfig(ctx context.Context) apisystem.NetworkLocal {
+	return r.system.GetNetworkConfig(ctx).NetworkLocal
 }
 
 func (r *raft) GetCertificates(ctx context.Context) (map[string]api.Certificate, error) {

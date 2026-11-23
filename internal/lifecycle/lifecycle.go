@@ -30,6 +30,8 @@ var (
 	UpdatesValidateSignal = signals.NewSync[apisystem.Updates]()
 	UpdatesUpdateSignal   = signals.NewSync[apisystem.Updates]()
 
+	SharedClusterUpdateSignal = signals.NewSync[apisystem.Cluster]()
+
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
 
 	ServerLifecycleSignal = signals.NewSync[ServerLifecycleMessage]()

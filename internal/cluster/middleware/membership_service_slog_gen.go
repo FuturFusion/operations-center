@@ -6,12 +6,14 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"net/http"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
 
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // componentMembershipService identifies the log records of this decorator and allows the
@@ -47,6 +49,37 @@ func NewMembershipServiceWithSlog(base cluster.MembershipService, opts ...Member
 	}
 
 	return this
+}
+
+// Bootstrap implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Bootstrap")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Bootstrap returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Bootstrap finished")
+		}
+	}()
+	return _d._base.Bootstrap(ctx, cfg)
 }
 
 // DetermineNodeID implements cluster.MembershipService.
@@ -129,6 +162,54 @@ func (_d MembershipServiceWithSlog) Gateway() (gateway cluster0.Gateway) {
 		log.DebugContext(ctx, "<= method Gateway finished")
 	}()
 	return _d._base.Gateway()
+}
+
+// HandlerFuncs implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling HandlerFuncs")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToHandlerFunc", stringToHandlerFunc),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method HandlerFuncs finished")
+	}()
+	return _d._base.HandlerFuncs()
+}
+
+// NotifyUpgradeCompleted implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) NotifyUpgradeCompleted(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling NotifyUpgradeCompleted")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method NotifyUpgradeCompleted returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method NotifyUpgradeCompleted finished")
+		}
+	}()
+	return _d._base.NotifyUpgradeCompleted(ctx)
 }
 
 // PersistSharedConfig implements cluster.MembershipService.

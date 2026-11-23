@@ -157,7 +157,7 @@ func TestRegisterComponentsValidation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			config.InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }}, nil)
+			config.InitTest(t, &mock.EnvironmentMock{IsIncusOSFunc: func() bool { return false }, ClusteredFunc: func() bool { return false }}, nil)
 			t.Cleanup(func() { metrics.Apply(false, nil) })
 
 			registerComponentsValidation()

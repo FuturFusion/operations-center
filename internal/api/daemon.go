@@ -11,9 +11,11 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -133,6 +135,7 @@ type environment interface {
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
+	Clustered() bool
 }
 
 type Daemon struct {
@@ -177,7 +180,9 @@ type Daemon struct {
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
 
-	restartCh chan struct{}
+	restartCh    chan struct{}
+	restarting   atomic.Bool
+	shuttingDown atomic.Bool
 }
 
 // dbtxWrapper is the global database of the services. It is registered once the database is open, while requests already check for it.
@@ -516,7 +521,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "", localDB)
+	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, config.GetLocalNetwork().ClusterAddress, localDB)
 	if err != nil {
 		return err
 	}
@@ -668,9 +673,9 @@ func (d *Daemon) loadClientCertificate(ctx context.Context) {
 	d.clientKey = string(clientKey)
 }
 
-func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []task.TaskFunc) (clusteringSvc.MembershipService, bool, error) {
+func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []clusteringSvc.LeaderTask, warnings warning.WarningEmitter) (clusteringSvc.MembershipService, bool, error) {
 	// go-cowsql opens the raft database by path.
-	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"))
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"), d.systemSvc)
 	isClustered, err := cowsqlmembership.Enabled(localRepo)
 	if err != nil {
 		return nil, false, err
@@ -681,9 +686,17 @@ func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clu
 		return nil, false, err
 	}
 
-	// A standalone member uses the server certificate as the cluster certificate.
+	// Until clustered, the server certificate is used as the cluster certificate.
+	clusterCert := localCert
+	if isClustered {
+		clusterCert, err = clusteringSvc.FindOrGenCertInfo(d.varRoot, "cluster.crt", "cluster.key")
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	// The raft repos aren't wrapped with slog, they run every transaction of the daemon.
-	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.varRoot, d.listeners, localRepo, localCert, localCert, tasks)
+	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.env, d.varRoot, d.systemSvc, d.listeners, localRepo, clusterCert, localCert, tasks, warnings)
 	if err != nil {
 		return nil, false, err
 	}
@@ -794,6 +807,12 @@ func (d *Daemon) initAndLoadServerCert() error {
 
 	certificateFilename := config.ServerCertificateFilename
 	keyFilename := config.ServerKeyFilename
+
+	// When clustered, the server certificate is only used for member trust.
+	if d.env.Clustered() {
+		certificateFilename = config.ClusterCertificateFilename
+		keyFilename = config.ClusterKeyFilename
+	}
 
 	certificatePEM, err := d.varRoot.ReadFile(certificateFilename)
 	if err != nil {
@@ -1280,6 +1299,16 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 	)
 }
 
+// requestRestart asks the daemon to restart. It does not block.
+func (d *Daemon) requestRestart() {
+	d.restarting.Store(true)
+
+	select {
+	case d.restartCh <- struct{}{}:
+	default:
+	}
+}
+
 // RestartRequested is signaled, once the daemon asks to be restarted.
 func (d *Daemon) RestartRequested() <-chan struct{} {
 	return d.restartCh
@@ -1299,6 +1328,8 @@ func (d *Daemon) setupAPIRoutes(
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
+	membershipSvc clusteringSvc.MembershipService,
+	fileMover memberfiles.Mover,
 	db *dbtxWrapper,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1330,6 +1361,10 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	registerUIHandlers(ctx, router, embeddedUI, uiRoot)
+	for p, f := range membershipSvc.HandlerFuncs() {
+		router.HandleFunc(p, f)
+	}
+
 	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"
@@ -1361,6 +1396,13 @@ func (d *Daemon) setupAPIRoutes(
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
+
+	internalUpdatesRouter := internalRouter.SubGroup("/updates").AddMiddlewares(requireClusterMemberOrLocal, requireDatabase)
+	refreshWarnings := memberRefreshWarnings{emitter: warningSvc, memberName: d.localMemberName}
+	registerInternalUpdateFilesHandler(internalUpdatesRouter, d.authorizer, updateSvc, refreshWarnings)
+
+	internalMembershipRouter := router.SubGroup("/internal/membership")
+	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart, serverSvc)
 
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)
@@ -1450,6 +1492,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	metricsRouter := api10router.SubGroup("/metrics")
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
+
+	membershipRouter := api10router.SubGroup("/membership")
+	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart, fileMover, serverSvc, secureBootMedia)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
@@ -2243,7 +2288,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLoca
 	errCh := make(chan error)
 
 	d.errgroup.Go(func() error {
-		oldServerListener, _ := d.listeners.Listeners()
+		oldServerListener, oldClusterListener := d.listeners.Listeners()
 
 		if oldServerListener != nil {
 			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldServerListener.Addr().String()))
@@ -2258,6 +2303,49 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLoca
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
 		listenerCert := d.apiCertificate
+
+		if cfg.ClusterAddress != "" {
+			isCovered := cfg.RestServerAddress != "" && listener.IsAddressCovered(cfg.ClusterAddress, cfg.RestServerAddress)
+
+			// Stop the cluster listener if the https listener covers its address.
+			if isCovered && oldClusterListener != nil {
+				slog.InfoContext(ctx, "Stopping existing cluster https listener, the https listener covers its address", slog.Any("addr", oldClusterListener.Addr().String()))
+				err := oldClusterListener.Close()
+				if err != nil {
+					errCh <- err
+					return err
+				}
+
+				d.listeners.SetClusterListener(nil)
+			}
+
+			if !isCovered {
+				if oldClusterListener != nil {
+					slog.InfoContext(ctx, "Stopping existing cluster https listener", slog.Any("addr", oldClusterListener.Addr().String()))
+					err := oldClusterListener.Close()
+					if err != nil {
+						errCh <- err
+						return err
+					}
+				}
+
+				slog.InfoContext(ctx, "Start https cluster listener", slog.Any("addr", cfg.ClusterAddress))
+				tcpListener, err := net.Listen("tcp", cfg.ClusterAddress)
+				if err != nil {
+					errCh <- err
+					return err
+				}
+
+				clusterListener := listener.NewFancyTLSListener(tcpListener, listenerCert)
+
+				err = clusterListener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
+				}
+
+				d.listeners.SetClusterListener(clusterListener)
+			}
+		}
 
 		if cfg.RestServerAddress == "" {
 			d.listeners.SetServerListener(nil)

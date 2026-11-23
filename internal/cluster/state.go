@@ -15,10 +15,17 @@ import (
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/api/listener"
+	"github.com/FuturFusion/operations-center/internal/system"
 )
+
+type environment interface {
+	CacheDir() string
+}
 
 type state struct {
 	varRoot   *os.Root
+	system    system.SystemService
+	svc       *membership
 	listeners *listener.ListenerSet
 }
 
@@ -40,6 +47,12 @@ func (s *state) NewClusterCertificate() (cowsqltls.CertInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to remove stale certificate path %q: %w", name, err)
 		}
+	}
+
+	// An ACME issued certificate is used instead of a self-signed one if prepared.
+	pending := s.svc.takePendingClusterCertificate()
+	if pending != nil {
+		return s.SetClusterCertificate(pending)
 	}
 
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, true)
@@ -96,7 +109,7 @@ func (s *state) HasListener(_ context.Context) error {
 	return nil
 }
 
-// UpdateAuthenticator implements [state.State]. A standalone member trusts no other members.
+// UpdateAuthenticator implements [state.State].
 func (s *state) UpdateAuthenticator(ctx context.Context) error {
 	return nil
 }
@@ -105,14 +118,18 @@ func (s *state) UpdateAuthenticator(ctx context.Context) error {
 func (s *state) OnHeartbeatNotification(members map[int64]cowsqldb.HeartbeatMember) {
 }
 
-// ClusterAddress implements [state.State]. A standalone member has no cluster address.
+// ClusterAddress implements [state.State].
 func (s *state) ClusterAddress() string {
-	return ""
+	cfg := s.system.GetNetworkConfig(context.TODO())
+
+	return cfg.ClusterAddress
 }
 
-func newState(varRoot *os.Root, listeners *listener.ListenerSet) cowstate.State {
+func newState(varRoot *os.Root, systemSvc system.SystemService, listeners *listener.ListenerSet, m *membership) cowstate.State {
 	return &state{
 		varRoot:   varRoot,
+		system:    systemSvc,
+		svc:       m,
 		listeners: listeners,
 	}
 }

@@ -695,6 +695,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.NoError(t, err)
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return tc.clustered },
 				IsIncusOSFunc: func() bool {
 					return true
 				},
@@ -871,6 +872,7 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return true
 				},
@@ -935,6 +937,54 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 			require.Equal(t, tc.wantChanged, changed)
 		})
 	}
+}
+
+func TestSystemService_TriggerCertificateRenew_membersOffline(t *testing.T) {
+	certPEM, _, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	env := &envMock.EnvironmentMock{
+		ClusteredFunc: func() bool { return false },
+		VarDirFunc:    func() string { return tmpDir },
+		CacheDirFunc:  func() string { return tmpDir },
+		IsIncusOSFunc: func() bool { return false },
+	}
+
+	config.InitTest(t, env, nil)
+
+	security := config.GetSecurity().SecurityPut
+	security.ACME = systemapi.SecurityACME{
+		Domain:    "operations-center.example.org",
+		Email:     "admin@example.org",
+		CAURL:     "https://acme-v02.api.letsencrypt.org/directory",
+		AgreeTOS:  true,
+		Challenge: systemapi.ACMEChallengeHTTP,
+		Address:   ":80",
+	}
+	require.NoError(t, config.UpdateSecurity(t.Context(), security))
+
+	certificateRepo := &repoMock.CertificateRepoMock{
+		GetServerCertificateFunc: func(ctx context.Context) ([]byte, error) {
+			return certPEM, nil
+		},
+	}
+
+	acmeCalled := false
+	systemSvc := system.NewSystemService(env, nil, nil, certificateRepo,
+		system.WithClusterMembersOnlineCheck(func(ctx context.Context) error {
+			return boom.Error
+		}),
+		system.WithACMEUpdateCertificateFunc(func(ctx context.Context, fsEnv interface{ CacheDir() string }, cfg systemapi.SecurityACME, current *x509.Certificate, force bool) (*systemapi.CertificatePost, error) {
+			acmeCalled = true
+			return nil, nil
+		}),
+	)
+
+	changed, err := systemSvc.TriggerCertificateRenew(t.Context(), true)
+	boom.ErrorIs(t, err)
+	require.False(t, changed)
+	require.False(t, acmeCalled, "ACME is not contacted while a cluster member is offline")
 }
 
 func TestSystemService_UpdateNetworkConfig(t *testing.T) {
@@ -1306,6 +1356,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1368,6 +1419,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			}
 
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1507,6 +1559,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1576,6 +1629,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},
@@ -1597,6 +1651,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 
 func TestSystemService_UpdateSettingsConfig_sharedFails(t *testing.T) {
 	env := &envMock.EnvironmentMock{
+		ClusteredFunc: func() bool { return false },
 		IsIncusOSFunc: func() bool { return false },
 	}
 
@@ -1678,6 +1733,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			env := &envMock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},

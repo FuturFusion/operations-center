@@ -88,6 +88,7 @@ components:
       - cmd/operations-centerd
       - internal/api/**
       - internal/cluster
+      - internal/cluster/api
       # The decorators of the cluster interfaces, which are part of the daemon.
       - internal/cluster/middleware
       - internal/cluster/repo/middleware
@@ -120,6 +121,7 @@ components:
       - internal/adapter/**
       - internal/*/adapter/**
       - internal/*/repo/**
+      - internal/cluster/memberfiles
       - internal/sql/sqlite/**
       - internal/sql/cowsql/**
       - internal/sql/dbschema
@@ -148,6 +150,8 @@ deps:
       - util
       - service
       - infra
+      # The daemon forwards requests to the other cluster members through the client.
+      - client
 
   daemon_shared:
     mayDependOn:
@@ -174,3 +178,5 @@ deps:
       - domain
       - shared
       - daemon_shared
+      # Adapters reach the other cluster members through the client.
+      - client

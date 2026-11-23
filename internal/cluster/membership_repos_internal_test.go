@@ -39,9 +39,11 @@ func TestMembership_SetGlobalDB_concurrent(t *testing.T) {
 		}
 	}()
 
-	// Requests read the repository while startup sets it.
+	// The heartbeat hook and requests read the repository while startup sets it.
 	for range 100 {
-		require.Equal(t, int64(1), m.global().GetNodeID())
+		id, err := m.LocalMemberID()
+		require.NoError(t, err)
+		require.Equal(t, int64(1), id)
 	}
 
 	<-done

@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // MembershipServiceWithPrometheus implements cluster.MembershipService interface with all methods wrapped
@@ -38,6 +40,20 @@ func NewMembershipServiceWithPrometheus(base cluster.MembershipService, instance
 		base:         base,
 		instanceName: instanceName,
 	}
+}
+
+// Bootstrap implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Bootstrap", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Bootstrap(ctx, cfg)
 }
 
 // DetermineNodeID implements cluster.MembershipService.
@@ -76,6 +92,30 @@ func (_d MembershipServiceWithPrometheus) Gateway() (gateway cluster0.Gateway) {
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Gateway", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Gateway()
+}
+
+// HandlerFuncs implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "HandlerFuncs", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.HandlerFuncs()
+}
+
+// NotifyUpgradeCompleted implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) NotifyUpgradeCompleted(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "NotifyUpgradeCompleted", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.NotifyUpgradeCompleted(ctx)
 }
 
 // PersistSharedConfig implements cluster.MembershipService.

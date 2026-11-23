@@ -6,12 +6,14 @@ package mock
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
 
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that MembershipServiceMock does implement cluster.MembershipService.
@@ -24,6 +26,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //
 //		// make and configure a mocked cluster.MembershipService
 //		mockedMembershipService := &MembershipServiceMock{
+//			BootstrapFunc: func(ctx context.Context, cfg api.ClusterBootstrapPost) error {
+//				panic("mock out the Bootstrap method")
+//			},
 //			DetermineNodeIDFunc: func(ctx context.Context, address string) error {
 //				panic("mock out the DetermineNodeID method")
 //			},
@@ -32,6 +37,12 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			},
 //			GatewayFunc: func() cluster0.Gateway {
 //				panic("mock out the Gateway method")
+//			},
+//			HandlerFuncsFunc: func() map[string]http.HandlerFunc {
+//				panic("mock out the HandlerFuncs method")
+//			},
+//			NotifyUpgradeCompletedFunc: func(ctx context.Context) error {
+//				panic("mock out the NotifyUpgradeCompleted method")
 //			},
 //			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
 //				panic("mock out the PersistSharedConfig method")
@@ -52,6 +63,9 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //
 //	}
 type MembershipServiceMock struct {
+	// BootstrapFunc mocks the Bootstrap method.
+	BootstrapFunc func(ctx context.Context, cfg api.ClusterBootstrapPost) error
+
 	// DetermineNodeIDFunc mocks the DetermineNodeID method.
 	DetermineNodeIDFunc func(ctx context.Context, address string) error
 
@@ -60,6 +74,12 @@ type MembershipServiceMock struct {
 
 	// GatewayFunc mocks the Gateway method.
 	GatewayFunc func() cluster0.Gateway
+
+	// HandlerFuncsFunc mocks the HandlerFuncs method.
+	HandlerFuncsFunc func() map[string]http.HandlerFunc
+
+	// NotifyUpgradeCompletedFunc mocks the NotifyUpgradeCompleted method.
+	NotifyUpgradeCompletedFunc func(ctx context.Context) error
 
 	// PersistSharedConfigFunc mocks the PersistSharedConfig method.
 	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
@@ -75,6 +95,13 @@ type MembershipServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Bootstrap holds details about calls to the Bootstrap method.
+		Bootstrap []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg api.ClusterBootstrapPost
+		}
 		// DetermineNodeID holds details about calls to the DetermineNodeID method.
 		DetermineNodeID []struct {
 			// Ctx is the ctx argument value.
@@ -95,6 +122,14 @@ type MembershipServiceMock struct {
 		}
 		// Gateway holds details about calls to the Gateway method.
 		Gateway []struct {
+		}
+		// HandlerFuncs holds details about calls to the HandlerFuncs method.
+		HandlerFuncs []struct {
+		}
+		// NotifyUpgradeCompleted holds details about calls to the NotifyUpgradeCompleted method.
+		NotifyUpgradeCompleted []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// PersistSharedConfig holds details about calls to the PersistSharedConfig method.
 		PersistSharedConfig []struct {
@@ -117,13 +152,52 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 		}
 	}
-	lockDetermineNodeID     sync.RWMutex
-	lockEnable              sync.RWMutex
-	lockGateway             sync.RWMutex
-	lockPersistSharedConfig sync.RWMutex
-	lockSetGlobalDB         sync.RWMutex
-	lockStartLeaderTasks    sync.RWMutex
-	lockStop                sync.RWMutex
+	lockBootstrap              sync.RWMutex
+	lockDetermineNodeID        sync.RWMutex
+	lockEnable                 sync.RWMutex
+	lockGateway                sync.RWMutex
+	lockHandlerFuncs           sync.RWMutex
+	lockNotifyUpgradeCompleted sync.RWMutex
+	lockPersistSharedConfig    sync.RWMutex
+	lockSetGlobalDB            sync.RWMutex
+	lockStartLeaderTasks       sync.RWMutex
+	lockStop                   sync.RWMutex
+}
+
+// Bootstrap calls BootstrapFunc.
+func (mock *MembershipServiceMock) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) error {
+	if mock.BootstrapFunc == nil {
+		panic("MembershipServiceMock.BootstrapFunc: method is nil but MembershipService.Bootstrap was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg api.ClusterBootstrapPost
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockBootstrap.Lock()
+	mock.calls.Bootstrap = append(mock.calls.Bootstrap, callInfo)
+	mock.lockBootstrap.Unlock()
+	return mock.BootstrapFunc(ctx, cfg)
+}
+
+// BootstrapCalls gets all the calls that were made to Bootstrap.
+// Check the length with:
+//
+//	len(mockedMembershipService.BootstrapCalls())
+func (mock *MembershipServiceMock) BootstrapCalls() []struct {
+	Ctx context.Context
+	Cfg api.ClusterBootstrapPost
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg api.ClusterBootstrapPost
+	}
+	mock.lockBootstrap.RLock()
+	calls = mock.calls.Bootstrap
+	mock.lockBootstrap.RUnlock()
+	return calls
 }
 
 // DetermineNodeID calls DetermineNodeIDFunc.
@@ -230,6 +304,65 @@ func (mock *MembershipServiceMock) GatewayCalls() []struct {
 	mock.lockGateway.RLock()
 	calls = mock.calls.Gateway
 	mock.lockGateway.RUnlock()
+	return calls
+}
+
+// HandlerFuncs calls HandlerFuncsFunc.
+func (mock *MembershipServiceMock) HandlerFuncs() map[string]http.HandlerFunc {
+	if mock.HandlerFuncsFunc == nil {
+		panic("MembershipServiceMock.HandlerFuncsFunc: method is nil but MembershipService.HandlerFuncs was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockHandlerFuncs.Lock()
+	mock.calls.HandlerFuncs = append(mock.calls.HandlerFuncs, callInfo)
+	mock.lockHandlerFuncs.Unlock()
+	return mock.HandlerFuncsFunc()
+}
+
+// HandlerFuncsCalls gets all the calls that were made to HandlerFuncs.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandlerFuncsCalls())
+func (mock *MembershipServiceMock) HandlerFuncsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockHandlerFuncs.RLock()
+	calls = mock.calls.HandlerFuncs
+	mock.lockHandlerFuncs.RUnlock()
+	return calls
+}
+
+// NotifyUpgradeCompleted calls NotifyUpgradeCompletedFunc.
+func (mock *MembershipServiceMock) NotifyUpgradeCompleted(ctx context.Context) error {
+	if mock.NotifyUpgradeCompletedFunc == nil {
+		panic("MembershipServiceMock.NotifyUpgradeCompletedFunc: method is nil but MembershipService.NotifyUpgradeCompleted was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockNotifyUpgradeCompleted.Lock()
+	mock.calls.NotifyUpgradeCompleted = append(mock.calls.NotifyUpgradeCompleted, callInfo)
+	mock.lockNotifyUpgradeCompleted.Unlock()
+	return mock.NotifyUpgradeCompletedFunc(ctx)
+}
+
+// NotifyUpgradeCompletedCalls gets all the calls that were made to NotifyUpgradeCompleted.
+// Check the length with:
+//
+//	len(mockedMembershipService.NotifyUpgradeCompletedCalls())
+func (mock *MembershipServiceMock) NotifyUpgradeCompletedCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockNotifyUpgradeCompleted.RLock()
+	calls = mock.calls.NotifyUpgradeCompleted
+	mock.lockNotifyUpgradeCompleted.RUnlock()
 	return calls
 }
 
