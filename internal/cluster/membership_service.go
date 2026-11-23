@@ -66,10 +66,18 @@ type membership struct {
 	// rolesMu serializes the changes of the raft roles and members on the leader.
 	rolesMu sync.Mutex
 
+	// removalChecks refuse the removal of a member, which is not forced.
+	removalChecks []RemovalCheck
+
 	stopOnce sync.Once
 	stopErr  error
 
-	// The repositories of the global database are set once it is open, while requests already read them.
+	// resetPending removes the database on shutdown.
+	resetPending atomic.Bool
+
+	localRepo LocalRaftRepo
+
+	// The repositories of the global database are set once it is open, while requests and heartbeats already read them.
 	globalRepo atomic.Pointer[GlobalRaftRepo]
 	tokenRepo  atomic.Pointer[JoinTokenRepo]
 	configRepo atomic.Pointer[ConfigRepo]
@@ -113,6 +121,16 @@ type Option func(m *membership)
 func WithJoinCheck(check func(ctx context.Context) error) Option {
 	return func(m *membership) {
 		m.joinCheck = check
+	}
+}
+
+// RemovalCheck refuses the removal of the cluster member name, unless it is forced.
+type RemovalCheck func(ctx context.Context, name string) error
+
+// WithRemovalChecks adds checks run right before a member is removed, which refuse the removal with an error.
+func WithRemovalChecks(checks ...RemovalCheck) Option {
+	return func(m *membership) {
+		m.removalChecks = append(m.removalChecks, checks...)
 	}
 }
 
@@ -576,6 +594,131 @@ func (m *membership) Accept(ctx context.Context, req api.ClusterAcceptPost) (*me
 	return &resp, nil
 }
 
+// RemoveMember removes the named cluster member and, unless force is set, tries to reset it to a standalone server.
+func (m *membership) RemoveMember(ctx context.Context, name string, force bool) error {
+	err := m.isLeader(ctx)
+	if err != nil {
+		return err
+	}
+
+	pending := true
+	member, err := m.global().GetNodeByName(ctx, name, true)
+	if api.StatusErrorCheck(err, http.StatusNotFound) {
+		pending = false
+		member, err = m.global().GetNodeByName(ctx, name, false)
+	}
+
+	if api.StatusErrorCheck(err, http.StatusNotFound) {
+		return domain.NewErrorf(domain.ErrNotFound, "", "Cluster member %q not found", name)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if !pending && member.Address == m.Gateway().State().ClusterAddress() {
+		return m.removeLeader(ctx, name, force)
+	}
+
+	address, err := m.leave(ctx, name, force, pending)
+	if err != nil {
+		return err
+	}
+
+	if force {
+		return nil
+	}
+
+	c, err := m.MemberClient(address)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to reset the removed cluster member", slog.String("name", name), logger.Err(err))
+		return nil
+	}
+
+	// The member is already removed from the cluster, an unreachable member is just not reset.
+	_, err = c.DoInternalRequest(ctx, http.MethodPost, "/membership/:reset", nil, nil)
+
+	// A member, which answered, is still clustered on its own and needs attention.
+	var serverErr *client.ServerError
+	if errors.As(err, &serverErr) {
+		return fmt.Errorf("Removed cluster member %q failed to reset itself to a standalone server: %w", name, err)
+	}
+
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to reset the removed cluster member", slog.String("name", name), logger.Err(err))
+	}
+
+	return nil
+}
+
+// leave removes the member name from the raft cluster and the database and rebalances the roles.
+// It holds the lock of the role changes, so no join, handover or rebalance runs meanwhile, and runs the removal checks under it.
+func (m *membership) leave(ctx context.Context, name string, force bool, pending bool) (string, error) {
+	m.rolesMu.Lock()
+	defer m.rolesMu.Unlock()
+
+	// The checks run right before the removal, so files assigned to the member meanwhile are seen.
+	if !force {
+		for _, check := range m.removalChecks {
+			err := check(ctx, name)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	address, err := cowsqlmembership.Leave[struct{}](m.gateway, name, force, pending)
+	if err != nil {
+		return "", err
+	}
+
+	err = cowsqlmembership.Purge[struct{}](m.gateway, name, pending)
+	if err != nil {
+		return "", fmt.Errorf("Failed to remove member from database: %w", err)
+	}
+
+	m.updateCertificateCacheFromGlobal(ctx)
+
+	err = m.rebalance(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to rebalance cluster roles after removing a member", slog.String("name", name), logger.Err(err))
+	}
+
+	return address, nil
+}
+
+// removeLeader transfers the leadership of this member and lets the new leader remove it.
+func (m *membership) removeLeader(ctx context.Context, name string, force bool) error {
+	err := m.transferLeadership(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	leader, err := m.Gateway().LeaderAddress()
+	if err != nil {
+		return err
+	}
+
+	c, err := m.MemberClient(leader)
+	if err != nil {
+		return err
+	}
+
+	query := url.Values{}
+	if force {
+		query.Set("force", "1")
+	}
+
+	_, err = c.DoRequest(ctx, http.MethodDelete, "/membership/members/"+url.PathEscape(name), query, nil)
+
+	return err
+}
+
+// Reset resets this member to an empty standalone server after it has been removed from the cluster.
+func (m *membership) Reset(ctx context.Context) {
+	m.resetToStandalone(ctx)
+}
+
 // errTokensNotReady reports the join tokens as not available before the global database is open.
 var errTokensNotReady = domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Cluster database is still initializing")
 
@@ -874,6 +1017,42 @@ func (m *membership) Join(ctx context.Context, req api.ClusterJoinPost) (err err
 // MemberDialTimeout limits the time to connect to another cluster member.
 const MemberDialTimeout = 10 * time.Second
 
+// ErrJoinReset reports a failed join after which this member has been reset to an empty standalone server.
+var ErrJoinReset = errors.New("this server has been reset to an empty standalone server")
+
+// resetToStandalone resets this member to an empty standalone server.
+func (m *membership) resetToStandalone(ctx context.Context) {
+	// The marker lets the next start complete the reset, if the daemon dies before its shutdown removes the database.
+	err := m.varRoot.WriteFile(resetPendingFilename, nil, 0o600)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to mark the reset to a standalone server", logger.Err(err))
+	}
+
+	// Stop trusting the other members, so a late heartbeat does not restore the raft members.
+	m.setCertificateCache(nil)
+
+	err = memberfiles.DeleteStores(m.varRoot)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to remove the files of the cluster database", logger.Err(err))
+	}
+
+	// Replace the client keypair of the cluster.
+	err = m.generateClientKeypair(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to replace the client keypair of the cluster", logger.Err(err))
+	}
+
+	for _, suffix := range []string{"ca", "crt", "key"} {
+		err := m.varRoot.Remove("cluster." + suffix)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.ErrorContext(ctx, "Failed to remove cluster certificate", logger.Err(err))
+		}
+	}
+
+	// Remove the database on shutdown, since another member could still restore the raft members.
+	m.resetPending.Store(true)
+}
+
 func (m *membership) Gateway() cowsqlcluster.Gateway {
 	return m.gateway
 }
@@ -978,6 +1157,19 @@ func (m *membership) stop(ctx context.Context) error {
 	err := m.Gateway().Stop(timeout)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("Failed to stop cluster database gateway: %w", err))
+	}
+
+	// Remove the database, so the restart begins as a standalone server.
+	if m.resetPending.Load() {
+		err = m.varRoot.RemoveAll("database")
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to remove the database of the reset member: %w", err))
+		} else {
+			err = m.varRoot.Remove(resetPendingFilename)
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				errs = append(errs, fmt.Errorf("Failed to remove the reset marker: %w", err))
+			}
+		}
 	}
 
 	return errors.Join(errs...)
@@ -1399,6 +1591,11 @@ func (m *membership) Rebalance(ctx context.Context) error {
 	m.rolesMu.Lock()
 	defer m.rolesMu.Unlock()
 
+	return m.rebalance(ctx)
+}
+
+// rebalance is Rebalance for a caller holding rolesMu.
+func (m *membership) rebalance(ctx context.Context) error {
 	for ctx.Err() == nil {
 		address, nodes, err := cowsqlmembership.Rebalance(m.gateway, nil, nil)
 		if err != nil {

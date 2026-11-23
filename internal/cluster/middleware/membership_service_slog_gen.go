@@ -724,6 +724,55 @@ func (_d MembershipServiceWithSlog) Rebalance(ctx context.Context) (err error) {
 	return _d._base.Rebalance(ctx)
 }
 
+// RemoveMember implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) RemoveMember(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveMember")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RemoveMember returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RemoveMember finished")
+		}
+	}()
+	return _d._base.RemoveMember(ctx, name, force)
+}
+
+// Reset implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Reset(ctx context.Context) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Reset")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method Reset finished")
+	}()
+	_d._base.Reset(ctx)
+}
+
 // SetGlobalDB implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) SetGlobalDB(repo cluster.GlobalRaftRepo) {
 	ctx := logger.ContextWithComponent(context.Background(), _d._component)

@@ -170,6 +170,8 @@ func registerInternalClusterMembershipHandler(
 	leaderUntrusted.HandleFunc("POST /:trust", response.With(handler.trustPost))
 	// Accept a new cluster member.
 	leaderWithJoinerTrust.HandleFunc("POST /:accept", response.With(handler.acceptPost))
+	// Reset this member to an empty standalone server after it has been removed from the cluster.
+	authenticated.HandleFunc("POST /:reset", response.With(handler.resetPost))
 }
 
 func (m *membershipHandler) assignPost(r *http.Request) response.Response {
@@ -249,6 +251,13 @@ func (m *membershipHandler) trustPost(r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	return response.EmptySyncResponse
+}
+
+func (m *membershipHandler) resetPost(r *http.Request) response.Response {
+	m.service.Reset(r.Context())
+	m.restart()
 
 	return response.EmptySyncResponse
 }

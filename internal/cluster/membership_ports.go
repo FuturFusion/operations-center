@@ -36,6 +36,8 @@ type MembershipService interface {
 	Join(ctx context.Context, cfg api.ClusterJoinPost) error
 	Trust(ctx context.Context, token string, fingerprint string) error
 	Accept(ctx context.Context, cfg api.ClusterAcceptPost) (*membershipapi.InternalClusterAcceptResponse, error)
+	RemoveMember(ctx context.Context, name string, force bool) error
+	Reset(ctx context.Context)
 	GetMembers(ctx context.Context) ([]api.ClusterMember, error)
 	GetMembersByID(ctx context.Context) (map[int64]cowdb.NodeInfo, error)
 	HeartbeatOfflineThreshold() time.Duration

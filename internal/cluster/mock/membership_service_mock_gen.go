@@ -101,6 +101,12 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			RebalanceFunc: func(ctx context.Context) error {
 //				panic("mock out the Rebalance method")
 //			},
+//			RemoveMemberFunc: func(ctx context.Context, name string, force bool) error {
+//				panic("mock out the RemoveMember method")
+//			},
+//			ResetFunc: func(ctx context.Context)  {
+//				panic("mock out the Reset method")
+//			},
 //			SetGlobalDBFunc: func(repo cluster.GlobalRaftRepo)  {
 //				panic("mock out the SetGlobalDB method")
 //			},
@@ -191,6 +197,12 @@ type MembershipServiceMock struct {
 
 	// RebalanceFunc mocks the Rebalance method.
 	RebalanceFunc func(ctx context.Context) error
+
+	// RemoveMemberFunc mocks the RemoveMember method.
+	RemoveMemberFunc func(ctx context.Context, name string, force bool) error
+
+	// ResetFunc mocks the Reset method.
+	ResetFunc func(ctx context.Context)
 
 	// SetGlobalDBFunc mocks the SetGlobalDB method.
 	SetGlobalDBFunc func(repo cluster.GlobalRaftRepo)
@@ -344,6 +356,20 @@ type MembershipServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// RemoveMember holds details about calls to the RemoveMember method.
+		RemoveMember []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Force is the force argument value.
+			Force bool
+		}
+		// Reset holds details about calls to the Reset method.
+		Reset []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// SetGlobalDB holds details about calls to the SetGlobalDB method.
 		SetGlobalDB []struct {
 			// Repo is the repo argument value.
@@ -393,6 +419,8 @@ type MembershipServiceMock struct {
 	lockNotifyUpgradeCompleted    sync.RWMutex
 	lockPersistSharedConfig       sync.RWMutex
 	lockRebalance                 sync.RWMutex
+	lockRemoveMember              sync.RWMutex
+	lockReset                     sync.RWMutex
 	lockSetGlobalDB               sync.RWMutex
 	lockStartLeaderTasks          sync.RWMutex
 	lockStop                      sync.RWMutex
@@ -1169,6 +1197,78 @@ func (mock *MembershipServiceMock) RebalanceCalls() []struct {
 	mock.lockRebalance.RLock()
 	calls = mock.calls.Rebalance
 	mock.lockRebalance.RUnlock()
+	return calls
+}
+
+// RemoveMember calls RemoveMemberFunc.
+func (mock *MembershipServiceMock) RemoveMember(ctx context.Context, name string, force bool) error {
+	if mock.RemoveMemberFunc == nil {
+		panic("MembershipServiceMock.RemoveMemberFunc: method is nil but MembershipService.RemoveMember was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
+	}
+	mock.lockRemoveMember.Lock()
+	mock.calls.RemoveMember = append(mock.calls.RemoveMember, callInfo)
+	mock.lockRemoveMember.Unlock()
+	return mock.RemoveMemberFunc(ctx, name, force)
+}
+
+// RemoveMemberCalls gets all the calls that were made to RemoveMember.
+// Check the length with:
+//
+//	len(mockedMembershipService.RemoveMemberCalls())
+func (mock *MembershipServiceMock) RemoveMemberCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}
+	mock.lockRemoveMember.RLock()
+	calls = mock.calls.RemoveMember
+	mock.lockRemoveMember.RUnlock()
+	return calls
+}
+
+// Reset calls ResetFunc.
+func (mock *MembershipServiceMock) Reset(ctx context.Context) {
+	if mock.ResetFunc == nil {
+		panic("MembershipServiceMock.ResetFunc: method is nil but MembershipService.Reset was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockReset.Lock()
+	mock.calls.Reset = append(mock.calls.Reset, callInfo)
+	mock.lockReset.Unlock()
+	mock.ResetFunc(ctx)
+}
+
+// ResetCalls gets all the calls that were made to Reset.
+// Check the length with:
+//
+//	len(mockedMembershipService.ResetCalls())
+func (mock *MembershipServiceMock) ResetCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockReset.RLock()
+	calls = mock.calls.Reset
+	mock.lockReset.RUnlock()
 	return calls
 }
 

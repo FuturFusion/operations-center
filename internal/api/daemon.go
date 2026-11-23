@@ -269,6 +269,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// A member removed from its cluster, which died before its shutdown finished the reset, starts as a standalone server.
+	_, err = clusteringSvc.CompletePendingReset(ctx, d.varRoot)
+	if err != nil {
+		return err
+	}
+
 	d.loadClientCertificate(ctx)
 
 	localDB, err := clusteringSvc.OpenLocalDB(ctx, d.varRoot)
@@ -449,8 +455,19 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
 	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
 
+	// The mover and the removal checks reach the membership service once it is set up.
+	fileMover := memberfiles.NewMover(
+		func() memberfiles.Cluster { return d.membershipSvc },
+		provisioningSqlite.NewUpdate(dbWithTransaction),
+		imageSqlite.NewIncusImage(dbWithTransaction),
+		clusterArtifactRepo,
+	)
+
 	// Setup API routes
-	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks, warningSvc, clusteringSvc.WithJoinCheck(d.joinCheck(serverSvc, clusterSvc)))
+	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks, warningSvc,
+		clusteringSvc.WithRemovalChecks(d.memberRemovalChecks(fileMover, serverSvc, secureBootMedia)...),
+		clusteringSvc.WithJoinCheck(d.joinCheck(serverSvc, clusterSvc)),
+	)
 	if err != nil {
 		return err
 	}
@@ -471,6 +488,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		incusImageSvc,
 		seedImageProgress,
 		secureBootMedia,
+		membershipSvc,
+		fileMover,
 		dbWithTransaction,
 	)
 	if err != nil {
@@ -1505,7 +1524,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
 
 	membershipRouter := api10router.SubGroup("/membership")
-	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart, fileMover, serverSvc, secureBootMedia)
+	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart, fileMover, serverSvc)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
 

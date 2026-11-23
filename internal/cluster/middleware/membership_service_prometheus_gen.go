@@ -353,6 +353,30 @@ func (_d MembershipServiceWithPrometheus) Rebalance(ctx context.Context) (err er
 	return _d.base.Rebalance(ctx)
 }
 
+// RemoveMember implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) RemoveMember(ctx context.Context, name string, force bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveMember", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveMember(ctx, name, force)
+}
+
+// Reset implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Reset(ctx context.Context) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Reset", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.Reset(ctx)
+}
+
 // SetGlobalDB implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) SetGlobalDB(repo cluster.GlobalRaftRepo) {
 	_since := time.Now()

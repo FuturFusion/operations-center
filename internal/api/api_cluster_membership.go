@@ -23,6 +23,9 @@ type membershipHandler struct {
 
 	// restart restarts the daemon, so it comes up clustered.
 	restart func()
+
+	// serverSvc holds the server records of the members.
+	serverSvc provisioning.ServerService
 }
 
 func registerClusterMembershipHandler(
@@ -30,11 +33,14 @@ func registerClusterMembershipHandler(
 	authorizer *authz.Authorizer,
 	service clusterSvc.MembershipService,
 	restart func(),
+	serverSvc provisioning.ServerService,
 ) {
 	handler := &membershipHandler{
 		authorizer: authorizer,
 		service:    service,
 		restart:    restart,
+		mover:      mover,
+		serverSvc:  serverSvc,
 	}
 
 	// Clustering:
@@ -45,6 +51,8 @@ func registerClusterMembershipHandler(
 	router.HandleFunc("POST /:join", response.With(handler.joinPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 	// Get cluster members.
 	router.HandleFunc("GET /members", response.With(handler.membersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	// Remove a cluster member.
+	router.HandleFunc("DELETE /members/{name}", response.With(handler.memberDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanAdmin)))
 
 	// Tokens:
 	//
@@ -170,6 +178,86 @@ func (m *membershipHandler) tokenGet(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, tokenStr)
+}
+
+func (m *membershipHandler) memberDelete(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+
+	// A leader removing itself is removed by the new leader, which deletes the server record.
+	removesItself, err := m.isLocalMember(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	ctx := r.Context()
+
+	err = m.service.RemoveMember(ctx, name, force)
+	if errors.Is(err, domain.ErrNotFound) {
+		// A previous removal might have left the server record of the member behind.
+		removed, removeErr := m.removeStaleMemberRecord(ctx, name)
+		if removeErr != nil {
+			return response.SmartError(removeErr)
+		}
+
+		if removed {
+			return response.EmptySyncResponse
+		}
+	}
+
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Member and server names are distinct, so the record of this name belongs to the member.
+	if !removesItself {
+		err = m.serverSvc.DeleteByName(ctx, name)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return response.SmartError(fmt.Errorf("Failed to delete the server record of removed cluster member %q: %w", name, err))
+		}
+	}
+
+	return response.EmptySyncResponse
+}
+
+// removeStaleMemberRecord deletes the Operations Center server record of name, which is no cluster member anymore.
+func (m *membershipHandler) removeStaleMemberRecord(ctx context.Context, name string) (bool, error) {
+	server, err := m.serverSvc.GetByName(ctx, name)
+	if errors.Is(err, domain.ErrNotFound) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if server.Type != api.ServerTypeOperationsCenter {
+		return false, nil
+	}
+
+	err = m.serverSvc.DeleteByName(ctx, name)
+	if err != nil {
+		return false, fmt.Errorf("Failed to delete the server record of removed cluster member %q: %w", name, err)
+	}
+
+	return true, nil
+}
+
+// isLocalMember reports whether name is this cluster member.
+func (m *membershipHandler) isLocalMember(ctx context.Context, name string) (bool, error) {
+	members, err := m.service.GetMembers(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	localAddress := m.service.Gateway().State().ClusterAddress()
+	for _, member := range members {
+		if member.Name == name {
+			return member.Address == localAddress, nil
+		}
+	}
+
+	return false, nil
 }
 
 // checkServerNameUnused ensures the server name for the cluster member is not in use by a registered server.
