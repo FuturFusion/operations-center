@@ -458,6 +458,9 @@ func TestLocalfs_PruneFiles(t *testing.T) {
 
 				err = os.WriteFile(filepath.Join(destDir, updateID, "aarch64", "file1.txt"), []byte(`file1 body`), 0o600) // removed, update does not contain any files for aarch64.
 				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(destDir, updateID, "update.sjson"), []byte(`manifest`), 0o600) // kept, the manifest is always kept.
+				require.NoError(t, err)
 			},
 			update: provisioning.Update{
 				UUID: uuidgen.FromPattern(t, "0"),
@@ -470,6 +473,7 @@ func TestLocalfs_PruneFiles(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantFiles: []string{
+				"update.sjson",
 				"x86_64/file1.txt",
 			},
 		},

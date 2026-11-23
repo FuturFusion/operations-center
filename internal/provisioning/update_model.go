@@ -24,6 +24,11 @@ import (
 var ErrUpdateSourceNotConfigured = domain.NewErrorf(domain.ErrOperationNotPermitted, "", "No update source is configured. Refresh of updates is not possible").
 	WithHintf(`Set "updates.source" in the system configuration.`)
 
+// UpdateManifestFilename is the name of the signed manifest of an update.
+// An update archive needs it, so Operations Center keeps it with the files of
+// the update.
+const UpdateManifestFilename = "update.sjson"
+
 //
 //generate-expr: Update
 
