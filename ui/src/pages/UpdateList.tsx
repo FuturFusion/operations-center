@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { cleanupUpdates, fetchUpdates, refreshUpdates } from "api/update";
@@ -14,6 +15,7 @@ import { errorMessage } from "util/response";
 const Update = () => {
   const refetchInterval = 10000; // 10 seconds
   const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [forceCleanup, setForceCleanup] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
 
@@ -42,7 +44,7 @@ const Update = () => {
   };
 
   const handleCleanup = () => {
-    cleanupUpdates()
+    cleanupUpdates(forceCleanup)
       .then((response) => {
         if (response.error_code == 0) {
           queryClient.invalidateQueries({ queryKey: ["updates"] });
@@ -54,7 +56,12 @@ const Update = () => {
       .catch((e) => {
         notify.error(`Error during updates cleanup: ${e}`);
       });
+    closeCleanupModal();
+  };
+
+  const closeCleanupModal = () => {
     setShowCleanupModal(false);
+    setForceCleanup(false);
   };
 
   if (isLoading) {
@@ -143,7 +150,7 @@ const Update = () => {
       </div>
       <ModalWindow
         show={showCleanupModal}
-        handleClose={() => setShowCleanupModal(false)}
+        handleClose={closeCleanupModal}
         title="Cleanup updates?"
         footer={
           <>
@@ -153,11 +160,28 @@ const Update = () => {
           </>
         }
       >
+        <p>Cleanup removes updates and frees up the disk space used by them.</p>
         <p>
-          Are you sure you want to cleanup updates?
-          <br />
-          This action cannot be undone.
+          Protected updates are kept. An update is protected if a server runs
+          its version, or if it is assigned to a channel other than the default
+          channel.
         </p>
+        <Form.Check
+          type="checkbox"
+          id="force-cleanup"
+          label="Also remove protected updates"
+          checked={forceCleanup}
+          onChange={(e) => setForceCleanup(e.target.checked)}
+        />
+        {forceCleanup && (
+          <p className="text-danger mt-2">
+            All updates and all channel assignments are removed. Updates in use
+            by servers can not be downloaded again if they are no longer
+            available upstream. Use this only if the disk is full and the
+            default cleanup fails.
+          </p>
+        )}
+        <p className="mt-2">This action cannot be undone.</p>
       </ModalWindow>
     </>
   );

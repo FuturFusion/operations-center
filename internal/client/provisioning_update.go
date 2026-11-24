@@ -103,8 +103,24 @@ func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) (
 	return updateFiles, nil
 }
 
-func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
+// CleanupUpdates removes all updates, which are not protected.
+// Updates in use by a server or assigned to a channel other than the default
+// channel are protected.
+func (c OperationsCenterClient) CleanupUpdates(ctx context.Context) error {
 	_, err := c.DoRequest(ctx, http.MethodDelete, "/provisioning/updates", nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CleanupAllUpdates removes all updates, including the protected ones.
+func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
+	query := url.Values{}
+	query.Add("force", "true")
+
+	_, err := c.DoRequest(ctx, http.MethodDelete, "/provisioning/updates", query, nil)
 	if err != nil {
 		return err
 	}

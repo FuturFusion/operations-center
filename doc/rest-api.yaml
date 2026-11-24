@@ -14246,8 +14246,22 @@ paths:
                 - tokens
     /1.0/provisioning/updates:
         delete:
-            description: Remove all updates and free up all disk space occupied by updates.
+            description: |-
+                Remove updates and free up the disk space occupied by them.
+
+                By default, protected updates are kept. An update is protected, if a
+                server runs its version or if it is assigned to a channel other than the
+                default channel.
+
+                With `force=true`, all updates are removed, including the protected ones.
+                Use this only if the disk is full and the default cleanup fails.
             operationId: updates_delete
+            parameters:
+                - description: If set, all updates are removed, including the protected ones.
+                  in: query
+                  name: force
+                  type: boolean
+                  x-example: true
             produces:
                 - application/json
             responses:
@@ -14259,7 +14273,7 @@ paths:
                     $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
-            summary: Remove all updates
+            summary: Remove updates
             tags:
                 - updates
         get:

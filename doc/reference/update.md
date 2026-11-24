@@ -16,6 +16,40 @@ them to the local cache.
 It is also possible to operate Operations Center in air gapped environments,
 where the updates are provided manually by the administrators.
 
+## Cleanup
+
+Cleanup removes updates from Operations Center and frees up the disk space used
+by them:
+
+```shell
+operations-center provisioning update cleanup
+```
+
+The cleanup keeps protected updates. An update is protected in the following
+cases:
+
+* A server runs the version of the update.
+* The update is assigned to a channel other than the default channel.
+
+Operations Center can not restore protected updates with a refresh. The update
+source only provides the most recent updates. A refresh also assigns new
+updates to the default channel only. Because of this, the cleanup keeps the
+protected updates.
+
+To remove protected updates with the next cleanup, remove their channel
+assignments or update the servers first.
+
+### Remove all updates
+
+Use `--force` to remove all updates, including the protected ones:
+
+```shell
+operations-center provisioning update cleanup --force
+```
+
+This also removes all channel assignments. Use this only if the disk is full
+and the default cleanup fails.
+
 ## Trigger an update
 
 An update can be triggered for the whole server, for the operating system only
