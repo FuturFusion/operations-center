@@ -31,7 +31,7 @@ func Handler(config CORSConfig) func(next http.HandlerFunc) http.HandlerFunc {
 			}
 
 			if config.AllowCredentials {
-				r.Header.Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 
 			next(w, r)
