@@ -2,12 +2,14 @@ package cluster_test
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -37,6 +39,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -77,6 +80,46 @@ func osDataOrDefault(osData api.OSData) api.OSData {
 	return osData
 }
 
+type memberStatusesCall func(ctx context.Context) (map[string]string, error)
+
+func allMembersOnline(serverNames []string) map[string]string {
+	statuses := make(map[string]string, len(serverNames))
+	for _, name := range serverNames {
+		statuses[name] = "Online"
+	}
+
+	return statuses
+}
+
+func memberStatuses(statuses map[string]string) memberStatusesCall {
+	return func(context.Context) (map[string]string, error) {
+		return statuses, nil
+	}
+}
+
+func memberStatusesErr(err error) memberStatusesCall {
+	return func(context.Context) (map[string]string, error) {
+		return nil, err
+	}
+}
+
+// memberStatusesUntilDeadline blocks like a request to an unreachable server.
+func memberStatusesUntilDeadline(ctx context.Context) (map[string]string, error) {
+	<-ctx.Done()
+
+	return nil, domain.NewRetryableErr(fmt.Errorf("Failed to get cluster members: %w", ctx.Err()))
+}
+
+func requireClusterMembersOnlineTimeout(contains string) require.ErrorAssertionFunc {
+	return func(tt require.TestingT, err error, a ...any) {
+		require.ErrorIs(tt, err, context.DeadlineExceeded, a...)
+		require.ErrorContains(tt, err, `Members of cluster "one" not online after`, a...)
+		require.ErrorContains(tt, err, contains, a...)
+		require.False(tt, domain.IsRetryableError(err), "a retry of the request fails, because the cluster already exists")
+		require.Equal(tt, http.StatusInternalServerError, response.SmartError(err).Code(), "the last client error must not decide the HTTP status")
+	}
+}
+
 func TestClusterService_Create(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 
@@ -102,6 +145,9 @@ func TestClusterService_Create(t *testing.T) {
 		clientGetOSData                                   api.OSData
 		clientGetOSDataErr                                error
 		clientGetNodeSpecificConfigKeysErr                error
+		clientGetClusterMemberStatuses                    []memberStatusesCall
+		clusterMembersOnlineTimeout                       time.Duration
+		clusterMembersOnlineRetryDelay                    time.Duration
 		clientGetRemoteCertificateErr                     error
 		clientIncusClientErr                              error
 		incusClientGetCertificateFingerprints             []string
@@ -244,6 +290,275 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSData:                api.OSData{},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+				{serverName: "server2", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:                              "success - cluster members online after retry",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": true,
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData:                api.OSData{},
+			clientGetClusterMemberStatuses: []memberStatusesCall{
+				memberStatuses(map[string]string{"server1": "Online"}),
+				memberStatuses(map[string]string{"server1": "Online", "server2": "Offline"}),
+				memberStatuses(map[string]string{"server1": "Online", "server2": "Online"}),
+			},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "server1", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+				{serverName: "server2", name: "lvm", config: map[string]any{"enabled": true, "system_id": int64(0)}},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:                              "success - cluster members online after client error",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": true,
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData:                api.OSData{},
+			clientGetClusterMemberStatuses: []memberStatusesCall{
+				memberStatusesErr(domain.NewRetryableErr(boom.Error)),
+				memberStatuses(map[string]string{"server1": "Online", "server2": "Online"}),
+			},
 			provisionerApply: []queue.Item[struct{}]{
 				{}, // success
 			},
@@ -2806,6 +3121,367 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name:                           "error - client.GetClusterMemberStatuses until timeout",
+			clusterMembersOnlineTimeout:    50 * time.Millisecond,
+			clusterMembersOnlineRetryDelay: time.Minute,
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetClusterMemberStatuses: []memberStatusesCall{
+				memberStatusesErr(domain.NewRetryableErr(boom.Error)),
+			},
+
+			assertErr:     requireClusterMembersOnlineTimeout("last error: boom!"),
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                           "error - cluster members not online before timeout",
+			clusterMembersOnlineTimeout:    50 * time.Millisecond,
+			clusterMembersOnlineRetryDelay: time.Minute,
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetClusterMemberStatuses: []memberStatusesCall{
+				memberStatuses(map[string]string{"server1": "Online", "server2": "Offline"}),
+			},
+
+			assertErr:     requireClusterMembersOnlineTimeout("last error: Cluster members not online: server2 (Offline)"),
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                           "error - status call cut off by the deadline keeps the previous diagnosis",
+			clusterMembersOnlineTimeout:    50 * time.Millisecond,
+			clusterMembersOnlineRetryDelay: 0,
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetClusterMemberStatuses: []memberStatusesCall{
+				memberStatuses(map[string]string{"server1": "Online", "server2": "Offline"}),
+				memberStatusesUntilDeadline,
+			},
+
+			assertErr:     requireClusterMembersOnlineTimeout("last error: Cluster members not online: server2 (Offline)"),
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name:                      "error - incusClient.GetCertificateFingerprints",
 			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
@@ -4245,6 +4921,17 @@ func TestClusterService_Create(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return osDataOrDefault(tc.clientGetOSData), tc.clientGetOSDataErr
 				},
+				GetClusterMemberStatusesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error) {
+					if tc.clientGetClusterMemberStatuses == nil {
+						return allMembersOnline(tc.cluster.ServerNames), nil
+					}
+
+					require.NotEmpty(t, tc.clientGetClusterMemberStatuses, "unexpected call of GetClusterMemberStatuses")
+					call := tc.clientGetClusterMemberStatuses[0]
+					tc.clientGetClusterMemberStatuses = tc.clientGetClusterMemberStatuses[1:]
+
+					return call(ctx)
+				},
 				GetNodeSpecificConfigKeysFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
 					return nil, tc.clientGetNodeSpecificConfigKeysErr
 				},
@@ -4321,6 +5008,8 @@ func TestClusterService_Create(t *testing.T) {
 				provisioningCluster.WithCreateClusterCertificateNotBeforeDelay(0),
 				provisioningCluster.WithMeshTunnelInterfaceDetectionTimeout(tc.meshTunnelInterfaceDetectionTimeout),
 				provisioningCluster.WithMeshTunnelInterfaceDetectionRetryDelay(0),
+				provisioningCluster.WithClusterMembersOnlineTimeout(cmp.Or(tc.clusterMembersOnlineTimeout, time.Minute)),
+				provisioningCluster.WithClusterMembersOnlineRetryDelay(tc.clusterMembersOnlineRetryDelay),
 			)
 
 			var signalHandlerCalled bool
@@ -4336,6 +5025,7 @@ func TestClusterService_Create(t *testing.T) {
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.provisionerApply)
+			require.Empty(t, tc.clientGetClusterMemberStatuses, "expect all queued cluster member statuses to be consumed")
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}

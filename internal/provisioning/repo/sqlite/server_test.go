@@ -174,6 +174,9 @@ func TestServerDatabaseActions(t *testing.T) {
 		GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
 			return []string{"one"}, nil
 		},
+		GetClusterMemberStatusesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error) {
+			return map[string]string{"two-new": "Online"}, nil
+		},
 		GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 			return "token", nil
 		},
