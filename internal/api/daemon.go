@@ -231,7 +231,7 @@ func (d *dbtxWrapper) QueryRowContext(ctx context.Context, query string, args ..
 type startingAuthorizer struct{}
 
 func (startingAuthorizer) CheckPermission(context.Context, *authz.RequestDetails, authz.Object, authz.Entitlement) error {
-	return api.StatusErrorf(http.StatusTooEarly, "Daemon is still starting")
+	return api.StatusErrorf(http.StatusServiceUnavailable, "Operations Center is starting up")
 }
 
 func NewDaemon(ctx context.Context, env environment) *Daemon {
@@ -1724,9 +1724,11 @@ func (d *Daemon) setupAPIRoutes(
 		AllowCredentials: false,
 	}))
 
+	// Only the internal API and the IncusOS API are served while starting, the cluster members need them to bring up the database.
 	authenticatorMiddleware := d.authenticator.Middleware(
 		authn.WithIsAuthenticationRequired(isAuthenticationRequired),
 		authn.WithIsContentTypeCheckExempt(isContentTypeCheckExempt),
+		authn.WithRefuseWhileStarting(),
 	)
 
 	api10PreInit := router.SubGroup("/1.0")

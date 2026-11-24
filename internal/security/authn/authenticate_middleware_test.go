@@ -254,20 +254,29 @@ func TestAuthenticator_Middleware_starting(t *testing.T) {
 	tests := []struct {
 		name      string
 		opts      []authn.Option
+		refuse    bool
 		trusted   bool
 		forwarded bool
 		wantCode  int
 	}{
 		{name: "starting - trusted request", opts: []authn.Option{authn.WithStarting()}, trusted: true, wantCode: http.StatusOK},
-		{name: "starting - untrusted request", opts: []authn.Option{authn.WithStarting()}, wantCode: http.StatusTooEarly},
-		{name: "starting - forwarded request", opts: []authn.Option{authn.WithStarting()}, trusted: true, forwarded: true, wantCode: http.StatusTooEarly},
+		{name: "starting - untrusted request", opts: []authn.Option{authn.WithStarting()}, wantCode: http.StatusServiceUnavailable},
+		{name: "starting - forwarded request", opts: []authn.Option{authn.WithStarting()}, trusted: true, forwarded: true, wantCode: http.StatusServiceUnavailable},
+		{name: "starting, refusing - trusted request", opts: []authn.Option{authn.WithStarting()}, refuse: true, trusted: true, wantCode: http.StatusServiceUnavailable},
+		{name: "started, refusing - trusted request", refuse: true, trusted: true, wantCode: http.StatusOK},
 		{name: "started - untrusted request", wantCode: http.StatusUnauthorized},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			authenticator := authn.New([]authn.Auther{headerAuther{}}, tc.opts...)
-			handler := authenticator.Middleware()(func(w http.ResponseWriter, _ *http.Request) {
+
+			var middlewareOpts []authn.MiddlewareOption
+			if tc.refuse {
+				middlewareOpts = append(middlewareOpts, authn.WithRefuseWhileStarting())
+			}
+
+			handler := authenticator.Middleware(middlewareOpts...)(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 

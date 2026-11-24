@@ -20,6 +20,7 @@ type MiddlewareOption func(c *middlewareConfig)
 type middlewareConfig struct {
 	isAuthenticationRequired func(r *http.Request) bool
 	isContentTypeCheckExempt func(r *http.Request) bool
+	refuseWhileStarting      bool
 }
 
 func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request) bool) MiddlewareOption {
@@ -34,6 +35,13 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 func WithIsContentTypeCheckExempt(isContentTypeCheckExempt func(r *http.Request) bool) MiddlewareOption {
 	return func(c *middlewareConfig) {
 		c.isContentTypeCheckExempt = isContentTypeCheckExempt
+	}
+}
+
+// WithRefuseWhileStarting answers every request while the daemon is starting, before any authentication, like Incus.
+func WithRefuseWhileStarting() MiddlewareOption {
+	return func(c *middlewareConfig) {
+		c.refuseWhileStarting = true
 	}
 }
 
@@ -76,6 +84,12 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			// context handed to the next handler keeps the component of the
 			// caller, so the whole request is not attributed to authn.
 			logCtx := logger.ContextWithComponent(ctx, componentAuthn)
+
+			// Until the security configuration is loaded, a trust answer could be wrong.
+			if cfg.refuseWhileStarting && current.starting {
+				renderStarting(logCtx, w, r)
+				return
+			}
 
 			err = crossOriginProtection.Check(r)
 			if err != nil {
@@ -183,11 +197,11 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 	}
 }
 
-// renderStarting answers a request that can not be authenticated before the security configuration is loaded.
+// renderStarting answers a request, which can not be authenticated before the security configuration is loaded, as unavailable.
 func renderStarting(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	slog.DebugContext(ctx, "Rejecting request while starting", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 
-	err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Operations Center is still starting")).Render(w)
+	err := response.SmartError(api.StatusErrorf(http.StatusServiceUnavailable, "Operations Center is starting up")).Render(w)
 	if err != nil {
 		slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
 	}

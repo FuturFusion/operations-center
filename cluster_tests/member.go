@@ -32,7 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-// readyPath answers once the database is available and the security configuration is applied, before that 425.
+// readyPath answers once the database is available and the security configuration is applied, before that 503.
 const readyPath = "/1.0/system/security"
 
 // member is an Operations Center daemon run as a separate process.
