@@ -140,6 +140,75 @@ func uiTestDir(t *testing.T) string {
 	return uiDir
 }
 
+// redirectBody returns the body http.Redirect writes for a GET request.
+func redirectBody(t *testing.T, url string) string {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	http.Redirect(rec, httptest.NewRequest(http.MethodGet, "/", nil), url, http.StatusMovedPermanently)
+
+	return rec.Body.String()
+}
+
+func TestRegisterUIHandlers_root(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+
+		userAgent string
+
+		wantStatusCode  int
+		wantLocation    string
+		wantContentType string
+		wantBody        string
+	}{
+		{
+			name: "browser redirects to web UI",
+
+			userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
+
+			wantStatusCode:  http.StatusMovedPermanently,
+			wantLocation:    "/ui/",
+			wantContentType: "text/html; charset=utf-8",
+			wantBody:        redirectBody(t, "/ui/"),
+		},
+		{
+			name: "API client gets the API endpoints",
+
+			userAgent: "curl/8.0",
+
+			wantStatusCode:  http.StatusOK,
+			wantLocation:    "",
+			wantContentType: "application/json",
+			wantBody:        `{"type":"sync","status":"Success","status_code":200,"operation":"","error_code":0,"error":"","metadata":["/1.0"]}` + "\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			serveMux := http.NewServeMux()
+			registerUIHandlers(t.Context(), newRouter(serveMux), nil, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("User-Agent", tc.userAgent)
+
+			// Run test
+			rec := httptest.NewRecorder()
+			serveMux.ServeHTTP(rec, req)
+
+			// Assert
+			require.Equal(t, tc.wantStatusCode, rec.Code)
+			require.Equal(t, tc.wantLocation, rec.Header().Get("Location"))
+			require.Equal(t, tc.wantContentType, rec.Header().Get("Content-Type"))
+			require.Equal(t, tc.wantBody, rec.Body.String(), "a redirect must not contain the API response")
+		})
+	}
+}
+
 func TestRegisterUIHandlers_notAvailable(t *testing.T) {
 	t.Parallel()
 

@@ -109,6 +109,7 @@ func registerUIHandlers(ctx context.Context, router Router, embeddedUI fs.FS, ui
 		if strings.Contains(ua, "Gecko") {
 			// Web browser handling.
 			http.Redirect(w, r, "/ui/", http.StatusMovedPermanently)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
