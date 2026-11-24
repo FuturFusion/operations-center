@@ -4,6 +4,117 @@ This is the complete list of the metrics components the daemon registers,
 grouped by their top level. Enabling a component enables all of its children as
 well, so a top level name is enough to cover everything below it.
 
+cluster:
+
+- `cluster.config_repo`
+- `cluster.global_raft_repo`
+- `cluster.local_raft_repo`
+- `cluster.membership_service`
+
+image:
+
+- `image.image_incus_file_repo`
+- `image.image_incus_repo`
+- `image.image_incus_service`
+- `image.incus_image_source_port`
+- `image.incus_image_source_repo`
+- `image.incus_image_source_service`
+- `image.simplestreams_port`
+
+inventory:
+
+- `inventory.image_repo`
+- `inventory.image_server_client`
+- `inventory.image_service`
+- `inventory.instance_repo`
+- `inventory.instance_server_client`
+- `inventory.instance_service`
+- `inventory.inventory_aggregate_repo`
+- `inventory.inventory_aggregate_service`
+- `inventory.network_acl_repo`
+- `inventory.network_acl_server_client`
+- `inventory.network_acl_service`
+- `inventory.network_address_set_repo`
+- `inventory.network_address_set_server_client`
+- `inventory.network_address_set_service`
+- `inventory.network_forward_repo`
+- `inventory.network_forward_server_client`
+- `inventory.network_forward_service`
+- `inventory.network_integration_repo`
+- `inventory.network_integration_server_client`
+- `inventory.network_integration_service`
+- `inventory.network_load_balancer_repo`
+- `inventory.network_load_balancer_server_client`
+- `inventory.network_load_balancer_service`
+- `inventory.network_peer_repo`
+- `inventory.network_peer_server_client`
+- `inventory.network_peer_service`
+- `inventory.network_repo`
+- `inventory.network_server_client`
+- `inventory.network_service`
+- `inventory.network_zone_repo`
+- `inventory.network_zone_server_client`
+- `inventory.network_zone_service`
+- `inventory.profile_repo`
+- `inventory.profile_server_client`
+- `inventory.profile_service`
+- `inventory.project_repo`
+- `inventory.project_server_client`
+- `inventory.project_service`
+- `inventory.server_client`
+- `inventory.storage_bucket_repo`
+- `inventory.storage_bucket_server_client`
+- `inventory.storage_bucket_service`
+- `inventory.storage_pool_repo`
+- `inventory.storage_pool_server_client`
+- `inventory.storage_pool_service`
+- `inventory.storage_volume_repo`
+- `inventory.storage_volume_server_client`
+- `inventory.storage_volume_service`
+
+provisioning:
+
+- `provisioning.adapter.scriptlet.scriptlet_client_port`
+- `provisioning.bios_profile_port`
+- `provisioning.bmc_server_client_port`
+- `provisioning.channel_repo`
+- `provisioning.channel_service`
+- `provisioning.cluster_artifact_repo`
+- `provisioning.cluster_client_port`
+- `provisioning.cluster_provisioning_port`
+- `provisioning.cluster_repo`
+- `provisioning.cluster_service`
+- `provisioning.cluster_template_repo`
+- `provisioning.cluster_template_service`
+- `provisioning.flasher_port`
+- `provisioning.secure_boot_certificate_catalog_port`
+- `provisioning.secure_boot_certificate_source_port`
+- `provisioning.secure_boot_media_port`
+- `provisioning.seed_image_progress_port`
+- `provisioning.server_client_port`
+- `provisioning.server_repo`
+- `provisioning.server_scriptlet_port`
+- `provisioning.server_service`
+- `provisioning.token_client_port`
+- `provisioning.token_repo`
+- `provisioning.token_service`
+- `provisioning.update_files_repo`
+- `provisioning.update_repo`
+- `provisioning.update_service`
+- `provisioning.update_source_port`
+- `provisioning.warning_service_port`
+
 runtime:
 
 - `runtime`
+
+system:
+
+- `system.cache_repo`
+- `system.certificate_repo`
+- `system.system_service`
+
+warning:
+
+- `warning.warning_repo`
+- `warning.warning_service`
