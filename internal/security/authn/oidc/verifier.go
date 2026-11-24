@@ -66,12 +66,11 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		// If the verification fails, Incus will return an InvalidToken error. The client should then either use its refresh token to get a new valid access token, or log in again.
 		// If the Authorization header is missing, Incus returns an AuthenticationRequired error.
 		// Both returned errors contain information which are needed for the client to authenticate.
-		parts := strings.Split(auth, "Bearer ")
-		if len(parts) != 2 {
+		var found bool
+		token, found = strings.CutPrefix(auth, "Bearer ")
+		if !found {
 			return "", &AuthError{fmt.Errorf("Bad authorization token, expected a Bearer token")}
 		}
-
-		token = parts[1]
 	} else {
 		// When not using a Bearer token, fetch the equivalent from a cookie and move on with it.
 		cookie, err := r.Cookie("oidc_access")

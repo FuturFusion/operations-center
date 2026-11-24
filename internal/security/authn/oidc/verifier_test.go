@@ -237,6 +237,15 @@ func TestVerifier_Auth(t *testing.T) {
 			wantCookies: map[string]string{},
 		},
 		{
+			name:          "error - bearer not at the start",
+			issuer:        iss.URL,
+			authorization: "XBearer " + withEmail,
+
+			assertErr:   requireAuthError,
+			wantUser:    "",
+			wantCookies: map[string]string{},
+		},
+		{
 			name:   "error - no token",
 			issuer: iss.URL,
 
