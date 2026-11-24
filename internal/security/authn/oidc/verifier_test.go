@@ -2,8 +2,11 @@ package oidc
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -553,6 +556,85 @@ func TestVerifier_Logout(t *testing.T) {
 	}
 }
 
+func TestVerifier_Login(t *testing.T) {
+	t.Parallel()
+
+	iss := newFakeIssuer(t)
+	deadIssuer := unreachableIssuer(t)
+
+	tests := []struct {
+		name   string
+		issuer string
+
+		wantStatus      int
+		wantLocation    string
+		wantQuery       url.Values
+		randomQueryKeys []string
+		wantCookieNames []string
+	}{
+		{
+			name:   "success - redirect to the issuer",
+			issuer: iss.URL,
+
+			wantStatus:   http.StatusFound,
+			wantLocation: iss.URL + "/authorize",
+			wantQuery: url.Values{
+				"audience":              {"https://api.example.com"},
+				"client_id":             {testClientID},
+				"code_challenge_method": {"S256"},
+				"redirect_uri":          {"https://example.com/oidc/callback"},
+				"response_type":         {"code"},
+				"scope":                 {"openid offline_access"},
+			},
+			randomQueryKeys: []string{"code_challenge", "state"},
+			wantCookieNames: []string{"pkce", "state"},
+		},
+		{
+			name:   "error - issuer unreachable",
+			issuer: deadIssuer,
+
+			wantStatus:      http.StatusBadGateway,
+			wantLocation:    "",
+			wantQuery:       url.Values{},
+			randomQueryKeys: []string{},
+			wantCookieNames: []string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			verifier, err := NewVerifier(t.Context(), tc.issuer, testClientID, "", "https://api.example.com", "")
+			require.NoError(t, err, "create verifier")
+
+			req := httptest.NewRequest(http.MethodGet, "/oidc/login", http.NoBody)
+			rec := httptest.NewRecorder()
+
+			// Run test
+			verifier.Login(rec, req)
+
+			// Assert
+			require.Equal(t, tc.wantStatus, rec.Code, "status code, body: %s", rec.Body.String())
+
+			location, err := url.Parse(rec.Header().Get("Location"))
+			require.NoError(t, err, "parse redirect location")
+
+			query := location.Query()
+			for _, key := range tc.randomQueryKeys {
+				require.NotEmpty(t, query.Get(key), "random query parameter %q", key)
+				query.Del(key)
+			}
+
+			location.RawQuery = ""
+			require.Equal(t, tc.wantLocation, location.String(), "redirect location without query")
+			require.Equal(t, tc.wantQuery, query, "query parameters of the redirect")
+			require.ElementsMatch(t, tc.wantCookieNames, slices.Collect(maps.Keys(responseCookies(rec))), "names of the cookies set on the response")
+		})
+	}
+}
+
 func TestVerifier_Callback(t *testing.T) {
 	t.Parallel()
 
@@ -620,7 +702,7 @@ func TestVerifier_Callback(t *testing.T) {
 			query:        "code=code-full&state=state-1",
 			stateCookies: map[string]string{"state": "state-1", "pkce": "verifier"},
 
-			wantStatus:   http.StatusOK,
+			wantStatus:   http.StatusBadGateway,
 			wantLocation: "",
 			wantCookies:  map[string]string{},
 		},

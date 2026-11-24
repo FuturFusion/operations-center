@@ -167,6 +167,7 @@ func (o *Verifier) Login(w http.ResponseWriter, r *http.Request) {
 	// Get the provider.
 	provider, err := o.getProvider(r)
 	if err != nil {
+		writeProviderError(w, r, err)
 		return
 	}
 
@@ -231,6 +232,7 @@ func (o *Verifier) Callback(w http.ResponseWriter, r *http.Request) {
 	// Get the provider.
 	provider, err := o.getProvider(r)
 	if err != nil {
+		writeProviderError(w, r, err)
 		return
 	}
 
@@ -340,6 +342,13 @@ func (o *Verifier) IsRequest(r *http.Request) bool {
 	}
 
 	return false
+}
+
+// writeProviderError logs the error and responds with 502 Bad Gateway, because
+// the OIDC issuer is an upstream service.
+func writeProviderError(w http.ResponseWriter, r *http.Request, err error) {
+	slog.WarnContext(r.Context(), "Failed to get OIDC provider", logger.Err(err))
+	http.Error(w, "OIDC provider unavailable", http.StatusBadGateway)
 }
 
 func (o *Verifier) getProvider(r *http.Request) (rp.RelyingParty, error) {
