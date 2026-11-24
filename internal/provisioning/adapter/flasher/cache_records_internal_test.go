@@ -87,11 +87,16 @@ func TestImageCache_records(t *testing.T) {
 		unrecorded := absImageFilename(cache, true, testCacheID, "unrecorded00")
 		require.NoError(t, os.MkdirAll(filepath.Dir(unrecorded), 0o700))
 		require.NoError(t, os.WriteFile(unrecorded, []byte(testContent), 0o600))
+		require.NoError(t, os.Chtimes(unrecorded, time.Now().Add(-2*time.Hour), time.Now().Add(-2*time.Hour)))
+
+		recentUnrecorded := absImageFilename(cache, true, testCacheID, "recentunrec0")
+		require.NoError(t, os.WriteFile(recentUnrecorded, []byte(testContent), 0o600))
 
 		require.NoError(t, cache.prune(t.Context(), time.Hour))
 
 		require.NoFileExists(t, absImageFilename(cache, true, testCacheID, "expired00000"), "An image, whose lease ended, has to be removed")
-		require.NoFileExists(t, unrecorded, "An image, which is not recorded for this member, has to be removed")
+		require.NoFileExists(t, unrecorded, "An image, which is not recorded and not accessed recently, has to be removed")
+		require.FileExists(t, recentUnrecorded, "An image, which is not recorded, but accessed recently, has to be kept")
 		require.FileExists(t, absImageFilename(cache, true, testCacheID, "recorded0000"), "An image within its lease has to be kept")
 
 		_, available, err := flasherOf(cache).SeededImageHolder(t.Context(), testCacheID, "expired00000")

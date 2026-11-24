@@ -17,7 +17,7 @@ func TestRecords_cache(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	stored := provisioning.Media{Type: provisioning.MediaTypeSeedImage, Name: "image", MemberID: 1, ExpiresAt: now.Add(2 * time.Hour)}
+	stored := provisioning.Media{Type: provisioning.MediaTypeSeedImage, Name: "image", MemberID: 1, ExpiresAt: now.Add(3 * time.Hour)}
 
 	var reads, updates atomic.Int64
 	repo := &mock.MediaRepoMock{
@@ -47,13 +47,13 @@ func TestRecords_cache(t *testing.T) {
 	}
 
 	require.Equal(t, int64(1), reads.Load())
-	require.Zero(t, updates.Load(), "A lease is only extended once half of it passed")
+	require.Zero(t, updates.Load(), "A lease is only extended once less than the TTL of it is left")
 
-	// Once half of the lease passed, it is extended after reading the record again.
+	// Once less than the TTL is left, it is extended after reading the record again, by one and a half TTL.
 	now = now.Add(90 * time.Minute)
 	require.NoError(t, records.RenewLocal(t.Context(), "image"))
 	require.Equal(t, int64(1), updates.Load())
-	require.True(t, stored.ExpiresAt.Equal(now.Add(2*time.Hour)))
+	require.True(t, stored.ExpiresAt.Equal(now.Add(3*time.Hour)))
 
 	// A media taken over by another member meanwhile is not extended for this one.
 	stored.MemberID = 2

@@ -643,13 +643,23 @@ func (c *imageCache) removeRecordsByPrefix(ctx context.Context, prefix string) e
 
 // prune removes cached images not accessed within ttl and leftovers of
 // interrupted generations. The images of public token seeds are removed once
-// their lease ended or they are recorded for another member.
+// their lease ended or they are recorded for another member, the ones not
+// recorded at all like the other images.
 func (c *imageCache) prune(ctx context.Context, ttl time.Duration) error {
 	var errs []error
 
-	var recorded map[string]bool
+	var recorded, recordedAnywhere map[string]bool
 	if c.records != nil {
-		var err error
+		all, err := c.records.All(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Images recorded for any member, also with an ended lease.
+		recordedAnywhere = map[string]bool{}
+		for _, record := range all {
+			recordedAnywhere[record.Name] = true
+		}
 
 		recorded, err = c.pruneRecords(ctx)
 		if err != nil {
@@ -658,7 +668,7 @@ func (c *imageCache) prune(ctx context.Context, ttl time.Duration) error {
 	}
 
 	for _, namespace := range []string{cachePublicDir, cachePrivateDir} {
-		err := c.pruneNamespace(ctx, namespace, ttl, recorded)
+		err := c.pruneNamespace(ctx, namespace, ttl, recorded, recordedAnywhere)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -689,7 +699,7 @@ func (c *imageCache) pruneRecords(ctx context.Context) (map[string]bool, error) 
 	return recorded, errors.Join(errs...)
 }
 
-func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl time.Duration, recorded map[string]bool) error {
+func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl time.Duration, recorded map[string]bool, recordedAnywhere map[string]bool) error {
 	dirEntries, err := fs.ReadDir(c.root.FS(), namespace)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -730,6 +740,19 @@ func (c *imageCache) pruneNamespace(ctx context.Context, namespace string, ttl t
 			name := strings.TrimSuffix(filename, cacheImageExt)
 			if recorded[name] || c.generatingKey(namespace+"/"+name) {
 				continue
+			}
+
+			// An image, which is not recorded at all, e.g. one cached before the records existed, is kept while accessed recently.
+			if !recordedAnywhere[name] {
+				keep, err := c.keep(namespace+"/"+name, fileInfo.ModTime(), ttl)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+
+				if keep {
+					continue
+				}
 			}
 
 		case strings.HasSuffix(filename, cacheImageExt):

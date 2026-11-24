@@ -303,11 +303,23 @@ func (m *Media) Open(ctx context.Context, imageType api.ImageType, id string) (*
 // Prune removes the generated media stored by this member, whose lease ended,
 // the media recorded for another member, and leftovers of interrupted
 // generations older than ttl. A media named by inUse is kept and its lease
-// extended, it is recorded for this member, if it is not recorded at all.
+// extended, it is recorded for this member, if it is not recorded at all. So is
+// a media not recorded at all, which was read within ttl.
 func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) error {
 	records, err := m.records.Local(ctx)
 	if err != nil {
 		return err
+	}
+
+	all, err := m.records.All(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Media recorded for any member, also with an ended lease.
+	recordedAnywhere := map[string]bool{}
+	for _, record := range all {
+		recordedAnywhere[record.Name] = true
 	}
 
 	var errs []error
@@ -373,7 +385,8 @@ func (m *Media) Prune(ctx context.Context, ttl time.Duration, inUse []string) er
 			}
 
 			// Generating it again would sign it with another key, while a BMC reads it.
-			if slices.Contains(inUse, id) {
+			// A media read recently, which is not recorded at all, e.g. one stored before the records existed, is kept as well.
+			if slices.Contains(inUse, id) || (!recordedAnywhere[id] && time.Since(fileInfo.ModTime()) < ttl) {
 				errs = append(errs, m.recordUnrecorded(ctx, id, filename))
 				continue
 			}

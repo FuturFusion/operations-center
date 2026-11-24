@@ -151,7 +151,7 @@ func (r Records) Record(ctx context.Context, name string, config any) error {
 		Name:      name,
 		MemberID:  localID,
 		Config:    data,
-		ExpiresAt: r.now().Add(r.ttl),
+		ExpiresAt: provisioning.LeaseEnd(r.now(), r.ttl),
 	}
 
 	_, err = r.repo.GetByTypeAndName(ctx, r.mediaType, name)
@@ -170,7 +170,7 @@ func (r Records) Record(ctx context.Context, name string, config any) error {
 	return nil
 }
 
-// Renew extends the lease of media, once half of it has passed. The record is
+// Renew extends the lease of media, once less than ttl of it is left. The record is
 // read again before, so a lease is never extended for a member, which no longer
 // stores the media.
 func (r Records) Renew(ctx context.Context, media provisioning.Media) error {
@@ -194,7 +194,7 @@ func (r Records) Renew(ctx context.Context, media provisioning.Media) error {
 		return nil
 	}
 
-	current.ExpiresAt = now.Add(r.ttl)
+	current.ExpiresAt = provisioning.LeaseEnd(now, r.ttl)
 
 	err = r.repo.Update(ctx, *current)
 	if err != nil {

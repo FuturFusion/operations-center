@@ -37,7 +37,13 @@ type MediaFilter struct {
 	MemberID *int64
 }
 
-// LeaseDue reports whether the lease of m, which lasts for ttl, is to be extended at now.
+// LeaseDue reports whether the lease of m is to be extended at now, so that it lasts at least ttl longer.
 func (m Media) LeaseDue(now time.Time, ttl time.Duration) bool {
-	return m.ExpiresAt.Sub(now) < ttl/2
+	return m.ExpiresAt.Sub(now) < ttl
+}
+
+// LeaseEnd returns the end of a lease taken or extended at now for media kept at least ttl after its last use.
+// It lasts half a ttl longer, so a lease is extended at most every half ttl.
+func LeaseEnd(now time.Time, ttl time.Duration) time.Time {
+	return now.Add(ttl + ttl/2)
 }
