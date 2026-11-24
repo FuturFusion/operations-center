@@ -96,6 +96,7 @@ type ClusterClientPort interface {
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)
+	GetClusterMemberStatuses(ctx context.Context, endpoint Endpoint) (statuses map[string]string, _ error)
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, serverAddressOfClusterRole string, endpoint Endpoint, config []api.ClusterMemberConfigKey) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)

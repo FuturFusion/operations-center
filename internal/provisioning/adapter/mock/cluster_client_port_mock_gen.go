@@ -32,6 +32,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 //				panic("mock out the GetClusterJoinToken method")
 //			},
+//			GetClusterMemberStatusesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error) {
+//				panic("mock out the GetClusterMemberStatuses method")
+//			},
 //			GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
 //				panic("mock out the GetClusterNodeNames method")
 //			},
@@ -113,6 +116,9 @@ type ClusterClientPortMock struct {
 
 	// GetClusterJoinTokenFunc mocks the GetClusterJoinToken method.
 	GetClusterJoinTokenFunc func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error)
+
+	// GetClusterMemberStatusesFunc mocks the GetClusterMemberStatuses method.
+	GetClusterMemberStatusesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error)
 
 	// GetClusterNodeNamesFunc mocks the GetClusterNodeNames method.
 	GetClusterNodeNamesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error)
@@ -200,6 +206,13 @@ type ClusterClientPortMock struct {
 			Endpoint provisioning.Endpoint
 			// MemberName is the memberName argument value.
 			MemberName string
+		}
+		// GetClusterMemberStatuses holds details about calls to the GetClusterMemberStatuses method.
+		GetClusterMemberStatuses []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// GetClusterNodeNames holds details about calls to the GetClusterNodeNames method.
 		GetClusterNodeNames []struct {
@@ -391,6 +404,7 @@ type ClusterClientPortMock struct {
 	}
 	lockEnableCluster             sync.RWMutex
 	lockGetClusterJoinToken       sync.RWMutex
+	lockGetClusterMemberStatuses  sync.RWMutex
 	lockGetClusterNodeNames       sync.RWMutex
 	lockGetNetworkConfig          sync.RWMutex
 	lockGetNodeSpecificConfigKeys sync.RWMutex
@@ -489,6 +503,42 @@ func (mock *ClusterClientPortMock) GetClusterJoinTokenCalls() []struct {
 	mock.lockGetClusterJoinToken.RLock()
 	calls = mock.calls.GetClusterJoinToken
 	mock.lockGetClusterJoinToken.RUnlock()
+	return calls
+}
+
+// GetClusterMemberStatuses calls GetClusterMemberStatusesFunc.
+func (mock *ClusterClientPortMock) GetClusterMemberStatuses(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error) {
+	if mock.GetClusterMemberStatusesFunc == nil {
+		panic("ClusterClientPortMock.GetClusterMemberStatusesFunc: method is nil but ClusterClientPort.GetClusterMemberStatuses was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockGetClusterMemberStatuses.Lock()
+	mock.calls.GetClusterMemberStatuses = append(mock.calls.GetClusterMemberStatuses, callInfo)
+	mock.lockGetClusterMemberStatuses.Unlock()
+	return mock.GetClusterMemberStatusesFunc(ctx, endpoint)
+}
+
+// GetClusterMemberStatusesCalls gets all the calls that were made to GetClusterMemberStatuses.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetClusterMemberStatusesCalls())
+func (mock *ClusterClientPortMock) GetClusterMemberStatusesCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockGetClusterMemberStatuses.RLock()
+	calls = mock.calls.GetClusterMemberStatuses
+	mock.lockGetClusterMemberStatuses.RUnlock()
 	return calls
 }
 

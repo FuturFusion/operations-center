@@ -90,6 +90,25 @@ func (c Client) GetClusterNodeNames(ctx context.Context, endpoint provisioning.E
 	return nodeNames, nil
 }
 
+func (c Client) GetClusterMemberStatuses(ctx context.Context, endpoint provisioning.Endpoint) (map[string]string, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := client.GetClusterMembers()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get cluster members on %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
+	}
+
+	statuses := make(map[string]string, len(members))
+	for _, member := range members {
+		statuses[member.ServerName] = member.Status
+	}
+
+	return statuses, nil
+}
+
 func (c Client) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, _ error) {
 	client, err := c.getClient(ctx, endpoint)
 	if err != nil {
