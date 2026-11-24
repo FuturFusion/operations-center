@@ -22,10 +22,16 @@ const (
 	uiAssetContent = `console.log(1)`
 )
 
+const (
+	uiCacheControlNoStore   = "no-store"
+	uiCacheControlImmutable = "public, max-age=31536000, immutable"
+	uiNotFoundBody          = "404 page not found\n"
+)
+
 func TestRegisterUIHandlers(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	uiSources := []struct {
 		name string
 
 		embeddedUI fs.FS
@@ -35,8 +41,9 @@ func TestRegisterUIHandlers(t *testing.T) {
 			name: "embedded",
 
 			embeddedUI: fstest.MapFS{
-				"index.html":    &fstest.MapFile{Data: []byte(uiIndexContent)},
-				"assets/app.js": &fstest.MapFile{Data: []byte(uiAssetContent)},
+				"index.html":           &fstest.MapFile{Data: []byte(uiIndexContent)},
+				"assets/app.js":        &fstest.MapFile{Data: []byte(uiAssetContent)},
+				"assets/nested/app.js": &fstest.MapFile{Data: []byte(uiAssetContent)},
 			},
 			uiRoot: func(t *testing.T) *os.Root {
 				t.Helper()
@@ -57,87 +64,142 @@ func TestRegisterUIHandlers(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	tests := []struct {
+		name string
+
+		url string
+
+		wantStatusCode   int
+		wantLocation     string
+		wantCacheControl string
+		wantBody         string
+	}{
+		{
+			name: "index",
+
+			url: "/ui/",
+
+			wantStatusCode:   http.StatusOK,
+			wantLocation:     "",
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         uiIndexContent,
+		},
+		{
+			name: "index.html redirects to directory",
+
+			url: "/ui/index.html",
+
+			wantStatusCode:   http.StatusMovedPermanently,
+			wantLocation:     "./",
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         "",
+		},
+		{
+			name: "unknown path falls back to index (SPA routing)",
+
+			url: "/ui/provisioning/servers",
+
+			wantStatusCode:   http.StatusOK,
+			wantLocation:     "",
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         uiIndexContent,
+		},
+		{
+			name: "asset",
+
+			url: "/ui/assets/app.js",
+
+			wantStatusCode:   http.StatusOK,
+			wantLocation:     "",
+			wantCacheControl: uiCacheControlImmutable,
+			wantBody:         uiAssetContent,
+		},
+		{
+			name: "nested asset",
+
+			url: "/ui/assets/nested/app.js",
+
+			wantStatusCode:   http.StatusOK,
+			wantLocation:     "",
+			wantCacheControl: uiCacheControlImmutable,
+			wantBody:         uiAssetContent,
+		},
+		{
+			name: "asset with trailing slash redirects to asset",
+
+			url: "/ui/assets/app.js/",
+
+			wantStatusCode:   http.StatusMovedPermanently,
+			wantLocation:     "../app.js",
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         "",
+		},
+		{
+			name: "error - unknown asset",
+
+			url: "/ui/assets/unknown.js",
+
+			wantStatusCode:   http.StatusNotFound,
+			wantLocation:     "",
+			wantCacheControl: "",
+			wantBody:         uiNotFoundBody,
+		},
+		{
+			name: "error - assets directory",
+
+			url: "/ui/assets/",
+
+			wantStatusCode:   http.StatusNotFound,
+			wantLocation:     "",
+			wantCacheControl: "",
+			wantBody:         uiNotFoundBody,
+		},
+		{
+			name: "error - nested assets directory",
+
+			url: "/ui/assets/nested/",
+
+			wantStatusCode:   http.StatusNotFound,
+			wantLocation:     "",
+			wantCacheControl: "",
+			wantBody:         uiNotFoundBody,
+		},
+		{
+			name: "redirect to index",
+
+			url: "/ui",
+
+			wantStatusCode:   http.StatusMovedPermanently,
+			wantLocation:     "/ui/",
+			wantCacheControl: "",
+			wantBody:         redirectBody(t, "/ui/"),
+		},
+	}
+
+	for _, src := range uiSources {
+		t.Run(src.name, func(t *testing.T) {
+			t.Parallel()
+
 			serveMux := http.NewServeMux()
-
-			registerUIHandlers(t.Context(), newRouter(serveMux), tc.embeddedUI, tc.uiRoot(t))
-
-			tests := []struct {
-				name string
-
-				url string
-
-				wantStatusCode int
-				wantLocation   string
-				wantBody       string
-			}{
-				{
-					name: "index",
-
-					url: "/ui/",
-
-					wantStatusCode: http.StatusOK,
-					wantBody:       uiIndexContent,
-				},
-				{
-					name: "asset",
-
-					url: "/ui/assets/app.js",
-
-					wantStatusCode: http.StatusOK,
-					wantBody:       uiAssetContent,
-				},
-				{
-					name: "unknown path falls back to index (SPA routing)",
-
-					url: "/ui/provisioning/servers",
-
-					wantStatusCode: http.StatusOK,
-					wantBody:       uiIndexContent,
-				},
-				{
-					name: "redirect to index",
-
-					url: "/ui",
-
-					wantStatusCode: http.StatusMovedPermanently,
-					wantLocation:   "/ui/",
-				},
-			}
+			registerUIHandlers(t.Context(), newRouter(serveMux), src.embeddedUI, src.uiRoot(t))
 
 			for _, tc := range tests {
 				t.Run(tc.name, func(t *testing.T) {
-					rec := httptest.NewRecorder()
+					t.Parallel()
 
+					// Run test
+					rec := httptest.NewRecorder()
 					serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.url, nil))
 
+					// Assert
 					require.Equal(t, tc.wantStatusCode, rec.Code)
-
-					if tc.wantLocation != "" {
-						require.Equal(t, tc.wantLocation, rec.Header().Get("Location"))
-					}
-
-					if tc.wantBody != "" {
-						require.Equal(t, tc.wantBody, rec.Body.String())
-					}
+					require.Equal(t, tc.wantLocation, rec.Header().Get("Location"))
+					require.Equal(t, tc.wantCacheControl, rec.Header().Get("Cache-Control"), "browsers must not cache index.html, hashed assets are immutable")
+					require.Equal(t, tc.wantBody, rec.Body.String())
 				})
 			}
 		})
 	}
-}
-
-// uiTestDir returns a web UI directory with an index and an asset.
-func uiTestDir(t *testing.T) string {
-	t.Helper()
-
-	uiDir := filepath.Join(t.TempDir(), uiPathSegment)
-
-	require.NoError(t, os.MkdirAll(filepath.Join(uiDir, "assets"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(uiDir, "index.html"), []byte(uiIndexContent), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(uiDir, "assets", "app.js"), []byte(uiAssetContent), 0o644))
-
-	return uiDir
 }
 
 // redirectBody returns the body http.Redirect writes for a GET request.
@@ -148,6 +210,20 @@ func redirectBody(t *testing.T, url string) string {
 	http.Redirect(rec, httptest.NewRequest(http.MethodGet, "/", nil), url, http.StatusMovedPermanently)
 
 	return rec.Body.String()
+}
+
+// uiTestDir returns a web UI directory with an index and assets.
+func uiTestDir(t *testing.T) string {
+	t.Helper()
+
+	uiDir := filepath.Join(t.TempDir(), uiPathSegment)
+
+	require.NoError(t, os.MkdirAll(filepath.Join(uiDir, "assets", "nested"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(uiDir, "index.html"), []byte(uiIndexContent), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(uiDir, "assets", "app.js"), []byte(uiAssetContent), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(uiDir, "assets", "nested", "app.js"), []byte(uiAssetContent), 0o644))
+
+	return uiDir
 }
 
 func TestRegisterUIHandlers_root(t *testing.T) {
@@ -227,23 +303,57 @@ func TestRegisterUIHandlers_notAvailable(t *testing.T) {
 func TestRegisterUIHandlers_symlinkOutsideOfUIDir(t *testing.T) {
 	t.Parallel()
 
-	// Setup
-	uiDir := uiTestDir(t)
-	outsideFile := filepath.Join(filepath.Dir(uiDir), "secret.txt")
-	require.NoError(t, os.WriteFile(outsideFile, []byte("secret-file-content"), 0o600))
-	require.NoError(t, os.Symlink(outsideFile, filepath.Join(uiDir, "assets", "secret.txt")))
+	tests := []struct {
+		name string
 
-	serveMux := http.NewServeMux()
-	registerUIHandlers(t.Context(), newRouter(serveMux), nil, fsroot.Open(t, uiDir))
+		symlinkPath string
+		url         string
 
-	// Run test
-	rec := httptest.NewRecorder()
-	serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/assets/secret.txt", nil))
+		wantStatusCode int
+		wantBody       string
+	}{
+		{
+			name: "falls back to index",
 
-	// Assert
-	require.Equal(t, http.StatusOK, rec.Code, "a symlink to the outside falls back to index.html")
-	require.Equal(t, uiIndexContent, rec.Body.String())
-	require.NotContains(t, rec.Body.String(), "secret-file-content", "a symlink must not serve files outside of the web UI directory")
+			symlinkPath: "secret.txt",
+			url:         "/ui/secret.txt",
+
+			wantStatusCode: http.StatusOK,
+			wantBody:       uiIndexContent,
+		},
+		{
+			name: "error - asset not found",
+
+			symlinkPath: "assets/secret.txt",
+			url:         "/ui/assets/secret.txt",
+
+			wantStatusCode: http.StatusNotFound,
+			wantBody:       uiNotFoundBody,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			uiDir := uiTestDir(t)
+			outsideFile := filepath.Join(filepath.Dir(uiDir), "secret.txt")
+			require.NoError(t, os.WriteFile(outsideFile, []byte("secret-file-content"), 0o600))
+			require.NoError(t, os.Symlink(outsideFile, filepath.Join(uiDir, tc.symlinkPath)))
+
+			serveMux := http.NewServeMux()
+			registerUIHandlers(t.Context(), newRouter(serveMux), nil, fsroot.Open(t, uiDir))
+
+			// Run test
+			rec := httptest.NewRecorder()
+			serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.url, nil))
+
+			// Assert
+			require.Equal(t, tc.wantStatusCode, rec.Code)
+			require.Equal(t, tc.wantBody, rec.Body.String(), "a symlink must not serve files outside of the web UI directory")
+		})
+	}
 }
 
 // errFS is a file system, which fails to open errPath with err. It does not
@@ -270,50 +380,92 @@ func TestRegisterUIHandlers_openError(t *testing.T) {
 	tests := []struct {
 		name string
 
+		errPath string
 		openErr error
 
-		wantStatusCode int
-		wantBody       string
+		wantStatusCode   int
+		wantCacheControl string
+		wantBody         string
 	}{
 		{
 			name: "not exist falls back to index",
 
+			errPath: "favicon.ico",
 			openErr: fs.ErrNotExist,
 
-			wantStatusCode: http.StatusOK,
-			wantBody:       uiIndexContent,
+			wantStatusCode:   http.StatusOK,
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         uiIndexContent,
 		},
 		{
 			name: "path escape falls back to index",
 
+			errPath: "favicon.ico",
 			openErr: errors.New(osRootPathEscapeMsg),
 
-			wantStatusCode: http.StatusOK,
-			wantBody:       uiIndexContent,
+			wantStatusCode:   http.StatusOK,
+			wantCacheControl: uiCacheControlNoStore,
+			wantBody:         uiIndexContent,
 		},
 		{
 			name: "error - permission denied",
 
+			errPath: "favicon.ico",
 			openErr: fs.ErrPermission,
 
-			wantStatusCode: http.StatusForbidden,
-			wantBody:       "403 Forbidden\n",
+			wantStatusCode:   http.StatusForbidden,
+			wantCacheControl: "",
+			wantBody:         "403 Forbidden\n",
 		},
 		{
-			name: "error - input output error",
+			name: "error - asset not exist",
 
+			errPath: "assets/app.js",
+			openErr: fs.ErrNotExist,
+
+			wantStatusCode:   http.StatusNotFound,
+			wantCacheControl: "",
+			wantBody:         uiNotFoundBody,
+		},
+		{
+			name: "error - asset path escape",
+
+			errPath: "assets/app.js",
+			openErr: errors.New(osRootPathEscapeMsg),
+
+			wantStatusCode:   http.StatusNotFound,
+			wantCacheControl: "",
+			wantBody:         uiNotFoundBody,
+		},
+		{
+			name: "error - asset permission denied",
+
+			errPath: "assets/app.js",
+			openErr: fs.ErrPermission,
+
+			wantStatusCode:   http.StatusForbidden,
+			wantCacheControl: "",
+			wantBody:         "403 Forbidden\n",
+		},
+		{
+			name: "error - asset input output error",
+
+			errPath: "assets/app.js",
 			openErr: syscall.EIO,
 
-			wantStatusCode: http.StatusInternalServerError,
-			wantBody:       "500 Internal Server Error\n",
+			wantStatusCode:   http.StatusInternalServerError,
+			wantCacheControl: "",
+			wantBody:         "500 Internal Server Error\n",
 		},
 		{
-			name: "error - too many levels of symbolic links",
+			name: "error - asset too many levels of symbolic links",
 
+			errPath: "assets/app.js",
 			openErr: syscall.ELOOP,
 
-			wantStatusCode: http.StatusInternalServerError,
-			wantBody:       "500 Internal Server Error\n",
+			wantStatusCode:   http.StatusInternalServerError,
+			wantCacheControl: "",
+			wantBody:         "500 Internal Server Error\n",
 		},
 	}
 
@@ -325,9 +477,10 @@ func TestRegisterUIHandlers_openError(t *testing.T) {
 			embeddedUI := errFS{
 				files: fstest.MapFS{
 					"index.html":    &fstest.MapFile{Data: []byte(uiIndexContent)},
+					"favicon.ico":   &fstest.MapFile{Data: []byte("icon")},
 					"assets/app.js": &fstest.MapFile{Data: []byte(uiAssetContent)},
 				},
-				errPath: "assets/app.js",
+				errPath: tc.errPath,
 				err:     tc.openErr,
 			}
 
@@ -336,10 +489,11 @@ func TestRegisterUIHandlers_openError(t *testing.T) {
 
 			// Run test
 			rec := httptest.NewRecorder()
-			serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/assets/app.js", nil))
+			serveMux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/"+tc.errPath, nil))
 
 			// Assert
 			require.Equal(t, tc.wantStatusCode, rec.Code)
+			require.Equal(t, tc.wantCacheControl, rec.Header().Get("Cache-Control"), "error responses must not be cached")
 			require.Equal(t, tc.wantBody, rec.Body.String())
 		})
 	}
