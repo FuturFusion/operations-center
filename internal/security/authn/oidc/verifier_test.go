@@ -136,6 +136,7 @@ func TestVerifier_Auth(t *testing.T) {
 	withEmail := iss.sign(t, jwt.MapClaims{"email": "user@example.com"})
 	withoutEmail := iss.sign(t, nil)
 	withEmptyEmail := iss.sign(t, jwt.MapClaims{"email": ""})
+	withoutSubject := iss.sign(t, jwt.MapClaims{"sub": ""})
 	withClaim := iss.sign(t, jwt.MapClaims{"preferred_username": "jdoe"})
 	withNumberClaim := iss.sign(t, jwt.MapClaims{"preferred_username": 42})
 	expired := iss.sign(t, jwt.MapClaims{"iat": now.Add(-2 * time.Hour).Unix(), "exp": now.Add(-time.Hour).Unix()})
@@ -309,6 +310,15 @@ func TestVerifier_Auth(t *testing.T) {
 			issuer:        iss.URL,
 			claim:         "preferred_username",
 			authorization: "Bearer " + withNumberClaim,
+
+			assertErr:   requireNotAuthError,
+			wantUser:    "",
+			wantCookies: map[string]string{},
+		},
+		{
+			name:          "error - no subject and no email",
+			issuer:        iss.URL,
+			authorization: "Bearer " + withoutSubject,
 
 			assertErr:   requireNotAuthError,
 			wantUser:    "",

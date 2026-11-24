@@ -156,6 +156,10 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	if claims.Subject == "" {
+		return "", fmt.Errorf("OIDC user is missing required claim %q", "sub")
+	}
+
 	return claims.Subject, nil
 }
 
