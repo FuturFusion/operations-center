@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSystemNetwork, updateSystemNetwork } from "api/settings";
 import SystemNetworkForm from "components/SystemNetworkForm";
 import { useNotification } from "context/notificationContext";
@@ -8,12 +8,14 @@ import QueryError from "components/QueryError";
 
 const SystemNetworkConfiguration = () => {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
 
   const onSubmit = (network: SystemNetwork) => {
     updateSystemNetwork(JSON.stringify(network, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Network settings updated`);
+          queryClient.invalidateQueries({ queryKey: ["system_network"] });
           return;
         }
         notify.error(errorMessage(response));
