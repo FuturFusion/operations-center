@@ -890,6 +890,71 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			wantImageCount: 1,
 		},
 		{
+			name:         "success - applications seed with applications and without version keeps applications",
+			tokenIDArg:   uuidgen.FromPattern(t, "2"),
+			imageUUIDArg: imageUUID,
+			existingImages: []image{
+				{
+					imageUUID:    imageUUID,
+					tokenID:      uuidgen.FromPattern(t, "2"),
+					imageType:    api.ImageTypeISO,
+					architecture: images.UpdateFileArchitecture64BitX86,
+					channel:      "stable",
+					seedConfig: provisioning.TokenImageSeedConfigs{
+						Applications: api.SeedApplications{
+							Version: "",
+							Applications: []api.SeedApplication{
+								{
+									Name: "incus-lts-7.0",
+								},
+								{
+									Name: "debug",
+								},
+							},
+						},
+					},
+					createdAt: time.Now(),
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+
+			assertErr:    require.NoError,
+			wantFilename: "pre-seed-22222222-2222-2222-2222-222222222222.iso",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+					{
+						Name: "debug",
+					},
+				},
+			},
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+			},
+			wantImageCount: 0,
+		},
+		{
 			name:         "success - trusted client certificates are added",
 			tokenIDArg:   uuidgen.FromPattern(t, "2"),
 			imageUUIDArg: imageUUID,

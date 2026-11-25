@@ -702,17 +702,7 @@ func (s *tokenService) resolvePreSeedImage(ctx context.Context, imageType api.Im
 			WithDetail("architecture", string(architecture))
 	}
 
-	// Apply defaults to seeds.
-	if seeds.Applications.Version == "" {
-		seeds.Applications = api.SeedApplications{
-			Version: "1",
-			Applications: []api.SeedApplication{
-				{
-					Name: "incus",
-				},
-			},
-		}
-	}
+	seeds.ApplyApplicationsDefault()
 
 	seeds.Incus = api.SeedIncus{
 		Version:       "1",
