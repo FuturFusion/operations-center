@@ -49,6 +49,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
 
   const formik = useFormik({
     initialValues: formikInitialValues,
+    enableReinitialize: true,
     onSubmit: (values: SystemSecurity) => {
       onSubmit({
         ...values,

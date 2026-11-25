@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSystemSecurity, updateSystemSecurity } from "api/settings";
 import SystemSecurityForm from "components/SystemSecurityForm";
 import { useNotification } from "context/notificationContext";
@@ -8,12 +8,14 @@ import QueryError from "components/QueryError";
 
 const SystemSecurityConfiguration = () => {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
 
   const onSubmit = (security: SystemSecurity) => {
     updateSystemSecurity(JSON.stringify(security, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`System security updated`);
+          queryClient.invalidateQueries({ queryKey: ["system_security"] });
           return;
         }
         notify.error(errorMessage(response));

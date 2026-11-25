@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSystemSettings, updateSystemSettings } from "api/settings";
 import SystemSettingsForm from "components/SystemSettingsForm";
 import { useNotification } from "context/notificationContext";
@@ -8,12 +8,14 @@ import QueryError from "components/QueryError";
 
 const SystemSettingsConfiguration = () => {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
 
   const onSubmit = (settings: SystemSettings) => {
     return updateSystemSettings(JSON.stringify(settings, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`System settings updated`);
+          queryClient.invalidateQueries({ queryKey: ["system_settings"] });
           return;
         }
         notify.error(errorMessage(response));
