@@ -476,11 +476,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	errorLogger := &log.Logger{}
 	errorLogger.SetOutput(httpErrorLogger{})
 
+	compressedMux, err := compressionMiddleware(serveMux)
+	if err != nil {
+		return err
+	}
+
 	d.server = &http.Server{
 		Handler: componentMiddleware(
 			logger.RequestIDMiddleware(
 				logger.AccessLogMiddleware(
-					serveMux,
+					compressedMux,
 				),
 			),
 		),

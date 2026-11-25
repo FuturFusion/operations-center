@@ -30,6 +30,7 @@ GitHub
 goroutine
 goroutines
 GPG
+gzip
 hostname
 HPE
 https

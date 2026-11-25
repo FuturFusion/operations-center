@@ -1,9 +1,11 @@
 package client_test
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -337,4 +339,167 @@ func TestOperationsCenterClient_DoHTTP(t *testing.T) {
 			require.Equal(t, tc.wantStatusCode, resp.StatusCode, "status code of the response, body: %s", string(body))
 		})
 	}
+}
+
+func TestOperationsCenterClient_compressedResponse(t *testing.T) {
+	// The size of the response in bytes, from which on the server compresses it.
+	const compressionMinSize = 1024
+
+	d := daemonSetup(t)
+
+	serverNames := []string{"compressedOne", "compressedTwo", "compressedThree"}
+	for _, name := range serverNames {
+		seedServer(t, d, name, nil)
+	}
+
+	tests := []struct {
+		name         string
+		setupRequest func(req *http.Request)
+		readBody     func(t *testing.T, r io.Reader) []byte
+
+		wantContentEncoding string
+		wantUncompressed    bool
+	}{
+		{
+			name: "explicit gzip leaves the body compressed for the caller",
+			setupRequest: func(req *http.Request) {
+				req.Header.Set("Accept-Encoding", "gzip")
+			},
+			readBody: readGzipBody,
+
+			wantContentEncoding: "gzip",
+			wantUncompressed:    false,
+		},
+		{
+			name:         "transport decompresses the body",
+			setupRequest: func(*http.Request) {},
+			readBody:     readPlainBody,
+
+			wantContentEncoding: "",
+			wantUncompressed:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, d.authorizedHTTPClient.GetBaseAddr()+"/1.0/provisioning/servers?recursion=1", http.NoBody)
+			require.NoError(t, err)
+
+			tc.setupRequest(req)
+
+			// Run test
+			resp, err := d.authorizedHTTPClient.DoHTTP(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			body := tc.readBody(t, resp.Body)
+
+			// Assert
+			require.Equal(t, http.StatusOK, resp.StatusCode, "status code of the response")
+			require.Equal(t, tc.wantContentEncoding, resp.Header.Get("Content-Encoding"), "content encoding seen by the caller")
+			require.Equal(t, tc.wantUncompressed, resp.Uncompressed, "transport decompressed the response")
+			require.GreaterOrEqual(t, len(body), compressionMinSize, "response is large enough to be compressed")
+
+			var apiResponse api.Response
+			require.NoError(t, json.Unmarshal(body, &apiResponse), "decode response")
+
+			var servers []api.Server
+			require.NoError(t, json.Unmarshal(apiResponse.Metadata, &servers), "decode servers")
+			require.ElementsMatch(t, serverNames, serverNamesOf(servers), "names of the seeded servers")
+		})
+	}
+
+	t.Run("client method decompresses the body", func(t *testing.T) {
+		// Run test
+		servers, err := d.authorizedHTTPClient.GetServers(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.ElementsMatch(t, serverNames, serverNamesOf(servers), "names of the seeded servers")
+	})
+}
+
+func TestOperationsCenterClient_proxyResponseNotCompressed(t *testing.T) {
+	d := daemonSetup(t)
+	seedServer(t, d, "proxyServer", nil)
+
+	tests := []struct {
+		name string
+		path string
+
+		wantContentEncoding string
+		wantVary            string
+	}{
+		{
+			name: "IncusOS proxy",
+			path: "/os/1.0",
+
+			wantContentEncoding: "",
+			wantVary:            "",
+		},
+		{
+			name: "server OS proxy",
+			path: "/1.0/provisioning/servers/proxyServer/os/1.0",
+
+			wantContentEncoding: "",
+			wantVary:            "",
+		},
+		{
+			name: "API outside of the proxies",
+			path: "/1.0/provisioning/servers",
+
+			wantContentEncoding: "",
+			wantVary:            "Accept-Encoding",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, d.authorizedHTTPClient.GetBaseAddr()+tc.path, http.NoBody)
+			require.NoError(t, err)
+			req.Header.Set("Accept-Encoding", "gzip")
+
+			// Run test
+			resp, err := d.authorizedHTTPClient.DoHTTP(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			// Assert
+			require.Equal(t, tc.wantContentEncoding, resp.Header.Get("Content-Encoding"), "content encoding of the response")
+			require.Equal(t, tc.wantVary, resp.Header.Get("Vary"), "vary header of the response")
+		})
+	}
+}
+
+func readGzipBody(t *testing.T, r io.Reader) []byte {
+	t.Helper()
+
+	gzipReader, err := gzip.NewReader(r)
+	require.NoError(t, err, "gzip reader for the response body")
+
+	body, err := io.ReadAll(gzipReader)
+	require.NoError(t, err, "read response body")
+	require.NoError(t, gzipReader.Close(), "close gzip reader")
+
+	return body
+}
+
+func readPlainBody(t *testing.T, r io.Reader) []byte {
+	t.Helper()
+
+	body, err := io.ReadAll(r)
+	require.NoError(t, err, "read response body")
+
+	return body
+}
+
+func serverNamesOf(servers []api.Server) []string {
+	names := make([]string, 0, len(servers))
+	for _, server := range servers {
+		names = append(names, server.Name)
+	}
+
+	return names
 }

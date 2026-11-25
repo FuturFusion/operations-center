@@ -1,5 +1,16 @@
 # REST API
 
+## Compression
+
+The API compresses JSON responses with gzip when the `Accept-Encoding` request
+header allows gzip with a nonzero quality value.
+The API does not compress responses smaller than 1024 bytes.
+The API does not compress responses of the IncusOS proxy endpoints `/os/` and
+`/1.0/provisioning/servers/{name}/os`.
+Responses outside the IncusOS proxy endpoints include `Vary: Accept-Encoding`.
+
+## Reference
+
 <link rel="stylesheet" type="text/css" href="../../_static/swagger-ui/swagger-ui.css" ></link>
 <link rel="stylesheet" type="text/css" href="../../_static/swagger-override.css" ></link>
 <div id="swagger-ui"></div>

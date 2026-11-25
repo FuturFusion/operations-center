@@ -91,7 +91,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.8.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.20.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.2 // indirect
 	github.com/klauspost/pgzip v1.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.3 // indirect
@@ -230,6 +229,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
 	github.com/hashicorp/hcl/v2 v2.25.0
+	github.com/klauspost/compress v1.20.4
 	github.com/letsencrypt/pebble/v2 v2.10.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/lxc/incus-os/incus-osd v0.0.0-20261109205758-5c59b01ae49e
