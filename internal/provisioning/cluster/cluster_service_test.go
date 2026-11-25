@@ -17483,8 +17483,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 		repoDeleteByNameErr               error
 		trustedClientCertificates         []string
 
-		assertErr     require.ErrorAssertionFunc
-		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
+		assertErr                   require.ErrorAssertionFunc
+		wantApplicationsSeed        api.SeedApplications
+		wantSystemFactoryResetCalls int
+		signalHandler               func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
 	}{
 		{
 			name:                      "success",
@@ -17520,8 +17522,17 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 				},
 			},
 
-			assertErr:     require.NoError,
-			signalHandler: requireCallSignalHandler,
+			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 2,
+			signalHandler:               requireCallSignalHandler,
 		},
 		{
 			name:     "success - with token",
@@ -17543,8 +17554,13 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 				},
 			},
 
-			assertErr:     require.NoError,
-			signalHandler: requireCallSignalHandler,
+			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+			wantSystemFactoryResetCalls: 2,
+			signalHandler:               requireCallSignalHandler,
 		},
 		{
 			name:             "success - with token and tokenSeedName",
@@ -17570,10 +17586,70 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 				},
 			},
 
-			assertErr:     require.NoError,
-			signalHandler: requireCallSignalHandler,
+			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 2,
+			signalHandler:               requireCallSignalHandler,
 		},
+		{
+			name:             "success - with token and tokenSeedName with applications and without version",
+			nameArg:          "one",
+			tokenArg:         new(uuidgen.FromPattern(t, "1")),
+			tokenSeedNameArg: new("token-seed-name"),
 
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcGetTokenSeedByName: &provisioning.TokenSeed{
+				Token: uuidgen.FromPattern(t, "1"),
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Applications: api.SeedApplications{
+						Version: "",
+						Applications: []api.SeedApplication{
+							{
+								Name: "incus-lts-7.0",
+							},
+							{
+								Name: "debug",
+							},
+						},
+					},
+				},
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+					{
+						Name: "debug",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 2,
+			signalHandler:               requireCallSignalHandler,
+		},
 		{
 			name:    "error - name empty",
 			nameArg: "", // invalid
@@ -17583,7 +17659,9 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 			},
-			signalHandler: requireNoCallSignalHandler,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - serverSvc.GetAllWithFilter",
@@ -17591,8 +17669,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 
 			serverSvcGetAllWithFilterErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - no servers",
@@ -17602,7 +17682,9 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 			},
-			signalHandler: requireNoCallSignalHandler,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - client.Ping",
@@ -17614,8 +17696,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			clientPingErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:             "error - tokenSvc.GetTokenSeedByName",
@@ -17629,8 +17713,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			tokenSvcGetTokenSeedByNameErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - tokenSvc.Create",
@@ -17642,8 +17728,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			tokenSvcCreateErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - tokenSvc.GetTokenProviderConfig",
@@ -17658,8 +17746,10 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			tokenSvcGetTokenProviderConfigErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - client.SystemFactoryReset",
@@ -17684,8 +17774,13 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			clientSystemFactoryResetErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr: boom.ErrorIs,
+			wantApplicationsSeed: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+			wantSystemFactoryResetCalls: 1,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - repo.DeleteByName",
@@ -17710,8 +17805,13 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			},
 			repoDeleteByNameErr: boom.Error,
 
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
+			assertErr: boom.ErrorIs,
+			wantApplicationsSeed: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+			wantSystemFactoryResetCalls: 2,
+			signalHandler:               requireNoCallSignalHandler,
 		},
 	}
 
@@ -17789,6 +17889,11 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Len(t, client.SystemFactoryResetCalls(), tc.wantSystemFactoryResetCalls, "SystemFactoryReset call count")
+			for _, call := range client.SystemFactoryResetCalls() {
+				require.Equal(t, tc.wantApplicationsSeed, call.Seeds.Applications, "applications seed sent to the factory reset")
+			}
+
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}

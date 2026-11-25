@@ -2576,6 +2576,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 		}
 
 		seed = tokenSeed.Seeds
+		seed.ApplyApplicationsDefault()
 	}
 
 	if tokenID == nil {

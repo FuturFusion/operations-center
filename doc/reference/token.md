@@ -70,6 +70,11 @@ A forced operation can break the server deployments, which use the token seed.
 
 ### Seed Configuration (`pre-seed.yaml`)
 
+When generating an image or using a named token seed for a factory reset,
+Operations Center defaults an empty application list to `incus`. It defaults an
+empty applications version to `"1"` and preserves a non-empty application list.
+These defaults do not change the stored token seed.
+
 The seed configuration has the following structure:
 
 ```yaml

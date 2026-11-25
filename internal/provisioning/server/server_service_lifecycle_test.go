@@ -2816,7 +2816,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 		repoDeleteByNameErr               error
 		trustedClientCertificates         []string
 
-		assertErr require.ErrorAssertionFunc
+		assertErr                   require.ErrorAssertionFunc
+		wantApplicationsSeed        api.SeedApplications
+		wantSystemFactoryResetCalls int
 	}{
 		{
 			name:    "success - without tokenID and without tokenSeedName",
@@ -2838,6 +2840,15 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
 
 			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 1,
 		},
 		{
 			name:             "success - with tokenID and tokenSeedName",
@@ -2852,6 +2863,55 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
 
 			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 1,
+		},
+		{
+			name:             "success - with tokenID and tokenSeedName with applications and without version",
+			argName:          "one",
+			argTokenID:       new(uuidgen.FromPattern(t, "1")),
+			argTokenSeedName: new("some_seed"),
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenSeedByName: &provisioning.TokenSeed{
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Applications: api.SeedApplications{
+						Version: "",
+						Applications: []api.SeedApplication{
+							{
+								Name: "incus-lts-7.0",
+							},
+							{
+								Name: "debug",
+							},
+						},
+					},
+				},
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+
+			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+					{
+						Name: "debug",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 1,
 		},
 		{
 			name:    "success - with trusted client certificates",
@@ -2871,12 +2931,23 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			trustedClientCertificates:      []string{testcert.ClientCertificate},
 
 			assertErr: require.NoError,
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+				},
+			},
+			wantSystemFactoryResetCalls: 1,
 		},
 		{
 			name:    "error - empty name",
 			argName: "",
 
-			assertErr: errassert.OperationNotPermittedError,
+			assertErr:                   errassert.OperationNotPermittedError,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - repo.GetByName",
@@ -2887,7 +2958,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			},
 			repoGetByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - operations center",
@@ -2897,7 +2970,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 				Type: api.ServerTypeOperationsCenter,
 			},
 
-			assertErr: errassert.OperationNotPermittedError,
+			assertErr:                   errassert.OperationNotPermittedError,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - incus clustered",
@@ -2912,6 +2987,8 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 				errassert.DomainError(domain.ErrOperationNotPermitted, api.ErrorReasonServerIsClusterMember)(tt, err, a...)
 				errassert.HintIs("Remove the server from the cluster first. This also factory resets the server.")(tt, err, a...)
 			},
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - client.Ping",
@@ -2922,7 +2999,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			},
 			clientPingErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:             "error - tokenSvc.GetTokenSeedByName",
@@ -2935,7 +3014,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			},
 			tokenSvcGetTokenSeedByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - tokenSvc.Create",
@@ -2947,7 +3028,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
 			tokenSvcCreateErr:              boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - tokenSvc.GetTokenProviderConfig",
@@ -2958,7 +3041,9 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			},
 			tokenSvcGetTokenProviderConfigErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                   boom.ErrorIs,
+			wantApplicationsSeed:        api.SeedApplications{},
+			wantSystemFactoryResetCalls: 0,
 		},
 		{
 			name:    "error - client.SystemFactoryReset",
@@ -2971,6 +3056,11 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			clientSystemFactoryResetErr:    boom.Error,
 
 			assertErr: boom.ErrorIs,
+			wantApplicationsSeed: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+			wantSystemFactoryResetCalls: 1,
 		},
 		{
 			name:    "error - repo.DeleteByName",
@@ -2983,6 +3073,11 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			repoDeleteByNameErr:            boom.Error,
 
 			assertErr: boom.ErrorIs,
+			wantApplicationsSeed: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+			wantSystemFactoryResetCalls: 1,
 		},
 	}
 
@@ -3048,6 +3143,10 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Len(t, client.SystemFactoryResetCalls(), tc.wantSystemFactoryResetCalls, "SystemFactoryReset call count")
+			for _, call := range client.SystemFactoryResetCalls() {
+				require.Equal(t, tc.wantApplicationsSeed, call.Seeds.Applications, "applications seed sent to the factory reset")
+			}
 		})
 	}
 }
