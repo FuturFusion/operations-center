@@ -199,37 +199,9 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		result := make([]api.Server, 0, len(servers))
+		result := make([]api.ServerFull, 0, len(servers))
 		for _, server := range servers {
-			result = append(result, api.Server{
-				ServerPost: api.ServerPost{
-					Name:          server.Name,
-					ConnectionURL: server.ConnectionURL,
-					SystemUUID:    ptr.From(server.SystemUUID),
-					MachineID:     ptr.From(server.MachineID),
-					ServerPut: api.ServerPut{
-						PublicConnectionURL: server.PublicConnectionURL,
-						Channel:             server.Channel,
-						Description:         server.Description,
-						Properties:          server.Properties,
-						BMCConfig:           server.BMCConfig,
-					},
-				},
-				Certificate:          ptr.From(server.Certificate),
-				Fingerprint:          server.Fingerprint,
-				Cluster:              ptr.From(server.Cluster),
-				Type:                 server.Type,
-				HardwareData:         server.HardwareData,
-				OSData:               server.OSData,
-				VersionData:          server.VersionData,
-				Status:               server.Status,
-				StatusDetail:         server.StatusDetail,
-				Deployment:           serverDeploymentStatus(server),
-				BMCData:              server.BMCData,
-				LastUpdated:          server.LastUpdated,
-				LastSeen:             server.LastSeen,
-				SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
-			})
+			result = append(result, toAPIServerFull(server))
 		}
 
 		return response.SyncResponse(true, result)
@@ -420,35 +392,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Server{
-			ServerPost: api.ServerPost{
-				Name:          server.Name,
-				ConnectionURL: server.ConnectionURL,
-				SystemUUID:    ptr.From(server.SystemUUID),
-				MachineID:     ptr.From(server.MachineID),
-				ServerPut: api.ServerPut{
-					PublicConnectionURL: server.PublicConnectionURL,
-					Channel:             server.Channel,
-					Description:         server.Description,
-					Properties:          server.Properties,
-					BMCConfig:           server.BMCConfig,
-				},
-			},
-			Certificate:          ptr.From(server.Certificate),
-			Fingerprint:          server.Fingerprint,
-			Cluster:              ptr.From(server.Cluster),
-			Type:                 server.Type,
-			HardwareData:         server.HardwareData,
-			OSData:               server.OSData,
-			VersionData:          server.VersionData,
-			Status:               server.Status,
-			StatusDetail:         server.StatusDetail,
-			Deployment:           serverDeploymentStatus(*server),
-			BMCData:              server.BMCData,
-			LastUpdated:          server.LastUpdated,
-			LastSeen:             server.LastSeen,
-			SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
-		},
+		toAPIServerFull(*server),
 		server,
 	)
 }
@@ -1499,6 +1443,44 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, dump)
+}
+
+func toAPIServer(server provisioning.Server) api.Server {
+	return api.Server{
+		ServerPost: api.ServerPost{
+			Name:          server.Name,
+			ConnectionURL: server.ConnectionURL,
+			SystemUUID:    ptr.From(server.SystemUUID),
+			MachineID:     ptr.From(server.MachineID),
+			ServerPut: api.ServerPut{
+				PublicConnectionURL: server.PublicConnectionURL,
+				Channel:             server.Channel,
+				Description:         server.Description,
+				Properties:          server.Properties,
+				BMCConfig:           server.BMCConfig,
+			},
+		},
+		Certificate:          ptr.From(server.Certificate),
+		Fingerprint:          server.Fingerprint,
+		Cluster:              ptr.From(server.Cluster),
+		Type:                 server.Type,
+		VersionData:          server.VersionData,
+		Status:               server.Status,
+		StatusDetail:         server.StatusDetail,
+		LastUpdated:          server.LastUpdated,
+		LastSeen:             server.LastSeen,
+		SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
+	}
+}
+
+func toAPIServerFull(server provisioning.Server) api.ServerFull {
+	return api.ServerFull{
+		Server:       toAPIServer(server),
+		HardwareData: server.HardwareData,
+		OSData:       server.OSData,
+		BMCData:      server.BMCData,
+		Deployment:   serverDeploymentStatus(server),
+	}
 }
 
 func serverDeploymentStatus(server provisioning.Server) *api.ServerDeploymentStatus {

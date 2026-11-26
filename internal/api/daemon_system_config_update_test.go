@@ -147,7 +147,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var serverResponse struct {
-			Metadata api.Server `json:"metadata"`
+			Metadata api.ServerFull `json:"metadata"`
 		}
 
 		err = json.Unmarshal(body, &serverResponse)
