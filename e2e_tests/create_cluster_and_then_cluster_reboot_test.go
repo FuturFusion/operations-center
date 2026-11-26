@@ -16,6 +16,16 @@ func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	stop := timeTrack(t)
 	defer stop()
 
+	oc := fmt.Sprintf("../bin/operations-center.linux.%s", cpuArch)
+	assertClusterRollingReboot(ctx, t, oc, oc)
+}
+
+// assertClusterRollingReboot starts a rolling reboot of the cluster
+// incus-os-cluster through the CLI command prefix trigger. It follows the
+// progress through the CLI command prefix progress.
+func assertClusterRollingReboot(ctx context.Context, t *testing.T, trigger string, progress string) {
+	t.Helper()
+
 	clusterName := incusOSClusterName
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
@@ -35,21 +45,21 @@ func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	assertWorkloadRunning(ctx, t, "Reboot cluster - pre reboot workload", clusterName, instanceNames)
 
 	t.Log("Reboot cluster - pre reboot state")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list`, cpuArch)
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster show %s`, cpuArch, clusterName)
+	mustRun(t, `%s provisioning cluster list`, progress)
+	mustRun(t, `%s provisioning cluster show %s`, progress, clusterName)
 
 	// Nothing may be pending, otherwise the reboot would not be on demand.
-	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) | join(",")'`, cpuArch, clusterName)
+	resp := mustRun(t, `%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) | join(",")'`, progress, clusterName)
 	require.Emptyf(t, resp.OutputTrimmed(), "Reboot cluster: servers already need an update or a reboot before the test starts: %s", resp.OutputTrimmed())
 
 	stopReboot := timeTrack(t, "cluster reboot")
 	defer stopReboot()
 
 	t.Log("Update post_restore_delay")
-	mustRun(t, `EDITOR='sed -i "s/    post_restore_delay:.*/    post_restore_delay: 20s/"' script -q -c '../bin/operations-center.linux.%s provisioning cluster edit %s' /dev/null`, cpuArch, clusterName)
+	mustRun(t, `EDITOR='sed -i "s/    post_restore_delay:.*/    post_restore_delay: 20s/"' script -q -c '%s provisioning cluster edit %s' /dev/null`, trigger, clusterName)
 
 	t.Log("Reboot cluster - trigger rolling reboot")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster reboot %s`, cpuArch, clusterName)
+	mustRun(t, `%s provisioning cluster reboot %s`, trigger, clusterName)
 
 	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(30*time.Minute))
 	defer cancel()
@@ -59,17 +69,17 @@ func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	previousTotalSteps := 0
 
 	for {
-		resp := mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error'`, cpuArch, clusterName)
+		resp := mustRunQuiet(t, `%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error'`, progress, clusterName)
 		if resp.OutputTrimmed() != "" {
 			t.Fatalf("Reboot cluster failed: %s", resp.OutputTrimmed())
 		}
 
-		resp = mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
+		resp = mustRunQuiet(t, `%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, progress, clusterName)
 		if resp.OutputTrimmed() == "" {
 			break
 		}
 
-		resp = mustRunQuiet(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.status_description // ""'`, cpuArch, clusterName)
+		resp = mustRunQuiet(t, `%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.status_description // ""'`, progress, clusterName)
 		statusDescription := resp.OutputTrimmed()
 
 		if statusDescription != previousStatusDescription {
@@ -98,7 +108,7 @@ func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 		}
 
 		if debug {
-			resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq '[ .[] | { "server_status": .server_status, "server_status_detail": .server_status_detail, "version_data": .version_data } ]'`, cpuArch)
+			resp = mustRun(t, `%s provisioning server list -f json | jq '[ .[] | { "server_status": .server_status, "server_status_detail": .server_status_detail, "version_data": .version_data } ]'`, progress)
 			debugf("per server status: %s", resp.Output())
 		}
 
@@ -114,7 +124,7 @@ func clusterRollingReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	require.NotZero(t, previousTotalSteps, "Reboot cluster: no progress has been reported at all")
 	require.Equal(t, previousTotalSteps, previousStep, "Reboot cluster: the last reported progress is not the last step")
 
-	resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) + (.update_status.in_maintenance // []) | join(",")'`, cpuArch, clusterName)
+	resp = mustRun(t, `%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) + (.update_status.in_maintenance // []) | join(",")'`, progress, clusterName)
 	require.Emptyf(t, resp.OutputTrimmed(), "Reboot cluster: servers still need an update or a reboot or are in maintenance: %s", resp.OutputTrimmed())
 
 	assertWorkloadRunning(ctx, t, "Reboot cluster - post reboot workload", clusterName, instanceNames)
