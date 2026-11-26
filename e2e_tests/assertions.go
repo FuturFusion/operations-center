@@ -780,6 +780,8 @@ func assertOperationsCenterMetrics(t *testing.T) {
 
 	body := mustCurl(t, http.StatusOK, `%s %s`, ocAPI.clientAuth, metricsURL)
 	require.Regexp(t, `(?m)^go_goroutines `, body, "expect the metrics endpoint to be enabled by default")
+	require.Regexp(t, `(?m)^operations_center_task_duration_seconds_count\{task="server_deployment"\} `, body, "expect the background task metrics to be exposed if daemon.task is enabled")
+	require.Regexp(t, `(?m)^operations_center_task_interval_seconds\{task="server_deployment"\} `, body, "expect the leader to expose the interval of its running background tasks")
 
 	body = mustCurl(t, http.StatusOK, `%s -H 'Accept: application/openmetrics-text; version=1.0.0' %s`, ocAPI.clientAuth, metricsURL)
 	require.True(t, strings.HasSuffix(strings.TrimSpace(body), "# EOF"), "expect the OpenMetrics format to end with the end marker")
