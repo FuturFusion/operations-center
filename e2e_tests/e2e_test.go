@@ -51,6 +51,11 @@ func TestE2E_OperationsCenterCluster(t *testing.T) {
 			run:               ocClusterSeedImageThroughAnyMember,
 		},
 		{
+			name:              "member_server_records",
+			requiresOCCluster: true,
+			run:               ocClusterMemberServerRecords,
+		},
+		{
 			name:              "leader_handover",
 			requiresOCCluster: true,
 			run:               ocClusterLeaderHandover,

@@ -81,6 +81,7 @@ remotes of the members (see [Clustered Operations Center](#clustered-operations-
 |---------------------------------|------------------------------------------------------------------------------------------------------|
 | `write_through_any_member`      | Changes a channel, a token and the settings through one member. Reads them through the other members |
 | `seed_image_through_any_member` | Requests the image of a public token seed through every member                                       |
+| `member_server_records`         | Checks the server records of the members. Their rename and their removal are refused                 |
 | `leader_handover`               | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
 | `stopped_member_catches_up`     | Changes the updates configuration while a member is stopped. The member applies it after its start   |
 | `remove_and_rejoin_member`      | Moves the files of a member, removes the member and joins it again. Runs last.                       |
@@ -92,6 +93,10 @@ with the daemon shipped with IncusOS.
 `seed_image_through_any_member` needs the files of an update to build the
 image. Only one member stores them. So the other members read them from this
 member.
+
+`member_server_records` checks that each member registers itself under its
+own name. The record holds the address and the certificate of the member, not
+the certificate of the cluster.
 
 `stopped_member_catches_up` changes the filter expression of the updates to an
 equivalent expression. So the change does not affect which updates Operations
