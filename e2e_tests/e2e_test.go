@@ -122,6 +122,12 @@ func TestE2E_StableServers(t *testing.T) {
 			run:               ocLeaderHandoverWithManagedCluster,
 		},
 		{
+			name:              "oc_address_points_to_other_member",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocAddressPointsToOtherMember,
+		},
+		{
 			name:    "factory_reset_cluster",
 			cluster: names,
 			run:     factoryResetCluster,

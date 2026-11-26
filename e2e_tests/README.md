@@ -125,6 +125,7 @@ servers, so the seed of all the servers contains them.
 | `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                              |
 | `oc_rolling_reboot_through_members`     |                        | IncusOS01 to IncusOS03          | Rolling reboot through two members, which are not the leader, see below   |
 | `oc_leader_handover_managed_cluster`    |                        | IncusOS01 to IncusOS03          | Leader handover of the Operations Center cluster, see below               |
+| `oc_address_points_to_other_member`     |                        | IncusOS01 to IncusOS03          | Points the address of Operations Center at another member, see below      |
 | `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates               |
 | `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                               |
 | `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                                      |
@@ -132,8 +133,9 @@ servers, so the seed of all the servers contains them.
 | `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)                           |
 | `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last.               |
 
-`oc_rolling_reboot_through_members` and `oc_leader_handover_managed_cluster`
-only run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`.
+`oc_rolling_reboot_through_members`, `oc_leader_handover_managed_cluster` and
+`oc_address_points_to_other_member` only run with
+`OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`.
 
 `oc_rolling_reboot_through_members` starts the rolling reboot through a member,
 which is not the leader. The member forwards the request to the leader. The
@@ -144,6 +146,12 @@ Operations Center cluster. Then it launches and deletes an instance on the
 managed cluster. Only the leader monitors the lifecycle events of the managed
 clusters. So the inventory only shows the change if the new leader runs the
 monitor.
+
+`oc_address_points_to_other_member` points the address, which the managed
+servers use, at another member. Every member presents the certificate of the
+cluster, so the servers trust any member. The test checks the provider
+configuration of the servers and the server records of the members. Then it
+restores the address through a third member.
 
 ### `TestE2E_UpdateChannel`
 
