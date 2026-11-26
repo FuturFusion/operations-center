@@ -437,27 +437,35 @@ func assertProvisioningTokenSeedImages(t *testing.T, tmpDir string, ocAPI operat
 	mustRequestMedia(t, client, http.MethodHead, seedImageURL("private", "iso"), http.Header{}, http.StatusForbidden)
 
 	for _, imageType := range []string{"iso", "raw"} {
-		// Run test
-		// The first request generates the image, which takes a while.
-		header, _ := mustRequestMediaWithTimeout(t, client, http.MethodHead, seedImageURL("public", imageType), http.Header{}, http.StatusOK, 10*time.Minute)
-
-		// Assert
-		require.Equal(t, "bytes", header.Get("Accept-Ranges"), "expect the %s image of a public seed to be served with support for byte ranges", imageType)
-
-		size, err := strconv.ParseInt(header.Get("Content-Length"), 10, 64)
-		require.NoError(t, err, "expect the %s image of a public seed to be served with its size", imageType)
-		require.GreaterOrEqual(t, size, int64(incusOSImageMinSize), "expect the %s image of a public seed to have the size of an IncusOS image", imageType)
-
-		// Run test
-		header, body := mustRequestMedia(t, client, http.MethodGet, seedImageURL("public", imageType), http.Header{"Range": []string{"bytes=0-4095"}}, http.StatusPartialContent)
-
-		// Assert
-		require.Equal(t, fmt.Sprintf("bytes 0-4095/%d", size), header.Get("Content-Range"), "expect the requested range of the %s image to be served", imageType)
-		require.Len(t, body, 4096, "expect the complete range of the %s image to be served", imageType)
-
-		hasGPTHeader := slices.ContainsFunc(gptHeaderOffsets, func(offset int64) bool {
-			return bytes.HasPrefix(body[offset:], []byte(gptHeaderMagic))
-		})
-		require.True(t, hasGPTHeader, "expect the %s image of a public seed to carry the GPT header of an IncusOS image at one of the offsets %v", imageType, gptHeaderOffsets)
+		assertPublicSeedImageServed(t, client, seedImageURL("public", imageType), imageType)
 	}
+}
+
+// assertPublicSeedImageServed requests the image of a public token seed from
+// url. It checks the size and the GPT header of the image.
+func assertPublicSeedImageServed(t *testing.T, client *http.Client, url string, imageType string) {
+	t.Helper()
+
+	// Run test
+	// The first request generates the image, which takes a while.
+	header, _ := mustRequestMediaWithTimeout(t, client, http.MethodHead, url, http.Header{}, http.StatusOK, 10*time.Minute)
+
+	// Assert
+	require.Equal(t, "bytes", header.Get("Accept-Ranges"), "expect the %s image of a public seed to be served with support for byte ranges", imageType)
+
+	size, err := strconv.ParseInt(header.Get("Content-Length"), 10, 64)
+	require.NoError(t, err, "expect the %s image of a public seed to be served with its size", imageType)
+	require.GreaterOrEqual(t, size, int64(incusOSImageMinSize), "expect the %s image of a public seed to have the size of an IncusOS image", imageType)
+
+	// Run test
+	header, body := mustRequestMedia(t, client, http.MethodGet, url, http.Header{"Range": []string{"bytes=0-4095"}}, http.StatusPartialContent)
+
+	// Assert
+	require.Equal(t, fmt.Sprintf("bytes 0-4095/%d", size), header.Get("Content-Range"), "expect the requested range of the %s image to be served", imageType)
+	require.Len(t, body, 4096, "expect the complete range of the %s image to be served", imageType)
+
+	hasGPTHeader := slices.ContainsFunc(gptHeaderOffsets, func(offset int64) bool {
+		return bytes.HasPrefix(body[offset:], []byte(gptHeaderMagic))
+	})
+	require.True(t, hasGPTHeader, "expect the %s image of a public seed to carry the GPT header of an IncusOS image at one of the offsets %v", imageType, gptHeaderOffsets)
 }

@@ -77,16 +77,21 @@ The scenarios of this suite only run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER
 Otherwise they are skipped. Each scenario talks to the members through the
 remotes of the members (see [Clustered Operations Center](#clustered-operations-center)).
 
-| Scenario                    | Content                                                                                              |
-|-----------------------------|------------------------------------------------------------------------------------------------------|
-| `write_through_any_member`  | Changes a channel, a token and the settings through one member. Reads them through the other members |
-| `leader_handover`           | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
-| `stopped_member_catches_up` | Changes the updates configuration while a member is stopped. The member applies it after its start   |
-| `remove_and_rejoin_member`  | Moves the files of a member, removes the member and joins it again. Runs last.                       |
+| Scenario                        | Content                                                                                              |
+|---------------------------------|------------------------------------------------------------------------------------------------------|
+| `write_through_any_member`      | Changes a channel, a token and the settings through one member. Reads them through the other members |
+| `seed_image_through_any_member` | Requests the image of a public token seed through every member                                       |
+| `leader_handover`               | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
+| `stopped_member_catches_up`     | Changes the updates configuration while a member is stopped. The member applies it after its start   |
+| `remove_and_rejoin_member`      | Moves the files of a member, removes the member and joins it again. Runs last.                       |
 
 `leader_handover` and `stopped_member_catches_up` stop the daemon with
 `systemctl`. They do not reboot the VM. A reboot would replace the local build
 with the daemon shipped with IncusOS.
+
+`seed_image_through_any_member` needs the files of an update to build the
+image. Only one member stores them. So the other members read them from this
+member.
 
 `stopped_member_catches_up` changes the filter expression of the updates to an
 equivalent expression. So the change does not affect which updates Operations
