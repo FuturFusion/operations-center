@@ -127,6 +127,9 @@ type membership struct {
 	handoverInterval time.Duration
 	handover         sync.WaitGroup
 
+	// leaveRaft removes a member from the Raft cluster. Tests replace it.
+	leaveRaft func(name string, force bool, pending bool) (string, error)
+
 	warnings      warning.WarningEmitter
 	shutdownFuncs []func(context.Context) error
 	leading       bool
@@ -190,6 +193,9 @@ func NewClusterMembershipService(ctx context.Context, env environment, varRoot *
 
 	m.serverCert.Store(serverCert)
 	m.busyMemberTasks = m.busyLeaderTasks
+	m.leaveRaft = func(name string, force bool, pending bool) (string, error) {
+		return cowsqlmembership.Leave[struct{}](m.gateway, name, force, pending)
+	}
 
 	g, err := cowsqlgateway.NewGateway(
 		context.TODO(),
@@ -724,7 +730,7 @@ func (m *membership) leave(ctx context.Context, name string, force bool, pending
 	// The heartbeat changes the raft roles of the members on its own, and raft takes one configuration change at a time.
 	var address string
 	for attempt := 1; ; attempt++ {
-		address, err = cowsqlmembership.Leave[struct{}](m.gateway, name, force, pending)
+		address, err = m.leaveRaft(name, force, pending)
 		if err == nil || !cowsqlmembership.IsClusterBusyErr(err) {
 			break
 		}
