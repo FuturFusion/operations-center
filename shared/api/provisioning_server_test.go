@@ -904,7 +904,8 @@ func TestServerFilterFromURLValues(t *testing.T) {
 func TestServerFull_keys(t *testing.T) {
 	t.Parallel()
 
-	// The keys of the server before the split into Server and ServerFull.
+	// The keys of the server before the split into Server and ServerFull, plus
+	// "deployment_state".
 	wantKeys := []string{
 		"bmc_config",
 		"bmc_data",
@@ -913,6 +914,7 @@ func TestServerFull_keys(t *testing.T) {
 		"cluster",
 		"connection_url",
 		"deployment",
+		"deployment_state",
 		"description",
 		"fingerprint",
 		"hardware_data",

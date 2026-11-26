@@ -916,6 +916,12 @@ type Server struct {
 	// trusted, if this value is set to true. Otherwise the system state is not
 	// trusted.
 	SystemStateIsTrusted bool `json:"system_state_is_trusted" yaml:"system_state_is_trusted"`
+
+	// DeploymentState holds the state of the automated deployment of the
+	// server. It is empty if no deployment was requested for the server.
+	// The field deployment of ServerFull holds the full deployment status.
+	// Example: wait-install
+	DeploymentState ServerDeploymentState `json:"deployment_state" yaml:"deployment_state"`
 }
 
 // ServerFull is a server with its hardware, OS, BMC and deployment data.

@@ -1446,6 +1446,11 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 }
 
 func toAPIServer(server provisioning.Server) api.Server {
+	var deploymentState api.ServerDeploymentState
+	if server.StatusInternal.Deployment != nil {
+		deploymentState = server.StatusInternal.Deployment.State
+	}
+
 	return api.Server{
 		ServerPost: api.ServerPost{
 			Name:          server.Name,
@@ -1470,6 +1475,7 @@ func toAPIServer(server provisioning.Server) api.Server {
 		LastUpdated:          server.LastUpdated,
 		LastSeen:             server.LastSeen,
 		SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
+		DeploymentState:      deploymentState,
 	}
 }
 

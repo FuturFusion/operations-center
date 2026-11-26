@@ -82,6 +82,23 @@ func field(t *testing.T, m *member, path string, name string) any {
 	return object[name]
 }
 
+// withoutField returns the list of objects without the named field in each object.
+func withoutField(t *testing.T, list any, name string) any {
+	t.Helper()
+
+	objects, ok := list.([]any)
+	require.True(t, ok, "metadata is not a list")
+
+	for _, entry := range objects {
+		object, ok := entry.(map[string]any)
+		require.True(t, ok, "list entry is not an object")
+
+		delete(object, name)
+	}
+
+	return objects
+}
+
 // putField changes one field of the config returned by a GET on path.
 func putField(t *testing.T, m *member, path string, name string, value any) {
 	t.Helper()
@@ -130,7 +147,6 @@ func TestUpgradeFromSQLite(t *testing.T) {
 		"/1.0/images/incus?recursion=1",
 		"/1.0/images/incus/sources?recursion=1",
 		"/1.0/provisioning/channels?recursion=1",
-		"/1.0/provisioning/servers?recursion=1",
 		"/1.0/provisioning/tokens?recursion=1",
 	}
 
@@ -138,6 +154,8 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	for _, path := range lists {
 		before[path] = metadata(t, m, path)
 	}
+
+	serversBefore := metadata(t, m, "/1.0/provisioning/servers?recursion=1")
 
 	_, imageContent := m.request(t, http.MethodGet, apiPath, nil, "")
 	configSum := checksum(t, m, "config.yml")
@@ -156,6 +174,10 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	for _, path := range lists {
 		require.Equal(t, before[path], metadata(t, m, path), path)
 	}
+
+	// The new release adds deployment_state.
+	serversAfter := withoutField(t, metadata(t, m, "/1.0/provisioning/servers?recursion=1"), "deployment_state")
+	require.Equal(t, serversBefore, serversAfter, "servers after the upgrade")
 
 	require.Equal(t, "https://"+m.address, field(t, m, "/1.0/system/network", "address"))
 	require.Equal(t, m.address, field(t, m, "/1.0/system/network", "rest_server_address"))

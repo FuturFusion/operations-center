@@ -198,6 +198,8 @@ export interface Server {
   bmc_config: BMCConfig;
   bmc_data: BMCData;
   deployment?: ServerDeploymentStatus;
+  // Empty, if no deployment has been requested for the server.
+  deployment_state: string;
 }
 
 export interface ServerFormValues {

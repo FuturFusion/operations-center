@@ -1,6 +1,8 @@
 import { FC, ReactNode, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { MdInfoOutline } from "react-icons/md";
+import { fetchServer, serverQueryKey } from "api/server";
 import ModalWindow from "components/ModalWindow";
 import { Server } from "types/server";
 import { formatDateTime } from "util/date";
@@ -60,10 +62,23 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
     color: "grey",
   };
 
-  const deployment = server.deployment;
-  if (!deployment) {
+  // The server list contains only the deployment state. Load the server itself.
+  const {
+    data: serverDetails,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: serverQueryKey(server.name),
+    queryFn: () => fetchServer(server.name),
+    enabled: showModal,
+    refetchInterval: showModal ? 10000 : false,
+  });
+
+  if (server.deployment_state == "") {
     return <></>;
   }
+
+  const deployment = serverDetails?.deployment;
 
   return (
     <>
@@ -81,79 +96,90 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
         handleClose={() => setShowModal(false)}
         title={`Deployment status of "${server.name}"`}
       >
-        <div className="container">
-          {detailRow("State", deployment.state)}
-          {deployment.failed_state != "" &&
-            detailRow("Failed in", deployment.failed_state)}
-          {deployment.last_error != "" &&
-            detailRow("Last error", deployment.last_error)}
-          {deployment.retries > 0 && detailRow("Retries", deployment.retries)}
-          {detailRow("Started at", formatDateTime(deployment.started_at))}
-          {detailRow(
-            "State entered at",
-            formatDateTime(deployment.state_entered_at),
-          )}
-          {formatDateTime(deployment.finished_at) != "" &&
-            detailRow("Finished at", formatDateTime(deployment.finished_at))}
-          {detailRow("Token", deployment.request.token_uuid)}
-          {detailRow("Seed", deployment.request.seed)}
-          {detailRow("Virtual media", deployment.request.virtual_media_id)}
-          {detailRow("Force reboot", String(deployment.force_reboot))}
-          {detailRow(
-            "Skip secure boot certificates",
-            String(deployment.request.skip_secure_boot_certificates),
-          )}
-          {detailRow(
-            "Secure boot enrollment media",
-            String(deployment.request.secure_boot_enrollment_media),
-          )}
-          {deployment.media_url != "" &&
-            detailRow("Media URL", deployment.media_url)}
-          {deployment.secure_boot_media_url != "" &&
-            detailRow(
-              "Secure boot media URL",
-              deployment.secure_boot_media_url,
+        {isLoading && <div>Loading...</div>}
+        {error && (
+          <div className="text-danger">
+            Failed to load the deployment status: {`${error}`}
+          </div>
+        )}
+        {serverDetails && !deployment && (
+          <div>No deployment status is available for this server.</div>
+        )}
+        {deployment && (
+          <div className="container">
+            {detailRow("State", deployment.state)}
+            {deployment.failed_state != "" &&
+              detailRow("Failed in", deployment.failed_state)}
+            {deployment.last_error != "" &&
+              detailRow("Last error", deployment.last_error)}
+            {deployment.retries > 0 && detailRow("Retries", deployment.retries)}
+            {detailRow("Started at", formatDateTime(deployment.started_at))}
+            {detailRow(
+              "State entered at",
+              formatDateTime(deployment.state_entered_at),
             )}
-          {deployment.media_bytes_read >= 0 &&
-            detailRow(
-              "Media read",
-              bytesToHumanReadable(deployment.media_bytes_read),
+            {formatDateTime(deployment.finished_at) != "" &&
+              detailRow("Finished at", formatDateTime(deployment.finished_at))}
+            {detailRow("Token", deployment.request.token_uuid)}
+            {detailRow("Seed", deployment.request.seed)}
+            {detailRow("Virtual media", deployment.request.virtual_media_id)}
+            {detailRow("Force reboot", String(deployment.force_reboot))}
+            {detailRow(
+              "Skip secure boot certificates",
+              String(deployment.request.skip_secure_boot_certificates),
             )}
-          {detailRow(
-            "BIOS profiles",
-            (deployment.bios_profiles ?? []).join(", "),
-          )}
-          {attributesRow(
-            "BIOS attributes",
-            deployment.bios_attributes,
-            areAttributesVisible,
-            () => setAreAttributesVisible(!areAttributesVisible),
-          )}
-          {attributesRow(
-            "BIOS deferred attributes",
-            deployment.bios_deferred_attributes,
-            areDeferredAttributesVisible,
-            () =>
-              setAreDeferredAttributesVisible(!areDeferredAttributesVisible),
-          )}
-          {attributesRow(
-            "Deployment settings",
-            deployment.deployment_settings ?? {},
-            areSettingsVisible,
-            () => setAreSettingsVisible(!areSettingsVisible),
-          )}
-          {(deployment.history ?? []).length > 0 &&
-            detailRow(
-              "History",
-              (deployment.history ?? []).map((step) => (
-                <div key={`${step.state}-${step.entered_at}`}>
-                  {formatDateTime(step.entered_at)} {step.state}
-                  {step.retries > 0 && ` (retried ${step.retries}x)`}
-                  {step.error != "" && `: ${step.error}`}
-                </div>
-              )),
+            {detailRow(
+              "Secure boot enrollment media",
+              String(deployment.request.secure_boot_enrollment_media),
             )}
-        </div>
+            {deployment.media_url != "" &&
+              detailRow("Media URL", deployment.media_url)}
+            {deployment.secure_boot_media_url != "" &&
+              detailRow(
+                "Secure boot media URL",
+                deployment.secure_boot_media_url,
+              )}
+            {deployment.media_bytes_read >= 0 &&
+              detailRow(
+                "Media read",
+                bytesToHumanReadable(deployment.media_bytes_read),
+              )}
+            {detailRow(
+              "BIOS profiles",
+              (deployment.bios_profiles ?? []).join(", "),
+            )}
+            {attributesRow(
+              "BIOS attributes",
+              deployment.bios_attributes,
+              areAttributesVisible,
+              () => setAreAttributesVisible(!areAttributesVisible),
+            )}
+            {attributesRow(
+              "BIOS deferred attributes",
+              deployment.bios_deferred_attributes,
+              areDeferredAttributesVisible,
+              () =>
+                setAreDeferredAttributesVisible(!areDeferredAttributesVisible),
+            )}
+            {attributesRow(
+              "Deployment settings",
+              deployment.deployment_settings ?? {},
+              areSettingsVisible,
+              () => setAreSettingsVisible(!areSettingsVisible),
+            )}
+            {(deployment.history ?? []).length > 0 &&
+              detailRow(
+                "History",
+                (deployment.history ?? []).map((step) => (
+                  <div key={`${step.state}-${step.entered_at}`}>
+                    {formatDateTime(step.entered_at)} {step.state}
+                    {step.retries > 0 && ` (retried ${step.retries}x)`}
+                    {step.error != "" && `: ${step.error}`}
+                  </div>
+                )),
+              )}
+          </div>
+        )}
       </ModalWindow>
     </>
   );

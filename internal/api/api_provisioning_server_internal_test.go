@@ -13,6 +13,7 @@ import (
 	provisioningMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func Test_serverHandler_serverPut(t *testing.T) {
@@ -91,6 +92,49 @@ func Test_serverHandler_serverPut(t *testing.T) {
 			require.NoError(t, err, "rendering the response must not fail")
 			require.Len(t, service.UpdateCalls(), tc.wantUpdateCalls)
 			require.Equal(t, tc.wantStatusCode, rec.Code)
+		})
+	}
+}
+
+func Test_toAPIServer_deploymentState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		wantDeploymentState api.ServerDeploymentState
+	}{
+		{
+			name:   "no deployment",
+			server: provisioning.Server{Name: "one"},
+
+			wantDeploymentState: "",
+		},
+		{
+			name: "deployment in progress",
+			server: provisioning.Server{
+				Name: "one",
+				StatusInternal: provisioning.ServerStatusInternal{
+					Deployment: &provisioning.ServerDeployment{
+						State: api.ServerDeploymentStateWaitInstall,
+					},
+				},
+			},
+
+			wantDeploymentState: api.ServerDeploymentStateWaitInstall,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Run test
+			server := toAPIServer(tc.server)
+
+			// Assert
+			require.Equal(t, tc.wantDeploymentState, server.DeploymentState, "deployment state of the server")
 		})
 	}
 }

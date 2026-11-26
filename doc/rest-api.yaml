@@ -5529,6 +5529,15 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            deployment_state:
+                description: |-
+                    DeploymentState holds the state of the automated deployment of the
+                    server. It is empty if no deployment was requested for the server.
+                    The field deployment of ServerFull holds the full deployment status.
+                example: wait-install
+                type: string
+                x-go-name: DeploymentState
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
             description:
                 description: Description of the server.
                 example: Lab server with limited resources
@@ -6168,6 +6177,15 @@ definitions:
                 x-go-name: ConnectionURL
             deployment:
                 $ref: '#/definitions/ServerDeploymentStatus'
+            deployment_state:
+                description: |-
+                    DeploymentState holds the state of the automated deployment of the
+                    server. It is empty if no deployment was requested for the server.
+                    The field deployment of ServerFull holds the full deployment status.
+                example: wait-install
+                type: string
+                x-go-name: DeploymentState
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
             description:
                 description: Description of the server.
                 example: Lab server with limited resources
