@@ -48,8 +48,8 @@ func (w *traceWriter) headersOnly() string {
 	return strings.Join(sections, "\n---\n")
 }
 
-// redactedHeaders are the headers whose value is replaced in an HTTP dump, so
-// BMC credentials never leave the daemon.
+// redactedHeaders are the headers whose value is replaced in an HTTP dump and
+// in a BMC recording, so BMC credentials never leave the daemon.
 var redactedHeaders = []string{
 	"authorization", // auth credentials
 	"x-auth-token",  // Redfish session token
