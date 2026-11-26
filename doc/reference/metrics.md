@@ -92,7 +92,7 @@ See [system settings](settings.md) for details.
 | Component     | Metrics                                                             | Enabled by default |
 | :---          | :---                                                                | :---               |
 | `runtime`     | Go runtime, process, build information and the metrics handler      | yes                |
-| `daemon.task` | Errors, duration, last success and interval of the background tasks | no                 |
+| `daemon.task` | Errors, duration, last success and interval of the background tasks | yes                |
 
 ## Metrics of the `runtime` component
 
@@ -111,8 +111,8 @@ refresh of the updates or the polling of the servers. These metrics record
 scheduled background task runs. Each background task has its own component
 `daemon.task.<name>`. See [Metrics components](settings.md#metrics-components)
 for the complete list.
-The component is disabled by default. Add `daemon.task` to
-`metrics_components` to enable the metrics of all background tasks.
+The component is enabled by default. Remove `daemon.task` from
+`metrics_components` to disable the metrics of all background tasks.
 
 | Metric                                                  | Type      | Labels              | Description                          |
 | :---                                                    | :---      | :---                | :---                                 |
