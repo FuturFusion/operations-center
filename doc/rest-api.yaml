@@ -13739,7 +13739,11 @@ paths:
                 - servers_system
     /1.0/provisioning/servers?recursion=1:
         get:
-            description: Returns a list of servers (structs).
+            description: |-
+                Returns a list of servers (structs). The servers do not contain the
+                fields hardware_data, os_data, bmc_data or deployment. The field
+                deployment_state shows the state of the deployment. Use recursion=2 or the
+                single server endpoint to get all data.
             operationId: servers_get_recursion
             parameters:
                 - description: Cluster name
@@ -13769,6 +13773,42 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the servers
+            tags:
+                - servers
+    /1.0/provisioning/servers?recursion=2:
+        get:
+            description: |-
+                Returns a list of servers (structs), including the fields hardware_data,
+                os_data, bmc_data and deployment.
+            operationId: servers_get_recursion2
+            parameters:
+                - description: Cluster name
+                  in: query
+                  name: cluster
+                  type: string
+                  x-example: cluster
+                - description: Status to filter for.
+                  in: query
+                  name: status
+                  type: string
+                  x-example: ready
+                - description: Filter expression
+                  in: query
+                  name: filter
+                  type: string
+                  x-example: name == "value"
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/ServersFullResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the servers with all data
             tags:
                 - servers
     /1.0/provisioning/tokens:
@@ -16279,13 +16319,36 @@ responses:
                     type: string
                     x-go-name: Type
             type: object
+    ServersFullResponse:
+        description: The servers with all data
+        schema:
+            properties:
+                metadata:
+                    items:
+                        $ref: '#/definitions/ServerFull'
+                    type: array
+                    x-go-name: Metadata
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
     ServersResponse:
         description: The servers
         schema:
             properties:
                 metadata:
                     items:
-                        $ref: '#/definitions/ServerFull'
+                        $ref: '#/definitions/Server'
                     type: array
                     x-go-name: Metadata
                 status:

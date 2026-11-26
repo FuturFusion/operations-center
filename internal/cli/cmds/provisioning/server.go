@@ -170,6 +170,10 @@ func (c *cmdServerList) Command() *cobra.Command {
 	cmd.Short = "List available servers"
 	cmd.Long = `Description:
   List the available servers
+
+  The list does not contain the hardware data, the OS data, the BMC data and
+  the full deployment status of the servers. Use
+  "operations-center provisioning server show <name>" to see them.
 `
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")

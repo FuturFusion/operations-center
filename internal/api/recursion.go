@@ -5,12 +5,21 @@ import (
 	"strconv"
 )
 
-// isRecursionRequest follows Incus: any non-zero integer means recursive, an invalid value means not recursive.
-func isRecursionRequest(r *http.Request) bool {
+const (
+	recursionNone    = 0
+	recursionObjects = 1
+	recursionFull    = 2
+)
+
+func recursionLevel(r *http.Request) int {
 	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		return false
+	if err != nil || recursion < recursionNone {
+		return recursionNone
 	}
 
-	return recursion != 0
+	return min(recursion, recursionFull)
+}
+
+func isRecursionRequest(r *http.Request) bool {
+	return recursionLevel(r) != recursionNone
 }

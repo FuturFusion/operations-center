@@ -151,7 +151,10 @@ func registerProvisioningServerHandler(
 //
 //	Get the servers
 //
-//	Returns a list of servers (structs).
+//	Returns a list of servers (structs). The servers do not contain the
+//	fields hardware_data, os_data, bmc_data or deployment. The field
+//	deployment_state shows the state of the deployment. Use recursion=2 or the
+//	single server endpoint to get all data.
 //
 //	---
 //	produces:
@@ -181,6 +184,42 @@ func registerProvisioningServerHandler(
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/servers?recursion=2 servers servers_get_recursion2
+//
+//	Get the servers with all data
+//
+//	Returns a list of servers (structs), including the fields hardware_data,
+//	os_data, bmc_data and deployment.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    x-example: cluster
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    x-example: ready
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    x-example: name == "value"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/ServersFullResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	apiFilter, err := api.ServerFilterFromURLValues(r.URL.Query())
 	if err != nil {
@@ -193,28 +232,38 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		Expression: apiFilter.Expression,
 	}
 
-	if isRecursionRequest(r) {
-		servers, err := s.service.GetAllWithFilter(r.Context(), filter)
+	level := recursionLevel(r)
+	if level == recursionNone {
+		serverNames, err := s.service.GetAllNamesWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
 		}
 
-		result := make([]api.ServerFull, 0, len(servers))
-		for _, server := range servers {
-			result = append(result, toAPIServerFull(server))
+		result := make([]string, 0, len(serverNames))
+		for _, name := range serverNames {
+			result = append(result, fmt.Sprintf("/%s/provisioning/servers/%s", api.APIVersion, name))
 		}
 
 		return response.SyncResponse(true, result)
 	}
 
-	serverNames, err := s.service.GetAllNamesWithFilter(r.Context(), filter)
+	servers, err := s.service.GetAllWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(serverNames))
-	for _, name := range serverNames {
-		result = append(result, fmt.Sprintf("/%s/provisioning/servers/%s", api.APIVersion, name))
+	if level == recursionObjects {
+		result := make([]api.Server, 0, len(servers))
+		for _, server := range servers {
+			result = append(result, toAPIServer(server))
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	result := make([]api.ServerFull, 0, len(servers))
+	for _, server := range servers {
+		result = append(result, toAPIServerFull(server))
 	}
 
 	return response.SyncResponse(true, result)

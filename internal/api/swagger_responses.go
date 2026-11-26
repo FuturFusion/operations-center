@@ -216,6 +216,17 @@ type swaggerServersResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
+		Metadata []api.Server `json:"metadata"`
+	}
+}
+
+// The servers with all data
+//
+// swagger:response ServersFullResponse
+type swaggerServersFullResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
 		Metadata []api.ServerFull `json:"metadata"`
 	}
 }

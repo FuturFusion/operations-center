@@ -175,8 +175,8 @@ func TestUpgradeFromSQLite(t *testing.T) {
 		require.Equal(t, before[path], metadata(t, m, path), path)
 	}
 
-	// The new release adds deployment_state.
-	serversAfter := withoutField(t, metadata(t, m, "/1.0/provisioning/servers?recursion=1"), "deployment_state")
+	// The new release returns the large server fields only with recursion=2 and adds deployment_state.
+	serversAfter := withoutField(t, metadata(t, m, "/1.0/provisioning/servers?recursion=2"), "deployment_state")
 	require.Equal(t, serversBefore, serversAfter, "servers after the upgrade")
 
 	require.Equal(t, "https://"+m.address, field(t, m, "/1.0/system/network", "address"))
