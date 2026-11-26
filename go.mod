@@ -87,6 +87,7 @@ require (
 	github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
+	github.com/hanwen/go-fuse/v2 v2.12.1 // indirect
 	github.com/huandu/xstrings v1.6.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.8.3 // indirect
@@ -215,7 +216,7 @@ require (
 )
 
 require (
-	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261027122552-b937910d2511
+	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20261126122050-814b1b86981c
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/brianvoe/gofakeit/v7 v7.18.1
@@ -248,7 +249,7 @@ require (
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
-	github.com/stmcginnis/gofish v0.27.0
+	github.com/stmcginnis/gofish v0.28.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/gjson v1.20.2
 	github.com/zclconf/go-cty v1.20.0
