@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -39,9 +40,17 @@ func TestComponentDaemonTask(t *testing.T) {
 	logBuf := &log.SyncBuffer{}
 	ctx := logger.ContextWithTestLogger(t, logBuf, true, false)
 
-	componentTask(componentTaskRefreshInventory, func(ctx context.Context) {
+	ran := make(chan struct{})
+	start := componentTask(componentTaskRefreshInventory, time.Hour, time.Second, func(ctx context.Context) error {
 		slog.InfoContext(ctx, "task body")
-	})(ctx)
+		close(ran)
+
+		return nil
+	})
+
+	stop := start(ctx)
+	<-ran
+	require.NoError(t, stop(ctx), "the task stops within its deadline")
 
 	require.Contains(t, logBuf.String(), "component=daemon.task.refresh_inventory", "a background task is attributed to its own component")
 }

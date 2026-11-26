@@ -36,6 +36,7 @@ daemon:
 - `daemon.task.poll_unresponsive_servers`
 - `daemon.task.poll_updating_application_servers`
 - `daemon.task.poll_updating_servers`
+- `daemon.task.prune_secure_boot_media`
 - `daemon.task.prune_seed_image_cache`
 - `daemon.task.refresh_bmc_data`
 - `daemon.task.refresh_image_sources`

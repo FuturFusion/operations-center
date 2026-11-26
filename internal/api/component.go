@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
@@ -27,6 +28,7 @@ var (
 	componentTaskPollUnresponsiveServers   = logger.RegisterComponent("daemon.task.poll_unresponsive_servers")
 	componentTaskPollUpdatingAppServers    = logger.RegisterComponent("daemon.task.poll_updating_application_servers")
 	componentTaskPollUpdatingServers       = logger.RegisterComponent("daemon.task.poll_updating_servers")
+	componentTaskPruneSecureBootMedia      = logger.RegisterComponent("daemon.task.prune_secure_boot_media")
 	componentTaskPruneSeedImageCache       = logger.RegisterComponent("daemon.task.prune_seed_image_cache")
 	componentTaskRefreshBMCData            = logger.RegisterComponent("daemon.task.refresh_bmc_data")
 	componentTaskRefreshImageSources       = logger.RegisterComponent("daemon.task.refresh_image_sources")
@@ -55,12 +57,16 @@ func componentMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(handlerFunc)
 }
 
-// componentTask scopes a background task to the given component, so everything
-// it logs is attributed to it, down to the services it calls.
-func componentTask(component logger.Component, f task.Func) task.Func {
-	return func(ctx context.Context) {
-		f(logger.ContextWithComponent(ctx, component))
+// componentTask returns a background task, that runs f every interval. It
+// scopes f to the given component, so everything it logs is attributed to
+// it, down to the services it calls. f logs its errors itself. It returns
+// them only to report the run as failed.
+func componentTask(component logger.Component, interval time.Duration, stopDeadline time.Duration, f func(context.Context) error, opts ...task.EveryOption) task.TaskFunc {
+	run := func(ctx context.Context) {
+		_ = f(logger.ContextWithComponent(ctx, component))
 	}
+
+	return task.New(run, task.Every(interval, opts...), stopDeadline)
 }
 
 // registerComponentsValidation registers the checks for unknown components.
