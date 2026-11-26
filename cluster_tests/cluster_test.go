@@ -601,6 +601,32 @@ func TestCluster(t *testing.T) {
 		}
 	})
 
+	t.Run("removing all updates deletes their files on every member", func(t *testing.T) {
+		updateUUIDs := make([]string, 0, len(c.members))
+		for i := range c.members {
+			updateUUIDs = append(updateUUIDs, fmt.Sprintf("5b1e9a3c-7d2f-4c6b-8e0a-1f3d5c7b9e%02x", i))
+		}
+
+		// Each member stores the files of one update.
+		for i, m := range c.members {
+			m.writeFile(t, "updates/"+updateUUIDs[i]+"/x86_64/update.raw", "update\n")
+			c.members[0].query(t, `INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files, status, member_id) VALUES ('`+updateUUIDs[i]+`', 'test', '2', CURRENT_TIMESTAMP, 'none', '[]', '[{"filename":"x86_64/update.raw","size":7}]', 'ready', (SELECT id FROM cluster_members WHERE name = '`+m.name+`'))`)
+		}
+
+		c.members[0].mustAPI(t, http.MethodDelete, "/1.0/provisioning/updates", nil)
+
+		for i, m := range c.members {
+			require.False(t, m.hasFile("updates/"+updateUUIDs[i]), "the files of the update on %s", m.name)
+		}
+
+		for _, m := range c.members {
+			for _, updateUUID := range updateUUIDs {
+				status, body := m.request(t, http.MethodGet, "/1.0/provisioning/updates/"+updateUUID, nil, "")
+				require.Equal(t, http.StatusNotFound, status, "%s: %s", m.name, body)
+			}
+		}
+	})
+
 	t.Run("cluster artifacts survive renames and are deleted on all members", func(t *testing.T) {
 		m := c.members[0]
 
