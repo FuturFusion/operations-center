@@ -719,7 +719,7 @@ func restartOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
 		mustRunWithTimeout(t, `incus exec %s -- systemctl restart operations-center`, 3*time.Minute, name)
 
 		if ocCluster {
-			assertOperationsCenterClusterHealthy(ctx, t, members, ocClusterReuseTimeout)
+			assertOperationsCenterClusterHealthy(ctx, t, members)
 		}
 	}
 

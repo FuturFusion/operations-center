@@ -189,7 +189,7 @@ func ensureOperationsCenterCluster(ctx context.Context, t *testing.T, tmpDir str
 	}
 
 	// The members present the cluster certificate now.
-	assertOperationsCenterClusterHealthy(ctx, t, mustTrustOperationsCenterMembers(ctx, t, tmpDir, names), ocClusterReuseTimeout)
+	assertOperationsCenterClusterHealthy(ctx, t, mustTrustOperationsCenterMembers(ctx, t, tmpDir, names))
 
 	mustRetrustOperationsCenterRemote(ctx, t)
 }
@@ -286,17 +286,14 @@ func waitOperationsCenterMemberSees(ctx context.Context, t *testing.T, member op
 // assertOperationsCenterClusterHealthy asserts that every member sees all the
 // members online with the expected number of voters and a single leader. It
 // also asserts that all members present the same certificate.
-func assertOperationsCenterClusterHealthy(ctx context.Context, t *testing.T, members []operationsCenterMember, timeout time.Duration) {
+func assertOperationsCenterClusterHealthy(ctx context.Context, t *testing.T, members []operationsCenterMember) {
 	t.Helper()
 
-	names := make([]string, 0, len(members))
-	for _, member := range members {
-		names = append(names, member.name)
-	}
+	names := operationsCenterMemberNames(members)
 
 	var certificate []byte
 	for _, member := range members {
-		err := waitOperationsCenterMembers(ctx, t, member, names, timeout)
+		err := waitOperationsCenterMembers(ctx, t, member, names, ocClusterReuseTimeout)
 		require.NoError(t, err, "expect %s to see the members %v online", member.name, names)
 
 		served := mustServedCertificate(ctx, t, member.address)
@@ -608,4 +605,14 @@ func retryWithContext(ctx context.Context, f func(ctx context.Context) error) er
 		case <-time.After(time.Second):
 		}
 	}
+}
+
+// operationsCenterMemberNames returns the names of members.
+func operationsCenterMemberNames(members []operationsCenterMember) []string {
+	names := make([]string, 0, len(members))
+	for _, member := range members {
+		names = append(names, member.name)
+	}
+
+	return names
 }
