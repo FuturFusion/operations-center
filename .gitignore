@@ -36,6 +36,7 @@ dist/
 
 # UI(js) files
 node_modules/
+/ui/coverage
 
 .envrc
 /tmp
