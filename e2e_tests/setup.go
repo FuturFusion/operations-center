@@ -31,25 +31,33 @@ const (
 	incusOSClusterName              = "incus-os-cluster"
 )
 
-// operationsCenterAllVMNames are the names of all the Operations Center VMs,
-// which the tests might create. The first one backs the remote e2e-test.
-var operationsCenterAllVMNames = []string{operationsCenterVMName}
+// operationsCenterAllVMNames are the names of the shared Operations Center VMs.
+// The first VM backs the remote e2e-test. The self update test uses its own VM.
+var operationsCenterAllVMNames = []string{operationsCenterVMName, "OperationsCenter02", "OperationsCenter03"}
 
 // operationsCenterVMNames returns the names of the Operations Center VMs, which
-// the current run uses.
+// the current run uses. With OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER, they form
+// a cluster.
 func operationsCenterVMNames() []string {
-	return operationsCenterAllVMNames
+	if ocCluster {
+		return operationsCenterAllVMNames
+	}
+
+	return operationsCenterAllVMNames[:1]
 }
 
-// setupOperationsCenter collects the coverage data of the daemon when owner
-// ends. In a suite, owner is the suite, which outlives the scenario t.
+// setupOperationsCenter prepares the selected Operations Center VMs. With
+// OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER, it forms the cluster or reuses it. It
+// collects the coverage data of the daemons when owner ends. In a suite, owner
+// is the suite. It outlives the scenario t.
 func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	removeLegacyOperationsCenterVM(ctx, t)
+	// Older versions of the tests used the VM name OperationsCenter.
+	removeOperationsCenterVMs(ctx, t, []string{"OperationsCenter"})
 
 	fresh := getOperationsCenterIncusOSISO(ctx, t, tmpDir)
 
@@ -57,23 +65,28 @@ func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, 
 
 	names := operationsCenterVMNames()
 
-	installed := installOperationsCenterVMs(ctx, t, names)
+	removeOperationsCenterVMs(ctx, t, slices.DeleteFunc(slices.Clone(operationsCenterAllVMNames), func(name string) bool {
+		return slices.Contains(names, name)
+	}))
 
-	for _, name := range names {
-		removeBootMedia(ctx, t, name)
+	installed := prepareOperationsCenterVMs(ctx, t, tmpDir, names)
 
-		mustWaitAgentRunning(ctx, t, name)
+	if operationsCenterVMsNeedReinstall(ctx, t, tmpDir, names) {
+		removeOperationsCenterVMs(ctx, t, names)
 
-		mustWaitExpectedLog(ctx, t, name, "incus-osd", "System is ready")
+		installed = prepareOperationsCenterVMs(ctx, t, tmpDir, names)
 	}
 
-	for _, name := range names {
-		replaceOperationsCenterExecutable(t, owner, tmpDir, name)
-	}
+	registerOperationsCenterCoverageCleanup(owner, names)
 
 	setupLocalOperationsCenterConfig(ctx, t, slices.Contains(installed, operationsCenterVMName))
 
-	assertOperationsCenterSelfRegistration(t)
+	if ocCluster {
+		ensureOperationsCenterCluster(ctx, t, tmpDir, names)
+		assertOperationsCenterMembersSelfRegistration(ctx, t, names)
+	} else {
+		assertOperationsCenterSelfRegistration(t)
+	}
 
 	mustWaitUpdatesReady(ctx, t)
 }
@@ -467,12 +480,7 @@ func importOperationsCenterIncusOSISOStorageVolume(ctx context.Context, t *testi
 	if volumeExists {
 		t.Logf("Replacing the storage volume %q with the freshly downloaded image", operationsCenterISOName)
 
-		for _, name := range operationsCenterAllVMNames {
-			status := mustInstanceStatus(ctx, t, name)
-			if status != "" {
-				require.NoError(t, removeInstanceWithContext(ctx, t, name))
-			}
-		}
+		removeOperationsCenterVMs(ctx, t, operationsCenterAllVMNames)
 
 		require.NoError(t, retryStorageCmdWithContext(ctx, t, fmt.Sprintf("delete the storage volume %q", operationsCenterISOName), `incus storage volume delete default %s`, operationsCenterISOName))
 	}
@@ -480,20 +488,42 @@ func importOperationsCenterIncusOSISOStorageVolume(ctx context.Context, t *testi
 	mustRunWithTimeout(t, `incus storage volume import default %s %s --type=iso`, 5*time.Minute, filepath.Join(tmpDir, operationsCenterISOName), operationsCenterISOName)
 }
 
-// removeLegacyOperationsCenterVM removes the VM of older versions of the tests,
-// which used the name OperationsCenter.
-func removeLegacyOperationsCenterVM(ctx context.Context, t *testing.T) {
+// prepareOperationsCenterVMs installs the VMs in names if necessary. It runs the
+// local build in them. It returns the VMs that it installed.
+func prepareOperationsCenterVMs(ctx context.Context, t *testing.T, tmpDir string, names []string) (installed []string) {
 	t.Helper()
 
-	const legacyName = "OperationsCenter"
+	installed = installOperationsCenterVMs(ctx, t, names)
 
-	status := mustInstanceStatus(ctx, t, legacyName)
-	if status == "" {
-		return
+	for _, name := range names {
+		removeBootMedia(ctx, t, name)
+
+		mustWaitAgentRunning(ctx, t, name)
+
+		mustWaitExpectedLog(ctx, t, name, "incus-osd", "System is ready")
 	}
 
-	t.Logf("Removing the VM %q of an older version of the tests", legacyName)
-	require.NoError(t, removeInstanceWithContext(ctx, t, legacyName))
+	for _, name := range names {
+		replaceOperationsCenterExecutable(t, tmpDir, name)
+	}
+
+	return installed
+}
+
+// removeOperationsCenterVMs removes the VMs in names. It skips VMs that do not
+// exist.
+func removeOperationsCenterVMs(ctx context.Context, t *testing.T, names []string) {
+	t.Helper()
+
+	for _, name := range names {
+		status := mustInstanceStatus(ctx, t, name)
+		if status == "" {
+			continue
+		}
+
+		t.Logf("Removing the Operations Center VM %s", name)
+		require.NoError(t, removeInstanceWithContext(ctx, t, name))
+	}
 }
 
 // installOperationsCenterVMs installs missing or unusable VMs from one ISO,
@@ -607,7 +637,7 @@ func removeBootMedia(ctx context.Context, t *testing.T, name string) {
 	t.Logf("Waiting for Operations Center VM %s to be ready", name)
 }
 
-func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir string, name string) {
+func replaceOperationsCenterExecutable(t *testing.T, tmpDir string, name string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -622,16 +652,29 @@ func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir st
 
 		mustRun(t, `incus file push %s %s/etc/environment`, filepath.Join(tmpDir, "environment"), name)
 		mustRun(t, `incus exec %s -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`, name)
-
-		owner.Cleanup(func() {
-			// Stop operations-centerd to flush coverage data.
-			mustRunWithContext(context.Background(), owner, `incus exec %s -- systemctl stop operations-center`, name)
-			mustRunWithContext(context.Background(), owner, `incus exec %s -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, name, ocE2EGoCoverDir)
-			mustRunWithContext(context.Background(), owner, `incus exec %s -- systemctl start operations-center`, name)
-		})
 	}
 
 	startLocalOperationsCenterExecutable(t, name)
+}
+
+// registerOperationsCenterCoverageCleanup collects the coverage data of the
+// daemons in the VMs names when t ends. The setup registers it once, even if
+// it prepares the VMs twice.
+func registerOperationsCenterCoverageCleanup(t *testing.T, names []string) {
+	t.Helper()
+
+	if testing.CoverMode() == "" {
+		return
+	}
+
+	for _, name := range names {
+		t.Cleanup(func() {
+			// Stop operations-centerd to flush coverage data.
+			mustRunWithContext(context.Background(), t, `incus exec %s -- systemctl stop operations-center`, name)
+			mustRunWithContext(context.Background(), t, `incus exec %s -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, name, ocE2EGoCoverDir)
+			mustRunWithContext(context.Background(), t, `incus exec %s -- systemctl start operations-center`, name)
+		})
+	}
 }
 
 // stageLocalOperationsCenterExecutable stops the daemon in the VM name and
@@ -655,15 +698,30 @@ func startLocalOperationsCenterExecutable(t *testing.T, name string) {
 	mustRun(t, `incus exec %s -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`, name)
 }
 
-// restartOperationsCenter restarts the Operations Center daemon and waits for
-// its API.
-func restartOperationsCenter(ctx context.Context, t *testing.T) {
+// restartOperationsCenter restarts the daemons of the selected Operations
+// Center VMs one after the other. It waits until the API and the cluster are
+// ready again. In a cluster, the leader runs the background tasks, and every
+// member can be the leader.
+func restartOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	mustRunWithTimeout(t, `incus exec %s -- systemctl restart operations-center`, 3*time.Minute, operationsCenterVMName)
+	names := operationsCenterVMNames()
+
+	var members []operationsCenterMember
+	if ocCluster {
+		members = mustTrustOperationsCenterMembers(ctx, t, tmpDir, names)
+	}
+
+	for _, name := range names {
+		mustRunWithTimeout(t, `incus exec %s -- systemctl restart operations-center`, 3*time.Minute, name)
+
+		if ocCluster {
+			assertOperationsCenterClusterHealthy(ctx, t, members, ocClusterReuseTimeout)
+		}
+	}
 
 	success, err := waitForSuccessWithTimeout(ctx, t, "Operations Center API", `../bin/operations-center.linux.%s provisioning server list -f json`, time.Minute, cpuArch)
 	require.NoError(t, err)

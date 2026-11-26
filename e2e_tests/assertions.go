@@ -2,17 +2,21 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func assertOperationsCenterSelfRegistration(t *testing.T) {
@@ -30,6 +34,45 @@ func assertOperationsCenterSelfRegistration(t *testing.T) {
 	}
 
 	require.True(t, resp.Success(), "failed to assert self registration of operations-center")
+}
+
+// assertOperationsCenterMembersSelfRegistration asserts that every member in
+// names is registered with its name.
+func assertOperationsCenterMembersSelfRegistration(ctx context.Context, t *testing.T, names []string) {
+	t.Helper()
+
+	t.Logf("Assert the Operations Center members %v are self-registered", names)
+
+	// A member registers itself after it joined the cluster.
+	err := waitForCLIOutput(ctx, t, 2*time.Minute, func(output []byte) (bool, error) {
+		return operationsCenterServersRegistered(output, names)
+	}, `../bin/operations-center.linux.%s provisioning server list -f json`, cpuArch)
+	require.NoError(t, err, "expect the Operations Center members %v to be self registered", names)
+}
+
+// operationsCenterServersRegistered reports whether output of the server list
+// contains exactly the Operations Center servers in names.
+func operationsCenterServersRegistered(output []byte, names []string) (bool, error) {
+	var servers []struct {
+		Name string         `json:"name"`
+		Type api.ServerType `json:"server_type"`
+	}
+
+	err := json.Unmarshal(output, &servers)
+	if err != nil {
+		return false, fmt.Errorf("decode the servers: %w", err)
+	}
+
+	var registered []string
+	for _, server := range servers {
+		if server.Type == api.ServerTypeOperationsCenter {
+			registered = append(registered, server.Name)
+		}
+	}
+
+	slices.Sort(registered)
+
+	return slices.Equal(registered, slices.Sorted(slices.Values(names))), nil
 }
 
 func assertServerRegistrationScriptletEffects(t *testing.T) {
@@ -501,10 +544,10 @@ func assertInventory(t *testing.T, clusterName string, names []string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "operations-center" and .server_status == "ready") ] | length == 1'`, cpuArch)
-	require.NoError(t, resp.err, "expect 1 operations-center in ready state")
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "operations-center" and .server_status == "ready") ] | length == %d'`, cpuArch, len(operationsCenterVMNames()))
+	require.NoError(t, resp.err, "expect %d operations-center in ready state", len(operationsCenterVMNames()))
 	if !resp.Success() {
-		t.Error("expect 1 operations-center in ready state")
+		t.Errorf("expect %d operations-center in ready state", len(operationsCenterVMNames()))
 		success = false
 		fmt.Println("====[ Server List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)

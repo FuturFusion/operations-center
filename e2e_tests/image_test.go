@@ -56,7 +56,7 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(ctx context.Context,
 	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		restartOperationsCenter(ctx, t)
+		restartOperationsCenter(ctx, t, tmpDir)
 
 		createCluster(names)(ctx, t, tmpDir)
 
@@ -506,9 +506,9 @@ func assertIncusImageSourcePrune(t *testing.T, tmpDir string, ocImagesURL string
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys == ["incus.tar.xz"]'`, cpuArch, sourceName, sourceVersion)
 
 	// It is deleted from the files repository, the remaining one is not.
-	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/root.squashfs`, operationsCenterVMName, sourceRelease, cpuArch, sourceVersion)
-	require.False(t, resp.Success(), "expect the pruned file to be deleted from the files repository")
-	mustRun(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/incus.tar.xz`, operationsCenterVMName, sourceRelease, cpuArch, sourceVersion)
+	imageDir := fmt.Sprintf("/var/lib/operations-center/images/alpine/%s/%s/default/%s", sourceRelease, cpuArch, sourceVersion)
+	require.Empty(t, mustOperationsCenterVMsWithFile(t, imageDir+"/root.squashfs"), "expect the pruned file to be deleted from the files repository")
+	require.Len(t, mustOperationsCenterVMsWithFile(t, imageDir+"/incus.tar.xz"), 1, "expect the remaining file to be stored on exactly one Operations Center VM")
 
 	// It is no longer advertised publicly.
 	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, sourceName, sourceVersion)
@@ -532,15 +532,14 @@ func assertIncusImageSourceRemove(t *testing.T, ocImagesURL string, sourceName s
 
 	// The files of the removed images are deleted as well. Only the directory
 	// of the image itself is removed, its parent directories are left behind.
-	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default`, operationsCenterVMName, sourceRelease, cpuArch)
-	require.False(t, resp.Success(), "expect the files of the images of the removed source to be deleted")
+	require.Empty(t, mustOperationsCenterVMsWithFile(t, fmt.Sprintf("/var/lib/operations-center/images/alpine/%s/%s/default", sourceRelease, cpuArch)), "expect the files of the images of the removed source to be deleted")
 
 	// The manually uploaded images are not affected.
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s" or .name == "%[3]s") ] | length == 2'`, cpuArch, manualName, flagsName)
 	mustRun(t, `curl -sSfk "%[1]s/streams/v1/index.json" | jq -r -e '.index.images.products | (index("%[2]s") == null) and (index("%[3]s") != null)'`, ocImagesURL, sourceName, manualName)
 
 	// Operating on a removed source fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus source show %s`, cpuArch, imageSourceName)
+	resp := run(t, `../bin/operations-center.linux.%s image incus source show %s`, cpuArch, imageSourceName)
 	require.False(t, resp.Success(), "expect showing a removed image source to fail")
 
 	resp = run(t, `../bin/operations-center.linux.%s image incus source refresh %s`, cpuArch, imageSourceName)
@@ -560,18 +559,17 @@ func assertIncusImageRemove(t *testing.T, name string) {
 	mustRun(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions | length == 0'`, cpuArch, name)
 
-	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/%s/%s/%s/%s/%s`, operationsCenterVMName, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
-	require.False(t, resp.Success(), "expect the files of the removed version to be deleted")
+	imageDir := fmt.Sprintf("/var/lib/operations-center/images/%s/%s/%s/%s", flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
+	require.Empty(t, mustOperationsCenterVMsWithFile(t, imageDir+"/"+flagsImageVersion), "expect the files of the removed version to be deleted")
 
 	// Removing a non existing version fails.
-	resp = run(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
+	resp := run(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
 	require.False(t, resp.Success(), "expect removing a non existing image version to fail")
 
 	mustRun(t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, name)
 
-	resp = run(t, `incus exec %s -- test -e /var/lib/operations-center/images/%s/%s/%s/%s`, operationsCenterVMName, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
-	require.False(t, resp.Success(), "expect the files of the removed image to be deleted")
+	require.Empty(t, mustOperationsCenterVMsWithFile(t, imageDir), "expect the files of the removed image to be deleted")
 
 	// Removing a non existing image fails.
 	resp = run(t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)

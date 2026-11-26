@@ -33,6 +33,7 @@ var (
 	listOnly             = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_LIST", false)
 	bmcProxyAddress      = envOrDefault("OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS", "")
 	hostAddress          = envOrDefault("OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS", "")
+	ocCluster            = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER", false)
 
 	selfUpdateFromVersion   = envOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION", "")
 	selfUpdateReplaceDaemon = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON", false)
