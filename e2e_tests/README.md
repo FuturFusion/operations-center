@@ -36,6 +36,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_LIST`: Only list the test cases and the scenarios of the suites, do not run them. `make e2e-test-list` uses this (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host. The Operations Center VM reaches the services of the tests at this address (the Redfish proxy, the fake OIDC provider, and the OpenFGA server). If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`: Run the tests against a cluster of three Operations Center VMs instead of a single one. `make e2e-cluster-test` sets this. See [Clustered Operations Center](#clustered-operations-center) (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION`: Version of IncusOS and Operations Center, which `TestE2E_OperationsCenterSelfUpdate` installs before the update. If not set, the second newest version of the stable channel of the image server is used (default: "")
 * `OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON`: Replace the daemon of the old version with the local build before `TestE2E_OperationsCenterSelfUpdate` triggers the update. See [`TestE2E_OperationsCenterSelfUpdate`](#teste2e_operationscenterselfupdate) (default: "false")
 
@@ -46,8 +47,10 @@ several scenarios in a fixed order. The scenarios of a suite share a pool of
 IncusOS servers, so the servers are only installed once per suite in the best
 case. See [Suites and scenarios](#suites-and-scenarios) for the details.
 
-All the tests share one Operations Center VM, `OperationsCenter01`. The tests
-run in the following order:
+All the tests share one Operations Center VM, `OperationsCenter01`, or one
+cluster of Operations Center VMs (see
+[Clustered Operations Center](#clustered-operations-center)). The tests run in
+the following order:
 
 | Top level test                           | Server pool                                  | Content                                                                    |
 |------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|
@@ -139,7 +142,8 @@ the reboot and asserts that the local build is no longer mounted.
 A simple way to run the end to end tests as a developer is to create a VM using Incus
 and run the tests inside the VM.
 
-The tests create up to five virtual machines with a thin provisioned root disk of
+The tests create up to five virtual machines (seven with
+`OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`) with a thin provisioned root disk of
 `OPERATIONS_CENTER_E2E_TEST_DISK_SIZE` (50 GiB by default) each, plus one ISO
 storage volume per Operations Center installation and per provisioning token.
 Plan for at least 150 GiB on the storage pool. Since the tests rely on thin
@@ -307,22 +311,33 @@ or a single scenario of a suite:
 make e2e-test GO_TEST_RUN='^TestE2E_OperationsCenter$/^oidc_authentication$'
 ```
 
-to show all available test cases and scenarios:
+or all the tests against a cluster of three Operations Center VMs (see
+[Clustered Operations Center](#clustered-operations-center)):
+
+```shell
+make e2e-cluster-test
+```
+
+or to show all available test cases and scenarios:
 
 ```shell
 make e2e-test-list
 ```
 
+`make e2e-cluster-test` accepts `GO_TEST_RUN` as well.
+`make e2e-cluster-test-select` and `make e2e-cluster-test-select-multi`
+select the tests interactively.
+
 ## Cleanup
 
-Remove everything, including the Operations Center VM and the temporary
+Remove everything, including the Operations Center VMs and the temporary
 directory:
 
 ```shell
 make clean-e2e-test
 ```
 
-Remove the test artifacts, but keep the Operations Center VM and its ISO, which
+Remove the test artifacts, but keep the Operations Center VMs and their ISO, which
 are expensive to recreate. This is the one to run between test runs:
 
 ```shell
@@ -334,6 +349,9 @@ Remove the log files accumulated by previous test runs:
 ```shell
 make clean-e2e-test-logs
 ```
+
+All three commands work after a run with or without
+`OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`.
 
 `make clean-e2e-test` and `make clean-e2e-test-soft` hide the errors for
 resources that are already gone. They report all other errors, continue with
@@ -474,6 +492,59 @@ alternatives are joined on the top level, since `go test` splits a regex at a
 top level `/` into the levels of the subtests. The Makefile passes
 `GO_TEST_RUN` with `$(value ...)`, so make does not expand the `$` anchors.
 
+### Clustered Operations Center
+
+With `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`, `setupOperationsCenter` installs
+the VMs `OperationsCenter01`, `OperationsCenter02` and `OperationsCenter03`
+from the same ISO. The installation is concurrent by default. It is sequential
+with `OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP=false`. The setup runs the
+local build in each VM. Then it forms the cluster with the CLI, the way a user
+does:
+
+1. `cluster enable` on `OperationsCenter01`.
+2. For each other member: `cluster tokens issue` on `OperationsCenter01`, then
+   `cluster join` on the member.
+
+The members are named after their VMs. The server address of a member is the
+address of its VM on port 8443. Each member has its own isolated CLI config dir.
+These dirs are in `oc-member-cli-config` in the temporary directory. The remote
+in such a dir talks to its member directly. Enabling clustering creates the
+cluster certificate. After that, every member presents it. So the setup adds
+the remotes of the members and the remote `e2e-test` again.
+
+The setup is done when three conditions are true:
+
+* Every member sees all the members online with three voters and a single
+  leader.
+* Every member presents the same certificate.
+* Every member is registered as server of type `operations-center`.
+
+The tests talk to `OperationsCenter01` through the remote `e2e-test`. The
+managed IncusOS servers talk to it through `network.address`.
+`OperationsCenter01` is only the entry point. It is not necessarily the leader.
+Any member can become the leader, for example after a restart. So the tests do
+not depend on the leader. They check files and certificates on every member,
+and they restart every member.
+
+The cluster is reused across tests and test runs like the single VM. A cluster
+is only reused if all its members are clustered and healthy. A partial or
+unhealthy cluster is installed again from scratch. A VM counts as clustered if
+Operations Center stores a cluster certificate in it.
+
+A run without `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER` always removes
+`OperationsCenter02` and `OperationsCenter03`. It installs `OperationsCenter01`
+again if it is clustered.
+
+A run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER` can reuse a usable
+`OperationsCenter01` that is not clustered. This works if none of the three VMs
+is clustered. The setup then enables clustering on it.
+
+On failure, `onTestFailDebugOutput` saves the journal of every member to its
+own file in `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`.
+
+The two additional VMs need `OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE` (4 GiB by
+default) of memory each, on top of the memory needed for the IncusOS servers.
+
 ### Shell commands
 
 The test helpers (`run`, `mustRun` and friends) execute their commands with
@@ -580,9 +651,9 @@ creation is only partially successful.
 The servers of a server pool are the exception within a suite. The pool
 registers their cleanup on the suite, so the scenarios can share them.
 
-The Operations Center VM is the exception, it is deliberately not cleaned up and
+The Operations Center VMs are the exception, they are deliberately not cleaned up and
 reused across test cases and test runs. `setupOperationsCenter` therefore only
-reuses it, if it is running *and* its incus agent answers. A VM found in any
+reuses a VM, if it is running *and* its incus agent answers. A VM found in any
 other state, or one, which is running but stuck, e.g. at the boot manager of a
 boot media it can not boot, is removed and installed from scratch.
 The same applies to left over `IncusOS0x` instances in `createIncusOSInstances`.
