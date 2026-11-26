@@ -11,6 +11,11 @@
  - Commit messages should similarly be kept as short and to the point as possible, no need to summarize the whole issue.
  - We don't use the define and test one line `if` syntax, instead splitting definition and testing across two lines.
 
+# Architecture
+
+- Layer rules and type placement: `doc/development/architecture-rules.md`.
+- Rules for code that runs in an Operations Center cluster: `doc/development/operations-center-clustering.md`.
+
 # Error handling
 
  - User facing errors are reported with `domain.NewErrorf`, which carries the kind, the message for the user and optionally a reason, a hint and details.

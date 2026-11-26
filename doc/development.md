@@ -8,6 +8,7 @@ development of Operations Center.
 Architecture Rules </development/architecture-rules>
 Cluster Rolling Update </development/cluster-rolling-update>
 Error Handling </development/error-handling>
+Operations Center Clustering </development/operations-center-clustering>
 Server Deployment </development/server-deployment>
 Server Status </development/server-status>
 ```
