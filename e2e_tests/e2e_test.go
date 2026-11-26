@@ -36,6 +36,18 @@ func TestE2E_OperationsCenter(t *testing.T) {
 	})
 }
 
+// TestE2E_OperationsCenterCluster covers the cluster of Operations Center
+// VMs. It needs no IncusOS server.
+func TestE2E_OperationsCenterCluster(t *testing.T) {
+	runE2ESuite(t, nil, []e2eScenario{
+		{
+			name:              "write_through_any_member",
+			requiresOCCluster: true,
+			run:               ocClusterWriteThroughAnyMember,
+		},
+	})
+}
+
 func TestE2E_StableServers(t *testing.T) {
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 

@@ -36,6 +36,10 @@ type e2eScenario struct {
 	// version of a server.
 	leavesDirty []string
 
+	// requiresOCCluster skips the scenario, unless the tests run against a
+	// cluster of Operations Center VMs.
+	requiresOCCluster bool
+
 	// prepare runs before the pool brings the servers into the required
 	// state. Use it for changes, which a server only picks up during its
 	// install, e.g. the content of its seed. The pool installs the servers of
@@ -121,7 +125,7 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 	for _, scenario := range scenarios {
 		ran := false
 		skipped := false
-		blockedReason := ""
+		skipReason := ""
 		step := scenarioStepStart
 		start := time.Now()
 
@@ -134,9 +138,14 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 				skipped = t.Skipped()
 			}()
 
-			blockedReason = failures.blockedReason(scenario.poolSteps())
-			if blockedReason != "" {
-				t.Skip(blockedReason)
+			if scenario.requiresOCCluster && !ocCluster {
+				skipReason = "Requires OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER"
+				t.Skip(skipReason)
+			}
+
+			skipReason = failures.blockedReason(scenario.poolSteps())
+			if skipReason != "" {
+				t.Skip(skipReason)
 			}
 
 			runE2EScenario(t, scenario.name, func(ctx context.Context, t *testing.T, tmpDir string) {
@@ -197,7 +206,7 @@ func runE2ESuite(t *testing.T, pool *serverPool, scenarios []e2eScenario) {
 
 		if skipped {
 			result.status = "SKIP"
-			result.note = cmp.Or(blockedReason, "Skipped, see the log of the scenario")
+			result.note = cmp.Or(skipReason, "Skipped, see the log of the scenario")
 		}
 
 		// The pool steps of a scenario, which reached its run, succeeded.

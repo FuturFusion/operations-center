@@ -55,6 +55,7 @@ the following order:
 | Top level test                           | Server pool                                  | Content                                                                    |
 |------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|
 | `TestE2E_OperationsCenter`               | none                                         | Suite of the scenarios, which need no IncusOS server                       |
+| `TestE2E_OperationsCenterCluster`        | none                                         | Suite of the scenarios of the Operations Center cluster                    |
 | `TestE2E_StableServers`                  | IncusOS01 to IncusOS04 on the stable channel | Suite of the scenarios with servers and clusters                           |
 | `TestE2E_UpdateChannel`                  | IncusOS01 to IncusOS04 on the prod channel   | Suite of the update scenarios                                              |
 | `TestE2E_WithTokenSeed_DeployServer`     | none                                         | Single test, deploys IncusOS01 through its BMC                             |
@@ -69,6 +70,16 @@ the following order:
 | `oidc_authentication`                  | Authentication through OIDC, see [Fake OIDC provider](#fake-oidc-provider)                                   |
 | `openfga_authorization`                | Authorization through OpenFGA, see [OpenFGA server](#openfga-server)                                         |
 | `updates_cleanup_and_refresh`          | Removes all the updates and refreshes them. Runs last.                                                       |
+
+### `TestE2E_OperationsCenterCluster`
+
+The scenarios of this suite only run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`.
+Otherwise they are skipped. Each scenario talks to the members through the
+remotes of the members (see [Clustered Operations Center](#clustered-operations-center)).
+
+| Scenario                   | Content                                                                                              |
+|----------------------------|------------------------------------------------------------------------------------------------------|
+| `write_through_any_member` | Changes a channel, a token and the settings through one member. Reads them through the other members |
 
 ### `TestE2E_StableServers`
 
