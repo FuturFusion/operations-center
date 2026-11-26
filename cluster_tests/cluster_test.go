@@ -1427,6 +1427,51 @@ func TestCluster(t *testing.T) {
 func TestClusterHandover(t *testing.T) {
 	c := setupClusterOf(t, 4)
 
+	t.Run("a killed voter is demoted and the stand-by member is promoted", func(t *testing.T) {
+		leader := c.leader(t)
+
+		var killed *member
+		var standBy string
+		for _, member := range leader.members(t) {
+			if member.Name != leader.name && killed == nil && slices.Equal(member.Roles, []string{"voter"}) {
+				killed = c.byName(t, member.Name)
+			}
+
+			if slices.Contains(member.Roles, "stand-by") {
+				standBy = member.Name
+			}
+		}
+
+		require.NotNil(t, killed, "a voter, which is not the leader")
+		require.NotEmpty(t, standBy, "the stand-by member")
+
+		// A killed member does not hand over its role. The leader changes the roles after the member counts as offline.
+		killed.kill()
+
+		c.waitFor(t, "the stand-by member to be promoted", func() bool {
+			members, err := leader.tryMembers()
+			if err != nil {
+				return false
+			}
+
+			for _, member := range members {
+				if member.Name == killed.name && slices.Contains(member.Roles, "voter") {
+					return false
+				}
+
+				if member.Name == standBy && !slices.Contains(member.Roles, "voter") {
+					return false
+				}
+			}
+
+			return voters(members) == 3
+		})
+
+		killed.start(t)
+		c.waitForOnline(t, killed)
+		c.waitForRoles(t, map[string]int{"voter": 3, "stand-by": 1})
+	})
+
 	t.Run("a stopped voter hands over its role to the stand-by member", func(t *testing.T) {
 		leader := c.leader(t)
 
