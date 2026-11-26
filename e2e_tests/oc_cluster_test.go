@@ -246,6 +246,56 @@ func Test_operationsCenterLeader(t *testing.T) {
 	}
 }
 
+func Test_operationsCenterStandalone(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+
+		assertErr      require.ErrorAssertionFunc
+		wantStandalone bool
+	}{
+		{
+			name:   "empty list",
+			output: `[]`,
+
+			assertErr:      require.NoError,
+			wantStandalone: true,
+		},
+		{
+			name:   "null",
+			output: `null`,
+
+			assertErr:      require.NoError,
+			wantStandalone: true,
+		},
+		{
+			name:   "clustered",
+			output: `[{"name":"a","roles":["voter"],"leader":true}]`,
+
+			assertErr:      require.NoError,
+			wantStandalone: false,
+		},
+		{
+			name:   "invalid output",
+			output: `not json`,
+
+			assertErr:      require.Error,
+			wantStandalone: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			standalone, err := operationsCenterStandalone([]byte(tc.output))
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantStandalone, standalone, "expect the standalone state of the member")
+		})
+	}
+}
+
 func Test_otherOperationsCenterMembers(t *testing.T) {
 	members := []operationsCenterMember{{name: "a"}, {name: "b"}, {name: "c"}}
 
@@ -283,6 +333,106 @@ func Test_otherOperationsCenterMembers(t *testing.T) {
 
 			require.Equal(t, tc.wantNames, operationsCenterMemberNames(others), "expect the other members")
 			require.Equal(t, []string{"a", "b", "c"}, operationsCenterMemberNames(members), "expect the members to be unchanged")
+		})
+	}
+}
+
+func Test_operationsCenterMemberWithMostFileSets(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+
+		assertErr require.ErrorAssertionFunc
+		wantName  string
+	}{
+		{
+			name:   "single member with the most file sets",
+			output: `[{"name":"a","file_sets":1},{"name":"b","file_sets":3},{"name":"c","file_sets":0}]`,
+
+			assertErr: require.NoError,
+			wantName:  "b",
+		},
+		{
+			name:   "tie goes to the first member by name",
+			output: `[{"name":"c","file_sets":2},{"name":"a","file_sets":1},{"name":"b","file_sets":2}]`,
+
+			assertErr: require.NoError,
+			wantName:  "b",
+		},
+		{
+			name:   "no member stores a file set",
+			output: `[{"name":"a","file_sets":0},{"name":"b","file_sets":0}]`,
+
+			assertErr: require.Error,
+			wantName:  "",
+		},
+		{
+			name:   "no members",
+			output: `[]`,
+
+			assertErr: require.Error,
+			wantName:  "",
+		},
+		{
+			name:   "invalid output",
+			output: `not json`,
+
+			assertErr: require.Error,
+			wantName:  "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, err := operationsCenterMemberWithMostFileSets([]byte(tc.output))
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantName, name, "expect the member with the most file sets")
+		})
+	}
+}
+
+func Test_parseSHA256Sums(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+
+		assertErr require.ErrorAssertionFunc
+		wantSums  map[string]string
+	}{
+		{
+			name:   "two files",
+			output: "aaa  updates/u1/file a\nbbb  images/i1/root.squashfs\n",
+
+			assertErr: require.NoError,
+			wantSums:  map[string]string{"updates/u1/file a": "aaa", "images/i1/root.squashfs": "bbb"},
+		},
+		{
+			name:   "empty output",
+			output: "",
+
+			assertErr: require.NoError,
+			wantSums:  map[string]string{},
+		},
+		{
+			name:   "line without a file name",
+			output: "aaa\n",
+
+			assertErr: require.Error,
+			wantSums:  nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sums, err := parseSHA256Sums(tc.output)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantSums, sums, "expect the checksums by file name")
 		})
 	}
 }

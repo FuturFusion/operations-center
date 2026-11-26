@@ -81,10 +81,19 @@ remotes of the members (see [Clustered Operations Center](#clustered-operations-
 |----------------------------|------------------------------------------------------------------------------------------------------|
 | `write_through_any_member` | Changes a channel, a token and the settings through one member. Reads them through the other members |
 | `leader_handover`          | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
+| `remove_and_rejoin_member` | Moves the files of a member, removes the member and joins it again. Runs last.                       |
 
 `leader_handover` stops the daemon with `systemctl`. It does not reboot the
 VM. A reboot would replace the local build with the daemon shipped with
 IncusOS.
+
+`remove_and_rejoin_member` removes the member with the most file sets. These
+are usually update files, so the test also moves large files. It compares the
+checksums of the files before and after the move. The removed member is reset
+to a standalone server. It no longer trusts the client certificate of the
+tests. So the test copies the CLI into the VM and joins the member through the
+unix socket. At the end, the test removes an uploaded image through a member,
+which does not store the image file.
 
 ### `TestE2E_StableServers`
 

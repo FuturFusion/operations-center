@@ -50,6 +50,12 @@ func TestE2E_OperationsCenterCluster(t *testing.T) {
 			requiresOCCluster: true,
 			run:               ocClusterLeaderHandover,
 		},
+		{
+			// Changes the membership, so it runs last.
+			name:              "remove_and_rejoin_member",
+			requiresOCCluster: true,
+			run:               ocClusterRemoveAndRejoinMember,
+		},
 	})
 }
 

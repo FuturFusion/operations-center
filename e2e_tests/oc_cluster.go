@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -725,4 +727,81 @@ func operationsCenterDaemonStartCleanup(t *testing.T, name string) func() {
 			t.Logf("Failed to start the Operations Center daemon on %s during cleanup: %s", name, resp.Error())
 		}
 	}
+}
+
+const (
+	// ocLocalCLIPath is the CLI in the tmpfs of an Operations Center VM. The
+	// tmpfs holds the local build of the daemon as well.
+	ocLocalCLIPath = "/root/dev/operations-center"
+
+	ocLocalCLIConfigDir = "/root/dev/operations-center-cli"
+
+	ocUnixSocket = "/run/operations-center/unix.socket"
+)
+
+// mustInstallOperationsCenterLocalCLI copies the CLI into the VM name and
+// returns its command prefix. The CLI talks to the daemon through the unix
+// socket, which needs no trusted client certificate. A member, which has been
+// reset to a standalone server, trusts no client certificate.
+func mustInstallOperationsCenterLocalCLI(t *testing.T, name string) string {
+	t.Helper()
+
+	mustRun(t, `incus file push --mode 0755 ../bin/operations-center.linux.%s %s%s`, cpuArch, name, ocLocalCLIPath)
+	mustRun(t, `incus exec %s -- test -S %s`, name, ocUnixSocket)
+
+	return fmt.Sprintf("incus exec %s --env OPERATIONS_CENTER_CONF=%s --env OPERATIONS_CENTER_SOCKET=%s -- %s", name, ocLocalCLIConfigDir, ocUnixSocket, ocLocalCLIPath)
+}
+
+// operationsCenterStandalone reports whether output of the cluster members
+// list shows a standalone server.
+func operationsCenterStandalone(output []byte) (bool, error) {
+	var members []api.ClusterMember
+	err := json.Unmarshal(output, &members)
+	if err != nil {
+		return false, fmt.Errorf("decode the cluster members: %w", err)
+	}
+
+	return len(members) == 0, nil
+}
+
+// operationsCenterMemberWithMostFileSets returns the name of the member with
+// the most file sets in output of the cluster members list. A tie goes to the
+// first member by name, so the choice is stable. It returns an error if no
+// member stores a file set.
+func operationsCenterMemberWithMostFileSets(output []byte) (string, error) {
+	var members []api.ClusterMember
+	err := json.Unmarshal(output, &members)
+	if err != nil {
+		return "", fmt.Errorf("decode the cluster members: %w", err)
+	}
+
+	slices.SortFunc(members, func(a, b api.ClusterMember) int {
+		return cmp.Or(cmp.Compare(b.FileSets, a.FileSets), cmp.Compare(a.Name, b.Name))
+	})
+
+	if len(members) == 0 || members[0].FileSets == 0 {
+		return "", errors.New("no member stores a file set")
+	}
+
+	return members[0].Name, nil
+}
+
+// parseSHA256Sums returns the checksums by file name from output of sha256sum.
+func parseSHA256Sums(output string) (map[string]string, error) {
+	sums := map[string]string{}
+	for line := range strings.Lines(output) {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		sum, name, ok := strings.Cut(line, "  ")
+		if !ok || sum == "" || name == "" {
+			return nil, fmt.Errorf("unexpected sha256sum line %q", line)
+		}
+
+		sums[name] = sum
+	}
+
+	return sums, nil
 }
