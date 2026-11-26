@@ -20,6 +20,7 @@ DHCP
 DNS
 downloader
 ETag
+EUI
 expr
 Furo
 futurfusion
@@ -48,10 +49,12 @@ lang
 Lenovo
 linuxcontainers
 LLMs
+loopback
 LVM
 MacOS
 MiB
 middleware
+multicast
 multipath
 mutex
 namespace
@@ -81,6 +84,7 @@ rollout
 ROMs
 scriptlet
 SHA
+SKU
 snapshotted
 sso
 starlark
@@ -95,6 +99,7 @@ UEFI
 UI
 URI
 UUID
+UUIDs
 vlan
 VM
 YAML
