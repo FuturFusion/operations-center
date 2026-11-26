@@ -30,12 +30,45 @@ const uiPathSegment = "ui"
 
 // Open is part of the http.FileSystem interface.
 func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
+	if isUIAssetPath(name) {
+		return httpFS.openAsset(name)
+	}
+
 	fsFile, err := httpFS.FileSystem.Open(name)
 	if errors.Is(err, fs.ErrNotExist) || isPathEscapeError(err) {
 		return httpFS.FileSystem.Open("index.html")
 	}
 
 	return fsFile, err
+}
+
+// openAsset does not fall back to index.html. A missing asset returns 404, so
+// the browser does not get HTML for a JavaScript or CSS file. Directories are
+// hidden to prevent a directory listing.
+func (httpFS uiHTTPDir) openAsset(name string) (http.File, error) {
+	notExistErr := &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+
+	fsFile, err := httpFS.FileSystem.Open(name)
+	if isPathEscapeError(err) {
+		return nil, notExistErr
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := fsFile.Stat()
+	if err != nil {
+		_ = fsFile.Close()
+		return nil, err
+	}
+
+	if info.IsDir() {
+		_ = fsFile.Close()
+		return nil, notExistErr
+	}
+
+	return fsFile, nil
 }
 
 // osRootPathEscapeMsg is the message of the unexported error os.Root returns
@@ -70,6 +103,31 @@ func (d *Daemon) openUIRoot(ctx context.Context) (*os.Root, error) {
 	return uiRoot, nil
 }
 
+const uiAssetsDir = "assets"
+
+// isUIAssetPath reports if name is below the assets directory. Vite puts a
+// content hash in the file names of the assets.
+func isUIAssetPath(name string) bool {
+	name = strings.TrimPrefix(name, "/")
+	return name == uiAssetsDir || strings.HasPrefix(name, uiAssetsDir+"/")
+}
+
+// uiCacheControl sets the Cache-Control header before next writes the
+// response. Browsers must never cache index.html. Otherwise, a browser keeps
+// running an old web UI after an update or a rollback. Hashed assets never
+// change. On errors, http.FileServer removes the header.
+func uiCacheControl(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cacheControl := "no-store"
+		if isUIAssetPath(r.URL.Path) && !strings.HasSuffix(r.URL.Path, "/") {
+			cacheControl = "public, max-age=31536000, immutable"
+		}
+
+		w.Header().Set("Cache-Control", cacheControl)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // registerUIHandlers registers the handlers serving the web UI.
 //
 // If embeddedUI is not nil, the web UI is served from the provided file system,
@@ -97,7 +155,7 @@ func registerUIHandlers(ctx context.Context, router Router, embeddedUI fs.FS, ui
 		uiFS = http.FS(emptyFS{})
 	}
 
-	fileServer := http.FileServer(uiHTTPDir{uiFS})
+	fileServer := uiCacheControl(http.FileServer(uiHTTPDir{uiFS}))
 
 	router.Handle("GET /"+uiPathSegment+"/", http.StripPrefix("/"+uiPathSegment+"/", fileServer))
 	router.HandleFunc("GET /"+uiPathSegment, func(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +167,7 @@ func registerUIHandlers(ctx context.Context, router Router, embeddedUI fs.FS, ui
 		if strings.Contains(ua, "Gecko") {
 			// Web browser handling.
 			http.Redirect(w, r, "/ui/", http.StatusMovedPermanently)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
