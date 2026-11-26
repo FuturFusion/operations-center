@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
-import { fetchServer } from "api/server";
+import { fetchServer, serverQueryKey } from "api/server";
 import { formatDate } from "util/date";
 import type { ServerTypeKey } from "util/server";
 import { primaryApplicationVersion, ServerTypeString } from "util/server";
@@ -45,7 +45,7 @@ const ServerOverview = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["tokens", name],
+    queryKey: serverQueryKey(name || ""),
     queryFn: () => fetchServer(name || ""),
   });
 

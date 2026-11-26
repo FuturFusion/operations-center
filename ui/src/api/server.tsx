@@ -35,6 +35,14 @@ export const fetchServer = (name: string): Promise<Server> => {
   });
 };
 
+// The detail keys are separate from the list keys ["servers", filter]. A filter
+// that matches a server name must not share the cache entry of the server.
+export const serverQueryKey = (name: string): string[] => [
+  "servers",
+  "detail",
+  name,
+];
+
 export const fetchServerChangelog = (name: string): Promise<Changelog> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/changelog`)

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
-import { deleteServer, fetchServer } from "api/server";
+import { deleteServer, fetchServer, serverQueryKey } from "api/server";
 import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
@@ -24,7 +24,7 @@ const ServerDetail = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["servers", name],
+    queryKey: serverQueryKey(name || ""),
     queryFn: () => fetchServer(name || ""),
   });
 

@@ -2,7 +2,11 @@ import { FC, useState } from "react";
 import Form from "react-bootstrap/Form";
 import { useQuery } from "@tanstack/react-query";
 import { MdSystemUpdateAlt } from "react-icons/md";
-import { fetchServerChangelog, updateSystemServer } from "api/server";
+import {
+  fetchServerChangelog,
+  serverQueryKey,
+  updateSystemServer,
+} from "api/server";
 import ChangelogView from "components/ChangelogView";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
@@ -57,7 +61,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["servers", server.name, "changelog"],
+    queryKey: [...serverQueryKey(server.name), "changelog"],
     queryFn: () => fetchServerChangelog(server.name),
   });
 

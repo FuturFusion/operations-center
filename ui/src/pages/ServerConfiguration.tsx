@@ -8,6 +8,7 @@ import {
   updateServer,
   updateSystemNetwork,
   updateSystemStorage,
+  serverQueryKey,
 } from "api/server";
 import ServerForm from "components/ServerForm";
 import { useNotification } from "context/notificationContext";
@@ -63,7 +64,9 @@ const ServerConfiguration = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Server ${values.name} updated`);
-          queryClient.invalidateQueries({ queryKey: ["servers", values.name] });
+          queryClient.invalidateQueries({
+            queryKey: serverQueryKey(values.name),
+          });
           return;
         }
         notify.error(`Error during server update: ${response.error}`);
@@ -153,7 +156,7 @@ const ServerConfiguration = () => {
     error: serverError,
     isLoading: isServerLoading,
   } = useQuery({
-    queryKey: ["servers", name],
+    queryKey: serverQueryKey(name),
     queryFn: () => fetchServer(name),
   });
 
@@ -162,7 +165,7 @@ const ServerConfiguration = () => {
     error: systemNetworkError,
     isLoading: isSystemNetworkLoading,
   } = useQuery({
-    queryKey: ["servers", name, "system-network"],
+    queryKey: [...serverQueryKey(name), "system-network"],
     queryFn: () => fetchSystemNetwork(name),
   });
 
@@ -171,7 +174,7 @@ const ServerConfiguration = () => {
     error: systemStorageError,
     isLoading: isSystemStorageLoading,
   } = useQuery({
-    queryKey: ["servers", name, "system-storage"],
+    queryKey: [...serverQueryKey(name), "system-storage"],
     queryFn: () => fetchSystemStorage(name),
   });
 
