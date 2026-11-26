@@ -616,3 +616,113 @@ func operationsCenterMemberNames(members []operationsCenterMember) []string {
 
 	return names
 }
+
+// operationsCenterMemberByName returns the member called name.
+func operationsCenterMemberByName(t *testing.T, members []operationsCenterMember, name string) operationsCenterMember {
+	t.Helper()
+
+	for _, member := range members {
+		if member.name == name {
+			return member
+		}
+	}
+
+	require.FailNow(t, "unknown Operations Center member", "expect %q to be one of %v", name, operationsCenterMemberNames(members))
+
+	return operationsCenterMember{}
+}
+
+// otherOperationsCenterMembers returns the members except the one called name.
+func otherOperationsCenterMembers(members []operationsCenterMember, name string) []operationsCenterMember {
+	return slices.DeleteFunc(slices.Clone(members), func(member operationsCenterMember) bool {
+		return member.name == name
+	})
+}
+
+// operationsCenterLeader returns the name of the leader in output of the
+// cluster members list. It returns an empty name unless there is exactly one
+// leader.
+func operationsCenterLeader(output []byte) (string, error) {
+	var members []api.ClusterMember
+	err := json.Unmarshal(output, &members)
+	if err != nil {
+		return "", fmt.Errorf("decode the cluster members: %w", err)
+	}
+
+	var leaders []string
+	for _, member := range members {
+		if member.Leader {
+			leaders = append(leaders, member.Name)
+		}
+	}
+
+	if len(leaders) != 1 {
+		return "", nil
+	}
+
+	return leaders[0], nil
+}
+
+// mustWaitOperationsCenterLeader waits until member sees a single leader other
+// than notName and returns its name. An empty notName accepts any leader.
+func mustWaitOperationsCenterLeader(ctx context.Context, t *testing.T, member operationsCenterMember, notName string) string {
+	t.Helper()
+
+	var leader string
+	err := waitForCLIOutput(ctx, t, 2*time.Minute, func(output []byte) (bool, error) {
+		name, err := operationsCenterLeader(output)
+		if err != nil {
+			return false, err
+		}
+
+		if name == "" || name == notName {
+			return false, nil
+		}
+
+		leader = name
+
+		return true, nil
+	}, `%s cluster members list -f json`, member.oc)
+	require.NoError(t, err, "expect %s to see a leader other than %q", member.name, notName)
+
+	t.Logf("%s sees %s as the leader", member.name, leader)
+
+	return leader
+}
+
+// mustStopOperationsCenterDaemon stops the daemon in the VM name. A graceful
+// stop hands over the leadership.
+func mustStopOperationsCenterDaemon(t *testing.T, name string) {
+	t.Helper()
+
+	t.Logf("Stopping the Operations Center daemon on %s", name)
+
+	mustRunWithTimeout(t, `incus exec %s -- systemctl stop operations-center`, 3*time.Minute, name)
+}
+
+// mustStartOperationsCenterDaemon starts the daemon in the VM name. The
+// local build stays mounted, since the VM does not reboot.
+func mustStartOperationsCenterDaemon(t *testing.T, name string) {
+	t.Helper()
+
+	t.Logf("Starting the Operations Center daemon on %s", name)
+
+	mustRunWithTimeout(t, `incus exec %s -- systemctl start operations-center`, 3*time.Minute, name)
+}
+
+// operationsCenterDaemonStartCleanup starts the daemon in the VM name again,
+// if a failed test left it stopped.
+func operationsCenterDaemonStartCleanup(t *testing.T, name string) func() {
+	t.Helper()
+
+	return func() {
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(3*time.Minute))
+		defer cancel()
+
+		resp := runWithContext(ctx, t, `incus exec %s -- systemctl start operations-center`, name)
+		if !resp.Success() {
+			t.Logf("Failed to start the Operations Center daemon on %s during cleanup: %s", name, resp.Error())
+		}
+	}
+}

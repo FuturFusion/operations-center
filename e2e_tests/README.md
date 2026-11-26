@@ -80,6 +80,11 @@ remotes of the members (see [Clustered Operations Center](#clustered-operations-
 | Scenario                   | Content                                                                                              |
 |----------------------------|------------------------------------------------------------------------------------------------------|
 | `write_through_any_member` | Changes a channel, a token and the settings through one member. Reads them through the other members |
+| `leader_handover`          | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
+
+`leader_handover` stops the daemon with `systemctl`. It does not reboot the
+VM. A reboot would replace the local build with the daemon shipped with
+IncusOS.
 
 ### `TestE2E_StableServers`
 
@@ -97,12 +102,20 @@ servers, so the seed of all the servers contains them.
 | `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc)               |
 | `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                                        |
 | `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                              |
+| `oc_leader_handover_managed_cluster`    |                        | IncusOS01 to IncusOS03          | Leader handover of the Operations Center cluster, see below               |
 | `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates               |
 | `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                               |
 | `add_and_remove_server`                 | IncusOS04              | IncusOS01 to IncusOS03          | Adds IncusOS04 and removes IncusOS03                                      |
 | `factory_reset_cluster_with_token_seed` |                        | IncusOS01, IncusOS02, IncusOS04 | Factory reset with a given token and token seed                           |
 | `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)                           |
 | `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last.               |
+
+`oc_leader_handover_managed_cluster` only runs with
+`OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`. It stops the daemon of the leader of
+the Operations Center cluster. Then it launches and deletes an instance on the
+managed cluster. Only the leader monitors the lifecycle events of the managed
+clusters. So the inventory only shows the change if the new leader runs the
+monitor.
 
 ### `TestE2E_UpdateChannel`
 

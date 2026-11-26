@@ -45,6 +45,11 @@ func TestE2E_OperationsCenterCluster(t *testing.T) {
 			requiresOCCluster: true,
 			run:               ocClusterWriteThroughAnyMember,
 		},
+		{
+			name:              "leader_handover",
+			requiresOCCluster: true,
+			run:               ocClusterLeaderHandover,
+		},
 	})
 }
 
@@ -87,6 +92,12 @@ func TestE2E_StableServers(t *testing.T) {
 			name:    "cluster_rolling_reboot",
 			cluster: names,
 			run:     clusterRollingReboot,
+		},
+		{
+			name:              "oc_leader_handover_managed_cluster",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocLeaderHandoverWithManagedCluster,
 		},
 		{
 			name:    "factory_reset_cluster",

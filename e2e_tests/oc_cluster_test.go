@@ -195,3 +195,94 @@ func Test_waitForCLIOutput(t *testing.T) {
 		})
 	}
 }
+
+func Test_operationsCenterLeader(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+
+		assertErr  require.ErrorAssertionFunc
+		wantLeader string
+	}{
+		{
+			name:   "single leader",
+			output: `[{"name":"a","roles":["voter"]},{"name":"b","roles":["voter"],"leader":true}]`,
+
+			assertErr:  require.NoError,
+			wantLeader: "b",
+		},
+		{
+			name:   "no leader",
+			output: `[{"name":"a","roles":["voter"]},{"name":"b","roles":["voter"]}]`,
+
+			assertErr:  require.NoError,
+			wantLeader: "",
+		},
+		{
+			name:   "two leaders",
+			output: `[{"name":"a","roles":["voter"],"leader":true},{"name":"b","roles":["voter"],"leader":true}]`,
+
+			assertErr:  require.NoError,
+			wantLeader: "",
+		},
+		{
+			name:   "invalid output",
+			output: `not json`,
+
+			assertErr:  require.Error,
+			wantLeader: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			leader, err := operationsCenterLeader([]byte(tc.output))
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantLeader, leader, "expect the leader of the members")
+		})
+	}
+}
+
+func Test_otherOperationsCenterMembers(t *testing.T) {
+	members := []operationsCenterMember{{name: "a"}, {name: "b"}, {name: "c"}}
+
+	tests := []struct {
+		name string
+		skip string
+
+		wantNames []string
+	}{
+		{
+			name: "first member",
+			skip: "a",
+
+			wantNames: []string{"b", "c"},
+		},
+		{
+			name: "middle member",
+			skip: "b",
+
+			wantNames: []string{"a", "c"},
+		},
+		{
+			name: "unknown member",
+			skip: "x",
+
+			wantNames: []string{"a", "b", "c"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			others := otherOperationsCenterMembers(members, tc.skip)
+
+			require.Equal(t, tc.wantNames, operationsCenterMemberNames(others), "expect the other members")
+			require.Equal(t, []string{"a", "b", "c"}, operationsCenterMemberNames(members), "expect the members to be unchanged")
+		})
+	}
+}
