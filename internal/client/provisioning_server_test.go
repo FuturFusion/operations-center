@@ -25,7 +25,7 @@ func Test_GetServers(t *testing.T) {
 		dbSeedFunc func(t *testing.T)
 
 		assertErr  require.ErrorAssertionFunc
-		assertFunc func(t *testing.T, result []api.Server)
+		assertFunc func(t *testing.T, result []api.ServerFull)
 	}{
 		{
 			name:       "success - empty list",
@@ -33,7 +33,7 @@ func Test_GetServers(t *testing.T) {
 			dbSeedFunc: noop,
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Empty(t, result)
@@ -50,7 +50,7 @@ func Test_GetServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Len(t, result, 1)
@@ -67,7 +67,7 @@ func Test_GetServers(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
 			},
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -96,7 +96,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 		filter api.ServerFilter
 
 		assertErr  require.ErrorAssertionFunc
-		assertFunc func(t *testing.T, result []api.Server)
+		assertFunc func(t *testing.T, result []api.ServerFull)
 	}{
 		{
 			name:   "success - filter by cluster, matching",
@@ -119,7 +119,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Len(t, result, 1)
@@ -136,7 +136,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Empty(t, result)
@@ -152,7 +152,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Len(t, result, 2)
@@ -168,7 +168,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 
 				require.Len(t, result, 1)
@@ -185,7 +185,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			},
 
 			assertErr: errassert.StatusErrorContains(http.StatusBadRequest, `Invalid value "invalid" for query parameter "status"`),
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -197,7 +197,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
 			},
-			assertFunc: func(t *testing.T, result []api.Server) {
+			assertFunc: func(t *testing.T, result []api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -226,7 +226,7 @@ func Test_GetServer(t *testing.T) {
 		tcNameArg string
 
 		assertErr  require.ErrorAssertionFunc
-		assertFunc func(t *testing.T, result api.Server)
+		assertFunc func(t *testing.T, result api.ServerFull)
 	}{
 		{
 			name:   "success - one record",
@@ -240,7 +240,7 @@ func Test_GetServer(t *testing.T) {
 			tcNameArg: "serverOne",
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 
 				require.Equal(t, "serverOne", result.Name)
@@ -258,7 +258,7 @@ func Test_GetServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
 			},
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -272,7 +272,7 @@ func Test_GetServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
 			},
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 			},
 		},

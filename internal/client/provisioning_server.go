@@ -11,11 +11,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetServers(ctx context.Context) ([]api.Server, error) {
+func (c OperationsCenterClient) GetServers(ctx context.Context) ([]api.ServerFull, error) {
 	return c.GetWithFilterServers(ctx, api.ServerFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter api.ServerFilter) ([]api.Server, error) {
+func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter api.ServerFilter) ([]api.ServerFull, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
@@ -25,7 +25,7 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 		return nil, err
 	}
 
-	servers := []api.Server{}
+	servers := []api.ServerFull{}
 	err = json.Unmarshal(response.Metadata, &servers)
 	if err != nil {
 		return nil, err
@@ -34,16 +34,16 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 	return servers, nil
 }
 
-func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.Server, error) {
+func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.ServerFull, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
-		return api.Server{}, err
+		return api.ServerFull{}, err
 	}
 
-	server := api.Server{}
+	server := api.ServerFull{}
 	err = json.Unmarshal(response.Metadata, &server)
 	if err != nil {
-		return api.Server{}, err
+		return api.ServerFull{}, err
 	}
 
 	return server, nil

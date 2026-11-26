@@ -205,7 +205,7 @@ type swaggerServerResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
-		Metadata api.Server `json:"metadata"`
+		Metadata api.ServerFull `json:"metadata"`
 	}
 }
 
@@ -216,7 +216,7 @@ type swaggerServersResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
-		Metadata []api.Server `json:"metadata"`
+		Metadata []api.ServerFull `json:"metadata"`
 	}
 }
 
