@@ -146,8 +146,8 @@ func prepareServerAsOCImagesClient(ctx context.Context, t *testing.T, tmpDir str
 		require.NoError(t, err)
 	}()
 
-	t.Logf("Add /etc/hosts entry for OperationsCenter on %s", name)
-	resp = mustRun(t, `incus exec OperationsCenter -- hostname`)
+	t.Logf("Add /etc/hosts entry for %s on %s", operationsCenterVMName, name)
+	resp = mustRun(t, `incus exec %s -- hostname`, operationsCenterVMName)
 	ocHostname := resp.OutputTrimmed()
 	mustRun(t, `incus exec %s -- bash -c "echo '%s	%s' >> /etc/hosts"`, name, operationsCenterIPAddress(t), ocHostname)
 
@@ -506,9 +506,9 @@ func assertIncusImageSourcePrune(t *testing.T, tmpDir string, ocImagesURL string
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions["%[3]s"].items | keys == ["incus.tar.xz"]'`, cpuArch, sourceName, sourceVersion)
 
 	// It is deleted from the files repository, the remaining one is not.
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/root.squashfs`, sourceRelease, cpuArch, sourceVersion)
+	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/root.squashfs`, operationsCenterVMName, sourceRelease, cpuArch, sourceVersion)
 	require.False(t, resp.Success(), "expect the pruned file to be deleted from the files repository")
-	mustRun(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/incus.tar.xz`, sourceRelease, cpuArch, sourceVersion)
+	mustRun(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default/%s/incus.tar.xz`, operationsCenterVMName, sourceRelease, cpuArch, sourceVersion)
 
 	// It is no longer advertised publicly.
 	mustRun(t, `curl -sSfk "%[1]s/streams/v1/images.json" | jq -r -e '.products["%[2]s"].versions["%[3]s"].items | has("root.squashfs") | not'`, ocImagesURL, sourceName, sourceVersion)
@@ -532,7 +532,7 @@ func assertIncusImageSourceRemove(t *testing.T, ocImagesURL string, sourceName s
 
 	// The files of the removed images are deleted as well. Only the directory
 	// of the image itself is removed, its parent directories are left behind.
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/alpine/%s/%s/default`, sourceRelease, cpuArch)
+	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/alpine/%s/%s/default`, operationsCenterVMName, sourceRelease, cpuArch)
 	require.False(t, resp.Success(), "expect the files of the images of the removed source to be deleted")
 
 	// The manually uploaded images are not affected.
@@ -560,7 +560,7 @@ func assertIncusImageRemove(t *testing.T, name string) {
 	mustRun(t, `../bin/operations-center.linux.%s image incus remove-version %s %s`, cpuArch, name, flagsImageVersion)
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus show %[2]s -f json | jq -r -e '.versions | length == 0'`, cpuArch, name)
 
-	resp := run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/%s/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
+	resp := run(t, `incus exec %s -- test -e /var/lib/operations-center/images/%s/%s/%s/%s/%s`, operationsCenterVMName, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant, flagsImageVersion)
 	require.False(t, resp.Success(), "expect the files of the removed version to be deleted")
 
 	// Removing a non existing version fails.
@@ -570,7 +570,7 @@ func assertIncusImageRemove(t *testing.T, name string) {
 	mustRun(t, `../bin/operations-center.linux.%s image incus remove %s`, cpuArch, name)
 	mustRun(t, `../bin/operations-center.linux.%[1]s image incus list -f json | jq -r -e '[ .[] | select(.name == "%[2]s") ] | length == 0'`, cpuArch, name)
 
-	resp = run(t, `incus exec OperationsCenter -- test -e /var/lib/operations-center/images/%s/%s/%s/%s`, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
+	resp = run(t, `incus exec %s -- test -e /var/lib/operations-center/images/%s/%s/%s/%s`, operationsCenterVMName, flagsImageOS, flagsImageRelease, cpuArch, flagsImageVariant)
 	require.False(t, resp.Success(), "expect the files of the removed image to be deleted")
 
 	// Removing a non existing image fails.

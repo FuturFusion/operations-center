@@ -25,6 +25,7 @@ import (
 const (
 	incusOSCustomizerURL            = "https://incusos-customizer.linuxcontainers.org"
 	operationsCenterISOName         = "IncusOS_OperationsCenter.iso"
+	operationsCenterVMName          = "OperationsCenter01"
 	operationsCenterVMHealthTimeout = 2 * time.Minute
 	instanceCreationStagger         = 5 * time.Second
 	incusOSClusterName              = "incus-os-cluster"
@@ -38,6 +39,8 @@ func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, 
 	stop := timeTrack(t)
 	defer stop()
 
+	removeLegacyOperationsCenterVM(ctx, t)
+
 	fresh := getOperationsCenterIncusOSISO(ctx, t, tmpDir)
 
 	importOperationsCenterIncusOSISOStorageVolume(ctx, t, tmpDir, fresh)
@@ -46,9 +49,9 @@ func setupOperationsCenter(ctx context.Context, t *testing.T, owner *testing.T, 
 
 	removeBootMedia(ctx, t)
 
-	mustWaitAgentRunning(ctx, t, "OperationsCenter")
+	mustWaitAgentRunning(ctx, t, operationsCenterVMName)
 
-	mustWaitExpectedLog(ctx, t, "OperationsCenter", "incus-osd", "System is ready")
+	mustWaitExpectedLog(ctx, t, operationsCenterVMName, "incus-osd", "System is ready")
 
 	replaceOperationsCenterExecutable(t, owner, tmpDir)
 
@@ -448,9 +451,9 @@ func importOperationsCenterIncusOSISOStorageVolume(ctx context.Context, t *testi
 	if volumeExists {
 		t.Logf("Replacing the storage volume %q with the freshly downloaded image", operationsCenterISOName)
 
-		status := mustInstanceStatus(ctx, t, "OperationsCenter")
+		status := mustInstanceStatus(ctx, t, operationsCenterVMName)
 		if status != "" {
-			require.NoError(t, removeInstanceWithContext(ctx, t, "OperationsCenter"))
+			require.NoError(t, removeInstanceWithContext(ctx, t, operationsCenterVMName))
 		}
 
 		require.NoError(t, retryStorageCmdWithContext(ctx, t, fmt.Sprintf("delete the storage volume %q", operationsCenterISOName), `incus storage volume delete default %s`, operationsCenterISOName))
@@ -459,14 +462,30 @@ func importOperationsCenterIncusOSISOStorageVolume(ctx context.Context, t *testi
 	mustRunWithTimeout(t, `incus storage volume import default %s %s --type=iso`, 5*time.Minute, filepath.Join(tmpDir, operationsCenterISOName), operationsCenterISOName)
 }
 
+// removeLegacyOperationsCenterVM removes the VM of older versions of the tests,
+// which used the name OperationsCenter.
+func removeLegacyOperationsCenterVM(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	const legacyName = "OperationsCenter"
+
+	status := mustInstanceStatus(ctx, t, legacyName)
+	if status == "" {
+		return
+	}
+
+	t.Logf("Removing the VM %q of an older version of the tests", legacyName)
+	require.NoError(t, removeInstanceWithContext(ctx, t, legacyName))
+}
+
 func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed bool) {
 	t.Helper()
 
-	status := mustInstanceStatus(ctx, t, "OperationsCenter")
+	status := mustInstanceStatus(ctx, t, operationsCenterVMName)
 	if status != "" && status != instanceStatusRunning {
 		// The VM might just be restarting, so give it a moment to settle before recreating it.
 		t.Logf("Operations Center VM is in status %q, waiting for it to become running", status)
-		status = waitInstanceStatusRunning(ctx, t, "OperationsCenter", 2*time.Minute)
+		status = waitInstanceStatusRunning(ctx, t, operationsCenterVMName, 2*time.Minute)
 	}
 
 	if status == instanceStatusRunning && operationsCenterVMUsable(ctx, t) {
@@ -478,18 +497,18 @@ func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed boo
 
 	if status != "" {
 		t.Logf("Operations Center VM is in status %q, removing it in order to install it from scratch", status)
-		require.NoError(t, removeInstanceWithContext(ctx, t, "OperationsCenter"))
+		require.NoError(t, removeInstanceWithContext(ctx, t, operationsCenterVMName))
 	}
 
-	mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, cpuCount, memorySize, diskSize)
-	mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
-	mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=%s boot.priority=10`, operationsCenterISOName)
-	mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
-	require.NoError(t, startInstanceWithContext(ctx, t, "OperationsCenter"))
+	mustRun(t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, operationsCenterVMName, cpuCount, memorySize, diskSize)
+	mustRun(t, `incus config device add %s vtpm tpm`, operationsCenterVMName)
+	mustRun(t, `incus config device add %s boot-media disk pool=default source=%s boot.priority=10`, operationsCenterVMName, operationsCenterISOName)
+	mustRun(t, `incus config set %s systemd.credential.fully-enable-incus-agent=true`, operationsCenterVMName)
+	require.NoError(t, startInstanceWithContext(ctx, t, operationsCenterVMName))
 
 	t.Log("Waiting for Operations Center to complete installation")
-	mustWaitAgentRunningWithTimeout(ctx, t, "OperationsCenter", 5*time.Minute)
-	mustWaitExpectedLogWithTimeout(ctx, t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+	mustWaitAgentRunningWithTimeout(ctx, t, operationsCenterVMName, 5*time.Minute)
+	mustWaitExpectedLogWithTimeout(ctx, t, operationsCenterVMName, "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
 
 	return true
 }
@@ -505,7 +524,7 @@ func operationsCenterVMUsable(ctx context.Context, t *testing.T) bool {
 	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(operationsCenterVMHealthTimeout))
 	defer cancel()
 
-	err := waitAgentRunningWithContext(ctx, t, "OperationsCenter")
+	err := waitAgentRunningWithContext(ctx, t, operationsCenterVMName)
 	if err != nil {
 		t.Logf("Operations Center VM is running, but not usable, installing it from scratch: %v", err)
 
@@ -518,7 +537,7 @@ func operationsCenterVMUsable(ctx context.Context, t *testing.T) bool {
 func removeBootMedia(ctx context.Context, t *testing.T) {
 	t.Helper()
 
-	instanceHasBootMedia := mustRun(t, "incus config device list OperationsCenter")
+	instanceHasBootMedia := mustRun(t, `incus config device list %s`, operationsCenterVMName)
 	if !strings.Contains(instanceHasBootMedia.Output(), "boot-media") {
 		return
 	}
@@ -526,11 +545,11 @@ func removeBootMedia(ctx context.Context, t *testing.T) {
 	stop := timeTrack(t)
 	defer stop()
 
-	require.NoError(t, stopInstanceWithContext(ctx, t, "OperationsCenter"))
+	require.NoError(t, stopInstanceWithContext(ctx, t, operationsCenterVMName))
 
-	mustRun(t, `incus config device remove OperationsCenter boot-media`)
+	mustRun(t, `incus config device remove %s boot-media`, operationsCenterVMName)
 
-	require.NoError(t, startInstanceWithContext(ctx, t, "OperationsCenter"))
+	require.NoError(t, startInstanceWithContext(ctx, t, operationsCenterVMName))
 
 	t.Log("Waiting for Operations Center to be ready")
 }
@@ -541,25 +560,25 @@ func replaceOperationsCenterExecutable(t *testing.T, owner *testing.T, tmpDir st
 	stop := timeTrack(t)
 	defer stop()
 
-	stageLocalOperationsCenterExecutable(t, "OperationsCenter")
+	stageLocalOperationsCenterExecutable(t, operationsCenterVMName)
 
 	if testing.CoverMode() != "" {
 		err := os.WriteFile(filepath.Join(tmpDir, "environment"), []byte(`GOCOVERDIR=/tmp/coverdata
 `), 0o700)
 		require.NoError(t, err)
 
-		mustRun(t, `incus file push %s OperationsCenter/etc/environment`, filepath.Join(tmpDir, "environment"))
-		mustRun(t, `incus exec OperationsCenter -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`)
+		mustRun(t, `incus file push %s %s/etc/environment`, filepath.Join(tmpDir, "environment"), operationsCenterVMName)
+		mustRun(t, `incus exec %s -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`, operationsCenterVMName)
 
 		owner.Cleanup(func() {
 			// Stop operations-centerd to flush coverage data.
-			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- systemctl stop operations-center`)
-			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, ocE2EGoCoverDir)
-			mustRunWithContext(context.Background(), owner, `incus exec OperationsCenter -- systemctl start operations-center`)
+			mustRunWithContext(context.Background(), owner, `incus exec %s -- systemctl stop operations-center`, operationsCenterVMName)
+			mustRunWithContext(context.Background(), owner, `incus exec %s -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, operationsCenterVMName, ocE2EGoCoverDir)
+			mustRunWithContext(context.Background(), owner, `incus exec %s -- systemctl start operations-center`, operationsCenterVMName)
 		})
 	}
 
-	startLocalOperationsCenterExecutable(t, "OperationsCenter")
+	startLocalOperationsCenterExecutable(t, operationsCenterVMName)
 }
 
 // stageLocalOperationsCenterExecutable stops the daemon in the VM name and
@@ -591,7 +610,7 @@ func restartOperationsCenter(ctx context.Context, t *testing.T) {
 	stop := timeTrack(t)
 	defer stop()
 
-	mustRunWithTimeout(t, `incus exec OperationsCenter -- systemctl restart operations-center`, 3*time.Minute)
+	mustRunWithTimeout(t, `incus exec %s -- systemctl restart operations-center`, 3*time.Minute, operationsCenterVMName)
 
 	success, err := waitForSuccessWithTimeout(ctx, t, "Operations Center API", `../bin/operations-center.linux.%s provisioning server list -f json`, time.Minute, cpuArch)
 	require.NoError(t, err)

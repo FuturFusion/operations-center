@@ -18,7 +18,7 @@ import (
 
 // startRedfishProxy serves an in-process Redfish proxy for the given Incus
 // instance on an ephemeral host port and returns the endpoint URL, at which the
-// proxy is reachable from inside the OperationsCenter VM.
+// proxy is reachable from inside the Operations Center VM.
 func startRedfishProxy(t *testing.T, instanceName string) string {
 	t.Helper()
 
@@ -47,11 +47,11 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 	// Operations Center pins this certificate during the connection test and then
 	// derives the expected server name from it, preferring the first DNS SAN over
 	// the first IP SAN. The certificate therefore contains the address, at which the
-	// OperationsCenter VM reaches the proxy, as its only SAN.
+	// Operations Center VM reaches the proxy, as its only SAN.
 	tlsCert, _ := mustGenerateSelfSignedCertificate(t, hostAddress, "incus-redfish-proxy")
 
 	// Bind on all the interfaces, since the address, at which the
-	// OperationsCenter VM reaches the host, is derived separately.
+	// Operations Center VM reaches the host, is derived separately.
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	require.NoError(t, err, "Failed to listen for the Redfish proxy")
 
@@ -106,7 +106,7 @@ func startRedfishProxy(t *testing.T, instanceName string) string {
 // service root, which is the first resource requested by a Redfish client, and
 // the computer system of the instance, which is the first resource requiring
 // the proxy to talk to Incus. This distinguishes a broken proxy from a proxy,
-// which is not reachable from inside the OperationsCenter VM.
+// which is not reachable from inside the Operations Center VM.
 func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName string) {
 	t.Helper()
 
@@ -143,7 +143,7 @@ func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName
 }
 
 // redfishProxyHostAddress returns the address of the e2e host, at which the
-// in-process Redfish proxy is reachable from inside the OperationsCenter VM.
+// in-process Redfish proxy is reachable from inside the Operations Center VM.
 func redfishProxyHostAddress(t *testing.T) string {
 	t.Helper()
 

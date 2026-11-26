@@ -27,7 +27,7 @@ func Test_observeServers(t *testing.T) {
 			name: "record with the name of the VM",
 			instances: []poolInstance{
 				{Name: "IncusOS01", Status: "Running", Hostname: "abc"},
-				{Name: "OperationsCenter", Status: "Running", Hostname: "def"},
+				{Name: "OperationsCenter01", Status: "Running", Hostname: "def"},
 			},
 			records: []serverRecord{
 				{Name: "IncusOS01", Status: "ready"},

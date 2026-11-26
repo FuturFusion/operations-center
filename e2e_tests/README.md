@@ -46,8 +46,8 @@ several scenarios in a fixed order. The scenarios of a suite share a pool of
 IncusOS servers, so the servers are only installed once per suite in the best
 case. See [Suites and scenarios](#suites-and-scenarios) for the details.
 
-All the tests share one Operations Center VM. The tests run in the following
-order:
+All the tests share one Operations Center VM, `OperationsCenter01`. The tests
+run in the following order:
 
 | Top level test                           | Server pool                                  | Content                                                                    |
 |------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|

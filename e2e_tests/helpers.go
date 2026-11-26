@@ -1046,9 +1046,9 @@ func e2eHostAddress(t *testing.T) string {
 		return hostAddress
 	}
 
-	networkResp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`)
+	networkResp := mustRun(t, `incus list -f json | jq -r -e --arg name %s '[ .[] | select(.name == $name) | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`, operationsCenterVMName)
 	network := networkResp.OutputTrimmed()
-	require.NotEmpty(t, network, "Failed to determine the network of the OperationsCenter VM")
+	require.NotEmpty(t, network, "Failed to determine the network of the Operations Center VM")
 
 	// For a managed bridge, the first address of ipv4.address is the address of
 	// the host on that bridge.
@@ -1110,8 +1110,8 @@ func mustDeleteClusterImages(t *testing.T, clusterName string) {
 	}
 }
 
-// operationsCenterIPAddress returns the global IPv4 address of the
-// OperationsCenter VM.
+// operationsCenterIPAddress returns the global IPv4 address of
+// operationsCenterVMName.
 func operationsCenterIPAddress(t *testing.T) string {
 	t.Helper()
 
@@ -1126,7 +1126,7 @@ func operationsCenterIPAddress(t *testing.T) string {
 func operationsCenterIPAddressWithContext(ctx context.Context, t *testing.T) (string, error) {
 	t.Helper()
 
-	return instanceIPAddressWithContext(ctx, t, "OperationsCenter")
+	return instanceIPAddressWithContext(ctx, t, operationsCenterVMName)
 }
 
 // instanceIPAddressWithContext returns the global IPv4 address of the VM name.
@@ -2007,7 +2007,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 		fmt.Printf("operations-center journal saved in %q\n", operationsCenterJournalFilename)
 
 		journalSince := int((time.Since(start) + debugJournalSinceGrace).Seconds())
-		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, journalSince, debugJournalMaxLines)
+		resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, operationsCenterVMName, journalSince, debugJournalMaxLines)
 		if !resp.Success() {
 			t.Logf("Failed to get the operations-center journal: %s", resp.Error())
 		} else {
@@ -2017,7 +2017,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			}
 		}
 
-		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter")) | .name'`)
+		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter.*")) | .name'`)
 		if !resp.Success() {
 			t.Logf("Failed to list the instances: %s", resp.Error())
 		} else {

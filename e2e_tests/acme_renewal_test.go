@@ -110,7 +110,7 @@ func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
 	initialFingerprint := mustServedOperationsCenterCertificateFingerprint(ctx, t)
 
 	t.Log("Enable ACME, which triggers a renewal of the certificate")
-	ocHostname := mustRun(t, `incus exec OperationsCenter -- hostname`).OutputTrimmed()
+	ocHostname := mustRun(t, `incus exec %s -- hostname`, operationsCenterVMName).OutputTrimmed()
 	mustSetSystemSecurityACME(ctx, t, tmpDir, ocHostname, provider.DirectoryURL)
 
 	fingerprint := mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, initialFingerprint)
@@ -237,8 +237,8 @@ func mustBackupOperationsCenterCertificate(t *testing.T, tmpDir string) {
 	certificateFilename := filepath.Join(tmpDir, "operations_center_server.crt")
 	keyFilename := filepath.Join(tmpDir, "operations_center_server.key")
 
-	mustRun(t, `incus file pull OperationsCenter/var/lib/operations-center/server.crt %s`, certificateFilename)
-	mustRun(t, `incus file pull OperationsCenter/var/lib/operations-center/server.key %s`, keyFilename)
+	mustRun(t, `incus file pull %s/var/lib/operations-center/server.crt %s`, operationsCenterVMName, certificateFilename)
+	mustRun(t, `incus file pull %s/var/lib/operations-center/server.key %s`, operationsCenterVMName, keyFilename)
 
 	t.Cleanup(func() {
 		if noCleanup || (noCleanupOnError && t.Failed()) {
@@ -415,7 +415,7 @@ func mustWaitOperationsCenterCertificate(ctx context.Context, t *testing.T, root
 
 		select {
 		case <-ctx.Done():
-			logVMDebugInfo(t, "OperationsCenter")
+			logVMDebugInfo(t, operationsCenterVMName)
 			require.FailNowf(t, "Operations Center does not present a new ACME certificate", "last error: %v", lastErr)
 
 		case <-time.After(1 * time.Second):
@@ -456,7 +456,7 @@ func mustWaitServerCertificatePinned(ctx context.Context, t *testing.T, name str
 
 		select {
 		case <-ctx.Done():
-			logVMDebugInfo(t, "OperationsCenter", name)
+			logVMDebugInfo(t, operationsCenterVMName, name)
 			require.FailNowf(t, "Server does not pin the new certificate of Operations Center", "server %q, want %s, got %q", name, fingerprint, gotFingerprint)
 
 		case <-time.After(5 * time.Second):

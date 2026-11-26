@@ -222,7 +222,10 @@ if [ "$mode" = "full" ]; then
   step "Remove Operations Center"
   rm -rf "$tmp_dir"
   rm -rf "$HOME/.config/operations-center/"
-  ignore_missing incus remove --force OperationsCenter
+  # OperationsCenter is the name of the VM used by older versions of the tests.
+  for instance in OperationsCenter OperationsCenter01; do
+    ignore_missing incus remove --force "$instance"
+  done
   ignore_missing incus storage volume delete default IncusOS_OperationsCenter.iso
   remove_iso_volumes
 fi
