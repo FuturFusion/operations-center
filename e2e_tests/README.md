@@ -111,6 +111,7 @@ servers, so the seed of all the servers contains them.
 | `bmc_power_off_and_on`                  | IncusOS01              |                                 | Power off and on through the BMC, see [Fake BMC](#fake-bmc)               |
 | `create_cluster`                        | IncusOS01 to IncusOS03 |                                 | Creates the cluster and asserts it                                        |
 | `cluster_rolling_reboot`                |                        | IncusOS01 to IncusOS03          | Rolling reboot with workload                                              |
+| `oc_rolling_reboot_through_members`     |                        | IncusOS01 to IncusOS03          | Rolling reboot through two members, which are not the leader, see below   |
 | `oc_leader_handover_managed_cluster`    |                        | IncusOS01 to IncusOS03          | Leader handover of the Operations Center cluster, see below               |
 | `factory_reset_cluster`                 |                        | IncusOS01 to IncusOS03          | Factory reset with a token, which Operations Center creates               |
 | `create_cluster_from_template`          | IncusOS01 to IncusOS03 |                                 | Creates the cluster from a cluster template                               |
@@ -119,9 +120,15 @@ servers, so the seed of all the servers contains them.
 | `images_remote_launch_instance`         | IncusOS03              |                                 | Incus images, see [Incus images](#incus-images)                           |
 | `force_remove_lost_server`              |                        | IncusOS01, IncusOS02, IncusOS04 | Stops IncusOS04 and removes it from the cluster. Runs last.               |
 
-`oc_leader_handover_managed_cluster` only runs with
-`OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`. It stops the daemon of the leader of
-the Operations Center cluster. Then it launches and deletes an instance on the
+`oc_rolling_reboot_through_members` and `oc_leader_handover_managed_cluster`
+only run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER`.
+
+`oc_rolling_reboot_through_members` starts the rolling reboot through a member,
+which is not the leader. The member forwards the request to the leader. The
+test follows the progress through the third member.
+
+`oc_leader_handover_managed_cluster` stops the daemon of the leader of the
+Operations Center cluster. Then it launches and deletes an instance on the
 managed cluster. Only the leader monitors the lifecycle events of the managed
 clusters. So the inventory only shows the change if the new leader runs the
 monitor.

@@ -100,6 +100,12 @@ func TestE2E_StableServers(t *testing.T) {
 			run:     clusterRollingReboot,
 		},
 		{
+			name:              "oc_rolling_reboot_through_members",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocClusterRollingRebootThroughMembers,
+		},
+		{
 			name:              "oc_leader_handover_managed_cluster",
 			cluster:           names,
 			requiresOCCluster: true,
