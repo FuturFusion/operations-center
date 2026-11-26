@@ -11,13 +11,33 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+// GetServers returns all servers without the fields hardware_data, os_data,
+// bmc_data and deployment. The field deployment_state is available. Use
+// GetServersFull to get all data.
 func (c OperationsCenterClient) GetServers(ctx context.Context) ([]api.Server, error) {
 	return c.GetWithFilterServers(ctx, api.ServerFilter{})
 }
 
+// GetWithFilterServers returns the matching servers without the fields
+// hardware_data, os_data, bmc_data and deployment. The field deployment_state
+// is available. Use GetWithFilterServersFull to get all data.
 func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter api.ServerFilter) ([]api.Server, error) {
+	return getServers[api.Server](ctx, c, filter, "1")
+}
+
+// GetServersFull returns all servers with all their data.
+func (c OperationsCenterClient) GetServersFull(ctx context.Context) ([]api.ServerFull, error) {
+	return c.GetWithFilterServersFull(ctx, api.ServerFilter{})
+}
+
+// GetWithFilterServersFull returns the matching servers with all their data.
+func (c OperationsCenterClient) GetWithFilterServersFull(ctx context.Context, filter api.ServerFilter) ([]api.ServerFull, error) {
+	return getServers[api.ServerFull](ctx, c, filter, "2")
+}
+
+func getServers[T api.Server | api.ServerFull](ctx context.Context, c OperationsCenterClient, filter api.ServerFilter, recursion string) ([]T, error) {
 	query := url.Values{}
-	query.Add("recursion", "1")
+	query.Add("recursion", recursion)
 	query = filter.AppendToURLValues(query)
 
 	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/servers", query, nil)
@@ -25,7 +45,7 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 		return nil, err
 	}
 
-	servers := []api.Server{}
+	servers := []T{}
 	err = json.Unmarshal(response.Metadata, &servers)
 	if err != nil {
 		return nil, err
@@ -34,16 +54,16 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 	return servers, nil
 }
 
-func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.Server, error) {
+func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.ServerFull, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
-		return api.Server{}, err
+		return api.ServerFull{}, err
 	}
 
-	server := api.Server{}
+	server := api.ServerFull{}
 	err = json.Unmarshal(response.Metadata, &server)
 	if err != nil {
-		return api.Server{}, err
+		return api.ServerFull{}, err
 	}
 
 	return server, nil

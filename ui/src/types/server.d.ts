@@ -191,11 +191,18 @@ export interface Server {
   fingerprint: string;
   last_updated: string;
   last_seen: string;
-  hardware_data: string;
-  os_data: string;
   system_state_is_trusted: boolean;
   version_data: ServerVersionData;
   bmc_config: BMCConfig;
+  // Empty if no deployment was requested for the server.
+  deployment_state: string;
+}
+
+// ServerFull is a server with its hardware, OS, BMC and deployment data.
+// The server list with recursion=1 does not contain this data.
+export interface ServerFull extends Server {
+  hardware_data: string;
+  os_data: string;
   bmc_data: BMCData;
   deployment?: ServerDeploymentStatus;
 }

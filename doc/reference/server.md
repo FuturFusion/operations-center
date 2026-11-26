@@ -20,6 +20,26 @@ Operations Center on the other hand is periodically testing the connectivity
 Once one or many servers are clustered together to form a [cluster](cluster.md),
 Operations Center will keep track of their [inventory](inventory.md).
 
+## Server list
+
+The server list in the API has three levels of detail.
+The `recursion` query parameter selects the level:
+
+* `recursion=0` or no value: the URLs of the servers.
+* `recursion=1`: the servers without the fields `hardware_data`, `os_data`,
+  `bmc_data` and `deployment`.
+  The `deployment_state` field shows the state of the deployment.
+* `recursion=2`: the servers with all data.
+
+The hardware data and the OS data can be large.
+Request them only if you need them.
+`GET /1.0/provisioning/servers/{name}` always returns all data of one server.
+
+The command `operations-center provisioning server list` shows the servers
+without this data.
+Use `operations-center provisioning server show <name>` to see all data of a
+server.
+
 ## Automated Deployment
 
 A pre-registered server with a BMC can be installed unattended:

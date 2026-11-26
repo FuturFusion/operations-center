@@ -5504,8 +5504,6 @@ definitions:
         properties:
             bmc_config:
                 $ref: '#/definitions/BMCConfig'
-            bmc_data:
-                $ref: '#/definitions/BMCData'
             certificate:
                 description: Certificate of the server endpoint in PEM encoded format.
                 example: |-
@@ -5531,8 +5529,15 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
-            deployment:
-                $ref: '#/definitions/ServerDeploymentStatus'
+            deployment_state:
+                description: |-
+                    DeploymentState holds the state of the automated deployment of the
+                    server. It is empty if no deployment was requested for the server.
+                    The field deployment of ServerFull holds the full deployment status.
+                example: wait-install
+                type: string
+                x-go-name: DeploymentState
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
             description:
                 description: Description of the server.
                 example: Lab server with limited resources
@@ -5543,8 +5548,6 @@ definitions:
                 example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
                 type: string
                 x-go-name: Fingerprint
-            hardware_data:
-                $ref: '#/definitions/HardwareData'
             last_seen:
                 description: |-
                     LastSeen is the time, when this server has been seen for the last time
@@ -5573,8 +5576,6 @@ definitions:
                 example: incus.local
                 type: string
                 x-go-name: Name
-            os_data:
-                $ref: '#/definitions/OSData'
             properties:
                 $ref: '#/definitions/OperationsCenterSharedAPIConfigMap'
             public_connection_url:
@@ -6141,6 +6142,139 @@ definitions:
                 x-go-name: State
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
         title: ServerDeploymentStep is a single state an automated deployment has gone through.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerFull:
+        properties:
+            bmc_config:
+                $ref: '#/definitions/BMCConfig'
+            bmc_data:
+                $ref: '#/definitions/BMCData'
+            certificate:
+                description: Certificate of the server endpoint in PEM encoded format.
+                example: |-
+                    -----BEGIN CERTIFICATE-----
+                    ...
+                    -----END CERTIFICATE-----
+                type: string
+                x-go-name: Certificate
+            channel:
+                description: Channel the server is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
+            cluster:
+                description: The cluster the server is part of.
+                example: one
+                type: string
+                x-go-name: Cluster
+            connection_url:
+                description: |-
+                    URL, hostname or IP address of the server endpoint used by Operations
+                    Center for its communication.
+                example: https://incus.local:6443
+                type: string
+                x-go-name: ConnectionURL
+            deployment:
+                $ref: '#/definitions/ServerDeploymentStatus'
+            deployment_state:
+                description: |-
+                    DeploymentState holds the state of the automated deployment of the
+                    server. It is empty if no deployment was requested for the server.
+                    The field deployment of ServerFull holds the full deployment status.
+                example: wait-install
+                type: string
+                x-go-name: DeploymentState
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
+            description:
+                description: Description of the server.
+                example: Lab server with limited resources
+                type: string
+                x-go-name: Description
+            fingerprint:
+                description: Fingerprint in SHA256 format of the certificate.
+                example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+                type: string
+                x-go-name: Fingerprint
+            hardware_data:
+                $ref: '#/definitions/HardwareData'
+            last_seen:
+                description: |-
+                    LastSeen is the time, when this server has been seen for the last time
+                    by any sort of connection between the server and operations center
+                    in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastSeen
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            machine_id:
+                description: |-
+                    MachineID is the unique machine ID of the server, this might be the same as
+                    the SystemUUID, but it can also be a distinct value. It is defined as
+                    a 128-bit value encoded as hex characters without any delimiters.
+                example: e9de436eb94e4aef8563883aec84096e
+                type: string
+                x-go-name: MachineID
+            name:
+                description: Name of the server.
+                example: incus.local
+                type: string
+                x-go-name: Name
+            os_data:
+                $ref: '#/definitions/OSData'
+            properties:
+                $ref: '#/definitions/OperationsCenterSharedAPIConfigMap'
+            public_connection_url:
+                description: |-
+                    Public URL, hostname or IP address of the server endpoint for user facing
+                    communication with the server. Only required, if it differs from
+                    connection_url, e.g. because the server is behind a reverse proxy.
+                example: https://incus.local:6443
+                type: string
+                x-go-name: PublicConnectionURL
+            server_status:
+                description: |-
+                    Status contains the status the server is currently in from the point of view of Operations Center.
+                    Possible values for status are: pending, ready
+                example: pending
+                type: string
+                x-go-name: Status
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerStatus
+            server_status_detail:
+                description: |-
+                    StatusDetail contains the secondary status, which gives additional details
+                    on the server status.
+                example: rebooting
+                type: string
+                x-go-name: StatusDetail
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerStatusDetail
+            server_type:
+                description: Type defines the type of the server, which is normally one of "incus", "migration-manager", "operations-center".
+                example: incus
+                type: string
+                x-go-name: Type
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerType
+            system_state_is_trusted:
+                description: |-
+                    SystemStateIsTrusted is extracted from the OSData. The system state is
+                    trusted, if this value is set to true. Otherwise the system state is not
+                    trusted.
+                type: boolean
+                x-go-name: SystemStateIsTrusted
+            system_uuid:
+                description: SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: SystemUUID
+            version_data:
+                $ref: '#/definitions/ServerVersionData'
+        title: ServerFull is a server with its hardware, OS, BMC and deployment data.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
@@ -13605,7 +13739,11 @@ paths:
                 - servers_system
     /1.0/provisioning/servers?recursion=1:
         get:
-            description: Returns a list of servers (structs).
+            description: |-
+                Returns a list of servers (structs). The servers do not contain the
+                fields hardware_data, os_data, bmc_data or deployment. The field
+                deployment_state shows the state of the deployment. Use recursion=2 or the
+                single server endpoint to get all data.
             operationId: servers_get_recursion
             parameters:
                 - description: Cluster name
@@ -13635,6 +13773,42 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the servers
+            tags:
+                - servers
+    /1.0/provisioning/servers?recursion=2:
+        get:
+            description: |-
+                Returns a list of servers (structs), including the fields hardware_data,
+                os_data, bmc_data and deployment.
+            operationId: servers_get_recursion2
+            parameters:
+                - description: Cluster name
+                  in: query
+                  name: cluster
+                  type: string
+                  x-example: cluster
+                - description: Status to filter for.
+                  in: query
+                  name: status
+                  type: string
+                  x-example: ready
+                - description: Filter expression
+                  in: query
+                  name: filter
+                  type: string
+                  x-example: name == "value"
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/ServersFullResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the servers with all data
             tags:
                 - servers
     /1.0/provisioning/tokens:
@@ -16050,7 +16224,7 @@ responses:
         schema:
             properties:
                 metadata:
-                    $ref: '#/definitions/Server'
+                    $ref: '#/definitions/ServerFull'
                 status:
                     example: Success
                     type: string
@@ -16131,6 +16305,29 @@ responses:
             properties:
                 metadata:
                     $ref: '#/definitions/ServerUntrusted'
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    ServersFullResponse:
+        description: The servers with all data
+        schema:
+            properties:
+                metadata:
+                    items:
+                        $ref: '#/definitions/ServerFull'
+                    type: array
+                    x-go-name: Metadata
                 status:
                     example: Success
                     type: string

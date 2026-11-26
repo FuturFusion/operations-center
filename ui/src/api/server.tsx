@@ -1,5 +1,5 @@
 import { APIResponse } from "types/response";
-import { BMCLogEvent, Server, Settings } from "types/server";
+import { BMCLogEvent, Server, ServerFull, Settings } from "types/server";
 import { Changelog } from "types/changelog";
 import { processResponse } from "util/response";
 
@@ -26,7 +26,7 @@ export const fetchServers = (filter: string): Promise<Server[]> => {
   });
 };
 
-export const fetchServer = (name: string): Promise<Server> => {
+export const fetchServer = (name: string): Promise<ServerFull> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`)
       .then(processResponse)
@@ -34,6 +34,14 @@ export const fetchServer = (name: string): Promise<Server> => {
       .catch(reject);
   });
 };
+
+// The detail keys are separate from the list keys ["servers", filter]. A filter
+// that matches a server name must not share the cache entry of the server.
+export const serverQueryKey = (name: string): string[] => [
+  "servers",
+  "detail",
+  name,
+];
 
 export const fetchServerChangelog = (name: string): Promise<Changelog> => {
   return new Promise((resolve, reject) => {

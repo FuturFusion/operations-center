@@ -3,8 +3,10 @@ package client_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -173,6 +175,51 @@ func Test_GetWithFilterServers(t *testing.T) {
 
 				require.Len(t, result, 1)
 				require.Equal(t, "standaloneServer", result[0].Name)
+				require.Empty(t, result[0].DeploymentState, "a server without a deployment has no deployment state")
+			},
+		},
+		{
+			name:   "success - deployment state",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedServerWithDeployment(t, d, "deployedServer", 0)
+			},
+
+			filter: api.ServerFilter{
+				Expression: new(`name == "deployedServer"`),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Server) {
+				t.Helper()
+
+				require.Len(t, result, 1)
+				require.Equal(t, "deployedServer", result[0].Name)
+				require.Equal(t, api.ServerDeploymentStateWaitInstall, result[0].DeploymentState, "the deployment state is read from the database")
+			},
+		},
+		{
+			name:   "success - filter by expression on hardware data",
+			client: d.socketClient,
+			dbSeedFunc: func(t *testing.T) {
+				t.Helper()
+
+				seedServerWithHardware(t, d, "bigServer", 64)
+				seedServerWithHardware(t, d, "smallServer", 4)
+			},
+
+			filter: api.ServerFilter{
+				Expression: new(`hardware_data.CPU.Total == 64`),
+			},
+
+			assertErr: require.NoError,
+			assertFunc: func(t *testing.T, result []api.Server) {
+				t.Helper()
+
+				require.Len(t, result, 1, "the filter sees the hardware data, even if the result does not contain it")
+				require.Equal(t, "bigServer", result[0].Name)
 			},
 		},
 		{
@@ -226,7 +273,7 @@ func Test_GetServer(t *testing.T) {
 		tcNameArg string
 
 		assertErr  require.ErrorAssertionFunc
-		assertFunc func(t *testing.T, result api.Server)
+		assertFunc func(t *testing.T, result api.ServerFull)
 	}{
 		{
 			name:   "success - one record",
@@ -240,7 +287,7 @@ func Test_GetServer(t *testing.T) {
 			tcNameArg: "serverOne",
 
 			assertErr: require.NoError,
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 
 				require.Equal(t, "serverOne", result.Name)
@@ -258,7 +305,7 @@ func Test_GetServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
 			},
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -272,7 +319,7 @@ func Test_GetServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
 			},
-			assertFunc: func(t *testing.T, result api.Server) {
+			assertFunc: func(t *testing.T, result api.ServerFull) {
 				t.Helper()
 			},
 		},
@@ -767,6 +814,52 @@ func seedServer(t *testing.T, d testDaemon, name string, cluster *string) {
 	require.NoError(t, err)
 }
 
+func seedServerWithHardware(t *testing.T, d testDaemon, name string, cpuTotal uint64) {
+	t.Helper()
+
+	_, err := entities.CreateServer(t.Context(), d.db, provisioning.Server{
+		Name:         name,
+		Channel:      defaultChannelName,
+		Status:       api.ServerStatusUnregistered,
+		StatusDetail: api.ServerStatusDetailNone,
+		HardwareData: api.HardwareData{
+			Resources: incusapi.Resources{
+				CPU: incusapi.ResourcesCPU{
+					Total: cpuTotal,
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func seedServerWithDeployment(t *testing.T, d testDaemon, name string, cpuTotal uint64) {
+	t.Helper()
+
+	_, err := entities.CreateServer(t.Context(), d.db, provisioning.Server{
+		Name:         name,
+		Channel:      defaultChannelName,
+		Status:       api.ServerStatusUnregistered,
+		StatusDetail: api.ServerStatusDetailNone,
+		HardwareData: api.HardwareData{
+			Resources: incusapi.Resources{
+				CPU: incusapi.ResourcesCPU{
+					Total: cpuTotal,
+				},
+			},
+		},
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateWaitInstall,
+				Request: provisioning.ServerDeploymentRequest{
+					ImageType: api.ImageTypeISO,
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
 // serverActionRoutes are the routes below /1.0/provisioning/servers/{name},
 // which require a 3rd party system (BMC/Redfish or the IncusOS instance of the
 // server itself) to be reachable. Only the error paths, which are handled
@@ -915,6 +1008,158 @@ func Test_ServerActionRoutes_notFound(t *testing.T) {
 			err := tc.call(t.Context(), d.socketClient, "unknown")
 
 			require.ErrorIs(t, err, domain.ErrNotFound)
+		})
+	}
+}
+
+func Test_GetWithFilterServersFull(t *testing.T) {
+	d := daemonSetup(t)
+
+	seedServerWithDeployment(t, d, "fullServer", 32)
+
+	tests := []struct {
+		name string
+		get  func(ctx context.Context) ([]api.ServerFull, error)
+
+		assertErr            require.ErrorAssertionFunc
+		wantNames            []string
+		wantCPUTotals        []uint64
+		wantDeploymentStates []api.ServerDeploymentState
+	}{
+		{
+			name: "success - all servers",
+			get: func(ctx context.Context) ([]api.ServerFull, error) {
+				return d.socketClient.GetServersFull(ctx)
+			},
+
+			assertErr:            require.NoError,
+			wantNames:            []string{"fullServer"},
+			wantCPUTotals:        []uint64{32},
+			wantDeploymentStates: []api.ServerDeploymentState{api.ServerDeploymentStateWaitInstall},
+		},
+		{
+			name: "success - filter by name",
+			get: func(ctx context.Context) ([]api.ServerFull, error) {
+				return d.socketClient.GetWithFilterServersFull(ctx, api.ServerFilter{
+					Expression: new(`name == "fullServer"`),
+				})
+			},
+
+			assertErr:            require.NoError,
+			wantNames:            []string{"fullServer"},
+			wantCPUTotals:        []uint64{32},
+			wantDeploymentStates: []api.ServerDeploymentState{api.ServerDeploymentStateWaitInstall},
+		},
+		{
+			name: "error - not authorized",
+			get: func(ctx context.Context) ([]api.ServerFull, error) {
+				return d.unauthorizedHTTPClient.GetServersFull(ctx)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
+			},
+			wantNames:            nil,
+			wantCPUTotals:        nil,
+			wantDeploymentStates: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := tc.get(t.Context())
+
+			tc.assertErr(t, err)
+
+			var names []string
+			var cpuTotals []uint64
+			var deploymentStates []api.ServerDeploymentState
+			for _, server := range result {
+				require.NotNil(t, server.Deployment, "the full servers contain the deployment status")
+
+				names = append(names, server.Name)
+				cpuTotals = append(cpuTotals, server.HardwareData.CPU.Total)
+				deploymentStates = append(deploymentStates, server.Deployment.State)
+			}
+
+			require.Equal(t, tc.wantNames, names, "names of the servers")
+			require.Equal(t, tc.wantCPUTotals, cpuTotals, "the full servers contain the hardware data")
+			require.Equal(t, tc.wantDeploymentStates, deploymentStates, "deployment states of the servers")
+		})
+	}
+}
+
+func Test_GetServers_recursion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		get  func(ctx context.Context, c client.OperationsCenterClient) error
+
+		wantRecursion string
+	}{
+		{
+			name: "GetServers",
+			get: func(ctx context.Context, c client.OperationsCenterClient) error {
+				_, err := c.GetServers(ctx)
+				return err
+			},
+
+			wantRecursion: "1",
+		},
+		{
+			name: "GetWithFilterServers",
+			get: func(ctx context.Context, c client.OperationsCenterClient) error {
+				_, err := c.GetWithFilterServers(ctx, api.ServerFilter{})
+				return err
+			},
+
+			wantRecursion: "1",
+		},
+		{
+			name: "GetServersFull",
+			get: func(ctx context.Context, c client.OperationsCenterClient) error {
+				_, err := c.GetServersFull(ctx)
+				return err
+			},
+
+			wantRecursion: "2",
+		},
+		{
+			name: "GetWithFilterServersFull",
+			get: func(ctx context.Context, c client.OperationsCenterClient) error {
+				_, err := c.GetWithFilterServersFull(ctx, api.ServerFilter{})
+				return err
+			},
+
+			wantRecursion: "2",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			var gotRecursion string
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotRecursion = r.URL.Query().Get("recursion")
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"type": "sync", "status": "Success", "status_code": 200, "metadata": []}`))
+			}))
+			t.Cleanup(server.Close)
+
+			ocClient, err := client.New(server.URL)
+			require.NoError(t, err, "creating the client must not fail")
+
+			// Run test
+			err = tc.get(t.Context(), ocClient)
+
+			// Assert
+			require.NoError(t, err, "getting the servers must not fail")
+			require.Equal(t, tc.wantRecursion, gotRecursion, "recursion level sent by the client")
 		})
 	}
 }

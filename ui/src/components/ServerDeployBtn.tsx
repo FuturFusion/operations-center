@@ -2,7 +2,7 @@ import { FC, useState } from "react";
 import { Form } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MdStart } from "react-icons/md";
-import { deployServer } from "api/server";
+import { deployServer, fetchServer, serverQueryKey } from "api/server";
 import { fetchTokens, fetchTokenSeeds } from "api/token";
 import ArchSelect from "components/ArchSelect";
 import ChannelSelect from "components/ChannelSelect";
@@ -50,7 +50,20 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
     enabled: showModal && tokenUUID != "",
   });
 
-  const virtualMedia = Object.values(server.bmc_data?.virtual_media ?? {});
+  // The server list does not contain the BMC data. Load the server itself.
+  const {
+    data: serverDetails,
+    isLoading: serverDetailsLoading,
+    error: serverDetailsError,
+  } = useQuery({
+    queryKey: serverQueryKey(server.name),
+    queryFn: () => fetchServer(server.name),
+    enabled: showModal,
+  });
+
+  const virtualMedia = Object.values(
+    serverDetails?.bmc_data?.virtual_media ?? {},
+  );
 
   const reset = () => {
     setTokenUUID("");
@@ -178,7 +191,7 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
             <Form.Select
               value={virtualMediaID}
               onChange={(e) => setVirtualMediaID(e.target.value)}
-              disabled={opInProgress}
+              disabled={opInProgress || serverDetailsLoading}
             >
               <option key="" value="">
                 Automatic
@@ -191,6 +204,11 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
                 </option>
               ))}
             </Form.Select>
+            {serverDetailsError && (
+              <Form.Text className="text-danger">
+                Failed to load the virtual media: {`${serverDetailsError}`}
+              </Form.Text>
+            )}
           </Form.Group>
           <ImageTypeSelect value={imageType} onChange={setImageType} />
           <ArchSelect

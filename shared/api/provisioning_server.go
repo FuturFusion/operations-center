@@ -889,17 +889,8 @@ type Server struct {
 	// Example: incus
 	Type ServerType `json:"server_type" yaml:"server_type"`
 
-	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
-	HardwareData HardwareData `json:"hardware_data" yaml:"hardware_data"`
-
-	// OSData contains the configuration data of the operating system, e.g. incus-os.
-	OSData OSData `json:"os_data" yaml:"os_data"`
-
-	// VersionData contains information about the servers version.
+	// VersionData contains information about the server's version.
 	VersionData ServerVersionData `json:"version_data" yaml:"version_data"`
-
-	// BMCData contains the data, that is collected from the BMC.
-	BMCData BMCData `json:"bmc_data" yaml:"bmc_data"`
 
 	// Status contains the status the server is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
@@ -910,11 +901,6 @@ type Server struct {
 	// on the server status.
 	// Example: rebooting
 	StatusDetail ServerStatusDetail `json:"server_status_detail" yaml:"server_status_detail"`
-
-	// Deployment reports the progress of the automated deployment of the server.
-	// It is only set, if a deployment has been requested for the server, and is
-	// read only.
-	Deployment *ServerDeploymentStatus `json:"deployment,omitempty" yaml:"deployment,omitempty"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
@@ -930,6 +916,33 @@ type Server struct {
 	// trusted, if this value is set to true. Otherwise the system state is not
 	// trusted.
 	SystemStateIsTrusted bool `json:"system_state_is_trusted" yaml:"system_state_is_trusted"`
+
+	// DeploymentState holds the state of the automated deployment of the
+	// server. It is empty if no deployment was requested for the server.
+	// The field deployment of ServerFull holds the full deployment status.
+	// Example: wait-install
+	DeploymentState ServerDeploymentState `json:"deployment_state" yaml:"deployment_state"`
+}
+
+// ServerFull is a server with its hardware, OS, BMC and deployment data.
+//
+// swagger:model
+type ServerFull struct {
+	Server `yaml:",inline"`
+
+	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
+	HardwareData HardwareData `json:"hardware_data" yaml:"hardware_data"`
+
+	// OSData contains the configuration data of the operating system, e.g. incus-os.
+	OSData OSData `json:"os_data" yaml:"os_data"`
+
+	// BMCData contains the data, that is collected from the BMC.
+	BMCData BMCData `json:"bmc_data" yaml:"bmc_data"`
+
+	// Deployment reports the progress of the automated deployment of the server.
+	// It is only set, if a deployment has been requested for the server, and is
+	// read only.
+	Deployment *ServerDeploymentStatus `json:"deployment,omitempty" yaml:"deployment,omitempty"`
 }
 
 func (s Server) State() string {
@@ -980,7 +993,7 @@ func (s Server) UpdateState() ServerUpdateState {
 	}
 
 	// Handle ServerStatusReady states.
-	// Offline states, that are not tackled above are threated the same as their
+	// Offline states, that are not tackled above are treated the same as their
 	// respective ready counter-parts.
 	switch s.StatusDetail {
 	case ServerStatusDetailReadyUpdatingOS:
@@ -1070,7 +1083,7 @@ func (s Server) RecommendedAction() ServerAction {
 		return ServerActionNone
 	}
 
-	// Already an update in progress, don't trigger an other action.
+	// Already an update in progress, don't trigger another action.
 	if s.StatusDetail == ServerStatusDetailReadyUpdatingOS || s.StatusDetail == ServerStatusDetailReadyUpdatingApplication {
 		return ServerActionNone
 	}
@@ -1119,7 +1132,7 @@ func (s Server) RecommendedAction() ServerAction {
 type ServerSelfUpdateCause string
 
 const (
-	ServerSelfUpdateCauseDefault                      ServerSelfUpdateCause = "" // Empty string is threated as network config changed for backwards compatibility reasons.
+	ServerSelfUpdateCauseDefault                      ServerSelfUpdateCause = "" // Empty string is treated as network config changed for backwards compatibility reasons.
 	ServerSelfUpdateCauseNetworkConfigChanged         ServerSelfUpdateCause = "network-config-changed"
 	ServerSelfUpdateCauseSystemIsReady                ServerSelfUpdateCause = "system-is-ready"
 	ServerSelfUpdateCauseOSUpdateApplied              ServerSelfUpdateCause = "os-update-applied"

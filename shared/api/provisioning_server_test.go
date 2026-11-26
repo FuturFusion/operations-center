@@ -1,12 +1,16 @@
 package api_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"testing"
 
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -893,6 +897,75 @@ func TestServerFilterFromURLValues(t *testing.T) {
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, filter)
+		})
+	}
+}
+
+func TestServerFull_keys(t *testing.T) {
+	t.Parallel()
+
+	// The keys of the server before the split into Server and ServerFull, plus
+	// "deployment_state".
+	wantKeys := []string{
+		"bmc_config",
+		"bmc_data",
+		"certificate",
+		"channel",
+		"cluster",
+		"connection_url",
+		"deployment",
+		"deployment_state",
+		"description",
+		"fingerprint",
+		"hardware_data",
+		"last_seen",
+		"last_updated",
+		"machine_id",
+		"name",
+		"os_data",
+		"properties",
+		"public_connection_url",
+		"server_status",
+		"server_status_detail",
+		"server_type",
+		"system_state_is_trusted",
+		"system_uuid",
+		"version_data",
+	}
+
+	server := api.ServerFull{
+		Deployment: &api.ServerDeploymentStatus{},
+	}
+
+	tests := []struct {
+		name      string
+		marshal   func(any) ([]byte, error)
+		unmarshal func([]byte, any) error
+	}{
+		{
+			name:      "json",
+			marshal:   json.Marshal,
+			unmarshal: json.Unmarshal,
+		},
+		{
+			name:      "yaml",
+			marshal:   yaml.Marshal,
+			unmarshal: yaml.Unmarshal,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			data, err := tc.marshal(server)
+			require.NoError(t, err, "marshal the full server")
+
+			got := map[string]any{}
+			err = tc.unmarshal(data, &got)
+			require.NoError(t, err, "unmarshal the marshaled full server into a map")
+
+			require.Equal(t, wantKeys, slices.Sorted(maps.Keys(got)), "the full server keeps all keys of the former server type")
 		})
 	}
 }

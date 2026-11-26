@@ -12,6 +12,7 @@ import {
   refreshServerBMC,
   restartServerBMC,
   setServerLocationIndicatorBMC,
+  serverQueryKey,
 } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import LoadingButton from "components/LoadingButton";
@@ -127,7 +128,7 @@ const ServerBMC = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["servers", name],
+    queryKey: serverQueryKey(name),
     queryFn: () => fetchServer(name),
   });
 
@@ -138,7 +139,7 @@ const ServerBMC = () => {
     error: logSourcesError,
     isLoading: isLogSourcesLoading,
   } = useQuery({
-    queryKey: ["servers", name, "bmc-log-sources"],
+    queryKey: [...serverQueryKey(name), "bmc-log-sources"],
     queryFn: () => fetchServerBMCLogSources(name),
     enabled: hasBMC,
   });
@@ -148,7 +149,7 @@ const ServerBMC = () => {
     error: logEntriesError,
     isLoading: isLogEntriesLoading,
   } = useQuery({
-    queryKey: ["servers", name, "bmc-log-entries", logSource],
+    queryKey: [...serverQueryKey(name), "bmc-log-entries", logSource],
     queryFn: () => fetchServerBMCLogEntries(name, logSource),
     enabled: hasBMC && logSource != "",
   });
@@ -175,7 +176,7 @@ const ServerBMC = () => {
     try {
       await refreshServerBMC(name);
       notify.success(`BMC data for ${name} refreshed`);
-      queryClient.invalidateQueries({ queryKey: ["servers", name] });
+      queryClient.invalidateQueries({ queryKey: serverQueryKey(name) });
     } catch (e) {
       notify.error(`Error during BMC data refresh: ${e}`);
     }
@@ -237,7 +238,7 @@ const ServerBMC = () => {
           confirmMessage={`Turn on the indicator LED of the server "${name}" via its BMC?`}
           run={() => setServerLocationIndicatorBMC(name, true)}
           successMessage="Indicator LED turned on"
-          invalidateKeys={[["servers", name]]}
+          invalidateKeys={[serverQueryKey(name)]}
         />
         <OSAction
           label="LED off"
@@ -245,7 +246,7 @@ const ServerBMC = () => {
           confirmMessage={`Turn off the indicator LED of the server "${name}" via its BMC?`}
           run={() => setServerLocationIndicatorBMC(name, false)}
           successMessage="Indicator LED turned off"
-          invalidateKeys={[["servers", name]]}
+          invalidateKeys={[serverQueryKey(name)]}
         />
         <OSAction
           label="Power on"
@@ -256,7 +257,7 @@ const ServerBMC = () => {
             powerOnServerBMC(name, Boolean((input as OSActionValues).force))
           }
           successMessage="Server power on triggered"
-          invalidateKeys={[["servers", name]]}
+          invalidateKeys={[serverQueryKey(name)]}
         />
         <OSAction
           label="Power off"
@@ -268,7 +269,7 @@ const ServerBMC = () => {
             powerOffServerBMC(name, Boolean((input as OSActionValues).force))
           }
           successMessage="Server power off triggered"
-          invalidateKeys={[["servers", name]]}
+          invalidateKeys={[serverQueryKey(name)]}
         />
         <OSAction
           label="Restart"
@@ -280,7 +281,7 @@ const ServerBMC = () => {
             restartServerBMC(name, Boolean((input as OSActionValues).force))
           }
           successMessage="Server restart triggered"
-          invalidateKeys={[["servers", name]]}
+          invalidateKeys={[serverQueryKey(name)]}
         />
       </div>
       <div className="row">
