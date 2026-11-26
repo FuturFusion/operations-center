@@ -306,6 +306,9 @@ doc-lint:
 GO_TEST_RUN ?= "^TestE2E"
 
 GO_TEST_TIMEOUT ?= 240m
+
+# E2E_LOG_PREFIX is the prefix of the log file of an e2e test run.
+E2E_LOG_PREFIX ?= e2e_tests
 GO_TEST_COVER_TIMEOUT ?= 360m
 
 # The e2e tests build raft and cowsql if they are missing, so they run without "make deps".
@@ -315,7 +318,13 @@ e2e-test e2e-test-cover: COWSQL_AUTO_DEPS=1
 e2e-test: bld
 	@echo "go test flags: $(value GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout $(GO_TEST_TIMEOUT) -count 1 -failfast -run "$(value GO_TEST_RUN)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout $(GO_TEST_TIMEOUT) -count 1 -failfast -run "$(value GO_TEST_RUN)" | tee $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/$(E2E_LOG_PREFIX)_$(EXECUTION_DATETIME).log
+
+# Runs the e2e tests against a cluster of three Operations Center VMs.
+.PHONY: e2e-cluster-test
+e2e-cluster-test: export OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER=1
+e2e-cluster-test: E2E_LOG_PREFIX=e2e_cluster_tests
+e2e-cluster-test: e2e-test
 
 .PHONY: e2e-test-cover
 e2e-test-cover: bld-cover
@@ -335,6 +344,7 @@ e2e-test-list:
 	@echo "Run a single test case by running 'make e2e-test GO_TEST_RUN=\"^TestMyTest$$\"'"
 	@echo "Run a single scenario of a suite by running 'make e2e-test GO_TEST_RUN=\"^TestMySuite$$/^my_scenario$$\"'"
 	@echo "Select test cases interactively by running 'make e2e-test-select' or 'make e2e-test-select-multi'"
+	@echo "Run against a cluster of three Operations Center VMs by using 'make e2e-cluster-test', 'make e2e-cluster-test-select' or 'make e2e-cluster-test-select-multi'"
 
 # E2E_TARGET is the make target that runs the selected e2e tests.
 E2E_TARGET ?= e2e-test
@@ -346,6 +356,14 @@ e2e-test-select:
 .PHONY: e2e-test-select-multi
 e2e-test-select-multi:
 	@sel=$$(GO=$(GO) scripts/e2e/select.sh multi) && $(MAKE) $(E2E_TARGET) GO_TEST_RUN="$$sel"
+
+.PHONY: e2e-cluster-test-select
+e2e-cluster-test-select:
+	@$(MAKE) e2e-test-select E2E_TARGET=e2e-cluster-test
+
+.PHONY: e2e-cluster-test-select-multi
+e2e-cluster-test-select-multi:
+	@$(MAKE) e2e-test-select-multi E2E_TARGET=e2e-cluster-test
 
 .PHONY: clean-e2e-test
 clean-e2e-test:
@@ -360,6 +378,7 @@ clean-e2e-test-soft:
 .PHONY: clean-e2e-test-logs
 clean-e2e-test-logs:
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_tests_*.log
+	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/e2e_cluster_tests_*.log
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/unit_tests_*.log
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/debug_output_*.log
 	rm -f $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/*_journal_*.log
