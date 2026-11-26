@@ -33,6 +33,8 @@ var (
 	listOnly             = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_LIST", false)
 	bmcProxyAddress      = envOrDefault("OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS", "")
 	hostAddress          = envOrDefault("OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS", "")
+	redfishProfileNames  = envOrDefault("OPERATIONS_CENTER_E2E_TEST_REDFISH_PROFILES", defaultRedfishProfileNames)
+	redfishParallel      = envPositiveIntOrDefault("OPERATIONS_CENTER_E2E_TEST_REDFISH_PARALLEL", 4)
 
 	selfUpdateFromVersion   = envOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_FROM_VERSION", "")
 	selfUpdateReplaceDaemon = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_SELF_UPDATE_REPLACE_DAEMON", false)
@@ -102,6 +104,22 @@ func envDurationOrDefault(envVar string, defaultValue time.Duration) time.Durati
 
 func envBoolOrDefault(envVar string, defaultValue bool) bool {
 	return envParsedOrDefault(envVar, defaultValue, strconv.ParseBool)
+}
+
+// envPositiveIntOrDefault falls back to the default value for a value below 1.
+func envPositiveIntOrDefault(envVar string, defaultValue int) int {
+	return envParsedOrDefault(envVar, defaultValue, func(value string) (int, error) {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			return 0, err
+		}
+
+		if parsed < 1 {
+			return 0, fmt.Errorf("%d is below 1", parsed)
+		}
+
+		return parsed, nil
+	})
 }
 
 // envParsedOrDefault falls back to the default value, if the value is not set or
