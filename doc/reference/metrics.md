@@ -89,9 +89,10 @@ Components group the metrics. The `metrics_components` setting lists the
 enabled components. A disabled component exposes no metrics.
 See [system settings](settings.md) for details.
 
-| Component | Metrics                                                        | Enabled by default |
-| :---      | :---                                                           | :---               |
-| `runtime` | Go runtime, process, build information and the metrics handler | yes                |
+| Component     | Metrics                                                             | Enabled by default |
+| :---          | :---                                                                | :---               |
+| `runtime`     | Go runtime, process, build information and the metrics handler      | yes                |
+| `daemon.task` | Errors, duration, last success and interval of the background tasks | no                 |
 
 ## Metrics of the `runtime` component
 
@@ -102,3 +103,57 @@ See [system settings](settings.md) for details.
 | `promhttp_metric_handler_*`        | mixed | Requests served by the metrics endpoint                                    |
 | `operations_center_build_info`     | gauge | Version of Operations Center in the `version` label. The value is always 1 |
 | `operations_center_uptime_seconds` | gauge | Time in seconds since the start of Operations Center                       |
+
+## Metrics of the `daemon.task` component
+
+Operations Center runs background tasks at a fixed interval, for example the
+refresh of the updates or the polling of the servers. These metrics record
+scheduled background task runs. Each background task has its own component
+`daemon.task.<name>`. See [Metrics components](settings.md#metrics-components)
+for the complete list.
+The component is disabled by default. Add `daemon.task` to
+`metrics_components` to enable the metrics of all background tasks.
+
+| Metric                                                  | Type      | Labels              | Description                          |
+| :---                                                    | :---      | :---                | :---                                 |
+| `operations_center_task_errors_total`                   | counter   | `task`, `retryable` | Number of failed runs                |
+| `operations_center_task_duration_seconds`               | histogram | `task`              | Duration of the runs in seconds      |
+| `operations_center_task_last_success_timestamp_seconds` | gauge     | `task`              | Unix time of the last successful run |
+| `operations_center_task_interval_seconds`               | gauge     | `task`              | Interval of the task in seconds      |
+
+The labels have the following values:
+
+| Label       | Value                                                                                        |
+| :---        | :---                                                                                         |
+| `task`      | Name of the background task without the `daemon.task.` prefix, for example `refresh_updates` |
+| `retryable` | `true` if the error is temporary and a later run can succeed, otherwise `false`              |
+
+A run fails if the task returns an error. Use `retryable="false"` for alerts.
+A high rate of `retryable="true"` shows operations that often fail on the first
+attempt.
+
+A run that ends because Operations Center stops is not recorded. A run that ends
+because the member loses the cluster leadership is not recorded either.
+
+There is no counter for the number of runs. The interval of the task defines
+the rate. `operations_center_task_duration_seconds_count` counts the recorded
+runs. Use it as the base for an error ratio.
+
+The histogram uses the buckets 0.1, 0.5, 1, 5, 10, 60, 300 and 600 seconds.
+Some tasks run for several minutes. The default Prometheus buckets end at 10
+seconds, so these buckets go further. A run longer than 600 seconds counts only
+in the `+Inf` bucket.
+
+On IncusOS, the first recorded `refresh_updates` run includes a 30-second
+startup delay. The first recorded `refresh_image_sources` run includes a
+10-minute startup delay.
+
+### Cluster
+
+On a cluster, only the leader runs the background tasks. The errors and the
+duration of a member keep their values after the member loses the leadership.
+
+The gauges `operations_center_task_last_success_timestamp_seconds` and
+`operations_center_task_interval_seconds` exist only on the member that runs the
+task. When a member starts a task, it sets the last success to the current
+time. So the example alert below also detects a task that never succeeds.
