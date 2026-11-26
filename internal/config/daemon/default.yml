@@ -80,6 +80,7 @@ settings:
   # component also enables all of its children.
   metrics_components:
     - runtime
+    - daemon.task
 
 updates:
   # URL of the server providing updates for incus-os.

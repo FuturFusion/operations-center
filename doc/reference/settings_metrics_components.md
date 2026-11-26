@@ -4,6 +4,27 @@ This is the complete list of the metrics components the daemon registers,
 grouped by their top level. Enabling a component enables all of its children as
 well, so a top level name is enough to cover everything below it.
 
+daemon:
+
+- `daemon.task.certificates_validity_check`
+- `daemon.task.cluster_update`
+- `daemon.task.poll_evacuating_servers`
+- `daemon.task.poll_pending_servers`
+- `daemon.task.poll_ready_servers`
+- `daemon.task.poll_rebooting_servers`
+- `daemon.task.poll_restoring_servers`
+- `daemon.task.poll_unresponsive_servers`
+- `daemon.task.poll_updating_application_servers`
+- `daemon.task.poll_updating_servers`
+- `daemon.task.prune_secure_boot_media`
+- `daemon.task.prune_seed_image_cache`
+- `daemon.task.refresh_bmc_data`
+- `daemon.task.refresh_image_sources`
+- `daemon.task.refresh_inventory`
+- `daemon.task.refresh_updates`
+- `daemon.task.renew_acme_certificate`
+- `daemon.task.server_deployment`
+
 runtime:
 
 - `runtime`
