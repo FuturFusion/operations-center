@@ -17,7 +17,7 @@ Several global settings are available to be configured in Operations Center:
 | Configuration         | Description                                                                                                                 | Value(s)          | Default                                                        |
 | :---                  | :---                                                                                                                        | :---              | :---                                                           |
 | `address`             | Address of Operations Center which is used by managed servers to connect, required if clustered or listening on the network | https:\/\/address | `https://` and the cluster address of the first cluster member |
-| `rest_server_address` | Address/port over which the REST API will be served                                                                         | address:port      | `*:7443`                                                       |
+| `rest_server_address` | Address/port over which the REST API will be served                                                                         | address:port      | `*:8443`                                                       |
 | `cluster_address`     | Address/port of this cluster member for the communication within the cluster, can not be changed while clustered            | address:port      |                                                                |
 
 ## Security settings
