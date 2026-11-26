@@ -436,3 +436,58 @@ func Test_parseSHA256Sums(t *testing.T) {
 		})
 	}
 }
+
+func Test_operationsCenterMemberOffline(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		member string
+
+		assertErr   require.ErrorAssertionFunc
+		wantOffline bool
+	}{
+		{
+			name:   "offline",
+			output: `[{"name":"a","leader":true},{"name":"b","offline":true}]`,
+			member: "b",
+
+			assertErr:   require.NoError,
+			wantOffline: true,
+		},
+		{
+			name:   "online",
+			output: `[{"name":"a","leader":true},{"name":"b","offline":true}]`,
+			member: "a",
+
+			assertErr:   require.NoError,
+			wantOffline: false,
+		},
+		{
+			name:   "member missing",
+			output: `[{"name":"a","leader":true}]`,
+			member: "b",
+
+			assertErr:   require.Error,
+			wantOffline: false,
+		},
+		{
+			name:   "invalid output",
+			output: `not json`,
+			member: "a",
+
+			assertErr:   require.Error,
+			wantOffline: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			offline, err := operationsCenterMemberOffline([]byte(tc.output), tc.member)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantOffline, offline, "expect the offline state of %s", tc.member)
+		})
+	}
+}

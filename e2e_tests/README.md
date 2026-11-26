@@ -77,15 +77,22 @@ The scenarios of this suite only run with `OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER
 Otherwise they are skipped. Each scenario talks to the members through the
 remotes of the members (see [Clustered Operations Center](#clustered-operations-center)).
 
-| Scenario                   | Content                                                                                              |
-|----------------------------|------------------------------------------------------------------------------------------------------|
-| `write_through_any_member` | Changes a channel, a token and the settings through one member. Reads them through the other members |
-| `leader_handover`          | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
-| `remove_and_rejoin_member` | Moves the files of a member, removes the member and joins it again. Runs last.                       |
+| Scenario                    | Content                                                                                              |
+|-----------------------------|------------------------------------------------------------------------------------------------------|
+| `write_through_any_member`  | Changes a channel, a token and the settings through one member. Reads them through the other members |
+| `leader_handover`           | Stops the daemon of the leader. Another member takes over. The former leader catches up              |
+| `stopped_member_catches_up` | Changes the updates configuration while a member is stopped. The member applies it after its start   |
+| `remove_and_rejoin_member`  | Moves the files of a member, removes the member and joins it again. Runs last.                       |
 
-`leader_handover` stops the daemon with `systemctl`. It does not reboot the
-VM. A reboot would replace the local build with the daemon shipped with
-IncusOS.
+`leader_handover` and `stopped_member_catches_up` stop the daemon with
+`systemctl`. They do not reboot the VM. A reboot would replace the local build
+with the daemon shipped with IncusOS.
+
+`stopped_member_catches_up` changes the filter expression of the updates to an
+equivalent expression. So the change does not affect which updates Operations
+Center keeps. The test changes the configuration only after the stopped member
+counts as offline. Before that, the cluster reverts the change, since it can
+not reach the member.
 
 `remove_and_rejoin_member` removes the member with the most file sets. These
 are usually update files, so the test also moves large files. It compares the

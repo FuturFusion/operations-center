@@ -108,24 +108,24 @@ func assertSettingsThroughAnyMember(t *testing.T, tmpDir string, members []opera
 
 	original := map[string]map[string]any{}
 	for _, member := range members {
-		original[member.name] = mustOperationsCenterMemberSettings(t, member)
+		original[member.name] = mustOperationsCenterMemberSystemConfig(t, member, "settings")
 	}
 
 	etagBefore := mustSameSettingsETag(t, members)
 
 	// Restoring the settings through the changed member restores its local
 	// part and the shared part.
-	t.Cleanup(settingsRestoreCleanup(t, tmpDir, changed, original[changed.name]))
+	t.Cleanup(systemConfigRestoreCleanup(t, tmpDir, changed, "settings", original[changed.name]))
 
-	settings := mustOperationsCenterMemberSettings(t, changed)
+	settings := mustOperationsCenterMemberSystemConfig(t, changed, "settings")
 	settings["log_level"] = anyMemberLogLevel
 	settings["server_registration_scriptlet"] = anyMemberScriptlet
 
-	filename := mustWriteSettings(t, tmpDir, changed, settings)
+	filename := mustWriteSystemConfig(t, tmpDir, changed, "settings", settings)
 	mustRun(t, `%s system settings edit < %s`, changed.oc, filename)
 
 	for _, member := range members {
-		settings := mustOperationsCenterMemberSettings(t, member)
+		settings := mustOperationsCenterMemberSystemConfig(t, member, "settings")
 		require.Equal(t, anyMemberScriptlet, settings["server_registration_scriptlet"], "expect %s to use the shared registration scriptlet", member.name)
 
 		wantLogLevel := original[member.name]["log_level"]
@@ -140,28 +140,30 @@ func assertSettingsThroughAnyMember(t *testing.T, tmpDir string, members []opera
 	require.NotEqual(t, etagBefore, etagAfter, "expect the ETag to change with the shared settings")
 }
 
-// mustOperationsCenterMemberSettings returns the settings of member.
-func mustOperationsCenterMemberSettings(t *testing.T, member operationsCenterMember) map[string]any {
+// mustOperationsCenterMemberSystemConfig returns the system configuration
+// section of member, for example "settings" or "updates".
+func mustOperationsCenterMemberSystemConfig(t *testing.T, member operationsCenterMember, section string) map[string]any {
 	t.Helper()
 
-	resp := mustRun(t, `%s system settings show -f json`, member.oc)
+	resp := mustRun(t, `%s system %s show -f json`, member.oc, section)
 
-	var settings map[string]any
-	err := json.Unmarshal(resp.output.Bytes(), &settings)
-	require.NoError(t, err, "Failed to decode the settings of %s", member.name)
+	var config map[string]any
+	err := json.Unmarshal(resp.output.Bytes(), &config)
+	require.NoError(t, err, "Failed to decode the system %s of %s", section, member.name)
 
-	return settings
+	return config
 }
 
-// mustWriteSettings writes settings to a file in tmpDir and returns its name.
-// "system settings edit" reads JSON, since JSON is valid YAML.
-func mustWriteSettings(t *testing.T, tmpDir string, member operationsCenterMember, settings map[string]any) string {
+// mustWriteSystemConfig writes the system configuration section config to a
+// file in tmpDir and returns its name. "system <section> edit" reads JSON,
+// since JSON is valid YAML.
+func mustWriteSystemConfig(t *testing.T, tmpDir string, member operationsCenterMember, section string, config map[string]any) string {
 	t.Helper()
 
-	content, err := json.Marshal(settings)
+	content, err := json.Marshal(config)
 	require.NoError(t, err)
 
-	filename := filepath.Join(tmpDir, fmt.Sprintf("system_settings_%s.json", member.name))
+	filename := filepath.Join(tmpDir, fmt.Sprintf("system_%s_%s.json", section, member.name))
 	err = os.WriteFile(filename, content, 0o600)
 	require.NoError(t, err)
 
@@ -192,11 +194,12 @@ func mustSameSettingsETag(t *testing.T, members []operationsCenterMember) string
 	return etag
 }
 
-// settingsRestoreCleanup restores the settings of member.
-func settingsRestoreCleanup(t *testing.T, tmpDir string, member operationsCenterMember, settings map[string]any) func() {
+// systemConfigRestoreCleanup restores the system configuration section of
+// member.
+func systemConfigRestoreCleanup(t *testing.T, tmpDir string, member operationsCenterMember, section string, config map[string]any) func() {
 	t.Helper()
 
-	filename := mustWriteSettings(t, tmpDir, member, settings)
+	filename := mustWriteSystemConfig(t, tmpDir, member, section, config)
 
 	return func() {
 		if noCleanup || (noCleanupOnError && t.Failed()) {
@@ -207,9 +210,9 @@ func settingsRestoreCleanup(t *testing.T, tmpDir string, member operationsCenter
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(time.Minute))
 		defer cancel()
 
-		resp := runWithContext(ctx, t, `%s system settings edit < %s`, member.oc, filename)
+		resp := runWithContext(ctx, t, `%s system %s edit < %s`, member.oc, section, filename)
 		if !resp.Success() {
-			t.Errorf("Failed to restore the settings of %s: %s", member.name, resp.Error())
+			t.Errorf("Failed to restore the system %s of %s: %s", section, member.name, resp.Error())
 		}
 	}
 }

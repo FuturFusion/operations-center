@@ -51,6 +51,11 @@ func TestE2E_OperationsCenterCluster(t *testing.T) {
 			run:               ocClusterLeaderHandover,
 		},
 		{
+			name:              "stopped_member_catches_up",
+			requiresOCCluster: true,
+			run:               ocClusterStoppedMemberCatchesUp,
+		},
+		{
 			// Changes the membership, so it runs last.
 			name:              "remove_and_rejoin_member",
 			requiresOCCluster: true,

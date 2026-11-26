@@ -805,3 +805,33 @@ func parseSHA256Sums(output string) (map[string]string, error) {
 
 	return sums, nil
 }
+
+// operationsCenterMemberOffline reports whether the member name is counted as
+// offline in output of the cluster members list.
+func operationsCenterMemberOffline(output []byte, name string) (bool, error) {
+	var members []api.ClusterMember
+	err := json.Unmarshal(output, &members)
+	if err != nil {
+		return false, fmt.Errorf("decode the cluster members: %w", err)
+	}
+
+	for _, member := range members {
+		if member.Name == name {
+			return member.Offline, nil
+		}
+	}
+
+	return false, fmt.Errorf("member %q not found", name)
+}
+
+// mustWaitOperationsCenterMemberOffline waits until observer counts the member
+// name as offline. A change of the shared configuration fails while a stopped
+// member still counts as online.
+func mustWaitOperationsCenterMemberOffline(ctx context.Context, t *testing.T, observer operationsCenterMember, name string) {
+	t.Helper()
+
+	err := waitForCLIOutput(ctx, t, 2*time.Minute, func(output []byte) (bool, error) {
+		return operationsCenterMemberOffline(output, name)
+	}, `%s cluster members list -f json`, observer.oc)
+	require.NoError(t, err, "expect %s to count %s as offline", observer.name, name)
+}
