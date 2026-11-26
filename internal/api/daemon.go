@@ -1674,19 +1674,6 @@ func (d *Daemon) setupAPIRoutes(
 		return false
 	}
 
-	// Endpoints that should not be forwarded to the leader.
-	memberLocalPaths := []string{
-		// Local configuration.
-		"/1.0/system/network",
-		"/1.0/system/settings",
-		"/1.0/system/:clean-cache",
-		// Cluster bootstrap APIs are local only.
-		"/1.0/membership/:enable",
-		"/1.0/membership/:join",
-		// Only accepted through the unix socket of this member.
-		"/1.0/provisioning/servers/:self_register",
-	}
-
 	forward := forwarder{
 		clustered:  d.env.Clustered,
 		membership: membershipSvc,
@@ -1694,27 +1681,6 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	d.forward.Store(&forward)
-
-	requireLeader := func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			// IncusOS of this member sends its self updates through the unix socket.
-			localSelfUpdate := r.URL.Path == "/1.0/provisioning/servers/:self" && r.TLS == nil
-
-			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) && !localSelfUpdate {
-				resp := forward.toLeader(r)
-				if resp != nil {
-					err := resp.Render(w)
-					if err != nil {
-						slog.WarnContext(r.Context(), "Render forwarded response failed", logger.Err(err))
-					}
-
-					return
-				}
-			}
-
-			next(w, r)
-		}
-	}
 
 	simplestreamsRouter := router.SubGroup("/incus-images")
 	simplestreamsRouter.AddMiddlewares(cors.Handler(cors.CORSConfig{
@@ -1735,7 +1701,7 @@ func (d *Daemon) setupAPIRoutes(
 	api10PreInitAuth := api10PreInit.SubGroup("").AddMiddlewares(authenticatorMiddleware)
 	registerAPI10Handler(api10PreInitAuth)
 
-	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase, requireLeader)
+	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase, requireLeader(forward))
 
 	imageRouter := api10router.SubGroup("/images")
 	imageSourceRouter := imageRouter.SubGroup("/sources")
@@ -1895,6 +1861,43 @@ func (d *Daemon) mediaRecords(db dbdriver.DBTX, mediaType provisioning.MediaType
 		mediaType,
 		ttl,
 	)
+}
+
+// memberLocalPaths are the endpoints, which change data and are not forwarded to the leader.
+var memberLocalPaths = []string{
+	// Local configuration.
+	"/1.0/system/network",
+	"/1.0/system/settings",
+	"/1.0/system/:clean-cache",
+	// Cluster bootstrap APIs are local only.
+	"/1.0/membership/:enable",
+	"/1.0/membership/:join",
+	// Only accepted through the unix socket of this member.
+	"/1.0/provisioning/servers/:self_register",
+}
+
+// requireLeader returns a middleware, which forwards requests changing data to the cluster leader.
+func requireLeader(forward forwarder) func(next http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// IncusOS of this member sends its self updates through the unix socket.
+			localSelfUpdate := r.URL.Path == "/1.0/provisioning/servers/:self" && r.TLS == nil
+
+			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) && !localSelfUpdate {
+				resp := forward.toLeader(r)
+				if resp != nil {
+					err := resp.Render(w)
+					if err != nil {
+						slog.WarnContext(r.Context(), "Render forwarded response failed", slog.String("method", r.Method), slog.String("path", r.URL.Path), logger.Err(err))
+					}
+
+					return
+				}
+			}
+
+			next(w, r)
+		}
+	}
 }
 
 // isClusterLeader reports whether this member is the cluster leader.
