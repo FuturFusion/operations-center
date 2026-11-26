@@ -8,25 +8,57 @@ permissions:
 jobs:
   authorize:
     name: Authorize
-    # Scheduled and manual runs on main skip this job.
-    # Any other run must come from a writer adding the "run-e2e" label.
+    # Scheduled and manual runs on main run both modes.
+    # Any other run must come from a writer adding one of the E2E labels:
+    #   e2e-test: standalone Operations Center.
+    #   e2e-test-cluster: clustered Operations Center.
+    #   e2e-test-full: both.
     # A PR can change the calling workflow and its events, so check the event here.
-    if: ${{ !((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-24.04
+    outputs:
+      standalone: ${{ steps.check.outputs.standalone }}
+      cluster: ${{ steps.check.outputs.cluster }}
     steps:
       - name: Check event and roles
+        id: check
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           EVENT_ACTION: ${{ github.event.action }}
+          REF: ${{ github.ref }}
           LABEL: ${{ github.event.label.name }}
           SENDER: ${{ github.event.sender.login }}
           ACTOR: ${{ github.triggering_actor }}
         run: |
-          if [ "${EVENT_NAME}" != "pull_request" ] || [ "${EVENT_ACTION}" != "labeled" ] || [ "${LABEL}" != "run-e2e" ]; then
-            echo "::error::Event '${EVENT_NAME}' with action '${EVENT_ACTION}' may not run the E2E tests. Only adding the 'run-e2e' label may."
+          if { [ "${EVENT_NAME}" = "schedule" ] || [ "${EVENT_NAME}" = "workflow_dispatch" ]; } && [ "${REF}" = "refs/heads/main" ]; then
+            echo "standalone=true" >> "${GITHUB_OUTPUT}"
+            echo "cluster=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [ "${EVENT_NAME}" != "pull_request" ] || [ "${EVENT_ACTION}" != "labeled" ]; then
+            echo "::error::Event '${EVENT_NAME}' with action '${EVENT_ACTION}' may not run the E2E tests. Only adding an E2E label may."
             exit 1
           fi
+
+          case "${LABEL}" in
+            e2e-test)
+              standalone=true
+              cluster=false
+              ;;
+            e2e-test-cluster)
+              standalone=false
+              cluster=true
+              ;;
+            e2e-test-full)
+              standalone=true
+              cluster=true
+              ;;
+            *)
+              echo "::error::Label '${LABEL}' may not run the E2E tests. Use 'e2e-test', 'e2e-test-cluster' or 'e2e-test-full'."
+              exit 1
+              ;;
+          esac
 
           check_role() {
             role=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/$1/permission" --jq .role_name)
@@ -46,24 +78,22 @@ jobs:
           # The user who starts a re-run.
           check_role "${ACTOR}"
 
+          echo "standalone=${standalone}" >> "${GITHUB_OUTPUT}"
+          echo "cluster=${cluster}" >> "${GITHUB_OUTPUT}"
+
   api-tests:
     name: Operations Center E2E Tests
     needs: authorize
-    if: >-
-      always() && (
-        needs.authorize.result == 'success' || (
-          needs.authorize.result == 'skipped' &&
-          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-          github.ref == 'refs/heads/main'
-        )
-      )
     # Nightly and PR runs share the self-hosted runner. Queue them.
+    # Both modes run in this one job, so they do not wait in this queue for
+    # each other.
     concurrency:
       group: e2e-self-hosted
       cancel-in-progress: false
     strategy:
       fail-fast: false
-    timeout-minutes: 185
+    # Each mode may take up to 180 minutes.
+    timeout-minutes: 370
     runs-on:
       - self-hosted
       - arch-amd64
@@ -125,16 +155,35 @@ jobs:
           deps_path="$(go env GOPATH)/deps"
           echo "LD_LIBRARY_PATH=${deps_path}/raft/.libs/:${deps_path}/cowsql/.libs/" >> "$GITHUB_ENV"
 
-      - name: Run End-to-End Tests
+      - name: Prepare the log directory
+        id: prepare
+        env:
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
+        run: |
+          mkdir -p "${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}"
+          rm -f "${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}"/*.log "${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}"/*.out
+
+      - name: Run End-to-End Tests with a standalone Operations Center
+        if: needs.authorize.outputs.standalone == 'true'
         env:
           OPERATIONS_CENTER_E2E_TEST: "true"
           OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
           OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
         run: |
           set -o pipefail
-          mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
-          rm -f ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.out
-          go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+          go test -v ./e2e_tests -timeout 180m | tee "${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out"
+
+      - name: Run End-to-End Tests with a clustered Operations Center
+        # Runs also if the standalone tests failed, but not if the setup failed.
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && needs.authorize.outputs.cluster == 'true' }}
+        env:
+          OPERATIONS_CENTER_E2E_TEST: "true"
+          OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
+          OPERATIONS_CENTER_E2E_TEST_OC_CLUSTER: "true"
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
+        run: |
+          set -o pipefail
+          go test -v ./e2e_tests -timeout 180m | tee "${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests_cluster.out"
 
       - name: Compute artifact name
         id: artifact

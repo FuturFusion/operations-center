@@ -14,7 +14,7 @@ permissions:
 jobs:
   e2e:
     name: E2E
-    if: github.event.label.name == 'run-e2e'
+    if: contains(fromJSON('["e2e-test", "e2e-test-cluster", "e2e-test-full"]'), github.event.label.name)
     # Load the workflow from main. It checks the event and the roles.
     # A PR can change this file. Only the runner group restriction to
     # e2e.yml@refs/heads/main keeps PR code away from the self-hosted runner.

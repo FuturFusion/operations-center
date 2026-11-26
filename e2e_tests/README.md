@@ -610,6 +610,28 @@ own file in `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`.
 The two additional VMs need `OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE` (4 GiB by
 default) of memory each, on top of the memory needed for the IncusOS servers.
 
+### CI
+
+The workflow `.github/workflows/e2e.yml` runs the tests on a self-hosted
+runner. The daily run on `main` runs all the tests twice: first with a
+standalone Operations Center, then with a clustered Operations Center. The
+clustered run also starts if the standalone run failed.
+
+A writer starts the tests for a pull request with a label:
+
+| Label              | Runs the tests with                              |
+|--------------------|--------------------------------------------------|
+| `e2e-test`         | A standalone Operations Center                   |
+| `e2e-test-cluster` | A clustered Operations Center                    |
+| `e2e-test-full`    | A standalone, then a clustered Operations Center |
+
+Only adding the label starts the tests. A push does not. To run the tests
+again, remove the label and add it again.
+
+The standalone run installs `OperationsCenter01` again, if the run before was
+clustered. The clustered run then reuses `OperationsCenter01` and adds the
+other two members.
+
 ### Shell commands
 
 The test helpers (`run`, `mustRun` and friends) execute their commands with
