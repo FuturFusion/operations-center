@@ -2207,7 +2207,7 @@ func attachedSecureBootMediaIDs(ctx context.Context, serverSvc provisioning.Serv
 }
 
 func (d *Daemon) backgroundPollingTask(
-	component logger.Component,
+	component taskComponent,
 	serverSvc provisioning.ServerService,
 	stateDescription string,
 	serverFilter provisioning.ServerFilter,

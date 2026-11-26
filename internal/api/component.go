@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,24 +20,79 @@ var (
 	componentAPI    = logger.RegisterComponent("api")
 	componentDaemon = logger.RegisterComponent("daemon")
 
-	componentTaskCertificatesValidityCheck = logger.RegisterComponent("daemon.task.certificates_validity_check")
-	componentTaskClusterUpdate             = logger.RegisterComponent("daemon.task.cluster_update")
-	componentTaskPollEvacuatingServers     = logger.RegisterComponent("daemon.task.poll_evacuating_servers")
-	componentTaskPollPendingServers        = logger.RegisterComponent("daemon.task.poll_pending_servers")
-	componentTaskPollReadyServers          = logger.RegisterComponent("daemon.task.poll_ready_servers")
-	componentTaskPollRebootingServers      = logger.RegisterComponent("daemon.task.poll_rebooting_servers")
-	componentTaskPollRestoringServers      = logger.RegisterComponent("daemon.task.poll_restoring_servers")
-	componentTaskPollUnresponsiveServers   = logger.RegisterComponent("daemon.task.poll_unresponsive_servers")
-	componentTaskPollUpdatingAppServers    = logger.RegisterComponent("daemon.task.poll_updating_application_servers")
-	componentTaskPollUpdatingServers       = logger.RegisterComponent("daemon.task.poll_updating_servers")
-	componentTaskPruneSecureBootMedia      = logger.RegisterComponent("daemon.task.prune_secure_boot_media")
-	componentTaskPruneSeedImageCache       = logger.RegisterComponent("daemon.task.prune_seed_image_cache")
-	componentTaskRefreshBMCData            = logger.RegisterComponent("daemon.task.refresh_bmc_data")
-	componentTaskRefreshImageSources       = logger.RegisterComponent("daemon.task.refresh_image_sources")
-	componentTaskRefreshInventory          = logger.RegisterComponent("daemon.task.refresh_inventory")
-	componentTaskRefreshUpdates            = logger.RegisterComponent("daemon.task.refresh_updates")
-	componentTaskRenewACMECertificate      = logger.RegisterComponent("daemon.task.renew_acme_certificate")
-	componentTaskServerDeployment          = logger.RegisterComponent("daemon.task.server_deployment")
+	// Use string literals so cmd/generate-components can discover both component lists.
+	componentTaskCertificatesValidityCheck = newTaskComponent(
+		logger.RegisterComponent("daemon.task.certificates_validity_check"),
+		metrics.RegisterComponent("daemon.task.certificates_validity_check"),
+	)
+	componentTaskClusterUpdate = newTaskComponent(
+		logger.RegisterComponent("daemon.task.cluster_update"),
+		metrics.RegisterComponent("daemon.task.cluster_update"),
+	)
+	componentTaskPollEvacuatingServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_evacuating_servers"),
+		metrics.RegisterComponent("daemon.task.poll_evacuating_servers"),
+	)
+	componentTaskPollPendingServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_pending_servers"),
+		metrics.RegisterComponent("daemon.task.poll_pending_servers"),
+	)
+	componentTaskPollReadyServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_ready_servers"),
+		metrics.RegisterComponent("daemon.task.poll_ready_servers"),
+	)
+	componentTaskPollRebootingServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_rebooting_servers"),
+		metrics.RegisterComponent("daemon.task.poll_rebooting_servers"),
+	)
+	componentTaskPollRestoringServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_restoring_servers"),
+		metrics.RegisterComponent("daemon.task.poll_restoring_servers"),
+	)
+	componentTaskPollUnresponsiveServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_unresponsive_servers"),
+		metrics.RegisterComponent("daemon.task.poll_unresponsive_servers"),
+	)
+	componentTaskPollUpdatingAppServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_updating_application_servers"),
+		metrics.RegisterComponent("daemon.task.poll_updating_application_servers"),
+	)
+	componentTaskPollUpdatingServers = newTaskComponent(
+		logger.RegisterComponent("daemon.task.poll_updating_servers"),
+		metrics.RegisterComponent("daemon.task.poll_updating_servers"),
+	)
+	componentTaskPruneSecureBootMedia = newTaskComponent(
+		logger.RegisterComponent("daemon.task.prune_secure_boot_media"),
+		metrics.RegisterComponent("daemon.task.prune_secure_boot_media"),
+	)
+	componentTaskPruneSeedImageCache = newTaskComponent(
+		logger.RegisterComponent("daemon.task.prune_seed_image_cache"),
+		metrics.RegisterComponent("daemon.task.prune_seed_image_cache"),
+	)
+	componentTaskRefreshBMCData = newTaskComponent(
+		logger.RegisterComponent("daemon.task.refresh_bmc_data"),
+		metrics.RegisterComponent("daemon.task.refresh_bmc_data"),
+	)
+	componentTaskRefreshImageSources = newTaskComponent(
+		logger.RegisterComponent("daemon.task.refresh_image_sources"),
+		metrics.RegisterComponent("daemon.task.refresh_image_sources"),
+	)
+	componentTaskRefreshInventory = newTaskComponent(
+		logger.RegisterComponent("daemon.task.refresh_inventory"),
+		metrics.RegisterComponent("daemon.task.refresh_inventory"),
+	)
+	componentTaskRefreshUpdates = newTaskComponent(
+		logger.RegisterComponent("daemon.task.refresh_updates"),
+		metrics.RegisterComponent("daemon.task.refresh_updates"),
+	)
+	componentTaskRenewACMECertificate = newTaskComponent(
+		logger.RegisterComponent("daemon.task.renew_acme_certificate"),
+		metrics.RegisterComponent("daemon.task.renew_acme_certificate"),
+	)
+	componentTaskServerDeployment = newTaskComponent(
+		logger.RegisterComponent("daemon.task.server_deployment"),
+		metrics.RegisterComponent("daemon.task.server_deployment"),
+	)
 
 	componentAuthnTLS        = logger.RegisterComponent("security.authn.tls")
 	componentAuthnUnixSocket = logger.RegisterComponent("security.authn.unixsocket")
@@ -57,16 +114,43 @@ func componentMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(handlerFunc)
 }
 
-// componentTask returns a background task, that runs f every interval. It
-// scopes f to the given component, so everything it logs is attributed to
-// it, down to the services it calls. f logs its errors itself. It returns
-// them only to report the run as failed.
-func componentTask(component logger.Component, interval time.Duration, stopDeadline time.Duration, f func(context.Context) error, opts ...task.EveryOption) task.TaskFunc {
-	run := func(ctx context.Context) {
-		_ = f(logger.ContextWithComponent(ctx, component))
+type taskComponent struct {
+	log     logger.Component
+	metrics *metrics.Task
+}
+
+func newTaskComponent(log logger.Component, metricsComponent *metrics.Component) taskComponent {
+	if string(log) != metricsComponent.Name() {
+		panic(fmt.Sprintf("api: log component %q and metrics component %q of a task differ", log, metricsComponent.Name()))
 	}
 
-	return task.New(run, task.Every(interval, opts...), stopDeadline)
+	return taskComponent{
+		log:     log,
+		metrics: metrics.NewTask(metricsComponent, strings.TrimPrefix(metricsComponent.Name(), "daemon.task.")),
+	}
+}
+
+func componentTask(c taskComponent, interval, stopDeadline time.Duration, f func(context.Context) error, opts ...task.EveryOption) task.TaskFunc {
+	// f logs failures; its return value is used only to record metrics.
+	run := func(ctx context.Context) {
+		start := time.Now()
+		err := f(logger.ContextWithComponent(ctx, c.log))
+		c.metrics.Observe(ctx, start, err)
+	}
+
+	startTask := task.New(run, task.Every(interval, opts...), stopDeadline)
+
+	return func(ctx context.Context) func(context.Context) error {
+		c.metrics.Started(interval)
+		stopTask := startTask(ctx)
+
+		return func(ctx context.Context) error {
+			// Hide leadership gauges before waiting for the canceled run to finish.
+			c.metrics.Stopped()
+
+			return stopTask(ctx)
+		}
+	}
 }
 
 // registerComponentsValidation registers the checks for unknown components.
