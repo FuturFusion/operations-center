@@ -538,17 +538,6 @@ func mustWaitAgentRunning(ctx context.Context, t *testing.T, vm string, args ...
 	require.NoError(t, err)
 }
 
-// mustWaitAgentRunningWithTimeout is the same as mustWaitAgentRunning with
-// an additional timeout.
-func mustWaitAgentRunningWithTimeout(ctx context.Context, t *testing.T, vm string, timeout time.Duration, args ...any) {
-	t.Helper()
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
-	defer cancel()
-
-	mustWaitAgentRunning(timeoutCtx, t, vm, args...)
-}
-
 const (
 	agentWaitAttemptTimeout     = 30 * time.Second
 	incusOSStartupProbeInterval = 10 * time.Second
@@ -693,19 +682,8 @@ func mustWaitExpectedLog(ctx context.Context, t *testing.T, vm string, unit stri
 	mustWaitExpectedLogWithContext(ctx, t, vm, unit, want, false, args...)
 }
 
-// mustWaitExpectedLogWithTimeout is the same as mustWaitExpectedLog but
-// accepts an additional timeout.
-func mustWaitExpectedLogWithTimeout(ctx context.Context, t *testing.T, vm string, unit string, want string, timeout time.Duration, args ...any) {
-	t.Helper()
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
-	defer cancel()
-
-	mustWaitExpectedLogWithContext(timeoutCtx, t, vm, unit, want, false, args...)
-}
-
-// mustWaitExpectedLogWithTimeout is the same as mustWaitExpectedLog but
-// additionally accepts an context.
+// mustWaitExpectedLogWithContext is the same as mustWaitExpectedLog, but it
+// also accepts isRegex.
 func mustWaitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, unit string, want string, isRegex bool, args ...any) {
 	t.Helper()
 
