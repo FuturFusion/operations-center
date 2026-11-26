@@ -61,6 +61,12 @@ func (e ErrRetryable) Unwrap() error {
 	return e.innerErr
 }
 
+// Retryable reports true. Packages that must not import domain use this method
+// to detect a retryable error.
+func (e ErrRetryable) Retryable() bool {
+	return true
+}
+
 func IsRetryableError(err error) bool {
 	var retryableErr ErrRetryable
 	return errors.As(err, &retryableErr)
