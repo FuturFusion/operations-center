@@ -889,12 +889,13 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 
 	const tokenSeedName = "incus-os-cluster"
 
-	t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
-
 	incusOSPreseededISOFilename := incusOSPreseededISOFromTokenSeedName(token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
+
+		// The token seed only exists if the ISO is not cached.
+		t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
 
 		seedFilename := filepath.Join(tmpDir, "incusos_seed.yaml")
 
