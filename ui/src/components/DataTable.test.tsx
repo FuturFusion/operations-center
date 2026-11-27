@@ -107,3 +107,28 @@ test("paginates the rows", async () => {
   expect(page).toHaveValue(1);
   expect(shownNames()).toHaveLength(45);
 });
+
+test("hides optional columns chosen by the user and remembers it", async () => {
+  localStorage.clear();
+  const optionalHeaders = ["Name", { name: "Size", optional: true }, "Actions"];
+
+  const { user, unmount } = renderWithProviders(
+    <DataTable id="test" headers={optionalHeaders} rows={[row("a", 1)]} />,
+  );
+
+  expect(screen.getByText("Size")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Columns" }));
+  expect(screen.getByRole("checkbox", { name: "Name" })).toBeDisabled();
+  await user.click(screen.getByRole("checkbox", { name: "Size" }));
+  expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(
+    ["Name", "Actions"],
+  );
+  expect(screen.getByText("edit")).toBeInTheDocument();
+  unmount();
+
+  renderWithProviders(
+    <DataTable id="test" headers={optionalHeaders} rows={[row("a", 1)]} />,
+  );
+  expect(screen.getAllByRole("columnheader")).toHaveLength(2);
+});

@@ -7,6 +7,7 @@ import InventorySearchBox from "components/InventorySearchBox";
 import ServerActions from "components/ServerActions";
 import ServerStatus from "components/ServerStatus";
 import type { Server } from "types/server";
+import type { DataTableHeader } from "util/dataTable";
 import type { ServerTypeKey } from "util/server";
 import { primaryApplicationVersion, ServerTypeString } from "util/server";
 import { BsLink45Deg } from "react-icons/bs";
@@ -33,15 +34,20 @@ const Server = () => {
     refetchInterval: refetchInterval,
   });
 
-  const headers = [
-    "Name",
-    "Description / Properties",
-    "Cluster",
-    "OS version",
-    "Type",
-    "Application version",
-    "Status",
-    "Actions",
+  const headers: DataTableHeader[] = [
+    { name: "Name", width: 220 },
+    {
+      name: "Description / Properties",
+      optional: true,
+      priority: 3,
+      width: 250,
+    },
+    { name: "Cluster", optional: true, priority: 5, width: 150 },
+    { name: "OS version", optional: true, priority: 2, width: 130 },
+    { name: "Type", optional: true, priority: 4, width: 120 },
+    { name: "Application version", optional: true, priority: 1, width: 170 },
+    { name: "Status", width: 140 },
+    { name: "Actions", width: 230 },
   ];
   const rows = servers.map((item) => {
     const osVersion = item.version_data?.os?.version ?? "";
@@ -146,6 +152,7 @@ const Server = () => {
         </div>
         <div className="flex-grow-1">
           <ExtendedDataTable
+            id="servers"
             headers={headers}
             rows={rows}
             isLoading={isLoading}

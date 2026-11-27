@@ -1,15 +1,12 @@
 import { FC } from "react";
-import DataTable from "components/DataTable";
-import { DataTableRow } from "components/DataTable";
+import DataTable, { DataTableProps } from "components/DataTable";
 
-interface Props {
-  headers: string[];
-  rows: DataTableRow[];
+interface Props extends DataTableProps {
   isLoading: boolean;
   error: Error | null;
 }
 
-const ExtendedDataTable: FC<Props> = ({ headers, rows, isLoading, error }) => {
+const ExtendedDataTable: FC<Props> = ({ isLoading, error, ...props }) => {
   if (isLoading) {
     return <div>Loading data...</div>;
   }
@@ -22,7 +19,7 @@ const ExtendedDataTable: FC<Props> = ({ headers, rows, isLoading, error }) => {
     );
   }
 
-  return <DataTable headers={headers} rows={rows} />;
+  return <DataTable {...props} />;
 };
 
 export default ExtendedDataTable;
