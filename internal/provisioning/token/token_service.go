@@ -708,7 +708,7 @@ func (s *tokenService) resolvePreSeedImage(ctx context.Context, imageType api.Im
 			Version: "1",
 			Applications: []api.SeedApplication{
 				{
-					Name: "incus",
+					Name: domain.DefaultIncusApplicationName,
 				},
 			},
 		}

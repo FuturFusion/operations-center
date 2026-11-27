@@ -811,7 +811,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				Version: "1",
 				Applications: []api.SeedApplication{
 					{
-						Name: "incus",
+						Name: "incus-lts-7.0",
 					},
 				},
 			},
@@ -930,7 +930,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				Version: "1",
 				Applications: []api.SeedApplication{
 					{
-						Name: "incus",
+						Name: "incus-lts-7.0",
 					},
 				},
 			},
@@ -1024,7 +1024,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				Version: "1",
 				Applications: []api.SeedApplication{
 					{
-						Name: "incus",
+						Name: "incus-lts-7.0",
 					},
 				},
 			},
@@ -1287,7 +1287,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				Version: "1",
 				Applications: []api.SeedApplication{
 					{
-						Name: "incus",
+						Name: "incus-lts-7.0",
 					},
 				},
 			},

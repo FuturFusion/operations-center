@@ -9,7 +9,7 @@ import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
 import { ClusterPost } from "types/cluster";
 import { validateConnectionURL } from "util/cluster";
-import { IncusServerTypeString, ServerType } from "util/server";
+import { DefaultIncusServerType, IncusServerTypeString } from "util/server";
 import { handleCtrlA } from "util/util";
 import YAML from "yaml";
 
@@ -58,7 +58,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     description: "",
     properties: {},
     server_names: [],
-    server_type: Object.values(ServerType)[0],
+    server_type: DefaultIncusServerType,
     services_config: "",
     application_seed_config: "",
     cluster_template: "",
