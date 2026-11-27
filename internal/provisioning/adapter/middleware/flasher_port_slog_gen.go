@@ -189,6 +189,37 @@ func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID strin
 	return _d._base.OpenSeededImage(ctx, cacheID, fingerprintID)
 }
 
+// RemoveSeededImageRecords implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) RemoveSeededImageRecords(ctx context.Context, cachePrefix string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cachePrefix", cachePrefix),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveSeededImageRecords")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RemoveSeededImageRecords returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RemoveSeededImageRecords finished")
+		}
+	}()
+	return _d._base.RemoveSeededImageRecords(ctx, cachePrefix)
+}
+
 // RemoveSeededImages implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) RemoveSeededImages(ctx context.Context, cachePrefix string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -276,4 +307,38 @@ func (_d FlasherPortWithSlog) SeedImageFingerprintID(ctx context.Context, finger
 		}
 	}()
 	return _d._base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
+}
+
+// SeededImageHolder implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) SeededImageHolder(ctx context.Context, cacheID string, fingerprintID string) (memberID int64, available bool, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cacheID", cacheID),
+			slog.String("fingerprintID", fingerprintID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SeededImageHolder")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Int64("memberID", memberID),
+				slog.Bool("available", available),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method SeededImageHolder returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method SeededImageHolder finished")
+		}
+	}()
+	return _d._base.SeededImageHolder(ctx, cacheID, fingerprintID)
 }

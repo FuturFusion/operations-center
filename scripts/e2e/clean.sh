@@ -4,7 +4,7 @@
 #
 # Usage: clean.sh soft|full
 #
-#   soft  Keep the Operations Center VM and its ISO.
+#   soft  Keep the Operations Center VMs and their ISO.
 #   full  Remove everything.
 #
 # Errors for resources, that are already gone, are hidden. All other errors
@@ -185,6 +185,7 @@ rm -rf "$tmp_dir/image-downloads"
 rm -rf "$tmp_dir/oidc-cli-config"
 rm -rf "$tmp_dir/openfga-cli-config"
 rm -rf "$tmp_dir/self-update-cli-config"
+rm -rf "$tmp_dir/oc-member-cli-config"
 rm -rf "$tmp_dir/images"
 rm -rf "$tmp_dir"/coverage_*
 # One preseeded ISO is created per provisioning token, so these accumulate
@@ -222,7 +223,10 @@ if [ "$mode" = "full" ]; then
   step "Remove Operations Center"
   rm -rf "$tmp_dir"
   rm -rf "$HOME/.config/operations-center/"
-  ignore_missing incus remove --force OperationsCenter
+  # OperationsCenter is the name of the VM used by older versions of the tests.
+  for instance in OperationsCenter OperationsCenter01 OperationsCenter02 OperationsCenter03; do
+    ignore_missing incus remove --force "$instance"
+  done
   ignore_missing incus storage volume delete default IncusOS_OperationsCenter.iso
   remove_iso_volumes
 fi

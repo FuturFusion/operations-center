@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // LocalRaftRepoWithPrometheus implements cluster.LocalRaftRepo interface with all methods wrapped
@@ -130,6 +131,16 @@ func (_d LocalRaftRepoWithPrometheus) GetClusterAddress(ctx context.Context) (s 
 		localRaftRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterAddress", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetClusterAddress(ctx)
+}
+
+// GetNetworkConfig implements cluster.LocalRaftRepo.
+func (_d LocalRaftRepoWithPrometheus) GetNetworkConfig(ctx context.Context) (networkLocal system.NetworkLocal) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		localRaftRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkConfig(ctx)
 }
 
 // GetRaftNode implements cluster.LocalRaftRepo.

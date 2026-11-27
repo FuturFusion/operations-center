@@ -2646,6 +2646,7 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return false
 				},
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			if tc.operationsCenterAddress != "" {
@@ -2755,6 +2756,7 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 			IsIncusOSFunc: func() bool {
 				return false
 			},
+			ClusteredFunc: func() bool { return false },
 		}, nil)
 
 		err := config.UpdateLocalNetwork(t.Context(), system.NetworkLocalPut{

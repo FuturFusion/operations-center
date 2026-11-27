@@ -16,11 +16,22 @@ import (
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	warningMock "github.com/FuturFusion/operations-center/internal/warning/mock"
+	"github.com/FuturFusion/operations-center/shared/api"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // cowsql names the VFS of a node from a counter, which isn't thread safe.
 var gatewayCreateMu sync.Mutex
+
+// cacheDirEnv is the environment of a member with its cache directory at the given path.
+type cacheDirEnv string
+
+func (e cacheDirEnv) CacheDir() string {
+	return string(e)
+}
 
 // newMembershipService returns the membership service of a standalone member with its var dir in a new temporary directory.
 func newMembershipService(t *testing.T) cluster.MembershipService {
@@ -39,10 +50,17 @@ func newMembershipService(t *testing.T) cluster.MembershipService {
 	cert, err := cluster.FindOrGenCertInfo(root, "server.crt", "server.key")
 	require.NoError(t, err)
 
-	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(root.Name(), "database"))
+	// A standalone member has no cluster address.
+	systemSvc := &systemMock.SystemServiceMock{
+		GetNetworkConfigFunc: func(ctx context.Context) apisystem.Network {
+			return apisystem.Network{}
+		},
+	}
+
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(root.Name(), "database"), systemSvc)
 
 	gatewayCreateMu.Lock()
-	svc, err := cluster.NewClusterMembershipService(t.Context(), root, nil, localRepo, cert, cert, nil)
+	svc, err := cluster.NewClusterMembershipService(t.Context(), cacheDirEnv(t.TempDir()), root, systemSvc, nil, localRepo, cert, cert, nil, &warningMock.WarningServiceMock{})
 	gatewayCreateMu.Unlock()
 	require.NoError(t, err)
 
@@ -103,13 +121,19 @@ func TestMembership_Enable(t *testing.T) {
 				DBFunc: func() *sql.DB {
 					return db
 				},
+				DBTXFunc: func() transaction.DBTX {
+					return txDBTX{}
+				},
 				DetermineNodeIDFunc: func(ctx context.Context, address string) error {
 					gotAddress = address
 					return tc.determineNodeIDErr
 				},
+				GetCertificatesFunc: func(ctx context.Context) (map[string]api.Certificate, error) {
+					return nil, nil
+				},
 			}
 
-			err := svc.Enable(t.Context(), "10.0.0.1:8443", &mock.ConfigRepoMock{}, globalRepo)
+			err := svc.Enable(t.Context(), "10.0.0.1:8443", &mock.JoinTokenRepoMock{}, &mock.ConfigRepoMock{}, globalRepo)
 			tc.assertErr(t, err)
 			require.Equal(t, "10.0.0.1:8443", gotAddress)
 			require.Equal(t, globalRepo, svc.Gateway().Cluster())
@@ -168,6 +192,9 @@ func TestMembership_PersistSharedConfig(t *testing.T) {
 				DetermineNodeIDFunc: func(ctx context.Context, address string) error {
 					return nil
 				},
+				GetCertificatesFunc: func(ctx context.Context) (map[string]api.Certificate, error) {
+					return nil, nil
+				},
 			}
 
 			var updated *config.SharedConfig
@@ -181,9 +208,9 @@ func TestMembership_PersistSharedConfig(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, svc.Enable(t.Context(), "", configRepo, globalRepo))
+			require.NoError(t, svc.Enable(t.Context(), "", &mock.JoinTokenRepoMock{}, configRepo, globalRepo))
 
-			merged, err := svc.PersistSharedConfig(t.Context(), change)
+			merged, _, err := svc.PersistSharedConfig(t.Context(), change)
 			tc.assertErr(t, err)
 			if err != nil {
 				return

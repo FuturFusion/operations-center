@@ -68,6 +68,20 @@ func (_d SecureBootMediaPortWithPrometheus) Generate(ctx context.Context, imageT
 	return _d.base.Generate(ctx, imageType, architecture, certificates)
 }
 
+// Holder implements provisioning.SecureBootMediaPort.
+func (_d SecureBootMediaPortWithPrometheus) Holder(ctx context.Context, imageType api.ImageType, id string) (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		secureBootMediaPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Holder", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Holder(ctx, imageType, id)
+}
+
 // Open implements provisioning.SecureBootMediaPort.
 func (_d SecureBootMediaPortWithPrometheus) Open(ctx context.Context, imageType api.ImageType, id string) (secureBootMediaImage *provisioning.SecureBootMediaImage, err error) {
 	_since := time.Now()

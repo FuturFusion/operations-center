@@ -28,6 +28,7 @@ type SecureBootCertificateCatalogPort interface {
 type SecureBootMediaPort interface {
 	CheckSupported(ctx context.Context, imageType api.ImageType, architecture images.UpdateFileArchitecture) error
 	Generate(ctx context.Context, imageType api.ImageType, architecture images.UpdateFileArchitecture, certificates SecureBootCertificates) (string, error)
+	Holder(ctx context.Context, imageType api.ImageType, id string) (int64, error)
 	Open(ctx context.Context, imageType api.ImageType, id string) (*SecureBootMediaImage, error)
 	Prune(ctx context.Context, ttl time.Duration, inUse []string) error
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -32,6 +33,7 @@ type InternalConfig struct {
 type enver interface {
 	VarDir() string
 	IsIncusOS() bool
+	Clustered() bool
 }
 
 // defaultStore holds the config singleton. It is only ever replaced as a whole,
@@ -50,7 +52,7 @@ func sharedConfigValidator() validateFunc[SharedConfig] {
 
 		// A shared config stored before the address was required is kept until the network is changed.
 		if isSharedNetworkChanged(oldCfg, newCfg) {
-			err = validateSharedNetworkConfig(currentLocalCfg.Network, oldCfg.Network, newCfg.Network)
+			err = validateSharedNetworkConfig(currentLocalCfg.Network, oldCfg.Network, newCfg.Network, env.Clustered())
 			if err != nil {
 				return err
 			}
@@ -63,8 +65,8 @@ func sharedConfigValidator() validateFunc[SharedConfig] {
 // errSharedNotLoaded is returned for updates of the shared config before it has been loaded from the database.
 var errSharedNotLoaded = domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Shared configuration can not be changed before the database is ready")
 
-func persistSharedNotLoaded(context.Context, section, SharedConfig, SharedConfig) (SharedConfig, error) {
-	return SharedConfig{}, errSharedNotLoaded
+func persistSharedNotLoaded(context.Context, section, SharedConfig, SharedConfig) (SharedConfig, publishFunc, error) {
+	return SharedConfig{}, nil, errSharedNotLoaded
 }
 
 // newProvisionalSharedStore returns a store holding cfg until the shared config is loaded from the database, rejecting all updates.
@@ -82,8 +84,17 @@ func ProvisionalShared() SharedConfig {
 	return sharedStore.Load().Get()
 }
 
-// LoadShared replaces the provisional shared config with cfg read from the database and persists later updates using persist.
-func LoadShared(ctx context.Context, cfg SharedConfig, persist func(ctx context.Context, change SharedChange) (SharedConfig, error)) error {
+// SharedPersister stores a change of the shared config in the database and lets the other cluster members reload it.
+type SharedPersister interface {
+	// PersistSharedConfig stores change and returns the stored config and the one it replaced.
+	PersistSharedConfig(ctx context.Context, change SharedChange) (stored SharedConfig, previous SharedConfig, err error)
+
+	// PublishSharedConfig lets the other members reload a stored change, it reverts the change if one of them fails to.
+	PublishSharedConfig(ctx context.Context, change SharedChange, previous SharedConfig) error
+}
+
+// LoadShared replaces the provisional shared config with cfg read from the database and persists later updates using persister.
+func LoadShared(ctx context.Context, cfg SharedConfig, persister SharedPersister) error {
 	normalized, err := normalizeShared(cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to load shared config: %w", err)
@@ -96,15 +107,30 @@ func LoadShared(ctx context.Context, cfg SharedConfig, persist func(ctx context.
 		return fmt.Errorf("Failed to load shared config: %w", err)
 	}
 
-	sharedStore.Load().replace(ctx, normalized, func(ctx context.Context, update section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, error) {
-		return persist(ctx, SharedChange{section: update, cfg: newCfg})
-	})
+	persist := func(ctx context.Context, update section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, publishFunc, error) {
+		change := SharedChange{section: update, cfg: newCfg}
+
+		stored, previous, err := persister.PersistSharedConfig(ctx, change)
+		if err != nil {
+			return SharedConfig{}, nil, err
+		}
+
+		return stored, func(ctx context.Context) error {
+			return persister.PublishSharedConfig(ctx, change, previous)
+		}, nil
+	}
+
+	sharedStore.Load().replace(ctx, normalized, persist)
 
 	if reflect.DeepEqual(cfg, normalized) {
 		return nil
 	}
 
-	_, err = persist(ctx, SharedChange{section: sectionChanged, cfg: normalized})
+	_, publish, err := persist(ctx, sectionChanged, normalized, normalized)
+	if err == nil {
+		err = publish(ctx)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Failed to persist loaded shared config: %w", err)
 	}
@@ -148,6 +174,9 @@ func withSharedSection(dst SharedConfig, src SharedConfig, s section) SharedConf
 	case sectionUpdates:
 		dst.Updates = src.Updates
 
+	case sectionCluster:
+		dst.Cluster = src.Cluster
+
 	default:
 		return src
 	}
@@ -168,6 +197,16 @@ func sharedEqual(a SharedConfig, b SharedConfig) bool {
 	}
 
 	return reflect.DeepEqual(normalizedA, normalizedB)
+}
+
+// ReloadShared applies the shared config returned by fetch, which another cluster member persisted.
+func ReloadShared(ctx context.Context, fetch func(ctx context.Context) (SharedConfig, error)) error {
+	err := sharedStore.Load().reload(ctx, fetch)
+	if err != nil {
+		return fmt.Errorf("Failed to reload shared config: %w", err)
+	}
+
+	return nil
 }
 
 func init() {
@@ -199,7 +238,7 @@ func Init(env enver) error {
 	// which validate the settings they own are wired up after Init, and making
 	// their probes a prerequisite for the daemon to come up would keep an
 	// offline installation from starting at all.
-	err = validate(localCfg, localCfg, env.IsIncusOS())
+	err = validate(localCfg, localCfg, env.IsIncusOS(), env.Clustered())
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
@@ -253,6 +292,30 @@ func UpdateNetwork(ctx context.Context, cfg system.NetworkGlobalPut) error {
 		c.Network.NetworkGlobalPut = cfg
 
 		return c
+	})
+}
+
+func UpdateNetworkClusterAddress(ctx context.Context, address string) error {
+	store := defaultStore.Load()
+	return store.set(ctx, func(oldCfg localConfig, persist func(newCfg localConfig) error) error {
+		if oldCfg.Network.ClusterAddress == address {
+			return nil
+		}
+
+		newCfg := oldCfg
+		newCfg.Network.ClusterAddress = address
+
+		err := validateNetworkConfigClusterAddress(oldCfg.Network, newCfg.Network, store.env.Clustered())
+		if err != nil {
+			return err
+		}
+
+		err = persist(newCfg)
+		if err != nil {
+			return err
+		}
+
+		return lifecycle.NetworkUpdateSignal.TryEmit(ctx, newCfg.Network)
 	})
 }
 
@@ -346,6 +409,18 @@ func GetUpdates() system.Updates {
 func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	return sharedStore.Load().Update(ctx, sectionUpdates, func(ctx context.Context, c SharedConfig) SharedConfig {
 		c.Updates.UpdatesPut = cfg
+
+		return c
+	})
+}
+
+func GetCluster() system.Cluster {
+	return sharedStore.Load().Get().Cluster
+}
+
+func UpdateCluster(ctx context.Context, cfg system.ClusterPut) error {
+	return sharedStore.Load().Update(ctx, sectionCluster, func(ctx context.Context, c SharedConfig) SharedConfig {
+		c.Cluster.ClusterPut = cfg
 
 		return c
 	})

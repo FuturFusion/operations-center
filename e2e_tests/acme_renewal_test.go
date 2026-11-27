@@ -48,7 +48,7 @@ func (a *acmeRenewal) prepare(ctx context.Context, t *testing.T, tmpDir string) 
 
 	a.provider = startACMEProvider(t)
 
-	mustAddOperationsCenterHostCustomCACerts(t, tmpDir, a.provider.DirectoryCAPEM, a.provider.IssuerRootPEM)
+	mustAddOperationsCenterHostCustomCACerts(ctx, t, tmpDir, a.provider.DirectoryCAPEM, a.provider.IssuerRootPEM)
 
 	mustBackupOperationsCenterCertificate(t, tmpDir)
 
@@ -110,10 +110,11 @@ func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
 	initialFingerprint := mustServedOperationsCenterCertificateFingerprint(ctx, t)
 
 	t.Log("Enable ACME, which triggers a renewal of the certificate")
-	ocHostname := mustRun(t, `incus exec OperationsCenter -- hostname`).OutputTrimmed()
+	ocHostname := mustRun(t, `incus exec %s -- hostname`, operationsCenterVMName).OutputTrimmed()
 	mustSetSystemSecurityACME(ctx, t, tmpDir, ocHostname, provider.DirectoryURL)
 
 	fingerprint := mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, initialFingerprint)
+	mustWaitOperationsCenterMembersCertificate(ctx, t, fingerprint)
 	mustRetrustOperationsCenterRemote(ctx, t)
 
 	for _, name := range names {
@@ -127,6 +128,7 @@ func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
 
 	previousFingerprint := fingerprint
 	fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
+	mustWaitOperationsCenterMembersCertificate(ctx, t, fingerprint)
 	mustRetrustOperationsCenterRemote(ctx, t)
 
 	for _, name := range names {
@@ -151,6 +153,7 @@ func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
 
 	previousFingerprint = fingerprint
 	fingerprint = mustWaitOperationsCenterCertificate(ctx, t, provider.IssuerRoots, previousFingerprint)
+	mustWaitOperationsCenterMembersCertificate(ctx, t, fingerprint)
 	mustRetrustOperationsCenterRemote(ctx, t)
 
 	for _, name := range onlineServers {
@@ -166,18 +169,33 @@ func (a *acmeRenewal) run(ctx context.Context, t *testing.T, tmpDir string) {
 }
 
 // mustAddOperationsCenterHostCustomCACerts adds the CA certificates to the
-// custom CA certificates of the IncusOS host of Operations Center. It restores
-// the original security config of the host on cleanup.
-func mustAddOperationsCenterHostCustomCACerts(t *testing.T, tmpDir string, caCertificatesPEM ...string) {
+// custom CA certificates of the IncusOS host of every selected Operations
+// Center VM. In a cluster, every member can be the leader that requests the
+// ACME certificate. It restores the original security config of every host on
+// cleanup.
+func mustAddOperationsCenterHostCustomCACerts(ctx context.Context, t *testing.T, tmpDir string, caCertificatesPEM ...string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	resp := mustRun(t, `../bin/operations-center.linux.%s admin os system security show`, cpuArch)
+	for _, name := range operationsCenterVMNames() {
+		mustAddOperationsCenterMemberHostCustomCACerts(ctx, t, tmpDir, name, caCertificatesPEM)
+	}
+}
+
+// mustAddOperationsCenterMemberHostCustomCACerts adds the CA certificates to
+// the custom CA certificates of the IncusOS host of the member name. The /os
+// endpoint is local to a member, so it uses the CLI of the member.
+func mustAddOperationsCenterMemberHostCustomCACerts(ctx context.Context, t *testing.T, tmpDir string, name string, caCertificatesPEM []string) {
+	t.Helper()
+
+	member := mustTrustOperationsCenterMember(ctx, t, tmpDir, name)
+
+	resp := mustRun(t, `%s admin os system security show`, member.oc)
 	originalSecurityConfig := resp.OutputTrimmed()
 
-	originalFilename := filepath.Join(tmpDir, "operations_center_host_security_original.yaml")
+	originalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations_center_host_security_original_%s.yaml", name))
 	err := os.WriteFile(originalFilename, []byte(originalSecurityConfig), 0o600)
 	require.NoError(t, err)
 
@@ -190,10 +208,18 @@ func mustAddOperationsCenterHostCustomCACerts(t *testing.T, tmpDir string, caCer
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s admin os system security edit < %s`, cpuArch, originalFilename)
-		err := fmtRunErr(resp)
+		// The certificate of the member might have changed since.
+		member, err := trustOperationsCenterMemberWithContext(ctx, t, tmpDir, name)
 		if err != nil {
-			t.Logf("Failed to restore the security config of the Operations Center host: %v", err)
+			t.Logf("Failed to add the remote of %s again: %v", name, err)
+
+			return
+		}
+
+		resp := runWithContext(ctx, t, `%s admin os system security edit < %s`, member.oc, originalFilename)
+		err = fmtRunErr(resp)
+		if err != nil {
+			t.Logf("Failed to restore the security config of the IncusOS host of %s: %v", name, err)
 		}
 	})
 
@@ -202,7 +228,7 @@ func mustAddOperationsCenterHostCustomCACerts(t *testing.T, tmpDir string, caCer
 	require.NoError(t, err)
 
 	securityConfig, ok := config["config"].(map[string]any)
-	require.True(t, ok, "security config of the Operations Center host has a config section")
+	require.True(t, ok, "security config of the IncusOS host of %s has a config section", name)
 
 	var customCACerts []any
 
@@ -220,25 +246,34 @@ func mustAddOperationsCenterHostCustomCACerts(t *testing.T, tmpDir string, caCer
 	configBody, err := yaml.Marshal(config)
 	require.NoError(t, err)
 
-	configFilename := filepath.Join(tmpDir, "operations_center_host_security.yaml")
+	configFilename := filepath.Join(tmpDir, fmt.Sprintf("operations_center_host_security_%s.yaml", name))
 	err = os.WriteFile(configFilename, configBody, 0o600)
 	require.NoError(t, err)
 
 	// No restart of Operations Center is required. lego reads the system CA
 	// pool on every run and the seed is created from the security config.
-	mustRun(t, `../bin/operations-center.linux.%s admin os system security edit < %s`, cpuArch, configFilename)
+	mustRun(t, `%s admin os system security edit < %s`, member.oc, configFilename)
 }
 
-// mustBackupOperationsCenterCertificate copies the certificate and the key of
-// Operations Center and restores them on cleanup.
+// mustBackupOperationsCenterCertificate copies the certificate and the key
+// that Operations Center serves and restores them on cleanup. A clustered
+// Operations Center serves the cluster certificate.
 func mustBackupOperationsCenterCertificate(t *testing.T, tmpDir string) {
 	t.Helper()
+
+	clustered, err := operationsCenterClusteredVMs(t.Context(), t, []string{operationsCenterVMName})
+	require.NoError(t, err, "Failed to check if %s is clustered", operationsCenterVMName)
+
+	pair := "server"
+	if len(clustered) > 0 {
+		pair = "cluster"
+	}
 
 	certificateFilename := filepath.Join(tmpDir, "operations_center_server.crt")
 	keyFilename := filepath.Join(tmpDir, "operations_center_server.key")
 
-	mustRun(t, `incus file pull OperationsCenter/var/lib/operations-center/server.crt %s`, certificateFilename)
-	mustRun(t, `incus file pull OperationsCenter/var/lib/operations-center/server.key %s`, keyFilename)
+	mustRun(t, `incus file pull %s/var/lib/operations-center/%s.crt %s`, operationsCenterVMName, pair, certificateFilename)
+	mustRun(t, `incus file pull %s/var/lib/operations-center/%s.key %s`, operationsCenterVMName, pair, keyFilename)
 
 	t.Cleanup(func() {
 		if noCleanup || (noCleanupOnError && t.Failed()) {
@@ -329,41 +364,6 @@ func resetSystemSecurityACMEWithContext(ctx context.Context, t *testing.T, tmpDi
 	return applySystemSecurityWithContext(ctx, t, securityPutFilename)
 }
 
-// mustRetrustOperationsCenterRemote adds the remote of the CLI again, so the
-// CLI pins the certificate, which Operations Center serves now.
-func mustRetrustOperationsCenterRemote(ctx context.Context, t *testing.T) {
-	t.Helper()
-
-	err := retrustOperationsCenterRemoteWithContext(ctx, t)
-	require.NoError(t, err, "Failed to add the remote of the CLI again")
-}
-
-// retrustOperationsCenterRemoteWithContext is mustRetrustOperationsCenterRemote
-// for cleanups, where t.Context() is already cancelled.
-func retrustOperationsCenterRemoteWithContext(ctx context.Context, t *testing.T) error {
-	t.Helper()
-
-	address, err := operationsCenterIPAddressWithContext(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	operationsCenterAddress := fmt.Sprintf("https://%s/", net.JoinHostPort(address, "8443"))
-
-	for _, command := range []string{
-		`../bin/operations-center.linux.%[1]s remote remove e2e-test`,
-		`../bin/operations-center.linux.%[1]s remote add --accept-certificate e2e-test %[2]s`,
-		`../bin/operations-center.linux.%[1]s remote switch e2e-test`,
-	} {
-		err := fmtRunErr(runWithContext(ctx, t, command, cpuArch, operationsCenterAddress))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func mustServedOperationsCenterCertificateFingerprint(ctx context.Context, t *testing.T) string {
 	t.Helper()
 
@@ -371,6 +371,22 @@ func mustServedOperationsCenterCertificateFingerprint(ctx context.Context, t *te
 	require.NoError(t, err, "Failed to get the certificate of Operations Center")
 
 	return certificateFingerprint(chain[0].Raw)
+}
+
+// mustWaitOperationsCenterMembersCertificate waits until every selected
+// Operations Center VM presents the certificate with fingerprint. In a
+// cluster, the members receive a renewed certificate from the leader.
+func mustWaitOperationsCenterMembersCertificate(ctx context.Context, t *testing.T, fingerprint string) {
+	t.Helper()
+
+	for _, name := range operationsCenterVMNames() {
+		address, err := instanceIPAddressWithContext(ctx, t, name)
+		require.NoError(t, err, "Failed to get the address of %s", name)
+
+		mustWaitServedCertificate(ctx, t, net.JoinHostPort(address, "8443"), func(served []byte) bool {
+			return certificateFingerprint(served) == fingerprint
+		})
+	}
 }
 
 // mustWaitOperationsCenterCertificate waits until Operations Center presents a
@@ -415,7 +431,7 @@ func mustWaitOperationsCenterCertificate(ctx context.Context, t *testing.T, root
 
 		select {
 		case <-ctx.Done():
-			logVMDebugInfo(t, "OperationsCenter")
+			logVMDebugInfo(t, operationsCenterVMName)
 			require.FailNowf(t, "Operations Center does not present a new ACME certificate", "last error: %v", lastErr)
 
 		case <-time.After(1 * time.Second):
@@ -456,7 +472,7 @@ func mustWaitServerCertificatePinned(ctx context.Context, t *testing.T, name str
 
 		select {
 		case <-ctx.Done():
-			logVMDebugInfo(t, "OperationsCenter", name)
+			logVMDebugInfo(t, operationsCenterVMName, name)
 			require.FailNowf(t, "Server does not pin the new certificate of Operations Center", "server %q, want %s, got %q", name, fingerprint, gotFingerprint)
 
 		case <-time.After(5 * time.Second):

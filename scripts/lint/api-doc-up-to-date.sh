@@ -29,7 +29,7 @@ IGNORED_WARNINGS='preseed\..*\.example in body must be of type array: "string"
 definitions\.InitPreseed\..*\.example in body must be of type array: "string"
 example value for (token|tokenImagePost|tokenSeedsPost) in body does not validate its schema
 in operation "(token_seed_get|tokens_seeds_get_recursion)", example value in response 200 does not validate its schema
-definition "#/definitions/(IncusImagePost|SystemProviderConfig|(Network|Settings)(Local|Global)(Put)?)" is not used anywhere
+definition "#/definitions/(IncusImagePost|SystemProviderConfig|(Network|Settings)(Local|Global)(Put)?|SystemCluster|SystemClusterPut)" is not used anywhere
 showed up some valid but possibly unwanted constructs
 See warnings below:'
 

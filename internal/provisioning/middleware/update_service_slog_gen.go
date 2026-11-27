@@ -52,6 +52,38 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateSer
 	return this
 }
 
+// CheckLocalFiles implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) CheckLocalFiles(ctx context.Context, updates provisioning.Updates) (uUIDs []uuid.UUID, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("updates", updates),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CheckLocalFiles")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("uUIDs", uUIDs),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method CheckLocalFiles returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method CheckLocalFiles finished")
+		}
+	}()
+	return _d._base.CheckLocalFiles(ctx, updates)
+}
+
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -497,6 +529,37 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 		}
 	}()
 	return _d._base.Refresh(ctx)
+}
+
+// RefreshLocalFiles implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) RefreshLocalFiles(ctx context.Context, id uuid.UUID) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RefreshLocalFiles")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RefreshLocalFiles returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RefreshLocalFiles finished")
+		}
+	}()
+	return _d._base.RefreshLocalFiles(ctx, id)
 }
 
 // SetServerService implements provisioning.UpdateService.

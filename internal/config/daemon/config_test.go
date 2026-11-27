@@ -132,6 +132,7 @@ func TestUpdateNetwork(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			config.InitTest(t, &mock.EnvironmentMock{
+				ClusteredFunc: func() bool { return false },
 				IsIncusOSFunc: func() bool {
 					return false
 				},

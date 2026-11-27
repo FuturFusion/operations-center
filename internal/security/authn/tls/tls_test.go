@@ -87,7 +87,7 @@ func TestTLS_Auth(t *testing.T) {
 			t.Parallel()
 
 			// Setup
-			auther := authntls.New([]string{testcert.ClientCertificateFingerprint})
+			auther := authntls.New(func() []string { return []string{testcert.ClientCertificateFingerprint} })
 
 			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", http.NoBody)
 			r.TLS = tc.tlsState

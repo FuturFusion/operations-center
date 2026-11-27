@@ -20,9 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestClient_ClusterEndpointWithCA(t *testing.T) {
@@ -95,7 +97,7 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 
-			client := New(string(clientCertPEMByte), string(clientKeyPEMByte), WithSkipGetServer(true))
+			client := New(securitytls.NewClientKeypairHolder(string(clientCertPEMByte), string(clientKeyPEMByte)), WithSkipGetServer(true))
 			client.clientCA = string(serverCA)
 
 			// serverTarget without cluster certificate set, which is simulating the
@@ -189,7 +191,7 @@ func Test_getClient(t *testing.T) {
 	ctx := logger.ContextWithTestLogger(t, logBuf, false, false)
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		_, err := New("", "", WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
+		_, err := New(securitytls.NewClientKeypairHolder("", ""), WithSkipGetServer(true)).getClient(ctx, provisioning.Server{
 			Name: "name",
 		})
 		require.NoError(t, err)
@@ -199,4 +201,55 @@ func Test_getClient(t *testing.T) {
 	require.NoError(t, err)
 
 	log.Contains("Incus API call inside of a transaction")(t, logBuf)
+}
+
+func TestClient_serverCertificate(t *testing.T) {
+	isClusterMember := func(certificatePEM string) bool {
+		return certificatePEM == "member"
+	}
+
+	tests := []struct {
+		name               string
+		opts               []Option
+		endpoint           provisioning.Endpoint
+		wantCertificatePEM string
+	}{
+		{
+			name:               "cluster member of this Operations Center",
+			opts:               []Option{WithOperationsCenterCluster(isClusterMember, func() string { return "cluster" })},
+			endpoint:           provisioning.Server{Type: api.ServerTypeOperationsCenter, Certificate: new("member")},
+			wantCertificatePEM: "cluster",
+		},
+		{
+			name:               "deployed Operations Center",
+			opts:               []Option{WithOperationsCenterCluster(isClusterMember, func() string { return "cluster" })},
+			endpoint:           provisioning.Server{Type: api.ServerTypeOperationsCenter, Certificate: new("remote")},
+			wantCertificatePEM: "remote",
+		},
+		{
+			name:               "Incus server with the certificate of a cluster member",
+			opts:               []Option{WithOperationsCenterCluster(isClusterMember, func() string { return "cluster" })},
+			endpoint:           &provisioning.Server{Type: api.ServerTypeIncus, Certificate: new("member")},
+			wantCertificatePEM: "member",
+		},
+		{
+			name:               "not clustered",
+			opts:               []Option{WithOperationsCenterCluster(isClusterMember, func() string { return "" })},
+			endpoint:           provisioning.Server{Type: api.ServerTypeOperationsCenter, Certificate: new("member")},
+			wantCertificatePEM: "member",
+		},
+		{
+			name:               "without cluster members",
+			endpoint:           provisioning.Server{Type: api.ServerTypeOperationsCenter, Certificate: new("member")},
+			wantCertificatePEM: "member",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := New(nil, tc.opts...)
+
+			require.Equal(t, tc.wantCertificatePEM, c.serverCertificate(tc.endpoint))
+		})
+	}
 }

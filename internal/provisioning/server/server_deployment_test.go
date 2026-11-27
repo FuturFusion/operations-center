@@ -1308,6 +1308,7 @@ func TestServerService_DeployByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			config.InitTest(t, &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool { return false },
+				ClusteredFunc: func() bool { return false },
 			}, nil)
 
 			if tc.operationsCenterAddress != "" {

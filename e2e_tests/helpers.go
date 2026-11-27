@@ -538,17 +538,6 @@ func mustWaitAgentRunning(ctx context.Context, t *testing.T, vm string, args ...
 	require.NoError(t, err)
 }
 
-// mustWaitAgentRunningWithTimeout is the same as mustWaitAgentRunning with
-// an additional timeout.
-func mustWaitAgentRunningWithTimeout(ctx context.Context, t *testing.T, vm string, timeout time.Duration, args ...any) {
-	t.Helper()
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
-	defer cancel()
-
-	mustWaitAgentRunning(timeoutCtx, t, vm, args...)
-}
-
 const (
 	agentWaitAttemptTimeout     = 30 * time.Second
 	incusOSStartupProbeInterval = 10 * time.Second
@@ -693,19 +682,8 @@ func mustWaitExpectedLog(ctx context.Context, t *testing.T, vm string, unit stri
 	mustWaitExpectedLogWithContext(ctx, t, vm, unit, want, false, args...)
 }
 
-// mustWaitExpectedLogWithTimeout is the same as mustWaitExpectedLog but
-// accepts an additional timeout.
-func mustWaitExpectedLogWithTimeout(ctx context.Context, t *testing.T, vm string, unit string, want string, timeout time.Duration, args ...any) {
-	t.Helper()
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
-	defer cancel()
-
-	mustWaitExpectedLogWithContext(timeoutCtx, t, vm, unit, want, false, args...)
-}
-
-// mustWaitExpectedLogWithTimeout is the same as mustWaitExpectedLog but
-// additionally accepts an context.
+// mustWaitExpectedLogWithContext is the same as mustWaitExpectedLog, but it
+// also accepts isRegex.
 func mustWaitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, unit string, want string, isRegex bool, args ...any) {
 	t.Helper()
 
@@ -1046,9 +1024,9 @@ func e2eHostAddress(t *testing.T) string {
 		return hostAddress
 	}
 
-	networkResp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`)
+	networkResp := mustRun(t, `incus list -f json | jq -r -e --arg name %s '[ .[] | select(.name == $name) | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`, operationsCenterVMName)
 	network := networkResp.OutputTrimmed()
-	require.NotEmpty(t, network, "Failed to determine the network of the OperationsCenter VM")
+	require.NotEmpty(t, network, "Failed to determine the network of the Operations Center VM")
 
 	// For a managed bridge, the first address of ipv4.address is the address of
 	// the host on that bridge.
@@ -1110,8 +1088,8 @@ func mustDeleteClusterImages(t *testing.T, clusterName string) {
 	}
 }
 
-// operationsCenterIPAddress returns the global IPv4 address of the
-// OperationsCenter VM.
+// operationsCenterIPAddress returns the global IPv4 address of
+// operationsCenterVMName.
 func operationsCenterIPAddress(t *testing.T) string {
 	t.Helper()
 
@@ -1126,7 +1104,7 @@ func operationsCenterIPAddress(t *testing.T) string {
 func operationsCenterIPAddressWithContext(ctx context.Context, t *testing.T) (string, error) {
 	t.Helper()
 
-	return instanceIPAddressWithContext(ctx, t, "OperationsCenter")
+	return instanceIPAddressWithContext(ctx, t, operationsCenterVMName)
 }
 
 // instanceIPAddressWithContext returns the global IPv4 address of the VM name.
@@ -1984,8 +1962,14 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 		// Deliberately derived from t.Context() and not from the context of the
 		// test, since the debug output has to be collected even (and
 		// especially) if the test failed, because it exceeded its timeout.
-		ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Second))
-		defer cancel()
+		// Every command gets its own timeout, so a slow VM does not use up the
+		// time of the others.
+		runDebug := func(run func(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse, command string, args ...any) cmdResponse {
+			ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Second))
+			defer cancel()
+
+			return run(ctx, t, command, args...)
+		}
 
 		timestamp := time.Now().Format("2006-01-02-15-04-05")
 
@@ -2003,21 +1987,27 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			fmt.Println(string(collectedDebugOutput))
 		}
 
-		operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_journal_%s.log", timestamp))
-		fmt.Printf("operations-center journal saved in %q\n", operationsCenterJournalFilename)
-
 		journalSince := int((time.Since(start) + debugJournalSinceGrace).Seconds())
-		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, journalSince, debugJournalMaxLines)
-		if !resp.Success() {
-			t.Logf("Failed to get the operations-center journal: %s", resp.Error())
-		} else {
+		for _, name := range operationsCenterVMNames() {
+			operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_%s_journal_%s.log", name, timestamp))
+			resp := runDebug(runWithContext, `incus exec %s -- journalctl -u operations-center --no-pager --since "-%ds" -n %d`, name, journalSince, debugJournalMaxLines)
+			if !resp.Success() {
+				t.Logf("Failed to get the operations-center journal of %s: %s", name, resp.Error())
+
+				continue
+			}
+
 			err = os.WriteFile(operationsCenterJournalFilename, resp.output.Bytes(), 0o600)
 			if err != nil {
 				t.Errorf("Failed to write operations-center journal to %q: %v", operationsCenterJournalFilename, err)
+
+				continue
 			}
+
+			fmt.Printf("operations-center journal of %s saved in %q\n", name, operationsCenterJournalFilename)
 		}
 
-		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter")) | .name'`)
+		resp := runDebug(runWithContext, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*|OperationsCenter")) | .name'`)
 		if !resp.Success() {
 			t.Logf("Failed to list the instances: %s", resp.Error())
 		} else {
@@ -2027,7 +2017,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 				consoleFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_console_%s.log", instance, timestamp))
 				fmt.Printf("incus %q console log saved in %q\n", instance, consoleFilename)
 
-				consoleResp := runQuietWithContext(ctx, t, `incus console %s --show-log`, instance)
+				consoleResp := runDebug(runQuietWithContext, `incus console %s --show-log`, instance)
 				if !consoleResp.Success() {
 					t.Logf("Failed to get the console log of %q: %s", instance, consoleResp.Error())
 				} else {
@@ -2044,7 +2034,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
 				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
 
-				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)
+				resp := runDebug(runWithContext, `incus exec %s -- journalctl -u incus -n 1000`, instance)
 				if !resp.Success() {
 					t.Logf("Failed to get the incus journal of %q: %s", instance, resp.Error())
 				} else {
@@ -2114,18 +2104,24 @@ func mustGenerateSelfSignedCertificate(t *testing.T, hostAddress string, commonN
 func servedOperationsCenterCertificate(ctx context.Context, t *testing.T) ([]*x509.Certificate, error) {
 	t.Helper()
 
+	address, err := operationsCenterIPAddressWithContext(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
+	return servedCertificate(ctx, net.JoinHostPort(address, "8443"))
+}
+
+// servedCertificate returns the certificate chain, which hostPort presents,
+// leaf first.
+func servedCertificate(ctx context.Context, hostPort string) ([]*x509.Certificate, error) {
 	dialer := &tls.Dialer{
 		Config: &tls.Config{
 			InsecureSkipVerify: true, // nolint: gosec // The test verifies the certificate itself.
 		},
 	}
 
-	address, err := operationsCenterIPAddressWithContext(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(address, "8443"))
+	conn, err := dialer.DialContext(ctx, "tcp", hostPort)
 	if err != nil {
 		return nil, err
 	}
@@ -2140,6 +2136,42 @@ func servedOperationsCenterCertificate(ctx context.Context, t *testing.T) ([]*x5
 	}
 
 	return tlsConn.ConnectionState().PeerCertificates, nil
+}
+
+// mustRetrustOperationsCenterRemote adds the remote e2e-test again. The CLI
+// then pins the certificate that operationsCenterVMName serves now.
+func mustRetrustOperationsCenterRemote(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	err := retrustOperationsCenterRemoteWithContext(ctx, t)
+	require.NoError(t, err, "Failed to add the remote of the CLI again")
+}
+
+// retrustOperationsCenterRemoteWithContext adds the remote e2e-test again. The
+// CLI then pins the certificate that operationsCenterVMName serves now. It
+// takes a context, since t.Context() is canceled in cleanups.
+func retrustOperationsCenterRemoteWithContext(ctx context.Context, t *testing.T) error {
+	t.Helper()
+
+	address, err := operationsCenterIPAddressWithContext(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	operationsCenterAddress := fmt.Sprintf("https://%s/", net.JoinHostPort(address, "8443"))
+
+	for _, command := range []string{
+		`../bin/operations-center.linux.%[1]s remote remove e2e-test`,
+		`../bin/operations-center.linux.%[1]s remote add --accept-certificate e2e-test %[2]s`,
+		`../bin/operations-center.linux.%[1]s remote switch e2e-test`,
+	} {
+		err := fmtRunErr(runWithContext(ctx, t, command, cpuArch, operationsCenterAddress))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // operationsCenterRemoteNeedsRetrust reports, whether the CLI pins a different

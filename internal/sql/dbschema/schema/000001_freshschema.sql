@@ -36,9 +36,12 @@ CREATE TABLE clusters (
   properties TEXT NOT NULL DEFAULT '',
   update_status TEXT NOT NULL DEFAULT '',
   config TEXT NOT NULL DEFAULT '',
+  uuid TEXT NOT NULL,
   UNIQUE (name),
   UNIQUE (certificate),
+  UNIQUE (uuid),
   CHECK (name <> ''),
+  CHECK (uuid <> ''),
   FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
 
@@ -88,7 +91,9 @@ CREATE TABLE updates (
   "url" NOT NULL DEFAULT '',
   "status" NOT NULL DEFAULT 'ready',
   last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
-  UNIQUE(uuid)
+  member_id INTEGER NOT NULL,
+  UNIQUE(uuid),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE
 );
 
 CREATE TABLE channels (
@@ -347,9 +352,11 @@ CREATE TABLE cluster_artifacts (
   properties TEXT NOT NULL,
   files TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  member_id INTEGER NOT NULL,
   UNIQUE (cluster_id, name),
   CHECK (name <> ''),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE
 );
 
 CREATE TABLE warnings (
@@ -392,8 +399,10 @@ CREATE TABLE incus_images (
   last_updated DATETIME NOT NULL,
   aliases TEXT NOT NULL DEFAULT '',
   incus_image_source_id INTEGER,
+  member_id INTEGER NOT NULL,
   UNIQUE (operating_system, release, variant, architecture),
   FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE,
   CHECK (name <> '')
 );
 
@@ -410,6 +419,18 @@ CREATE TABLE IF NOT EXISTS cluster_members (
   UNIQUE (address)
 );
 
+CREATE TABLE IF NOT EXISTS cluster_join_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  server_name TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  cluster_fingerprint TEXT NOT NULL,
+  cluster_addresses TEXT NOT NULL,
+  expiration_date DATETIME NOT NULL,
+  joiner_fingerprint TEXT NOT NULL DEFAULT '',
+  UNIQUE (server_name),
+  UNIQUE (secret)
+);
+
 CREATE TABLE IF NOT EXISTS config (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     node_id INTEGER,
@@ -420,6 +441,18 @@ CREATE TABLE IF NOT EXISTS config (
 
 -- UNIQUE (node_id) doesn't cover NULL, the shared config row.
 CREATE UNIQUE INDEX IF NOT EXISTS config_shared ON config ((node_id IS NULL)) WHERE node_id IS NULL;
+
+CREATE TABLE media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}',
+  expires_at DATETIME NOT NULL,
+  UNIQUE (type, name),
+  FOREIGN KEY (member_id) REFERENCES cluster_members (id) ON DELETE CASCADE,
+  CHECK (name <> '')
+);
 
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, images.uuid, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
@@ -485,4 +518,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (44, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (45, strftime("%s"));

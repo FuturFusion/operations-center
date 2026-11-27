@@ -2,6 +2,9 @@ package authn
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -17,6 +20,7 @@ type MiddlewareOption func(c *middlewareConfig)
 type middlewareConfig struct {
 	isAuthenticationRequired func(r *http.Request) bool
 	isContentTypeCheckExempt func(r *http.Request) bool
+	refuseWhileStarting      bool
 }
 
 func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request) bool) MiddlewareOption {
@@ -31,6 +35,13 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 func WithIsContentTypeCheckExempt(isContentTypeCheckExempt func(r *http.Request) bool) MiddlewareOption {
 	return func(c *middlewareConfig) {
 		c.isContentTypeCheckExempt = isContentTypeCheckExempt
+	}
+}
+
+// WithRefuseWhileStarting answers every request while the daemon is starting, before any authentication, like Incus.
+func WithRefuseWhileStarting() MiddlewareOption {
+	return func(c *middlewareConfig) {
+		c.refuseWhileStarting = true
 	}
 }
 
@@ -73,6 +84,12 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 			// context handed to the next handler keeps the component of the
 			// caller, so the whole request is not attributed to authn.
 			logCtx := logger.ContextWithComponent(ctx, componentAuthn)
+
+			// Until the security configuration is loaded, a trust answer could be wrong.
+			if cfg.refuseWhileStarting && current.starting {
+				renderStarting(logCtx, w, r)
+				return
+			}
 
 			err = crossOriginProtection.Check(r)
 			if err != nil {
@@ -119,6 +136,35 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 				}
 			}
 
+			// While starting, the identity forwarded by a cluster member can not be authorized yet.
+			if trusted && current.starting && r.Header.Get(HeaderForwardedAddress) != "" {
+				renderStarting(logCtx, w, r)
+				return
+			}
+
+			// A cluster member forwarding a request passes on the identity of its client, which is not authenticated without one.
+			if trusted && current.checkTrustedForward != nil && r.Header.Get(HeaderForwardedAddress) != "" && current.checkTrustedForward(r) {
+				username = r.Header.Get(HeaderForwardedUsername)
+				protocol = r.Header.Get(HeaderForwardedProtocol)
+				// Clients on the unix socket have no username.
+				trusted = protocol != ""
+				ctx = context.WithValue(ctx, CtxForwardedAddress, r.Header.Get(HeaderForwardedAddress))
+
+				cert, err := forwardedCertificate(r)
+				if err != nil {
+					err = response.BadRequest(err).Render(w)
+					if err != nil {
+						slog.WarnContext(logCtx, "Render error response failed", logger.Err(err))
+					}
+
+					return
+				}
+
+				if cert != nil {
+					ctx = context.WithValue(ctx, CtxForwardedCertificate, cert)
+				}
+			}
+
 			if cfg.isAuthenticationRequired(r) && !trusted && current.starting {
 				renderStarting(logCtx, w, r)
 				return
@@ -151,12 +197,32 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 	}
 }
 
-// renderStarting answers a request that can not be authenticated before the security configuration is loaded.
+// renderStarting answers a request, which can not be authenticated before the security configuration is loaded, as unavailable.
 func renderStarting(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	slog.DebugContext(ctx, "Rejecting request while starting", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 
-	err := response.SmartError(api.StatusErrorf(http.StatusTooEarly, "Operations Center is still starting")).Render(w)
+	err := response.SmartError(api.StatusErrorf(http.StatusServiceUnavailable, "Operations Center is starting up")).Render(w)
 	if err != nil {
 		slog.WarnContext(ctx, "Render error response failed", logger.Err(err))
 	}
+}
+
+// forwardedCertificate returns the client certificate passed on by a cluster member, nil if there is none.
+func forwardedCertificate(r *http.Request) (*x509.Certificate, error) {
+	value := r.Header.Get(HeaderForwardedCertificate)
+	if value == "" {
+		return nil, nil
+	}
+
+	der, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid forwarded client certificate: %w", err)
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid forwarded client certificate: %w", err)
+	}
+
+	return cert, nil
 }

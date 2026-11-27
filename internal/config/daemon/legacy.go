@@ -34,6 +34,11 @@ func (l legacyConfig) shared() SharedConfig {
 		Security: l.Security,
 		Settings: l.Settings.SettingsGlobal,
 		Updates:  l.Updates,
+		Cluster: system.Cluster{
+			ClusterPut: system.ClusterPut{
+				OfflineThresholdSeconds: DefaultOfflineThresholdSeconds,
+			},
+		},
 	}
 }
 

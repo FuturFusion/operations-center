@@ -8,7 +8,7 @@
 set -euo pipefail
 
 binary=${1:-bin/operations-centerd}
-instance=${2:-OperationsCenter}
+instance=${2:-OperationsCenter01}
 libdir=${3:-/root/dev/lib}
 
 missing=$(ldd "${binary}" | grep "not found" || true)

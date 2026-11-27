@@ -14,30 +14,40 @@ import (
 	"slices"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v7/shared/revert"
 
+	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/sqlite/query"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
+// clusterArtifact stores the artifact files of a cluster in a directory named by the cluster UUID.
 type clusterArtifact struct {
-	db   sqlite.DBTX
-	root *os.Root
+	db      sqlite.DBTX
+	root    *os.Root
+	targets memberfiles.Targets
 }
 
-var _ provisioning.ClusterArtifactRepo = &clusterArtifact{}
+var (
+	_ provisioning.ClusterArtifactRepo = &clusterArtifact{}
+	_ memberfiles.FileTargetRepo       = &clusterArtifact{}
+)
 
-// New returns a cluster artifact repository, which stores the files in root.
-func New(db sqlite.DBTX, root *os.Root) *clusterArtifact {
+// New returns the artifacts stored in root by this member, targets resolves the other members.
+func New(db sqlite.DBTX, root *os.Root, targets memberfiles.Targets) *clusterArtifact {
 	c := &clusterArtifact{
-		db:   db,
-		root: root,
+		db:      db,
+		root:    root,
+		targets: targets,
 	}
 
 	c.registerUpdateSignalHandler()
@@ -59,47 +69,29 @@ func artifactPath(elements ...string) (string, error) {
 
 func (c clusterArtifact) registerUpdateSignalHandler() {
 	lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
-		switch cum.Operation {
-		case lifecycle.ClusterUpdateOperationRename:
-			oldPath, err := artifactPath(cum.OldName)
+		if cum.Operation != lifecycle.ClusterUpdateOperationDelete || cum.UUID == uuid.Nil {
+			return
+		}
+
+		err := c.root.RemoveAll(cum.UUID.String())
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to remove cluster artifact storage directory", slog.String("cluster", cum.Name), logger.Err(err))
+		}
+
+		// The artifacts might be stored by another member, unreachable members remove the files on startup.
+		members, err := c.targets.Others(ctx)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to get the cluster members to remove the cluster artifacts on", slog.String("cluster", cum.Name), logger.Err(err))
+			return
+		}
+
+		for _, member := range members {
+			err := c.targets.Do(ctx, member.ID, func(ctx context.Context, cl client.OperationsCenterClient) error {
+				return cl.DeleteMemberFile(ctx, memberfiles.StoreArtifacts, cum.UUID.String())
+			})
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to rename cluster artifact storage directory", slog.String("old_name", cum.OldName), logger.Err(err))
-				return
+				slog.WarnContext(ctx, "Failed to remove the cluster artifacts on cluster member", slog.String("cluster", cum.Name), slog.String("member", member.Name), logger.Err(err))
 			}
-
-			newPath, err := artifactPath(cum.Name)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to rename cluster artifact storage directory", slog.String("new_name", cum.Name), logger.Err(err))
-				return
-			}
-
-			if !file.PathExistsIn(c.root, oldPath) {
-				return
-			}
-
-			err = c.root.Rename(oldPath, newPath)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to rename cluster artifact storage directory", slog.String("old_path", oldPath), slog.String("new_path", newPath), logger.Err(err))
-				return
-			}
-
-		case lifecycle.ClusterUpdateOperationDelete:
-			configDir, err := artifactPath(cum.Name)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to remove cluster artifact storage directory", slog.String("cluster", cum.Name), logger.Err(err))
-				return
-			}
-
-			if !file.PathExistsIn(c.root, configDir) {
-				return
-			}
-
-			err = c.root.RemoveAll(configDir)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to remove cluster artifact storage directory", slog.String("cluster", cum.Name), logger.Err(err))
-			}
-
-		default:
 		}
 	})
 }
@@ -116,7 +108,7 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		return 0, domain.NewErrorf(domain.ErrConstraintViolation, "", "Cluster artifact name cannot be empty")
 	}
 
-	targetDir, err := artifactPath(in.Cluster, in.Name)
+	_, err := artifactPath(in.Name)
 	if err != nil {
 		return 0, err
 	}
@@ -129,7 +121,6 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 	defer sourceRoot.Close()
 
 	in.Files = nil
-
 	if sourceFilename == "" {
 		dirEntries, err := fs.ReadDir(sourceRoot.FS(), ".")
 		if err != nil {
@@ -177,24 +168,62 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		in.Files[i].MimeType = mtype.String()
 	}
 
+	// The files are copied outside of a transaction, so only the statements are run in one.
+	clusterUUID, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (string, error) {
+		var clusterUUID string
+		err := transaction.GetDBTX(ctx, c.db).QueryRowContext(ctx, `SELECT uuid FROM clusters WHERE name = ?`, in.Cluster).Scan(&clusterUUID)
+
+		return clusterUUID, err
+	})
+	if err != nil {
+		return 0, fmt.Errorf("Failed to get UUID of cluster %q: %w", in.Cluster, err)
+	}
+
+	in.MemberID, err = c.targets.LocalID()
+	if err != nil {
+		return 0, err
+	}
+
+	targetDir, err := artifactPath(clusterUUID, in.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	err = c.root.MkdirAll(clusterUUID, 0o700)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to create cluster artifact from path: %w", err)
+	}
+
+	// Copy the files next to the target, so the files of an existing artifact are never touched.
+	tmpDir := filepath.Join(clusterUUID, "."+in.Name+".partial-"+uuid.NewString())
+	err = c.root.Mkdir(tmpDir, 0o700)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to create cluster artifact from path: %w", err)
+	}
+
+	defer func() {
+		_ = c.root.RemoveAll(tmpDir)
+	}()
+
+	for _, f := range in.Files {
+		_, err = copyFile(sourceRoot, f.Name, c.root, filepath.Join(tmpDir, f.Name))
+		if err != nil {
+			return 0, fmt.Errorf("Failed to create cluster artifact from path %q: Failed to copy file %q: %w", path, f.Name, err)
+		}
+	}
+
+	// Renaming fails if the target exists already, so it is only removed if created here.
+	err = c.root.Rename(tmpDir, targetDir)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to create cluster artifact from path: %w", err)
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	reverter.Add(func() {
 		_ = c.root.RemoveAll(targetDir)
 	})
-
-	err = c.root.MkdirAll(targetDir, 0o700)
-	if err != nil {
-		return 0, fmt.Errorf("Failed to create cluster artifact from path: %w", err)
-	}
-
-	for _, f := range in.Files {
-		_, err = copyFile(sourceRoot, f.Name, c.root, filepath.Join(targetDir, f.Name))
-		if err != nil {
-			return 0, fmt.Errorf("Failed to create cluster artifact from path %q: Failed to copy file %q: %w", path, f.Name, err)
-		}
-	}
 
 	id, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (int64, error) {
 		return entities.CreateClusterArtifact(ctx, transaction.GetDBTX(ctx, c.db), in)
@@ -270,10 +299,15 @@ func copyFile(srcRoot *os.Root, src string, dstRoot *os.Root, dst string) (_ int
 	return nBytes, err
 }
 
-// openFunc returns a function, which opens the file of the artifact.
-func (c clusterArtifact) openFunc(clusterName string, artifactName string, filename string) func() (io.ReadCloser, error) {
+// filePath returns the slash separated path of the file filename of artifact in the store.
+func filePath(artifact provisioning.ClusterArtifact, filename string) string {
+	return filepath.ToSlash(filepath.Join(artifact.ClusterUUID.String(), artifact.Name, filename))
+}
+
+// open returns a function to open the file filename of artifact.
+func (c clusterArtifact) open(artifact provisioning.ClusterArtifact, filename string) func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
-		name, err := artifactPath(clusterName, artifactName, filename)
+		name, err := artifactPath(artifact.ClusterUUID.String(), artifact.Name, filename)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +327,7 @@ func (c clusterArtifact) GetClusterArtifactAll(ctx context.Context, clusterName 
 
 		for i := range artifacts {
 			for j := range artifacts[i].Files {
-				artifacts[i].Files[j].Open = c.openFunc(artifacts[i].Cluster, artifacts[i].Name, artifacts[i].Files[j].Name)
+				artifacts[i].Files[j].Open = c.open(artifacts[i], artifacts[i].Files[j].Name)
 			}
 		}
 
@@ -327,7 +361,7 @@ func (c clusterArtifact) GetClusterArtifactByName(ctx context.Context, clusterNa
 		}
 
 		for i := range artifact.Files {
-			artifact.Files[i].Open = c.openFunc(artifact.Cluster, artifact.Name, artifact.Files[i].Name)
+			artifact.Files[i].Open = c.open(*artifact, artifact.Files[i].Name)
 		}
 
 		return artifact, nil
@@ -339,38 +373,23 @@ func (c clusterArtifact) GetClusterArtifactArchiveByName(ctx context.Context, cl
 		return nil, 0, fmt.Errorf("Archive type %q (%s) not supported", archiveType.Ext, archiveType.MimeType)
 	}
 
-	sourceDir, err := artifactPath(clusterName, artifactName)
+	artifact, err := c.GetClusterArtifactByName(ctx, clusterName, artifactName)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	if !file.PathExistsIn(c.root, sourceDir) {
-		return nil, 0, fmt.Errorf("Files for artifact %q of cluster %q not found", artifactName, clusterName)
-	}
-
 	buf := new(bytes.Buffer)
-
 	zipWriter := zip.NewWriter(buf)
 
-	dirEntries, err := fs.ReadDir(c.root.FS(), sourceDir)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to read directory entries for %q: %w", sourceDir, err)
-	}
-
-	for _, f := range dirEntries {
-		if f.IsDir() || !f.Type().IsRegular() {
-			continue
+	for _, f := range artifact.Files {
+		zipFileWriter, err := zipWriter.Create(f.Name)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to create %q in zip file: %w", f.Name, err)
 		}
 
-		zipFileWriter, err := zipWriter.Create(f.Name())
+		err = copyToArchive(zipFileWriter, f)
 		if err != nil {
-			return nil, 0, fmt.Errorf("Failed to create %q in zip file: %w", f.Name(), err)
-		}
-
-		sourceFilename := filepath.Join(sourceDir, f.Name())
-		err = copyToZip(zipFileWriter, c.root, sourceFilename)
-		if err != nil {
-			return nil, 0, fmt.Errorf("Failed to copy content from source file %q to zip archive: %w", sourceFilename, err)
+			return nil, 0, err
 		}
 	}
 
@@ -382,15 +401,131 @@ func (c clusterArtifact) GetClusterArtifactArchiveByName(ctx context.Context, cl
 	return io.NopCloser(buf), buf.Len(), nil
 }
 
-func copyToZip(w io.Writer, root *os.Root, name string) error {
-	f, err := root.Open(name)
+func copyToArchive(w io.Writer, f provisioning.ClusterArtifactFile) error {
+	sourceFile, err := f.Open()
 	if err != nil {
-		return fmt.Errorf("Failed to open source file %q: %w", name, err)
+		return fmt.Errorf("Failed to open source file %q: %w", f.Name, err)
 	}
 
-	defer f.Close()
+	defer sourceFile.Close()
 
-	_, err = file.SafeCopy(w, f)
+	_, err = file.SafeCopy(w, sourceFile)
+	if err != nil {
+		return fmt.Errorf("Failed to copy content from source file %q to zip archive: %w", f.Name, err)
+	}
 
-	return err
+	return nil
+}
+
+// Prune removes the artifact files the database does not assign to this member.
+func (c clusterArtifact) Prune(ctx context.Context) error {
+	localMemberID, err := c.targets.LocalID()
+	if err != nil {
+		return err
+	}
+
+	// The unknown files are removed outside of a transaction.
+	artifacts, err := transaction.DoAndReturn(ctx, func(ctx context.Context) ([]provisioning.ClusterArtifact, error) {
+		return entities.GetClusterArtifacts(ctx, transaction.GetDBTX(ctx, c.db))
+	})
+	if err != nil {
+		return err
+	}
+
+	known := map[string]bool{}
+	for _, artifact := range artifacts {
+		if artifact.MemberID != localMemberID {
+			continue
+		}
+
+		for _, artifactFile := range artifact.Files {
+			known[filePath(artifact, artifactFile.Name)] = true
+		}
+	}
+
+	return memberfiles.DeleteUnknownFiles(c.root, known)
+}
+
+// MigrateNameLayout moves the files, which are stored by cluster name, to the
+// directory named by the UUID of the cluster.
+func (c clusterArtifact) MigrateNameLayout(ctx context.Context) error {
+	// The directories are renamed outside of a transaction.
+	clusterUUIDs, err := transaction.DoAndReturn(ctx, func(ctx context.Context) (map[string]string, error) {
+		clusterUUIDs := map[string]string{}
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `SELECT name, uuid FROM clusters`, func(scan func(dest ...any) error) error {
+			var name, clusterUUID string
+
+			err := scan(&name, &clusterUUID)
+			if err != nil {
+				return err
+			}
+
+			clusterUUIDs[name] = clusterUUID
+
+			return nil
+		})
+
+		return clusterUUIDs, err
+	})
+	if err != nil {
+		return err
+	}
+
+	for name, clusterUUID := range clusterUUIDs {
+		// A cluster name that is not a single file name has never been used as directory.
+		if !file.IsPathElement(name) {
+			continue
+		}
+
+		if !file.PathExistsIn(c.root, name) || file.PathExistsIn(c.root, clusterUUID) {
+			continue
+		}
+
+		err = c.root.Rename(name, clusterUUID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetUnitsByTarget returns the files of the cluster artifacts stored on the member memberID.
+func (c clusterArtifact) GetUnitsByTarget(ctx context.Context, memberID int64) ([]memberfiles.Unit, error) {
+	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]memberfiles.Unit, error) {
+		var units []memberfiles.Unit
+
+		err := query.Scan(ctx, transaction.GetDBTX(ctx, c.db), `
+SELECT cluster_artifacts.id, clusters.uuid, cluster_artifacts.name
+  FROM cluster_artifacts
+  JOIN clusters ON clusters.id = cluster_artifacts.cluster_id
+  WHERE cluster_artifacts.member_id = ?`, func(scan func(dest ...any) error) error {
+			var unit memberfiles.Unit
+			var clusterUUID, name string
+
+			err := scan(&unit.ID, &clusterUUID, &name)
+			if err != nil {
+				return err
+			}
+
+			unit.Store = memberfiles.StoreArtifacts
+			unit.Name = filepath.ToSlash(filepath.Join(clusterUUID, name))
+			units = append(units, unit)
+
+			return nil
+		}, memberID)
+		if err != nil {
+			return nil, err
+		}
+
+		return units, nil
+	})
+}
+
+// SetUnitTarget records that the member memberID stores the files of the cluster artifact unit.
+func (c clusterArtifact) SetUnitTarget(ctx context.Context, unit memberfiles.Unit, memberID int64) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		_, err := transaction.GetDBTX(ctx, c.db).ExecContext(ctx, `UPDATE cluster_artifacts SET member_id = ? WHERE id = ?`, memberID, unit.ID)
+		return err
+	})
 }

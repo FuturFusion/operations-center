@@ -150,6 +150,7 @@ func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 			IsIncusOSFunc: func() bool {
 				return false
 			},
+			ClusteredFunc: func() bool { return false },
 		}, nil)
 
 		err := config.UpdateLocalNetwork(t.Context(), system.NetworkLocalPut{

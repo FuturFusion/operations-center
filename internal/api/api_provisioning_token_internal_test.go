@@ -998,6 +998,9 @@ func Test_tokenHandler_tokenSeedImageGet_readProgress(t *testing.T) {
 	)
 
 	tokenService := &provisioningMock.TokenServiceMock{
+		PreparedTokenSeedImageHolderFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error) {
+			return 1, true, nil
+		},
 		GetPreparedTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (*provisioning.TokenImage, error) {
 			return testTokenImage(content), nil
 		},
@@ -1085,6 +1088,9 @@ func Test_tokenHandler_tokenSeedImageGet_readProgressPerDeployment(t *testing.T)
 	)
 
 	tokenService := &provisioningMock.TokenServiceMock{
+		PreparedTokenSeedImageHolderFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error) {
+			return 1, true, nil
+		},
 		GetPreparedTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (*provisioning.TokenImage, error) {
 			return testTokenImage(content), nil
 		},
@@ -1190,7 +1196,7 @@ func newTokenTestServer(t *testing.T, tokenService provisioning.TokenService, se
 	)
 
 	var authorizer authz.Authorizer = noopAuthorizer{}
-	registerProvisioningTokenHandler(router, &authorizer, tokenService, seedProgress)
+	registerProvisioningTokenHandler(router, &authorizer, tokenService, seedProgress, forwarder{clustered: func() bool { return false }})
 
 	server := httptest.NewServer(serveMux)
 	t.Cleanup(server.Close)

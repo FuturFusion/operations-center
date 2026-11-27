@@ -51,5 +51,8 @@
     "updates_default_channel": "x-.Updates.UpdatesPut.UpdatesDefaultChannel",
     "server_default_channel": "x-.Updates.UpdatesPut.ServerDefaultChannel",
     "image_server_authentication_by_query_param": true
+  },
+  "cluster": {
+    "offline_threshold_seconds": 7
   }
 }

@@ -5,13 +5,21 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"log/slog"
+	"net/http"
+	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db"
 
+	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
+	api0 "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // componentMembershipService identifies the log records of this decorator and allows the
@@ -49,6 +57,258 @@ func NewMembershipServiceWithSlog(base cluster.MembershipService, opts ...Member
 	return this
 }
 
+// Accept implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Accept(ctx context.Context, cfg api.ClusterAcceptPost) (internalClusterAcceptResponse *api0.InternalClusterAcceptResponse, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Accept")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("internalClusterAcceptResponse", internalClusterAcceptResponse),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Accept returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Accept finished")
+		}
+	}()
+	return _d._base.Accept(ctx, cfg)
+}
+
+// ApplyClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("certificatePEM", certificatePEM),
+			slog.String("keyPEM", keyPEM),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplyClusterCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ApplyClusterCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ApplyClusterCertificate finished")
+		}
+	}()
+	return _d._base.ApplyClusterCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// Auth implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, username string, protocol string, err error) {
+	ctx := logger.ContextWithComponent(r.Context(), _d._component)
+	r = r.WithContext(ctx)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.String("r", r.Method+" "+r.URL.RequestURI()),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Auth")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("trusted", trusted),
+				slog.String("username", username),
+				slog.String("protocol", protocol),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Auth returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Auth finished")
+		}
+	}()
+	return _d._base.Auth(w, r)
+}
+
+// Bootstrap implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Bootstrap")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Bootstrap returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Bootstrap finished")
+		}
+	}()
+	return _d._base.Bootstrap(ctx, cfg)
+}
+
+// CheckMembersOnline implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) CheckMembersOnline(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CheckMembersOnline")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method CheckMembersOnline returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method CheckMembersOnline finished")
+		}
+	}()
+	return _d._base.CheckMembersOnline(ctx)
+}
+
+// ContactMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ContactMembers(ctx context.Context, except ...string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("except", except),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ContactMembers")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ContactMembers returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ContactMembers finished")
+		}
+	}()
+	return _d._base.ContactMembers(ctx, except...)
+}
+
+// CreateToken implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) CreateToken(ctx context.Context, req api.ClusterTokenPost) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("req", req),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CreateToken")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method CreateToken returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method CreateToken finished")
+		}
+	}()
+	return _d._base.CreateToken(ctx, req)
+}
+
+// DeleteTokenByName implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) DeleteTokenByName(ctx context.Context, serverName string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("serverName", serverName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteTokenByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method DeleteTokenByName returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method DeleteTokenByName finished")
+		}
+	}()
+	return _d._base.DeleteTokenByName(ctx, serverName)
+}
+
 // DetermineNodeID implements cluster.MembershipService.
 func (_d MembershipServiceWithSlog) DetermineNodeID(ctx context.Context, address string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
@@ -81,13 +341,14 @@ func (_d MembershipServiceWithSlog) DetermineNodeID(ctx context.Context, address
 }
 
 // Enable implements cluster.MembershipService.
-func (_d MembershipServiceWithSlog) Enable(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
+func (_d MembershipServiceWithSlog) Enable(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterAddress", clusterAddress),
+			slog.Any("tokenRepo", tokenRepo),
 			slog.Any("configRepo", configRepo),
 			slog.Any("globalRepo", globalRepo),
 		)
@@ -110,7 +371,7 @@ func (_d MembershipServiceWithSlog) Enable(ctx context.Context, clusterAddress s
 			log.DebugContext(ctx, "<= method Enable finished")
 		}
 	}()
-	return _d._base.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	return _d._base.Enable(ctx, clusterAddress, tokenRepo, configRepo, globalRepo)
 }
 
 // Gateway implements cluster.MembershipService.
@@ -131,8 +392,427 @@ func (_d MembershipServiceWithSlog) Gateway() (gateway cluster0.Gateway) {
 	return _d._base.Gateway()
 }
 
+// GetMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetMembers(ctx context.Context) (clusterMembers []api.ClusterMember, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetMembers")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("clusterMembers", clusterMembers),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetMembers returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetMembers finished")
+		}
+	}()
+	return _d._base.GetMembers(ctx)
+}
+
+// GetMembersByID implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetMembersByID(ctx context.Context) (int64ToNodeInfo map[int64]db.NodeInfo, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetMembersByID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("int64ToNodeInfo", int64ToNodeInfo),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetMembersByID returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetMembersByID finished")
+		}
+	}()
+	return _d._base.GetMembersByID(ctx)
+}
+
+// GetTokenByServerName implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetTokenByServerName(ctx context.Context, serverName string) (clusterJoinToken *entities.ClusterJoinToken, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("serverName", serverName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenByServerName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("clusterJoinToken", clusterJoinToken),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetTokenByServerName returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenByServerName finished")
+		}
+	}()
+	return _d._base.GetTokenByServerName(ctx, serverName)
+}
+
+// GetTokens implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) GetTokens(ctx context.Context) (clusterJoinTokens entities.ClusterJoinTokens, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokens")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("clusterJoinTokens", clusterJoinTokens),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetTokens returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetTokens finished")
+		}
+	}()
+	return _d._base.GetTokens(ctx)
+}
+
+// HandOverRole implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HandOverRole(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling HandOverRole")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method HandOverRole returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method HandOverRole finished")
+		}
+	}()
+	return _d._base.HandOverRole(ctx)
+}
+
+// HandlerFuncs implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling HandlerFuncs")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToHandlerFunc", stringToHandlerFunc),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method HandlerFuncs finished")
+	}()
+	return _d._base.HandlerFuncs()
+}
+
+// Handover implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Handover(ctx context.Context, address string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("address", address),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Handover")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Handover returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Handover finished")
+		}
+	}()
+	return _d._base.Handover(ctx, address)
+}
+
+// HeartbeatOfflineThreshold implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) HeartbeatOfflineThreshold() (duration time.Duration) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling HeartbeatOfflineThreshold")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Duration("duration", duration),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method HeartbeatOfflineThreshold finished")
+	}()
+	return _d._base.HeartbeatOfflineThreshold()
+}
+
+// IsMemberCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) IsMemberCertificate(certificatePEM string) (b bool) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.String("certificatePEM", certificatePEM),
+		)
+	}
+	log.DebugContext(ctx, "=> calling IsMemberCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("b", b),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method IsMemberCertificate finished")
+	}()
+	return _d._base.IsMemberCertificate(certificatePEM)
+}
+
+// Join implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Join(ctx context.Context, cfg api.ClusterJoinPost) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Join")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Join returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Join finished")
+		}
+	}()
+	return _d._base.Join(ctx, cfg)
+}
+
+// LeaderAddress implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LeaderAddress(ctx context.Context) (s string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LeaderAddress")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("s", s),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method LeaderAddress returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method LeaderAddress finished")
+		}
+	}()
+	return _d._base.LeaderAddress(ctx)
+}
+
+// LeaderContext implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LeaderContext(name string) (context1 context.Context, fn func(), b bool) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LeaderContext")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("context1", context1),
+				slog.Any("fn", fn),
+				slog.Bool("b", b),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method LeaderContext finished")
+	}()
+	return _d._base.LeaderContext(name)
+}
+
+// LocalMemberID implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) LocalMemberID() (n int64, err error) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling LocalMemberID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Int64("n", n),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method LocalMemberID returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method LocalMemberID finished")
+		}
+	}()
+	return _d._base.LocalMemberID()
+}
+
+// MemberClient implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) MemberClient(address string) (operationsCenterClient client.OperationsCenterClient, err error) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.String("address", address),
+		)
+	}
+	log.DebugContext(ctx, "=> calling MemberClient")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("operationsCenterClient", operationsCenterClient),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method MemberClient returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method MemberClient finished")
+		}
+	}()
+	return _d._base.MemberClient(address)
+}
+
+// NotifyUpgradeCompleted implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) NotifyUpgradeCompleted(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling NotifyUpgradeCompleted")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method NotifyUpgradeCompleted returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method NotifyUpgradeCompleted finished")
+		}
+	}()
+	return _d._base.NotifyUpgradeCompleted(ctx)
+}
+
 // PersistSharedConfig implements cluster.MembershipService.
-func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, change config.SharedChange) (sharedConfig config.SharedConfig, err error) {
+func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -146,7 +826,8 @@ func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, cha
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("sharedConfig", sharedConfig),
+				slog.Any("stored", stored),
+				slog.Any("previous", previous),
 				slog.Any("err", err),
 			)
 		} else {
@@ -161,6 +842,147 @@ func (_d MembershipServiceWithSlog) PersistSharedConfig(ctx context.Context, cha
 		}
 	}()
 	return _d._base.PersistSharedConfig(ctx, change)
+}
+
+// PublishSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("change", change),
+			slog.Any("previous", previous),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PublishSharedConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method PublishSharedConfig returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method PublishSharedConfig finished")
+		}
+	}()
+	return _d._base.PublishSharedConfig(ctx, change, previous)
+}
+
+// Rebalance implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Rebalance(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Rebalance")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Rebalance returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Rebalance finished")
+		}
+	}()
+	return _d._base.Rebalance(ctx)
+}
+
+// ReloadSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) ReloadSharedConfig(ctx context.Context) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ReloadSharedConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method ReloadSharedConfig returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method ReloadSharedConfig finished")
+		}
+	}()
+	return _d._base.ReloadSharedConfig(ctx)
+}
+
+// RemoveMember implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) RemoveMember(ctx context.Context, name string, force bool) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveMember")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method RemoveMember returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method RemoveMember finished")
+		}
+	}()
+	return _d._base.RemoveMember(ctx, name, force)
+}
+
+// Reset implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Reset(ctx context.Context) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Reset")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method Reset finished")
+	}()
+	_d._base.Reset(ctx)
 }
 
 // SetGlobalDB implements cluster.MembershipService.
@@ -220,4 +1042,104 @@ func (_d MembershipServiceWithSlog) Stop(ctx context.Context) (err error) {
 		}
 	}()
 	return _d._base.Stop(ctx)
+}
+
+// TaskStatus implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) TaskStatus() (internalClusterTaskStatus api0.InternalClusterTaskStatus) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling TaskStatus")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("internalClusterTaskStatus", internalClusterTaskStatus),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method TaskStatus finished")
+	}()
+	return _d._base.TaskStatus()
+}
+
+// Trust implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) Trust(ctx context.Context, token string, fingerprint string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("token", token),
+			slog.String("fingerprint", fingerprint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Trust")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method Trust returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method Trust finished")
+		}
+	}()
+	return _d._base.Trust(ctx, token, fingerprint)
+}
+
+// TrustedClients implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) TrustedClients() (stringToCertificate map[string]x509.Certificate) {
+	ctx := logger.ContextWithComponent(context.Background(), _d._component)
+	log := slog.With()
+	log.DebugContext(ctx, "=> calling TrustedClients")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToCertificate", stringToCertificate),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method TrustedClients finished")
+	}()
+	return _d._base.TrustedClients()
+}
+
+// UpdateClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithSlog) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("certificatePEM", certificatePEM),
+			slog.String("keyPEM", keyPEM),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateClusterCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate finished")
+		}
+	}()
+	return _d._base.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
 }

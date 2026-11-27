@@ -13,6 +13,7 @@ import (
 
 var (
 	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
+	ClientKeypairUpdateSignal     = signals.NewSync[ClientKeypairMessage]()
 
 	NetworkUpdateSignal       = signals.NewSync[apisystem.NetworkLocal]()
 	SharedNetworkUpdateSignal = signals.NewSync[apisystem.NetworkGlobal]()
@@ -29,6 +30,8 @@ var (
 	UpdatesValidateSignal = signals.NewSync[apisystem.Updates]()
 	UpdatesUpdateSignal   = signals.NewSync[apisystem.Updates]()
 
+	SharedClusterUpdateSignal = signals.NewSync[apisystem.Cluster]()
+
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
 
 	ServerLifecycleSignal = signals.NewSync[ServerLifecycleMessage]()
@@ -36,10 +39,19 @@ var (
 	BMCVirtualMediaSignal = signals.NewSync[BMCVirtualMediaMessage]()
 )
 
+// ClientKeypairMessage reports the PEM encoded client keypair that replaced the previous one.
+type ClientKeypairMessage struct {
+	Certificate string
+	Key         string
+}
+
 type ClusterUpdateMessage struct {
 	Operation ClusterUpdateOperation
 	Name      string
 	OldName   string
+
+	// UUID of the cluster, only set on delete.
+	UUID uuid.UUID
 }
 
 type ClusterUpdateOperation string

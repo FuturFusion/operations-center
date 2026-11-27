@@ -379,9 +379,14 @@ func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, 
 	})
 }
 
-// removeSeededImagesAfterCommit removes the cached images of a token seed as
-// soon as the change of the token seed is committed.
+// removeSeededImagesAfterCommit removes the records of the images of a token
+// seed with its change and the cached images as soon as the change is committed.
 func (s *tokenService) removeSeededImagesAfterCommit(ctx context.Context, id uuid.UUID, name string) error {
+	err := s.flasher.RemoveSeededImageRecords(ctx, provisioning.SeedImageCachePrefix(id, name))
+	if err != nil {
+		return fmt.Errorf("Failed to remove the records of the images of token seed %q: %w", name, err)
+	}
+
 	return transaction.AfterCommit(ctx, func(ctx context.Context) error {
 		err := s.flasher.RemoveSeededImages(ctx, provisioning.SeedImageCachePrefix(id, name))
 		if err != nil {
@@ -464,7 +469,8 @@ func (s *tokenService) GetCompressedTokenImageFromTokenSeed(ctx context.Context,
 //
 // It resolves and, if need be, generates the image, so it answers a request
 // naming a token seed. A request naming a prepared image is answered by
-// GetPreparedTokenSeedImage instead, which takes no lookup at all.
+// GetPreparedTokenSeedImage instead, which only looks up the token seed, if no
+// member stores the image anymore.
 func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
 	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
 
@@ -538,6 +544,10 @@ func (s *tokenService) GetPreparedTokenSeedImage(ctx context.Context, id uuid.UU
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
 	content, info, err := s.flasher.OpenSeededImage(ctx, cacheID, fingerprintID)
+	if errors.Is(err, domain.ErrNotFound) {
+		content, info, err = s.regeneratePreparedTokenSeedImage(ctx, id, name, imageType, architecture, channel, fingerprintID)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -547,6 +557,71 @@ func (s *tokenService) GetPreparedTokenSeedImage(ctx context.Context, id uuid.UU
 		SeedImageInfo: info,
 		Filename:      seedImageFilename(name, imageType),
 	}, nil
+}
+
+// PreparedTokenSeedImageHolder returns the cluster member storing the pre-seeded image addressed by fingerprintID.
+// available is false if no member can serve it, in which case it is generated again.
+func (s *tokenService) PreparedTokenSeedImageHolder(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (int64, bool, error) {
+	err := validateSeedImageRequest(imageType, architecture)
+	if err != nil {
+		return 0, false, err
+	}
+
+	return s.flasher.SeededImageHolder(ctx, provisioning.SeedImageCacheID(id, name, imageType, architecture, channel), fingerprintID)
+}
+
+// regeneratePreparedTokenSeedImage generates a prepared image again, which no
+// cluster member stores anymore. The generation is deterministic, so the image
+// is identical to the lost one, unless the token seed or the update changed.
+func (s *tokenService) regeneratePreparedTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
+	notFound := domain.NewErrorf(domain.ErrNotFound, "", "No seed image %q is available", fingerprintID).
+		WithDetail("fingerprint", fingerprintID)
+
+	currentID, err := s.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
+	if err != nil {
+		return nil, provisioning.SeedImageInfo{}, errors.Join(notFound, err)
+	}
+
+	if currentID != fingerprintID {
+		return nil, provisioning.SeedImageInfo{}, notFound
+	}
+
+	type generated struct {
+		content io.ReadSeekCloser
+		info    provisioning.SeedImageInfo
+		err     error
+	}
+
+	// The generation outlives a client going away, so its retry finds the image.
+	done := make(chan generated, 1)
+	go func() {
+		ctx := context.WithoutCancel(ctx)
+		generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
+
+		tokenSeed, err := s.publicTokenSeedForImage(ctx, id, name, imageType, architecture)
+		if err != nil {
+			done <- generated{err: err}
+			return
+		}
+
+		content, info, err := s.generateSeedImage(ctx, provisioning.SeedImageCacheID(id, name, imageType, architecture, channel), generation, id, *tokenSeed, imageType, architecture, channel)
+		done <- generated{content: content, info: info, err: err}
+	}()
+
+	select {
+	case result := <-done:
+		return result.content, result.info, result.err
+
+	case <-ctx.Done():
+		go func() {
+			result := <-done
+			if result.content != nil {
+				_ = result.content.Close()
+			}
+		}()
+
+		return nil, provisioning.SeedImageInfo{}, ctx.Err()
+	}
 }
 
 func validateSeedImageRequest(imageType api.ImageType, architecture images.UpdateFileArchitecture) error {

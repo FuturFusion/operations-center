@@ -6,99 +6,62 @@ import (
 	"testing"
 	"time"
 
-	cowsqlcluster "github.com/cowsql/go-cowsql/cluster"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
-// leaderGateway is a gateway reporting the leadership and recording its stop.
-type leaderGateway struct {
-	cowsqlcluster.Gateway
+// stopGateway is a leader gateway recording its stop.
+type stopGateway struct {
+	leaderGateway
 
-	leader    atomic.Bool
-	leaderErr error
-	stopErr   error
+	stopErr error
 
 	stops   atomic.Int32
 	timeout time.Duration
 }
 
-func (g *leaderGateway) IsLeader(context.Context) (bool, error) {
-	return g.leader.Load(), g.leaderErr
-}
-
-func (g *leaderGateway) Stop(timeout time.Duration) error {
+func (g *stopGateway) Stop(timeout time.Duration) error {
 	g.stops.Add(1)
 	g.timeout = timeout
 
 	return g.stopErr
 }
 
-// countingTask counts the starts and stops of a background task.
+// countingTask counts the starts and stops of a leader task.
 type countingTask struct {
 	starts  atomic.Int32
 	stops   atomic.Int32
 	stopErr error
 }
 
-func (c *countingTask) taskFunc(context.Context) func(context.Context) error {
-	c.starts.Add(1)
+func (c *countingTask) leaderTask() LeaderTask {
+	return LeaderTask{Name: "task", Start: func(context.Context) func(context.Context) error {
+		c.starts.Add(1)
 
-	return func(context.Context) error {
-		c.stops.Add(1)
+		return func(context.Context) error {
+			c.stops.Add(1)
 
-		return c.stopErr
-	}
+			return c.stopErr
+		}
+	}}
 }
 
-func newTestMembership(t *testing.T, gateway cowsqlcluster.Gateway, tasks ...task.TaskFunc) *membership {
+func newStopTestMembership(t *testing.T, gateway *stopGateway, bgTask *countingTask) *membership {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	return &membership{
-		gateway:         gateway,
-		ctx:             ctx,
-		cancel:          cancel,
-		backgroundTasks: tasks,
+		gateway:          gateway,
+		ctx:              ctx,
+		cancel:           cancel,
+		busyMemberTasks:  (&busyTasks{}).get,
+		handoverTimeout:  leaderHandoverTimeout,
+		handoverInterval: leaderHandoverInterval,
+		backgroundTasks:  []LeaderTask{bgTask.leaderTask()},
 	}
-}
-
-func TestMembership_checkLeadership(t *testing.T) {
-	t.Parallel()
-
-	gateway := &leaderGateway{}
-	bgTask := &countingTask{}
-	m := newTestMembership(t, gateway, bgTask.taskFunc)
-
-	// The tasks start once this member becomes the leader.
-	gateway.leader.Store(true)
-	m.checkLeadership(t.Context())
-	m.checkLeadership(t.Context())
-	require.Equal(t, int32(1), bgTask.starts.Load())
-	require.Equal(t, int32(0), bgTask.stops.Load())
-
-	gateway.leader.Store(false)
-	m.checkLeadership(t.Context())
-	require.Equal(t, int32(1), bgTask.stops.Load())
-
-	gateway.leader.Store(true)
-	m.checkLeadership(t.Context())
-	require.Equal(t, int32(2), bgTask.starts.Load())
-
-	// Without knowing the leader, the tasks stop, so they don't run on two members.
-	gateway.leaderErr = boom.Error
-	m.checkLeadership(t.Context())
-	require.Equal(t, int32(2), bgTask.stops.Load())
-
-	// A stopped service starts no tasks.
-	gateway.leaderErr = nil
-	m.cancel()
-	m.checkLeadership(t.Context())
-	require.Equal(t, int32(2), bgTask.starts.Load())
 }
 
 func TestMembership_Stop(t *testing.T) {
@@ -156,11 +119,14 @@ func TestMembership_Stop(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gateway := &leaderGateway{stopErr: tc.gatewayStopErr}
-			gateway.leader.Store(true)
+			gateway := &stopGateway{stopErr: tc.gatewayStopErr}
+			gateway.isLeader.Store(true)
 			bgTask := &countingTask{stopErr: tc.taskStopErr}
-			m := newTestMembership(t, gateway, bgTask.taskFunc)
+			m := newStopTestMembership(t, gateway, bgTask)
+
+			// The task starts once the other members stopped it.
 			m.checkLeadership(t.Context())
+			require.Eventually(t, func() bool { return bgTask.starts.Load() == 1 }, 5*time.Second, 10*time.Millisecond)
 
 			ctx := t.Context()
 			if tc.ctxTimeout > 0 {
@@ -191,10 +157,10 @@ func TestMembership_Stop(t *testing.T) {
 func TestMembership_StartLeaderTasks(t *testing.T) {
 	t.Parallel()
 
-	gateway := &leaderGateway{}
-	gateway.leader.Store(true)
+	gateway := &stopGateway{}
+	gateway.isLeader.Store(true)
 	bgTask := &countingTask{}
-	m := newTestMembership(t, gateway, bgTask.taskFunc)
+	m := newStopTestMembership(t, gateway, bgTask)
 
 	m.StartLeaderTasks()
 

@@ -15,6 +15,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -24,12 +25,16 @@ import (
 )
 
 type updateHandler struct {
-	service provisioning.UpdateService
+	service       provisioning.UpdateService
+	forward       forwarder
+	leaderContext func(ctx context.Context) (context.Context, context.CancelFunc, bool)
 }
 
-func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service provisioning.UpdateService, forward forwarder, leaderContext func(ctx context.Context) (context.Context, context.CancelFunc, bool)) {
 	handler := &updateHandler{
-		service: service,
+		service:       service,
+		forward:       forward,
+		leaderContext: leaderContext,
 	}
 
 	// no authentication required for all GET routes
@@ -303,10 +308,14 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 		return response.EmptySyncResponse
 	}
 
+	// The refresh ends with the leadership term of this member, also on shutdown.
+	ctx, done, ok := u.leaderContext(r.Context())
+	if !ok {
+		return response.SmartError(domain.NewErrorf(domain.ErrUnavailable, "", "This member is not the cluster leader"))
+	}
+
 	go func() {
-		// TODO: It would be better to have the application context, such that
-		// the refresh operation is properly cancelled on shutdown.
-		ctx := context.Background()
+		defer done()
 
 		err := u.service.Refresh(ctx)
 		switch {
@@ -639,6 +648,17 @@ func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
 		return response.BadRequest(err)
+	}
+
+	update, err := u.service.GetByUUID(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// The file target of the update serves its files.
+	resp := u.forward.toMember(r, update.MemberID)
+	if resp != nil {
+		return resp
 	}
 
 	rc, fileSize, err := u.service.GetUpdateFileByFilename(r.Context(), UUID, filename)

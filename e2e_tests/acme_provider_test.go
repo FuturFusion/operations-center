@@ -76,7 +76,7 @@ func startACMEProvider(t *testing.T) *acmeProvider {
 	tlsCert, directoryCAPEM := mustGenerateSelfSignedCertificate(t, hostAddress, "e2e-acme-server")
 
 	// Bind on all the interfaces, since the address, at which the
-	// OperationsCenter VM reaches the host, is derived separately.
+	// Operations Center VM reaches the host, is derived separately.
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	require.NoError(t, err, "Failed to listen for the ACME server")
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -105,6 +106,7 @@ func Test_GetWithFilterServers(t *testing.T) {
 				t.Helper()
 
 				_, err := entities.CreateCluster(t.Context(), d.db, provisioning.Cluster{
+					UUID:    uuid.New(),
 					Name:    "clusterOne",
 					Channel: defaultChannelName,
 				})
@@ -719,6 +721,7 @@ func Test_DeleteServer(t *testing.T) {
 				t.Helper()
 
 				_, err := entities.CreateCluster(t.Context(), d.db, provisioning.Cluster{
+					UUID:    uuid.New(),
 					Name:    "clusterOne",
 					Channel: defaultChannelName,
 				})

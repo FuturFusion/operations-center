@@ -41,7 +41,7 @@ func Test_updateAndActionHandlers_statusOK(t *testing.T) {
 	}
 
 	registerCluster := func(router Router, authorizer *authz.Authorizer) {
-		registerProvisioningClusterHandler(router, authorizer, clusterService, nil)
+		registerProvisioningClusterHandler(router, authorizer, clusterService, nil, forwarder{clustered: func() bool { return false }})
 	}
 
 	tests := []struct {
@@ -61,7 +61,7 @@ func Test_updateAndActionHandlers_statusOK(t *testing.T) {
 					UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
 						return nil
 					},
-				})
+				}, forwarder{clustered: func() bool { return false }})
 			},
 			method:      http.MethodPut,
 			target:      "/one",

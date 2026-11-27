@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 )
 
@@ -133,15 +134,16 @@ func TestDaemon_loadClientCertificate(t *testing.T) {
 			tc.setup(t, tmpDir)
 
 			d := &Daemon{
-				varRoot: fsroot.Open(t, tmpDir),
+				varRoot:       fsroot.Open(t, tmpDir),
+				clientKeypair: securitytls.NewClientKeypairHolder("", ""),
 			}
 
 			// Run test
 			d.loadClientCertificate(t.Context())
 
 			// Assert
-			require.Equal(t, tc.wantCertificate, d.clientCertificate)
-			require.Equal(t, tc.wantKey, d.clientKey)
+			require.Equal(t, tc.wantCertificate, d.clientKeypair.Get().Certificate)
+			require.Equal(t, tc.wantKey, d.clientKeypair.Get().Key)
 		})
 	}
 }

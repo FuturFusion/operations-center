@@ -547,6 +547,7 @@ func seedIncusImage(t *testing.T, d testDaemon) {
 		Release:         "10",
 		Architecture:    "amd64",
 		Variant:         "default",
+		MemberID:        1,
 		Versions: api.IncusImageVersions{
 			incusImageVersion: api.IncusImageVersion{
 				Items: map[string]api.IncusImageVersionItem{

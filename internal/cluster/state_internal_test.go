@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/api/listener"
+	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestState_NewClusterCertificate(t *testing.T) {
@@ -23,7 +26,7 @@ func TestState_NewClusterCertificate(t *testing.T) {
 	// A stale CA of a previous cluster is removed.
 	require.NoError(t, root.WriteFile("cluster.ca", []byte("stale"), 0o600))
 
-	s := &state{varRoot: root}
+	s := &state{varRoot: root, svc: &membership{}}
 	certInfo, err := s.NewClusterCertificate()
 	require.NoError(t, err)
 
@@ -88,11 +91,16 @@ func TestState_HasListener(t *testing.T) {
 	require.NoError(t, s.HasListener(t.Context()))
 }
 
-func TestState_standalone(t *testing.T) {
+func TestState_ClusterAddress(t *testing.T) {
 	t.Parallel()
 
-	s := &state{}
-	require.NoError(t, s.UpdateAuthenticator(t.Context()))
-	require.Empty(t, s.ClusterAddress())
+	systemSvc := &systemMock.SystemServiceMock{
+		GetNetworkConfigFunc: func(ctx context.Context) apisystem.Network {
+			return apisystem.Network{NetworkLocal: apisystem.NetworkLocal{NetworkLocalPut: apisystem.NetworkLocalPut{ClusterAddress: "10.0.0.1:8443"}}}
+		},
+	}
+
+	s := &state{system: systemSvc}
+	require.Equal(t, "10.0.0.1:8443", s.ClusterAddress())
 	s.OnHeartbeatNotification(nil)
 }

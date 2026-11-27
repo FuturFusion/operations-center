@@ -5,14 +5,21 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
+	"net/http"
 	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
+	api0 "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // MembershipServiceWithPrometheus implements cluster.MembershipService interface with all methods wrapped
@@ -40,6 +47,118 @@ func NewMembershipServiceWithPrometheus(base cluster.MembershipService, instance
 	}
 }
 
+// Accept implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Accept(ctx context.Context, cfg api.ClusterAcceptPost) (internalClusterAcceptResponse *api0.InternalClusterAcceptResponse, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Accept", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Accept(ctx, cfg)
+}
+
+// ApplyClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyClusterCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyClusterCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// Auth implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, username string, protocol string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Auth", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Auth(w, r)
+}
+
+// Bootstrap implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Bootstrap", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Bootstrap(ctx, cfg)
+}
+
+// CheckMembersOnline implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) CheckMembersOnline(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CheckMembersOnline", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CheckMembersOnline(ctx)
+}
+
+// ContactMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ContactMembers(ctx context.Context, except ...string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ContactMembers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ContactMembers(ctx, except...)
+}
+
+// CreateToken implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) CreateToken(ctx context.Context, req api.ClusterTokenPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateToken", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateToken(ctx, req)
+}
+
+// DeleteTokenByName implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) DeleteTokenByName(ctx context.Context, serverName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteTokenByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteTokenByName(ctx, serverName)
+}
+
 // DetermineNodeID implements cluster.MembershipService.
 func (_d MembershipServiceWithPrometheus) DetermineNodeID(ctx context.Context, address string) (err error) {
 	_since := time.Now()
@@ -55,7 +174,7 @@ func (_d MembershipServiceWithPrometheus) DetermineNodeID(ctx context.Context, a
 }
 
 // Enable implements cluster.MembershipService.
-func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
+func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -65,7 +184,7 @@ func (_d MembershipServiceWithPrometheus) Enable(ctx context.Context, clusterAdd
 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Enable", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	return _d.base.Enable(ctx, clusterAddress, tokenRepo, configRepo, globalRepo)
 }
 
 // Gateway implements cluster.MembershipService.
@@ -78,8 +197,202 @@ func (_d MembershipServiceWithPrometheus) Gateway() (gateway cluster0.Gateway) {
 	return _d.base.Gateway()
 }
 
+// GetMembers implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetMembers(ctx context.Context) (clusterMembers []api.ClusterMember, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetMembers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetMembers(ctx)
+}
+
+// GetMembersByID implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetMembersByID(ctx context.Context) (int64ToNodeInfo map[int64]db.NodeInfo, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetMembersByID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetMembersByID(ctx)
+}
+
+// GetTokenByServerName implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetTokenByServerName(ctx context.Context, serverName string) (clusterJoinToken *entities.ClusterJoinToken, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenByServerName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenByServerName(ctx, serverName)
+}
+
+// GetTokens implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) GetTokens(ctx context.Context) (clusterJoinTokens entities.ClusterJoinTokens, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokens", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokens(ctx)
+}
+
+// HandOverRole implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) HandOverRole(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "HandOverRole", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.HandOverRole(ctx)
+}
+
+// HandlerFuncs implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) HandlerFuncs() (stringToHandlerFunc map[string]http.HandlerFunc) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "HandlerFuncs", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.HandlerFuncs()
+}
+
+// Handover implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Handover(ctx context.Context, address string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Handover", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Handover(ctx, address)
+}
+
+// HeartbeatOfflineThreshold implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) HeartbeatOfflineThreshold() (duration time.Duration) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "HeartbeatOfflineThreshold", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.HeartbeatOfflineThreshold()
+}
+
+// IsMemberCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) IsMemberCertificate(certificatePEM string) (b bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "IsMemberCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IsMemberCertificate(certificatePEM)
+}
+
+// Join implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Join(ctx context.Context, cfg api.ClusterJoinPost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Join", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Join(ctx, cfg)
+}
+
+// LeaderAddress implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) LeaderAddress(ctx context.Context) (s string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LeaderAddress", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LeaderAddress(ctx)
+}
+
+// LeaderContext implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) LeaderContext(name string) (context1 context.Context, fn func(), b bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LeaderContext", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LeaderContext(name)
+}
+
+// LocalMemberID implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) LocalMemberID() (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LocalMemberID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LocalMemberID()
+}
+
+// MemberClient implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) MemberClient(address string) (operationsCenterClient client.OperationsCenterClient, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "MemberClient", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.MemberClient(address)
+}
+
+// NotifyUpgradeCompleted implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) NotifyUpgradeCompleted(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "NotifyUpgradeCompleted", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.NotifyUpgradeCompleted(ctx)
+}
+
 // PersistSharedConfig implements cluster.MembershipService.
-func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Context, change config.SharedChange) (sharedConfig config.SharedConfig, err error) {
+func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Context, change config.SharedChange) (stored config.SharedConfig, previous config.SharedConfig, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -90,6 +403,72 @@ func (_d MembershipServiceWithPrometheus) PersistSharedConfig(ctx context.Contex
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PersistSharedConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.PersistSharedConfig(ctx, change)
+}
+
+// PublishSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PublishSharedConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PublishSharedConfig(ctx, change, previous)
+}
+
+// Rebalance implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Rebalance(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Rebalance", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Rebalance(ctx)
+}
+
+// ReloadSharedConfig implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) ReloadSharedConfig(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ReloadSharedConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ReloadSharedConfig(ctx)
+}
+
+// RemoveMember implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) RemoveMember(ctx context.Context, name string, force bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveMember", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveMember(ctx, name, force)
+}
+
+// Reset implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Reset(ctx context.Context) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Reset", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.Reset(ctx)
 }
 
 // SetGlobalDB implements cluster.MembershipService.
@@ -124,4 +503,52 @@ func (_d MembershipServiceWithPrometheus) Stop(ctx context.Context) (err error) 
 		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Stop", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Stop(ctx)
+}
+
+// TaskStatus implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) TaskStatus() (internalClusterTaskStatus api0.InternalClusterTaskStatus) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TaskStatus", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TaskStatus()
+}
+
+// Trust implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) Trust(ctx context.Context, token string, fingerprint string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Trust", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Trust(ctx, token, fingerprint)
+}
+
+// TrustedClients implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) TrustedClients() (stringToCertificate map[string]x509.Certificate) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TrustedClients", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TrustedClients()
+}
+
+// UpdateClusterCertificate implements cluster.MembershipService.
+func (_d MembershipServiceWithPrometheus) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		membershipServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
 }

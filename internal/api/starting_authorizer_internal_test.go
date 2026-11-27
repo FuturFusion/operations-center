@@ -34,8 +34,8 @@ func Test_startingAuthorizer(t *testing.T) {
 		return rec.Code
 	}
 
-	// A trusted request while the security configuration is not loaded yet is asked to retry, not refused.
-	require.Equal(t, http.StatusTooEarly, get())
+	// A trusted request while the security configuration is not loaded yet is answered as unavailable, not refused.
+	require.Equal(t, http.StatusServiceUnavailable, get())
 
 	replaceable.Replace(noopAuthorizer{})
 	require.Equal(t, http.StatusOK, get())

@@ -50,8 +50,14 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
 //				panic("mock out the RefreshFromSource method")
 //			},
+//			SyncLocalImageFunc: func(ctx context.Context, source image.IncusImageSource, image1 image.IncusImage) error {
+//				panic("mock out the SyncLocalImage method")
+//			},
 //			UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
 //				panic("mock out the Update method")
+//			},
+//			UploadImageNameFunc: func(ctx context.Context, mr *multipart.Reader) (string, error) {
+//				panic("mock out the UploadImageName method")
 //			},
 //			ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
 //				panic("mock out the ValidateFilterExpression method")
@@ -90,8 +96,14 @@ type ImageIncusServiceMock struct {
 	// RefreshFromSourceFunc mocks the RefreshFromSource method.
 	RefreshFromSourceFunc func(ctx context.Context, source image.IncusImageSource) error
 
+	// SyncLocalImageFunc mocks the SyncLocalImage method.
+	SyncLocalImageFunc func(ctx context.Context, source image.IncusImageSource, image1 image.IncusImage) error
+
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, incusImage image.IncusImage) error
+
+	// UploadImageNameFunc mocks the UploadImageName method.
+	UploadImageNameFunc func(ctx context.Context, mr *multipart.Reader) (string, error)
 
 	// ValidateFilterExpressionFunc mocks the ValidateFilterExpression method.
 	ValidateFilterExpressionFunc func(ctx context.Context, filterExpression string) error
@@ -163,12 +175,28 @@ type ImageIncusServiceMock struct {
 			// Source is the source argument value.
 			Source image.IncusImageSource
 		}
+		// SyncLocalImage holds details about calls to the SyncLocalImage method.
+		SyncLocalImage []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Source is the source argument value.
+			Source image.IncusImageSource
+			// Image1 is the image1 argument value.
+			Image1 image.IncusImage
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// IncusImage is the incusImage argument value.
 			IncusImage image.IncusImage
+		}
+		// UploadImageName holds details about calls to the UploadImageName method.
+		UploadImageName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Mr is the mr argument value.
+			Mr *multipart.Reader
 		}
 		// ValidateFilterExpression holds details about calls to the ValidateFilterExpression method.
 		ValidateFilterExpression []struct {
@@ -187,7 +215,9 @@ type ImageIncusServiceMock struct {
 	lockGetByName                sync.RWMutex
 	lockGetVersionFileByName     sync.RWMutex
 	lockRefreshFromSource        sync.RWMutex
+	lockSyncLocalImage           sync.RWMutex
 	lockUpdate                   sync.RWMutex
+	lockUploadImageName          sync.RWMutex
 	lockValidateFilterExpression sync.RWMutex
 }
 
@@ -519,6 +549,46 @@ func (mock *ImageIncusServiceMock) RefreshFromSourceCalls() []struct {
 	return calls
 }
 
+// SyncLocalImage calls SyncLocalImageFunc.
+func (mock *ImageIncusServiceMock) SyncLocalImage(ctx context.Context, source image.IncusImageSource, image1 image.IncusImage) error {
+	if mock.SyncLocalImageFunc == nil {
+		panic("ImageIncusServiceMock.SyncLocalImageFunc: method is nil but ImageIncusService.SyncLocalImage was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Source image.IncusImageSource
+		Image1 image.IncusImage
+	}{
+		Ctx:    ctx,
+		Source: source,
+		Image1: image1,
+	}
+	mock.lockSyncLocalImage.Lock()
+	mock.calls.SyncLocalImage = append(mock.calls.SyncLocalImage, callInfo)
+	mock.lockSyncLocalImage.Unlock()
+	return mock.SyncLocalImageFunc(ctx, source, image1)
+}
+
+// SyncLocalImageCalls gets all the calls that were made to SyncLocalImage.
+// Check the length with:
+//
+//	len(mockedImageIncusService.SyncLocalImageCalls())
+func (mock *ImageIncusServiceMock) SyncLocalImageCalls() []struct {
+	Ctx    context.Context
+	Source image.IncusImageSource
+	Image1 image.IncusImage
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Source image.IncusImageSource
+		Image1 image.IncusImage
+	}
+	mock.lockSyncLocalImage.RLock()
+	calls = mock.calls.SyncLocalImage
+	mock.lockSyncLocalImage.RUnlock()
+	return calls
+}
+
 // Update calls UpdateFunc.
 func (mock *ImageIncusServiceMock) Update(ctx context.Context, incusImage image.IncusImage) error {
 	if mock.UpdateFunc == nil {
@@ -552,6 +622,42 @@ func (mock *ImageIncusServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UploadImageName calls UploadImageNameFunc.
+func (mock *ImageIncusServiceMock) UploadImageName(ctx context.Context, mr *multipart.Reader) (string, error) {
+	if mock.UploadImageNameFunc == nil {
+		panic("ImageIncusServiceMock.UploadImageNameFunc: method is nil but ImageIncusService.UploadImageName was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Mr  *multipart.Reader
+	}{
+		Ctx: ctx,
+		Mr:  mr,
+	}
+	mock.lockUploadImageName.Lock()
+	mock.calls.UploadImageName = append(mock.calls.UploadImageName, callInfo)
+	mock.lockUploadImageName.Unlock()
+	return mock.UploadImageNameFunc(ctx, mr)
+}
+
+// UploadImageNameCalls gets all the calls that were made to UploadImageName.
+// Check the length with:
+//
+//	len(mockedImageIncusService.UploadImageNameCalls())
+func (mock *ImageIncusServiceMock) UploadImageNameCalls() []struct {
+	Ctx context.Context
+	Mr  *multipart.Reader
+} {
+	var calls []struct {
+		Ctx context.Context
+		Mr  *multipart.Reader
+	}
+	mock.lockUploadImageName.RLock()
+	calls = mock.calls.UploadImageName
+	mock.lockUploadImageName.RUnlock()
 	return calls
 }
 

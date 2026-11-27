@@ -177,4 +177,5 @@ func TestUpgradeFromSQLite(t *testing.T) {
 	require.Equal(t, configSum, checksum(t, m, "migrated_config.yml"))
 	require.False(t, m.hasFile("local.db"))
 	require.True(t, m.hasFile("database/global"))
+	require.Empty(t, m.members(t), "The upgraded server is standalone")
 }

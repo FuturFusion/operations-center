@@ -8,11 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dsnet/golib/memfile"
+	"github.com/google/uuid"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
@@ -22,136 +25,199 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
-	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
-	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestLocalArtifact_updateSignalHandler(t *testing.T) {
-	const clusterName = "old"
-	const existingClusterName = "existing"
+func TestLocalArtifact_renameAndDelete(t *testing.T) {
+	tx, cluster, sourcePath := setupArtifactTest(t)
 
-	tests := []struct {
-		name           string
-		operation      lifecycle.ClusterUpdateOperation
-		clusterName    string
-		oldClusterName string
+	oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
+	lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
+	t.Cleanup(func() {
+		lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
+	})
 
-		assertLog log.MatcherFunc
-	}{
-		{
-			name:           "success - rename",
-			operation:      lifecycle.ClusterUpdateOperationRename,
-			clusterName:    "new",
-			oldClusterName: clusterName,
+	storageDir := t.TempDir()
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, storageDir), standalone)
 
-			assertLog: log.Noop,
-		},
-		{
-			name:        "success - delete",
-			operation:   lifecycle.ClusterUpdateOperationDelete,
-			clusterName: clusterName,
+	_, err := artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, sourcePath, nil)
+	require.NoError(t, err)
 
-			assertLog: log.Noop,
-		},
-		{
-			name:      "skip - create operation",
-			operation: lifecycle.ClusterUpdateOperationCreate,
+	dbCluster, err := cluster.GetByName(t.Context(), "clusterOne")
+	require.NoError(t, err)
 
-			assertLog: log.Noop,
-		},
-		{
-			name:           "skip - rename - old does not exist",
-			operation:      lifecycle.ClusterUpdateOperationRename,
-			clusterName:    "new",
-			oldClusterName: "does_not_exist", // does not exist
+	clusterDir := filepath.Join(storageDir, dbCluster.UUID.String())
+	require.FileExists(t, filepath.Join(clusterDir, "one", "one.txt"))
 
-			assertLog: log.Noop,
-		},
-		{
-			name:           "error - rename - new does already exist",
-			operation:      lifecycle.ClusterUpdateOperationRename,
-			clusterName:    existingClusterName,
-			oldClusterName: clusterName,
+	// A rename does not touch the files.
+	err = cluster.Rename(t.Context(), "clusterOne", "clusterTwo")
+	require.NoError(t, err)
 
-			assertLog: log.Contains("Failed to rename cluster artifact storage directory"),
-		},
-		{
-			name:           "error - rename - new name outside of storage",
-			operation:      lifecycle.ClusterUpdateOperationRename,
-			clusterName:    "../escape",
-			oldClusterName: clusterName,
+	artifact, err := artifactRepo.GetClusterArtifactByName(t.Context(), "clusterTwo", "one")
+	require.NoError(t, err)
 
-			assertLog: log.Contains("Failed to rename cluster artifact storage directory"),
-		},
-		{
-			name:           "error - rename - old name outside of storage",
-			operation:      lifecycle.ClusterUpdateOperationRename,
-			clusterName:    "new",
-			oldClusterName: "..",
+	r, err := artifact.Files[0].Open()
+	require.NoError(t, err)
+	require.NoError(t, r.Close())
 
-			assertLog: log.Contains("Failed to rename cluster artifact storage directory"),
-		},
-		{
-			name:        "error - delete - parent directory",
-			operation:   lifecycle.ClusterUpdateOperationDelete,
-			clusterName: "..",
+	err = cluster.DeleteByName(t.Context(), "clusterTwo")
+	require.NoError(t, err)
 
-			assertLog: log.Contains("Failed to remove cluster artifact storage directory"),
-		},
-		{
-			name:        "skip - delete - does not exist",
-			operation:   lifecycle.ClusterUpdateOperationDelete,
-			clusterName: "does_not_exist", // does not exist
+	lifecycle.ClusterUpdateSignal.Emit(t.Context(), lifecycle.ClusterUpdateMessage{
+		Operation: lifecycle.ClusterUpdateOperationDelete,
+		Name:      "clusterTwo",
+		UUID:      dbCluster.UUID,
+	})
 
-			assertLog: log.Noop,
-		},
+	require.NoDirExists(t, clusterDir)
+}
+
+func TestLocalArtifact_createExisting(t *testing.T) {
+	tx, cluster, sourcePath := setupArtifactTest(t)
+
+	storageDir := t.TempDir()
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, storageDir), standalone)
+
+	_, err := artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, sourcePath, nil)
+	require.NoError(t, err)
+
+	dbCluster, err := cluster.GetByName(t.Context(), "clusterOne")
+	require.NoError(t, err)
+
+	filename := filepath.Join(storageDir, dbCluster.UUID.String(), "one", "one.txt")
+	want, err := os.ReadFile(filename)
+	require.NoError(t, err)
+
+	otherPath := t.TempDir()
+	err = os.WriteFile(filepath.Join(otherPath, "one.txt"), []byte("other"), 0o600)
+	require.NoError(t, err)
+
+	// An artifact of the same name is refused without touching the files of the existing one.
+	_, err = artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, otherPath, nil)
+	require.Error(t, err)
+
+	got, err := os.ReadFile(filename)
+	require.NoError(t, err)
+	require.Equal(t, want, got)
+}
+
+func TestLocalArtifact_invalidName(t *testing.T) {
+	tx, _, sourcePath := setupArtifactTest(t)
+
+	parentDir := t.TempDir()
+	storageDir := filepath.Join(parentDir, "artifacts")
+	err := os.Mkdir(storageDir, 0o700)
+	require.NoError(t, err)
+
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, storageDir), standalone)
+
+	// A name, which is not a single file name, could leave the storage directory.
+	for _, name := range []string{"..", "../escape", "sub/dir"} {
+		_, err = artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: name}, sourcePath, nil)
+		require.Error(t, err, name)
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			parentDir := t.TempDir()
-			tmpDir := filepath.Join(parentDir, "artifacts")
-			err := os.Mkdir(tmpDir, 0o700)
-			require.NoError(t, err)
-			err = os.Mkdir(filepath.Join(tmpDir, clusterName), 0o700)
-			require.NoError(t, err)
-			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
-			require.NoError(t, err)
+	entries, err := os.ReadDir(parentDir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "nothing outside of the storage directory must be touched")
+}
 
-			logBuf := &log.SyncBuffer{}
-			err = logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
+func TestLocalArtifact_MigrateNameLayout(t *testing.T) {
+	tx, cluster, sourcePath := setupArtifactTest(t)
 
-			oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
-			lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
-			defer func() {
-				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
-			}()
+	storageDir := t.TempDir()
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, storageDir), standalone)
 
-			localartifact.New(nil, fsroot.Open(t, tmpDir))
-			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
+	_, err := artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, sourcePath, nil)
+	require.NoError(t, err)
 
-			// Run test
-			lifecycle.ClusterUpdateSignal.Emit(t.Context(), lifecycle.ClusterUpdateMessage{
-				Operation: tc.operation,
-				Name:      tc.clusterName,
-				OldName:   tc.oldClusterName,
-			})
+	dbCluster, err := cluster.GetByName(t.Context(), "clusterOne")
+	require.NoError(t, err)
 
-			// Assert
-			tc.assertLog(t, logBuf)
-			t.Log(logBuf.String())
+	// Move the files to the directory named by the cluster.
+	err = os.Rename(filepath.Join(storageDir, dbCluster.UUID.String()), filepath.Join(storageDir, "clusterOne"))
+	require.NoError(t, err)
 
-			parentEntries, err := os.ReadDir(parentDir)
-			require.NoError(t, err)
-			require.Len(t, parentEntries, 1, "nothing outside of the storage directory must be touched")
-			require.Equal(t, "artifacts", parentEntries[0].Name())
-		})
-	}
+	err = artifactRepo.MigrateNameLayout(t.Context())
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(storageDir, dbCluster.UUID.String(), "one", "one.txt"))
+	require.NoDirExists(t, filepath.Join(storageDir, "clusterOne"))
+}
+
+func TestLocalArtifact_Prune(t *testing.T) {
+	tx, cluster, sourcePath := setupArtifactTest(t)
+
+	storageDir := t.TempDir()
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, storageDir), standalone)
+
+	_, err := artifactRepo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "clusterOne", Name: "one"}, sourcePath, nil)
+	require.NoError(t, err)
+
+	dbCluster, err := cluster.GetByName(t.Context(), "clusterOne")
+	require.NoError(t, err)
+
+	// Files of an artifact of a deleted cluster.
+	unknownFile := filepath.Join(storageDir, uuid.NewString(), "one", "one.txt")
+	err = os.MkdirAll(filepath.Dir(unknownFile), 0o700)
+	require.NoError(t, err)
+	err = os.WriteFile(unknownFile, []byte(`one`), 0o600)
+	require.NoError(t, err)
+
+	old := time.Now().Add(-time.Hour)
+	err = os.Chtimes(unknownFile, old, old)
+	require.NoError(t, err)
+
+	err = artifactRepo.Prune(t.Context())
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(storageDir, dbCluster.UUID.String(), "one", "one.txt"))
+	require.NoDirExists(t, filepath.Dir(filepath.Dir(unknownFile)))
+}
+
+// standalone resolves no other cluster members.
+var standalone = memberfiles.NewTargets(func() memberfiles.Cluster { return nil })
+
+// setupArtifactTest returns a database with the cluster "clusterOne" and a
+// source directory with the files "one.txt" and "two.txt".
+func setupArtifactTest(t *testing.T) (transaction.DBTX, provisioning.ClusterRepo, string) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	sourcePath := filepath.Join(tmpDir, "source")
+	err := os.Mkdir(sourcePath, 0o700)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(sourcePath, "one.txt"), []byte(`one`), 0o600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(sourcePath, "two.txt"), []byte(`two with more content`), 0o600)
+	require.NoError(t, err)
+
+	db, err := cowsqltest.Open(t)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	tx := transaction.Enable(db)
+	clusterEntities.PreparedStmts, err = clusterEntities.PrepareStmts(tx.(transaction.Preparer), false)
+	require.NoError(t, err)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx.(transaction.Preparer), false)
+	require.NoError(t, err)
+
+	cluster := sqlite.NewCluster(tx)
+
+	_, err = cluster.Create(t.Context(), provisioning.Cluster{
+		Name:    "clusterOne",
+		Channel: "stable",
+	})
+	require.NoError(t, err)
+
+	return tx, cluster, sourcePath
 }
 
 func TestLocalArtifactDatabaseActions(t *testing.T) {
@@ -226,9 +292,11 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add cluster artifact from path
-	err = os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0o700)
+	artifactsDir := filepath.Join(tmpDir, "artifacts")
+	err = os.Mkdir(artifactsDir, 0o700)
 	require.NoError(t, err)
-	artifactRepo := localartifact.New(tx, fsroot.Open(t, filepath.Join(tmpDir, "artifacts")))
+
+	artifactRepo := localartifact.New(tx, fsroot.Open(t, artifactsDir), standalone)
 
 	// Create artifact from directory
 	_, err = artifactRepo.CreateClusterArtifactFromPath(ctx, artifactOne, sourcePath, []string{".terraform.lock.hcl"})
@@ -314,104 +382,4 @@ func assertArtifactOne(t *testing.T, artifact *provisioning.ClusterArtifact) {
 	require.NoError(t, err)
 
 	require.Equal(t, []byte(`one`), data)
-}
-
-func TestLocalArtifact_invalidPath(t *testing.T) {
-	zipArchiveType := provisioning.ClusterArtifactArchiveTypes[provisioning.ClusterArtifactArchiveTypeExtZip]
-
-	tests := []struct {
-		name string
-		run  func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "CreateClusterArtifactFromPath - cluster outside of storage",
-			run: func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error {
-				t.Helper()
-				_, err := repo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "../..", Name: "one"}, sourcePath, nil)
-				return err
-			},
-
-			assertErr: errassert.ValidationErrorContains(`Invalid cluster artifact, "../.." is not a valid file name`),
-		},
-		{
-			name: "CreateClusterArtifactFromPath - artifact name with path separator",
-			run: func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error {
-				t.Helper()
-				_, err := repo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "cluster", Name: "../../one"}, sourcePath, nil)
-				return err
-			},
-
-			assertErr: errassert.ValidationErrorContains(`Invalid cluster artifact, "../../one" is not a valid file name`),
-		},
-		{
-			name: "CreateClusterArtifactFromPath - source path does not exist",
-			run: func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error {
-				t.Helper()
-				_, err := repo.CreateClusterArtifactFromPath(t.Context(), provisioning.ClusterArtifact{Cluster: "cluster", Name: "one"}, filepath.Join(sourcePath, "missing"), nil)
-				return err
-			},
-
-			assertErr: errassert.Is(os.ErrNotExist),
-		},
-		{
-			name: "GetClusterArtifactArchiveByName - cluster is parent directory",
-			run: func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error {
-				t.Helper()
-				_, _, err := repo.GetClusterArtifactArchiveByName(t.Context(), "..", "source", zipArchiveType)
-				return err
-			},
-
-			assertErr: errassert.ValidationErrorContains(`Invalid cluster artifact, ".." is not a valid file name`),
-		},
-		{
-			name: "GetClusterArtifactArchiveByName - artifact name with path separator",
-			run: func(t *testing.T, repo provisioning.ClusterArtifactRepo, sourcePath string) error {
-				t.Helper()
-				_, _, err := repo.GetClusterArtifactArchiveByName(t.Context(), "cluster", "../../source", zipArchiveType)
-				return err
-			},
-
-			assertErr: errassert.ValidationErrorContains(`Invalid cluster artifact, "../../source" is not a valid file name`),
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			parentDir := t.TempDir()
-			storageDir := filepath.Join(parentDir, "artifacts")
-			err := os.Mkdir(storageDir, 0o700)
-			require.NoError(t, err)
-
-			sourcePath := filepath.Join(parentDir, "source")
-			err = os.Mkdir(sourcePath, 0o700)
-			require.NoError(t, err)
-			err = os.WriteFile(filepath.Join(sourcePath, "one.txt"), []byte(`one`), 0o600)
-			require.NoError(t, err)
-
-			oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
-			lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
-			t.Cleanup(func() {
-				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
-			})
-
-			repo := localartifact.New(nil, fsroot.Open(t, storageDir))
-
-			// Run test
-			err = tc.run(t, repo, sourcePath)
-
-			// Assert
-			tc.assertErr(t, err)
-
-			storageEntries, err := os.ReadDir(storageDir)
-			require.NoError(t, err)
-			require.Empty(t, storageEntries, "nothing must be created in the storage directory")
-
-			parentEntries, err := os.ReadDir(parentDir)
-			require.NoError(t, err)
-			require.Len(t, parentEntries, 2, "nothing must be created outside of the storage directory")
-		})
-	}
 }

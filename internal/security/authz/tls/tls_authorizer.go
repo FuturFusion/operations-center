@@ -13,6 +13,7 @@ import (
 // TLS represents a TLS authorizer.
 type TLS struct {
 	certificateFingerprints        []string
+	certificateFingerprintSources  []func() []string
 	metricsCertificateFingerprints []string
 }
 
@@ -20,6 +21,13 @@ var _ authz.Authorizer = TLS{}
 
 // Option configures the TLS authorizer.
 type Option func(*TLS)
+
+// WithCertificateFingerprintSources adds the fingerprints of certificates with full access, which are read on every check.
+func WithCertificateFingerprintSources(sources ...func() []string) Option {
+	return func(t *TLS) {
+		t.certificateFingerprintSources = append(t.certificateFingerprintSources, sources...)
+	}
+}
 
 // WithMetricsCertificateFingerprints sets the fingerprints of the certificates
 // that are restricted to metrics access.
@@ -46,9 +54,15 @@ func (t TLS) CheckPermission(ctx context.Context, details *authz.RequestDetails,
 		return api.StatusErrorf(http.StatusForbidden, "Authentication protocol %q, is not compatible with authorizer", details.Protocol)
 	}
 
+	// A trusted certificate has full access. This check runs first, so full access wins.
 	if containsFingerprint(t.certificateFingerprints, details.Username) {
-		// A trusted certificate has full access. This check runs first, so full access wins.
 		return nil
+	}
+
+	for _, source := range t.certificateFingerprintSources {
+		if containsFingerprint(source(), details.Username) {
+			return nil
+		}
 	}
 
 	if containsFingerprint(t.metricsCertificateFingerprints, details.Username) {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cluster"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // Ensure that LocalRaftRepoMock does implement cluster.LocalRaftRepo.
@@ -47,6 +48,9 @@ var _ cluster.LocalRaftRepo = &LocalRaftRepoMock{}
 //			},
 //			GetClusterAddressFunc: func(ctx context.Context) (string, error) {
 //				panic("mock out the GetClusterAddress method")
+//			},
+//			GetNetworkConfigFunc: func(ctx context.Context) system.NetworkLocal {
+//				panic("mock out the GetNetworkConfig method")
 //			},
 //			GetRaftNodeFunc: func(ctx context.Context, id int64) (*db.RaftNode, bool, error) {
 //				panic("mock out the GetRaftNode method")
@@ -105,6 +109,9 @@ type LocalRaftRepoMock struct {
 
 	// GetClusterAddressFunc mocks the GetClusterAddress method.
 	GetClusterAddressFunc func(ctx context.Context) (string, error)
+
+	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
+	GetNetworkConfigFunc func(ctx context.Context) system.NetworkLocal
 
 	// GetRaftNodeFunc mocks the GetRaftNode method.
 	GetRaftNodeFunc func(ctx context.Context, id int64) (*db.RaftNode, bool, error)
@@ -171,6 +178,11 @@ type LocalRaftRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetNetworkConfig holds details about calls to the GetNetworkConfig method.
+		GetNetworkConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetRaftNode holds details about calls to the GetRaftNode method.
 		GetRaftNode []struct {
 			// Ctx is the ctx argument value.
@@ -231,6 +243,7 @@ type LocalRaftRepoMock struct {
 	lockEnterExclusive              sync.RWMutex
 	lockGetCertificates             sync.RWMutex
 	lockGetClusterAddress           sync.RWMutex
+	lockGetNetworkConfig            sync.RWMutex
 	lockGetRaftNode                 sync.RWMutex
 	lockGetRaftNodes                sync.RWMutex
 	lockGlobalDatabaseDir           sync.RWMutex
@@ -457,6 +470,38 @@ func (mock *LocalRaftRepoMock) GetClusterAddressCalls() []struct {
 	mock.lockGetClusterAddress.RLock()
 	calls = mock.calls.GetClusterAddress
 	mock.lockGetClusterAddress.RUnlock()
+	return calls
+}
+
+// GetNetworkConfig calls GetNetworkConfigFunc.
+func (mock *LocalRaftRepoMock) GetNetworkConfig(ctx context.Context) system.NetworkLocal {
+	if mock.GetNetworkConfigFunc == nil {
+		panic("LocalRaftRepoMock.GetNetworkConfigFunc: method is nil but LocalRaftRepo.GetNetworkConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetNetworkConfig.Lock()
+	mock.calls.GetNetworkConfig = append(mock.calls.GetNetworkConfig, callInfo)
+	mock.lockGetNetworkConfig.Unlock()
+	return mock.GetNetworkConfigFunc(ctx)
+}
+
+// GetNetworkConfigCalls gets all the calls that were made to GetNetworkConfig.
+// Check the length with:
+//
+//	len(mockedLocalRaftRepo.GetNetworkConfigCalls())
+func (mock *LocalRaftRepoMock) GetNetworkConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetNetworkConfig.RLock()
+	calls = mock.calls.GetNetworkConfig
+	mock.lockGetNetworkConfig.RUnlock()
 	return calls
 }
 

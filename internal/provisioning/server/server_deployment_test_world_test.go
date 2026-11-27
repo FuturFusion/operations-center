@@ -1091,6 +1091,7 @@ func setupDeploymentWorld(t *testing.T, ctx context.Context, cfg deploymentWorld
 
 	config.InitTest(t, &envMock.EnvironmentMock{
 		IsIncusOSFunc: func() bool { return false },
+		ClusteredFunc: func() bool { return false },
 	}, nil)
 
 	err := config.UpdateLocalNetwork(ctx, system.NetworkLocalPut{

@@ -16,6 +16,7 @@ cluster:
 
 - `cluster.config_repo`
 - `cluster.global_raft_repo`
+- `cluster.join_token_repo`
 - `cluster.local_raft_repo`
 - `cluster.membership_service`
 
@@ -46,6 +47,7 @@ daemon:
 
 image:
 
+- `image.image_file_target_port`
 - `image.image_incus_file_repo`
 - `image.image_incus_repo`
 - `image.image_incus_service`
@@ -122,6 +124,7 @@ provisioning:
 - `provisioning.cluster_template_repo`
 - `provisioning.cluster_template_service`
 - `provisioning.flasher_port`
+- `provisioning.media_repo`
 - `provisioning.secure_boot_certificate_catalog_port`
 - `provisioning.secure_boot_certificate_source_port`
 - `provisioning.secure_boot_media_port`
@@ -133,6 +136,7 @@ provisioning:
 - `provisioning.token_client_port`
 - `provisioning.token_repo`
 - `provisioning.token_service`
+- `provisioning.update_file_target_port`
 - `provisioning.update_files_repo`
 - `provisioning.update_repo`
 - `provisioning.update_service`

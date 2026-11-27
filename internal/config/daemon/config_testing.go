@@ -35,14 +35,14 @@ func InitTest(t *testing.T, testEnv enver, saveErr error, internalConfig ...Inte
 	err := yaml.Unmarshal(defaultConfig, &cfg)
 	require.NoError(t, err)
 
-	defaultStore.Store(newLocalStore(testEnv, func(_ context.Context, _ section, _ localConfig, newCfg localConfig) (localConfig, error) {
-		return newCfg, saveErr
+	defaultStore.Store(newLocalStore(testEnv, func(_ context.Context, _ section, _ localConfig, newCfg localConfig) (localConfig, publishFunc, error) {
+		return newCfg, nil, saveErr
 	}, cfg))
 
 	shared, err := defaultShared()
 	require.NoError(t, err)
 
-	sharedStore.Store(newStore(testEnv, func(_ context.Context, _ section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, error) {
-		return newCfg, saveErr
+	sharedStore.Store(newStore(testEnv, func(_ context.Context, _ section, _ SharedConfig, newCfg SharedConfig) (SharedConfig, publishFunc, error) {
+		return newCfg, nil, saveErr
 	}, notifyShared, normalizeShared, sharedConfigValidator(), shared))
 }

@@ -325,23 +325,18 @@ func setupSelfUpdateCLI(ctx context.Context, t *testing.T, tmpDir string) string
 
 	confDir := mustCreateIsolatedCLIConfigDir(t, tmpDir, selfUpdateConfDirName)
 
-	homeDir, err := os.UserHomeDir()
-	require.NoError(t, err)
-
-	// The seed trusts the client certificate of incus.
-	mustRun(t, `cp %s/.config/incus/client.crt %s/.config/incus/client.key %s/`, homeDir, homeDir, confDir)
-
 	mustWaitOperationsCenterPort(ctx, t)
 
+	err := copyIncusClientCertificate(ctx, t, confDir)
+	require.NoError(t, err, "Failed to copy the client certificate to %s", confDir)
+
 	address, err := instanceIPAddressWithContext(ctx, t, selfUpdateVMName)
-	require.NoError(t, err)
+	require.NoError(t, err, "Failed to get the address of %s", selfUpdateVMName)
 
-	oc := fmt.Sprintf("OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s", confDir, cpuArch)
+	err = trustOperationsCenterWithContext(ctx, t, confDir, selfUpdateRemoteName, net.JoinHostPort(address, "8443"))
+	require.NoError(t, err, "Failed to add the remote %s", selfUpdateRemoteName)
 
-	mustRun(t, `%s remote add --accept-certificate %s https://%s/`, oc, selfUpdateRemoteName, net.JoinHostPort(address, "8443"))
-	mustRun(t, `%s remote switch %s`, oc, selfUpdateRemoteName)
-
-	return oc
+	return operationsCenterCLI(confDir)
 }
 
 // mustWaitOperationsCenterPort waits for the API port of the VM

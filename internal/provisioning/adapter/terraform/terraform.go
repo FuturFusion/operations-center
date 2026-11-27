@@ -51,9 +51,8 @@ const clusterConfigsDir = "cluster-configs"
 
 type terraform struct {
 	// root is a temporary directory. It is also used as INCUS_CONF.
-	root              *os.Root
-	clientCertificate string
-	clientKey         string
+	root    *os.Root
+	keypair *securitytls.ClientKeypairHolder
 
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
@@ -91,8 +90,7 @@ type Option func(*terraform)
 // clusters and the certificates for Incus in root.
 func New(
 	root *os.Root,
-	clientCertificate string,
-	clientKey string,
+	keypair *securitytls.ClientKeypairHolder,
 	opts ...Option,
 ) (terraform, error) {
 	err := root.MkdirAll(clusterConfigsDir, 0o700)
@@ -101,9 +99,8 @@ func New(
 	}
 
 	t := terraform{
-		root:              root,
-		clientCertificate: clientCertificate,
-		clientKey:         clientKey,
+		root:    root,
+		keypair: keypair,
 
 		incusProviderVersion:  terraformProviders["incus"].minVersion,
 		randomProviderVersion: terraformProviders["random"].minVersion,
@@ -266,12 +263,14 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 
 	// Additionally, we need to make sure, the client.crt and client.key are available
 	// for Incus as well.
-	err = t.root.WriteFile("client.key", []byte(t.clientKey), 0o600)
+	keypair := t.keypair.Get()
+
+	err = t.root.WriteFile("client.key", []byte(keypair.Key), 0o600)
 	if err != nil {
 		return err
 	}
 
-	err = t.root.WriteFile("client.crt", []byte(t.clientCertificate), 0o600)
+	err = t.root.WriteFile("client.crt", []byte(keypair.Certificate), 0o600)
 	if err != nil {
 		return err
 	}

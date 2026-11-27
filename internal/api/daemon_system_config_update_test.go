@@ -74,6 +74,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
+		ClusteredFunc: func() bool { return false },
 	}
 
 	// Setup daemon with empty (default) configuration for actual tests.
@@ -411,7 +412,35 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		t.Log(`9. Reset network config over unix socket`)
+		t.Log(`9. Update the settings with the ETag, a stale one is refused, none is accepted`)
+		etagPut := func(etag string, scriptlet string) int {
+			req, err := http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/settings", bytes.NewBufferString(fmt.Sprintf(`{"server_registration_scriptlet": %q}`, scriptlet)))
+			require.NoError(t, err)
+			req.Header.Add("Content-Type", "application/json")
+			if etag != "" {
+				req.Header.Add("If-Match", etag)
+			}
+
+			resp, err := socketClient.Do(req)
+			require.NoError(t, err)
+			_ = resp.Body.Close()
+
+			return resp.StatusCode
+		}
+
+		req, err = http.NewRequest(http.MethodGet, "http://unix.socket/1.0/system/settings", http.NoBody)
+		require.NoError(t, err)
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		etag := resp.Header.Get("ETag")
+		require.NotEmpty(t, etag)
+
+		require.Equal(t, http.StatusOK, etagPut(etag, "def server_registration(candidate):\n  pass\n"))
+		require.Equal(t, http.StatusPreconditionFailed, etagPut(etag, ""))
+		require.Equal(t, http.StatusOK, etagPut("", ""))
+
+		t.Log(`10. Reset network config over unix socket`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(`{}`))
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", "application/json")

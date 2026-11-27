@@ -43,6 +43,13 @@ func NewWarning(warningType api.WarningType, scope api.WarningScope, message str
 	}
 }
 
+// ScopeACMECertificateUpdate is the scope of the warnings about a failed ACME certificate request, which the next successful renewal removes.
+var ScopeACMECertificateUpdate = api.WarningScope{
+	Scope:      "acme_certificate_update",
+	EntityType: "system",
+	Entity:     "operations-center",
+}
+
 // NewWarningFromError returns a warning, which reports the given error. The
 // message of the warning is the message of the error for the user, prefixed
 // with the given context, if any. The technical details of the error are only

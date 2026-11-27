@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -1010,6 +1011,7 @@ func seedCluster(t *testing.T, d testDaemon, name string, status api.ClusterStat
 	t.Helper()
 
 	_, err := entities.CreateCluster(t.Context(), d.db, provisioning.Cluster{
+		UUID:        uuid.New(),
 		Name:        name,
 		Channel:     defaultChannelName,
 		Status:      status,
@@ -1044,8 +1046,13 @@ func seedArtifact(t *testing.T, d testDaemon, clusterName string, artifactName s
 				Size:     int64(len(content)),
 			},
 		},
+		MemberID: 1,
 	})
 	require.NoError(t, err)
 
-	seedFile(t, d, filepath.Join("artifacts", clusterName, artifactName, "artifact.txt"), []byte(content))
+	var clusterUUID string
+	err = d.db.QueryRowContext(t.Context(), `SELECT uuid FROM clusters WHERE name = ?`, clusterName).Scan(&clusterUUID)
+	require.NoError(t, err)
+
+	seedFile(t, d, filepath.Join("artifacts", clusterUUID, artifactName, "artifact.txt"), []byte(content))
 }

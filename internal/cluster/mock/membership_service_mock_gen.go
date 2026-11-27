@@ -6,12 +6,20 @@ package mock
 
 import (
 	"context"
+	"crypto/x509"
+	"net/http"
 	"sync"
+	"time"
 
 	cluster0 "github.com/cowsql/go-cowsql/cluster"
+	"github.com/cowsql/go-cowsql/cluster/db"
 
+	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/cluster"
+	api0 "github.com/FuturFusion/operations-center/internal/cluster/api"
+	"github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that MembershipServiceMock does implement cluster.MembershipService.
@@ -24,17 +32,101 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //
 //		// make and configure a mocked cluster.MembershipService
 //		mockedMembershipService := &MembershipServiceMock{
+//			AcceptFunc: func(ctx context.Context, cfg api.ClusterAcceptPost) (*api0.InternalClusterAcceptResponse, error) {
+//				panic("mock out the Accept method")
+//			},
+//			ApplyClusterCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
+//				panic("mock out the ApplyClusterCertificate method")
+//			},
+//			AuthFunc: func(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+//				panic("mock out the Auth method")
+//			},
+//			BootstrapFunc: func(ctx context.Context, cfg api.ClusterBootstrapPost) error {
+//				panic("mock out the Bootstrap method")
+//			},
+//			CheckMembersOnlineFunc: func(ctx context.Context) error {
+//				panic("mock out the CheckMembersOnline method")
+//			},
+//			ContactMembersFunc: func(ctx context.Context, except ...string) error {
+//				panic("mock out the ContactMembers method")
+//			},
+//			CreateTokenFunc: func(ctx context.Context, req api.ClusterTokenPost) error {
+//				panic("mock out the CreateToken method")
+//			},
+//			DeleteTokenByNameFunc: func(ctx context.Context, serverName string) error {
+//				panic("mock out the DeleteTokenByName method")
+//			},
 //			DetermineNodeIDFunc: func(ctx context.Context, address string) error {
 //				panic("mock out the DetermineNodeID method")
 //			},
-//			EnableFunc: func(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error {
+//			EnableFunc: func(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error {
 //				panic("mock out the Enable method")
 //			},
 //			GatewayFunc: func() cluster0.Gateway {
 //				panic("mock out the Gateway method")
 //			},
-//			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+//			GetMembersFunc: func(ctx context.Context) ([]api.ClusterMember, error) {
+//				panic("mock out the GetMembers method")
+//			},
+//			GetMembersByIDFunc: func(ctx context.Context) (map[int64]db.NodeInfo, error) {
+//				panic("mock out the GetMembersByID method")
+//			},
+//			GetTokenByServerNameFunc: func(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error) {
+//				panic("mock out the GetTokenByServerName method")
+//			},
+//			GetTokensFunc: func(ctx context.Context) (entities.ClusterJoinTokens, error) {
+//				panic("mock out the GetTokens method")
+//			},
+//			HandOverRoleFunc: func(ctx context.Context) error {
+//				panic("mock out the HandOverRole method")
+//			},
+//			HandlerFuncsFunc: func() map[string]http.HandlerFunc {
+//				panic("mock out the HandlerFuncs method")
+//			},
+//			HandoverFunc: func(ctx context.Context, address string) error {
+//				panic("mock out the Handover method")
+//			},
+//			HeartbeatOfflineThresholdFunc: func() time.Duration {
+//				panic("mock out the HeartbeatOfflineThreshold method")
+//			},
+//			IsMemberCertificateFunc: func(certificatePEM string) bool {
+//				panic("mock out the IsMemberCertificate method")
+//			},
+//			JoinFunc: func(ctx context.Context, cfg api.ClusterJoinPost) error {
+//				panic("mock out the Join method")
+//			},
+//			LeaderAddressFunc: func(ctx context.Context) (string, error) {
+//				panic("mock out the LeaderAddress method")
+//			},
+//			LeaderContextFunc: func(name string) (context.Context, func(), bool) {
+//				panic("mock out the LeaderContext method")
+//			},
+//			LocalMemberIDFunc: func() (int64, error) {
+//				panic("mock out the LocalMemberID method")
+//			},
+//			MemberClientFunc: func(address string) (client.OperationsCenterClient, error) {
+//				panic("mock out the MemberClient method")
+//			},
+//			NotifyUpgradeCompletedFunc: func(ctx context.Context) error {
+//				panic("mock out the NotifyUpgradeCompleted method")
+//			},
+//			PersistSharedConfigFunc: func(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
 //				panic("mock out the PersistSharedConfig method")
+//			},
+//			PublishSharedConfigFunc: func(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
+//				panic("mock out the PublishSharedConfig method")
+//			},
+//			RebalanceFunc: func(ctx context.Context) error {
+//				panic("mock out the Rebalance method")
+//			},
+//			ReloadSharedConfigFunc: func(ctx context.Context) error {
+//				panic("mock out the ReloadSharedConfig method")
+//			},
+//			RemoveMemberFunc: func(ctx context.Context, name string, force bool) error {
+//				panic("mock out the RemoveMember method")
+//			},
+//			ResetFunc: func(ctx context.Context)  {
+//				panic("mock out the Reset method")
 //			},
 //			SetGlobalDBFunc: func(repo cluster.GlobalRaftRepo)  {
 //				panic("mock out the SetGlobalDB method")
@@ -45,6 +137,18 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //			StopFunc: func(ctx context.Context) error {
 //				panic("mock out the Stop method")
 //			},
+//			TaskStatusFunc: func() api0.InternalClusterTaskStatus {
+//				panic("mock out the TaskStatus method")
+//			},
+//			TrustFunc: func(ctx context.Context, token string, fingerprint string) error {
+//				panic("mock out the Trust method")
+//			},
+//			TrustedClientsFunc: func() map[string]x509.Certificate {
+//				panic("mock out the TrustedClients method")
+//			},
+//			UpdateClusterCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
+//				panic("mock out the UpdateClusterCertificate method")
+//			},
 //		}
 //
 //		// use mockedMembershipService in code that requires cluster.MembershipService
@@ -52,17 +156,101 @@ var _ cluster.MembershipService = &MembershipServiceMock{}
 //
 //	}
 type MembershipServiceMock struct {
+	// AcceptFunc mocks the Accept method.
+	AcceptFunc func(ctx context.Context, cfg api.ClusterAcceptPost) (*api0.InternalClusterAcceptResponse, error)
+
+	// ApplyClusterCertificateFunc mocks the ApplyClusterCertificate method.
+	ApplyClusterCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
+	// AuthFunc mocks the Auth method.
+	AuthFunc func(w http.ResponseWriter, r *http.Request) (bool, string, string, error)
+
+	// BootstrapFunc mocks the Bootstrap method.
+	BootstrapFunc func(ctx context.Context, cfg api.ClusterBootstrapPost) error
+
+	// CheckMembersOnlineFunc mocks the CheckMembersOnline method.
+	CheckMembersOnlineFunc func(ctx context.Context) error
+
+	// ContactMembersFunc mocks the ContactMembers method.
+	ContactMembersFunc func(ctx context.Context, except ...string) error
+
+	// CreateTokenFunc mocks the CreateToken method.
+	CreateTokenFunc func(ctx context.Context, req api.ClusterTokenPost) error
+
+	// DeleteTokenByNameFunc mocks the DeleteTokenByName method.
+	DeleteTokenByNameFunc func(ctx context.Context, serverName string) error
+
 	// DetermineNodeIDFunc mocks the DetermineNodeID method.
 	DetermineNodeIDFunc func(ctx context.Context, address string) error
 
 	// EnableFunc mocks the Enable method.
-	EnableFunc func(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error
+	EnableFunc func(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error
 
 	// GatewayFunc mocks the Gateway method.
 	GatewayFunc func() cluster0.Gateway
 
+	// GetMembersFunc mocks the GetMembers method.
+	GetMembersFunc func(ctx context.Context) ([]api.ClusterMember, error)
+
+	// GetMembersByIDFunc mocks the GetMembersByID method.
+	GetMembersByIDFunc func(ctx context.Context) (map[int64]db.NodeInfo, error)
+
+	// GetTokenByServerNameFunc mocks the GetTokenByServerName method.
+	GetTokenByServerNameFunc func(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error)
+
+	// GetTokensFunc mocks the GetTokens method.
+	GetTokensFunc func(ctx context.Context) (entities.ClusterJoinTokens, error)
+
+	// HandOverRoleFunc mocks the HandOverRole method.
+	HandOverRoleFunc func(ctx context.Context) error
+
+	// HandlerFuncsFunc mocks the HandlerFuncs method.
+	HandlerFuncsFunc func() map[string]http.HandlerFunc
+
+	// HandoverFunc mocks the Handover method.
+	HandoverFunc func(ctx context.Context, address string) error
+
+	// HeartbeatOfflineThresholdFunc mocks the HeartbeatOfflineThreshold method.
+	HeartbeatOfflineThresholdFunc func() time.Duration
+
+	// IsMemberCertificateFunc mocks the IsMemberCertificate method.
+	IsMemberCertificateFunc func(certificatePEM string) bool
+
+	// JoinFunc mocks the Join method.
+	JoinFunc func(ctx context.Context, cfg api.ClusterJoinPost) error
+
+	// LeaderAddressFunc mocks the LeaderAddress method.
+	LeaderAddressFunc func(ctx context.Context) (string, error)
+
+	// LeaderContextFunc mocks the LeaderContext method.
+	LeaderContextFunc func(name string) (context.Context, func(), bool)
+
+	// LocalMemberIDFunc mocks the LocalMemberID method.
+	LocalMemberIDFunc func() (int64, error)
+
+	// MemberClientFunc mocks the MemberClient method.
+	MemberClientFunc func(address string) (client.OperationsCenterClient, error)
+
+	// NotifyUpgradeCompletedFunc mocks the NotifyUpgradeCompleted method.
+	NotifyUpgradeCompletedFunc func(ctx context.Context) error
+
 	// PersistSharedConfigFunc mocks the PersistSharedConfig method.
-	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, error)
+	PersistSharedConfigFunc func(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error)
+
+	// PublishSharedConfigFunc mocks the PublishSharedConfig method.
+	PublishSharedConfigFunc func(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error
+
+	// RebalanceFunc mocks the Rebalance method.
+	RebalanceFunc func(ctx context.Context) error
+
+	// ReloadSharedConfigFunc mocks the ReloadSharedConfig method.
+	ReloadSharedConfigFunc func(ctx context.Context) error
+
+	// RemoveMemberFunc mocks the RemoveMember method.
+	RemoveMemberFunc func(ctx context.Context, name string, force bool) error
+
+	// ResetFunc mocks the Reset method.
+	ResetFunc func(ctx context.Context)
 
 	// SetGlobalDBFunc mocks the SetGlobalDB method.
 	SetGlobalDBFunc func(repo cluster.GlobalRaftRepo)
@@ -73,8 +261,76 @@ type MembershipServiceMock struct {
 	// StopFunc mocks the Stop method.
 	StopFunc func(ctx context.Context) error
 
+	// TaskStatusFunc mocks the TaskStatus method.
+	TaskStatusFunc func() api0.InternalClusterTaskStatus
+
+	// TrustFunc mocks the Trust method.
+	TrustFunc func(ctx context.Context, token string, fingerprint string) error
+
+	// TrustedClientsFunc mocks the TrustedClients method.
+	TrustedClientsFunc func() map[string]x509.Certificate
+
+	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
+	UpdateClusterCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
 	// calls tracks calls to the methods.
 	calls struct {
+		// Accept holds details about calls to the Accept method.
+		Accept []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg api.ClusterAcceptPost
+		}
+		// ApplyClusterCertificate holds details about calls to the ApplyClusterCertificate method.
+		ApplyClusterCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
+		}
+		// Auth holds details about calls to the Auth method.
+		Auth []struct {
+			// W is the w argument value.
+			W http.ResponseWriter
+			// R is the r argument value.
+			R *http.Request
+		}
+		// Bootstrap holds details about calls to the Bootstrap method.
+		Bootstrap []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg api.ClusterBootstrapPost
+		}
+		// CheckMembersOnline holds details about calls to the CheckMembersOnline method.
+		CheckMembersOnline []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// ContactMembers holds details about calls to the ContactMembers method.
+		ContactMembers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Except is the except argument value.
+			Except []string
+		}
+		// CreateToken holds details about calls to the CreateToken method.
+		CreateToken []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req api.ClusterTokenPost
+		}
+		// DeleteTokenByName holds details about calls to the DeleteTokenByName method.
+		DeleteTokenByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ServerName is the serverName argument value.
+			ServerName string
+		}
 		// DetermineNodeID holds details about calls to the DetermineNodeID method.
 		DetermineNodeID []struct {
 			// Ctx is the ctx argument value.
@@ -88,6 +344,8 @@ type MembershipServiceMock struct {
 			Ctx context.Context
 			// ClusterAddress is the clusterAddress argument value.
 			ClusterAddress string
+			// TokenRepo is the tokenRepo argument value.
+			TokenRepo cluster.JoinTokenRepo
 			// ConfigRepo is the configRepo argument value.
 			ConfigRepo cluster.ConfigRepo
 			// GlobalRepo is the globalRepo argument value.
@@ -96,12 +354,120 @@ type MembershipServiceMock struct {
 		// Gateway holds details about calls to the Gateway method.
 		Gateway []struct {
 		}
+		// GetMembers holds details about calls to the GetMembers method.
+		GetMembers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetMembersByID holds details about calls to the GetMembersByID method.
+		GetMembersByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetTokenByServerName holds details about calls to the GetTokenByServerName method.
+		GetTokenByServerName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ServerName is the serverName argument value.
+			ServerName string
+		}
+		// GetTokens holds details about calls to the GetTokens method.
+		GetTokens []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// HandOverRole holds details about calls to the HandOverRole method.
+		HandOverRole []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// HandlerFuncs holds details about calls to the HandlerFuncs method.
+		HandlerFuncs []struct {
+		}
+		// Handover holds details about calls to the Handover method.
+		Handover []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Address is the address argument value.
+			Address string
+		}
+		// HeartbeatOfflineThreshold holds details about calls to the HeartbeatOfflineThreshold method.
+		HeartbeatOfflineThreshold []struct {
+		}
+		// IsMemberCertificate holds details about calls to the IsMemberCertificate method.
+		IsMemberCertificate []struct {
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+		}
+		// Join holds details about calls to the Join method.
+		Join []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg api.ClusterJoinPost
+		}
+		// LeaderAddress holds details about calls to the LeaderAddress method.
+		LeaderAddress []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// LeaderContext holds details about calls to the LeaderContext method.
+		LeaderContext []struct {
+			// Name is the name argument value.
+			Name string
+		}
+		// LocalMemberID holds details about calls to the LocalMemberID method.
+		LocalMemberID []struct {
+		}
+		// MemberClient holds details about calls to the MemberClient method.
+		MemberClient []struct {
+			// Address is the address argument value.
+			Address string
+		}
+		// NotifyUpgradeCompleted holds details about calls to the NotifyUpgradeCompleted method.
+		NotifyUpgradeCompleted []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// PersistSharedConfig holds details about calls to the PersistSharedConfig method.
 		PersistSharedConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Change is the change argument value.
 			Change config.SharedChange
+		}
+		// PublishSharedConfig holds details about calls to the PublishSharedConfig method.
+		PublishSharedConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Change is the change argument value.
+			Change config.SharedChange
+			// Previous is the previous argument value.
+			Previous config.SharedConfig
+		}
+		// Rebalance holds details about calls to the Rebalance method.
+		Rebalance []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// ReloadSharedConfig holds details about calls to the ReloadSharedConfig method.
+		ReloadSharedConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// RemoveMember holds details about calls to the RemoveMember method.
+		RemoveMember []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Force is the force argument value.
+			Force bool
+		}
+		// Reset holds details about calls to the Reset method.
+		Reset []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// SetGlobalDB holds details about calls to the SetGlobalDB method.
 		SetGlobalDB []struct {
@@ -116,14 +482,358 @@ type MembershipServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// TaskStatus holds details about calls to the TaskStatus method.
+		TaskStatus []struct {
+		}
+		// Trust holds details about calls to the Trust method.
+		Trust []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Token is the token argument value.
+			Token string
+			// Fingerprint is the fingerprint argument value.
+			Fingerprint string
+		}
+		// TrustedClients holds details about calls to the TrustedClients method.
+		TrustedClients []struct {
+		}
+		// UpdateClusterCertificate holds details about calls to the UpdateClusterCertificate method.
+		UpdateClusterCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
+		}
 	}
-	lockDetermineNodeID     sync.RWMutex
-	lockEnable              sync.RWMutex
-	lockGateway             sync.RWMutex
-	lockPersistSharedConfig sync.RWMutex
-	lockSetGlobalDB         sync.RWMutex
-	lockStartLeaderTasks    sync.RWMutex
-	lockStop                sync.RWMutex
+	lockAccept                    sync.RWMutex
+	lockApplyClusterCertificate   sync.RWMutex
+	lockAuth                      sync.RWMutex
+	lockBootstrap                 sync.RWMutex
+	lockCheckMembersOnline        sync.RWMutex
+	lockContactMembers            sync.RWMutex
+	lockCreateToken               sync.RWMutex
+	lockDeleteTokenByName         sync.RWMutex
+	lockDetermineNodeID           sync.RWMutex
+	lockEnable                    sync.RWMutex
+	lockGateway                   sync.RWMutex
+	lockGetMembers                sync.RWMutex
+	lockGetMembersByID            sync.RWMutex
+	lockGetTokenByServerName      sync.RWMutex
+	lockGetTokens                 sync.RWMutex
+	lockHandOverRole              sync.RWMutex
+	lockHandlerFuncs              sync.RWMutex
+	lockHandover                  sync.RWMutex
+	lockHeartbeatOfflineThreshold sync.RWMutex
+	lockIsMemberCertificate       sync.RWMutex
+	lockJoin                      sync.RWMutex
+	lockLeaderAddress             sync.RWMutex
+	lockLeaderContext             sync.RWMutex
+	lockLocalMemberID             sync.RWMutex
+	lockMemberClient              sync.RWMutex
+	lockNotifyUpgradeCompleted    sync.RWMutex
+	lockPersistSharedConfig       sync.RWMutex
+	lockPublishSharedConfig       sync.RWMutex
+	lockRebalance                 sync.RWMutex
+	lockReloadSharedConfig        sync.RWMutex
+	lockRemoveMember              sync.RWMutex
+	lockReset                     sync.RWMutex
+	lockSetGlobalDB               sync.RWMutex
+	lockStartLeaderTasks          sync.RWMutex
+	lockStop                      sync.RWMutex
+	lockTaskStatus                sync.RWMutex
+	lockTrust                     sync.RWMutex
+	lockTrustedClients            sync.RWMutex
+	lockUpdateClusterCertificate  sync.RWMutex
+}
+
+// Accept calls AcceptFunc.
+func (mock *MembershipServiceMock) Accept(ctx context.Context, cfg api.ClusterAcceptPost) (*api0.InternalClusterAcceptResponse, error) {
+	if mock.AcceptFunc == nil {
+		panic("MembershipServiceMock.AcceptFunc: method is nil but MembershipService.Accept was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg api.ClusterAcceptPost
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockAccept.Lock()
+	mock.calls.Accept = append(mock.calls.Accept, callInfo)
+	mock.lockAccept.Unlock()
+	return mock.AcceptFunc(ctx, cfg)
+}
+
+// AcceptCalls gets all the calls that were made to Accept.
+// Check the length with:
+//
+//	len(mockedMembershipService.AcceptCalls())
+func (mock *MembershipServiceMock) AcceptCalls() []struct {
+	Ctx context.Context
+	Cfg api.ClusterAcceptPost
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg api.ClusterAcceptPost
+	}
+	mock.lockAccept.RLock()
+	calls = mock.calls.Accept
+	mock.lockAccept.RUnlock()
+	return calls
+}
+
+// ApplyClusterCertificate calls ApplyClusterCertificateFunc.
+func (mock *MembershipServiceMock) ApplyClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	if mock.ApplyClusterCertificateFunc == nil {
+		panic("MembershipServiceMock.ApplyClusterCertificateFunc: method is nil but MembershipService.ApplyClusterCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockApplyClusterCertificate.Lock()
+	mock.calls.ApplyClusterCertificate = append(mock.calls.ApplyClusterCertificate, callInfo)
+	mock.lockApplyClusterCertificate.Unlock()
+	return mock.ApplyClusterCertificateFunc(ctx, certificatePEM, keyPEM)
+}
+
+// ApplyClusterCertificateCalls gets all the calls that were made to ApplyClusterCertificate.
+// Check the length with:
+//
+//	len(mockedMembershipService.ApplyClusterCertificateCalls())
+func (mock *MembershipServiceMock) ApplyClusterCertificateCalls() []struct {
+	Ctx            context.Context
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockApplyClusterCertificate.RLock()
+	calls = mock.calls.ApplyClusterCertificate
+	mock.lockApplyClusterCertificate.RUnlock()
+	return calls
+}
+
+// Auth calls AuthFunc.
+func (mock *MembershipServiceMock) Auth(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+	if mock.AuthFunc == nil {
+		panic("MembershipServiceMock.AuthFunc: method is nil but MembershipService.Auth was just called")
+	}
+	callInfo := struct {
+		W http.ResponseWriter
+		R *http.Request
+	}{
+		W: w,
+		R: r,
+	}
+	mock.lockAuth.Lock()
+	mock.calls.Auth = append(mock.calls.Auth, callInfo)
+	mock.lockAuth.Unlock()
+	return mock.AuthFunc(w, r)
+}
+
+// AuthCalls gets all the calls that were made to Auth.
+// Check the length with:
+//
+//	len(mockedMembershipService.AuthCalls())
+func (mock *MembershipServiceMock) AuthCalls() []struct {
+	W http.ResponseWriter
+	R *http.Request
+} {
+	var calls []struct {
+		W http.ResponseWriter
+		R *http.Request
+	}
+	mock.lockAuth.RLock()
+	calls = mock.calls.Auth
+	mock.lockAuth.RUnlock()
+	return calls
+}
+
+// Bootstrap calls BootstrapFunc.
+func (mock *MembershipServiceMock) Bootstrap(ctx context.Context, cfg api.ClusterBootstrapPost) error {
+	if mock.BootstrapFunc == nil {
+		panic("MembershipServiceMock.BootstrapFunc: method is nil but MembershipService.Bootstrap was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg api.ClusterBootstrapPost
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockBootstrap.Lock()
+	mock.calls.Bootstrap = append(mock.calls.Bootstrap, callInfo)
+	mock.lockBootstrap.Unlock()
+	return mock.BootstrapFunc(ctx, cfg)
+}
+
+// BootstrapCalls gets all the calls that were made to Bootstrap.
+// Check the length with:
+//
+//	len(mockedMembershipService.BootstrapCalls())
+func (mock *MembershipServiceMock) BootstrapCalls() []struct {
+	Ctx context.Context
+	Cfg api.ClusterBootstrapPost
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg api.ClusterBootstrapPost
+	}
+	mock.lockBootstrap.RLock()
+	calls = mock.calls.Bootstrap
+	mock.lockBootstrap.RUnlock()
+	return calls
+}
+
+// CheckMembersOnline calls CheckMembersOnlineFunc.
+func (mock *MembershipServiceMock) CheckMembersOnline(ctx context.Context) error {
+	if mock.CheckMembersOnlineFunc == nil {
+		panic("MembershipServiceMock.CheckMembersOnlineFunc: method is nil but MembershipService.CheckMembersOnline was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockCheckMembersOnline.Lock()
+	mock.calls.CheckMembersOnline = append(mock.calls.CheckMembersOnline, callInfo)
+	mock.lockCheckMembersOnline.Unlock()
+	return mock.CheckMembersOnlineFunc(ctx)
+}
+
+// CheckMembersOnlineCalls gets all the calls that were made to CheckMembersOnline.
+// Check the length with:
+//
+//	len(mockedMembershipService.CheckMembersOnlineCalls())
+func (mock *MembershipServiceMock) CheckMembersOnlineCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockCheckMembersOnline.RLock()
+	calls = mock.calls.CheckMembersOnline
+	mock.lockCheckMembersOnline.RUnlock()
+	return calls
+}
+
+// ContactMembers calls ContactMembersFunc.
+func (mock *MembershipServiceMock) ContactMembers(ctx context.Context, except ...string) error {
+	if mock.ContactMembersFunc == nil {
+		panic("MembershipServiceMock.ContactMembersFunc: method is nil but MembershipService.ContactMembers was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Except []string
+	}{
+		Ctx:    ctx,
+		Except: except,
+	}
+	mock.lockContactMembers.Lock()
+	mock.calls.ContactMembers = append(mock.calls.ContactMembers, callInfo)
+	mock.lockContactMembers.Unlock()
+	return mock.ContactMembersFunc(ctx, except...)
+}
+
+// ContactMembersCalls gets all the calls that were made to ContactMembers.
+// Check the length with:
+//
+//	len(mockedMembershipService.ContactMembersCalls())
+func (mock *MembershipServiceMock) ContactMembersCalls() []struct {
+	Ctx    context.Context
+	Except []string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Except []string
+	}
+	mock.lockContactMembers.RLock()
+	calls = mock.calls.ContactMembers
+	mock.lockContactMembers.RUnlock()
+	return calls
+}
+
+// CreateToken calls CreateTokenFunc.
+func (mock *MembershipServiceMock) CreateToken(ctx context.Context, req api.ClusterTokenPost) error {
+	if mock.CreateTokenFunc == nil {
+		panic("MembershipServiceMock.CreateTokenFunc: method is nil but MembershipService.CreateToken was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Req api.ClusterTokenPost
+	}{
+		Ctx: ctx,
+		Req: req,
+	}
+	mock.lockCreateToken.Lock()
+	mock.calls.CreateToken = append(mock.calls.CreateToken, callInfo)
+	mock.lockCreateToken.Unlock()
+	return mock.CreateTokenFunc(ctx, req)
+}
+
+// CreateTokenCalls gets all the calls that were made to CreateToken.
+// Check the length with:
+//
+//	len(mockedMembershipService.CreateTokenCalls())
+func (mock *MembershipServiceMock) CreateTokenCalls() []struct {
+	Ctx context.Context
+	Req api.ClusterTokenPost
+} {
+	var calls []struct {
+		Ctx context.Context
+		Req api.ClusterTokenPost
+	}
+	mock.lockCreateToken.RLock()
+	calls = mock.calls.CreateToken
+	mock.lockCreateToken.RUnlock()
+	return calls
+}
+
+// DeleteTokenByName calls DeleteTokenByNameFunc.
+func (mock *MembershipServiceMock) DeleteTokenByName(ctx context.Context, serverName string) error {
+	if mock.DeleteTokenByNameFunc == nil {
+		panic("MembershipServiceMock.DeleteTokenByNameFunc: method is nil but MembershipService.DeleteTokenByName was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		ServerName string
+	}{
+		Ctx:        ctx,
+		ServerName: serverName,
+	}
+	mock.lockDeleteTokenByName.Lock()
+	mock.calls.DeleteTokenByName = append(mock.calls.DeleteTokenByName, callInfo)
+	mock.lockDeleteTokenByName.Unlock()
+	return mock.DeleteTokenByNameFunc(ctx, serverName)
+}
+
+// DeleteTokenByNameCalls gets all the calls that were made to DeleteTokenByName.
+// Check the length with:
+//
+//	len(mockedMembershipService.DeleteTokenByNameCalls())
+func (mock *MembershipServiceMock) DeleteTokenByNameCalls() []struct {
+	Ctx        context.Context
+	ServerName string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		ServerName string
+	}
+	mock.lockDeleteTokenByName.RLock()
+	calls = mock.calls.DeleteTokenByName
+	mock.lockDeleteTokenByName.RUnlock()
+	return calls
 }
 
 // DetermineNodeID calls DetermineNodeIDFunc.
@@ -163,25 +873,27 @@ func (mock *MembershipServiceMock) DetermineNodeIDCalls() []struct {
 }
 
 // Enable calls EnableFunc.
-func (mock *MembershipServiceMock) Enable(ctx context.Context, clusterAddress string, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error {
+func (mock *MembershipServiceMock) Enable(ctx context.Context, clusterAddress string, tokenRepo cluster.JoinTokenRepo, configRepo cluster.ConfigRepo, globalRepo cluster.GlobalRaftRepo) error {
 	if mock.EnableFunc == nil {
 		panic("MembershipServiceMock.EnableFunc: method is nil but MembershipService.Enable was just called")
 	}
 	callInfo := struct {
 		Ctx            context.Context
 		ClusterAddress string
+		TokenRepo      cluster.JoinTokenRepo
 		ConfigRepo     cluster.ConfigRepo
 		GlobalRepo     cluster.GlobalRaftRepo
 	}{
 		Ctx:            ctx,
 		ClusterAddress: clusterAddress,
+		TokenRepo:      tokenRepo,
 		ConfigRepo:     configRepo,
 		GlobalRepo:     globalRepo,
 	}
 	mock.lockEnable.Lock()
 	mock.calls.Enable = append(mock.calls.Enable, callInfo)
 	mock.lockEnable.Unlock()
-	return mock.EnableFunc(ctx, clusterAddress, configRepo, globalRepo)
+	return mock.EnableFunc(ctx, clusterAddress, tokenRepo, configRepo, globalRepo)
 }
 
 // EnableCalls gets all the calls that were made to Enable.
@@ -191,12 +903,14 @@ func (mock *MembershipServiceMock) Enable(ctx context.Context, clusterAddress st
 func (mock *MembershipServiceMock) EnableCalls() []struct {
 	Ctx            context.Context
 	ClusterAddress string
+	TokenRepo      cluster.JoinTokenRepo
 	ConfigRepo     cluster.ConfigRepo
 	GlobalRepo     cluster.GlobalRaftRepo
 } {
 	var calls []struct {
 		Ctx            context.Context
 		ClusterAddress string
+		TokenRepo      cluster.JoinTokenRepo
 		ConfigRepo     cluster.ConfigRepo
 		GlobalRepo     cluster.GlobalRaftRepo
 	}
@@ -233,8 +947,485 @@ func (mock *MembershipServiceMock) GatewayCalls() []struct {
 	return calls
 }
 
+// GetMembers calls GetMembersFunc.
+func (mock *MembershipServiceMock) GetMembers(ctx context.Context) ([]api.ClusterMember, error) {
+	if mock.GetMembersFunc == nil {
+		panic("MembershipServiceMock.GetMembersFunc: method is nil but MembershipService.GetMembers was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetMembers.Lock()
+	mock.calls.GetMembers = append(mock.calls.GetMembers, callInfo)
+	mock.lockGetMembers.Unlock()
+	return mock.GetMembersFunc(ctx)
+}
+
+// GetMembersCalls gets all the calls that were made to GetMembers.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetMembersCalls())
+func (mock *MembershipServiceMock) GetMembersCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetMembers.RLock()
+	calls = mock.calls.GetMembers
+	mock.lockGetMembers.RUnlock()
+	return calls
+}
+
+// GetMembersByID calls GetMembersByIDFunc.
+func (mock *MembershipServiceMock) GetMembersByID(ctx context.Context) (map[int64]db.NodeInfo, error) {
+	if mock.GetMembersByIDFunc == nil {
+		panic("MembershipServiceMock.GetMembersByIDFunc: method is nil but MembershipService.GetMembersByID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetMembersByID.Lock()
+	mock.calls.GetMembersByID = append(mock.calls.GetMembersByID, callInfo)
+	mock.lockGetMembersByID.Unlock()
+	return mock.GetMembersByIDFunc(ctx)
+}
+
+// GetMembersByIDCalls gets all the calls that were made to GetMembersByID.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetMembersByIDCalls())
+func (mock *MembershipServiceMock) GetMembersByIDCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetMembersByID.RLock()
+	calls = mock.calls.GetMembersByID
+	mock.lockGetMembersByID.RUnlock()
+	return calls
+}
+
+// GetTokenByServerName calls GetTokenByServerNameFunc.
+func (mock *MembershipServiceMock) GetTokenByServerName(ctx context.Context, serverName string) (*entities.ClusterJoinToken, error) {
+	if mock.GetTokenByServerNameFunc == nil {
+		panic("MembershipServiceMock.GetTokenByServerNameFunc: method is nil but MembershipService.GetTokenByServerName was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		ServerName string
+	}{
+		Ctx:        ctx,
+		ServerName: serverName,
+	}
+	mock.lockGetTokenByServerName.Lock()
+	mock.calls.GetTokenByServerName = append(mock.calls.GetTokenByServerName, callInfo)
+	mock.lockGetTokenByServerName.Unlock()
+	return mock.GetTokenByServerNameFunc(ctx, serverName)
+}
+
+// GetTokenByServerNameCalls gets all the calls that were made to GetTokenByServerName.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetTokenByServerNameCalls())
+func (mock *MembershipServiceMock) GetTokenByServerNameCalls() []struct {
+	Ctx        context.Context
+	ServerName string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		ServerName string
+	}
+	mock.lockGetTokenByServerName.RLock()
+	calls = mock.calls.GetTokenByServerName
+	mock.lockGetTokenByServerName.RUnlock()
+	return calls
+}
+
+// GetTokens calls GetTokensFunc.
+func (mock *MembershipServiceMock) GetTokens(ctx context.Context) (entities.ClusterJoinTokens, error) {
+	if mock.GetTokensFunc == nil {
+		panic("MembershipServiceMock.GetTokensFunc: method is nil but MembershipService.GetTokens was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetTokens.Lock()
+	mock.calls.GetTokens = append(mock.calls.GetTokens, callInfo)
+	mock.lockGetTokens.Unlock()
+	return mock.GetTokensFunc(ctx)
+}
+
+// GetTokensCalls gets all the calls that were made to GetTokens.
+// Check the length with:
+//
+//	len(mockedMembershipService.GetTokensCalls())
+func (mock *MembershipServiceMock) GetTokensCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetTokens.RLock()
+	calls = mock.calls.GetTokens
+	mock.lockGetTokens.RUnlock()
+	return calls
+}
+
+// HandOverRole calls HandOverRoleFunc.
+func (mock *MembershipServiceMock) HandOverRole(ctx context.Context) error {
+	if mock.HandOverRoleFunc == nil {
+		panic("MembershipServiceMock.HandOverRoleFunc: method is nil but MembershipService.HandOverRole was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockHandOverRole.Lock()
+	mock.calls.HandOverRole = append(mock.calls.HandOverRole, callInfo)
+	mock.lockHandOverRole.Unlock()
+	return mock.HandOverRoleFunc(ctx)
+}
+
+// HandOverRoleCalls gets all the calls that were made to HandOverRole.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandOverRoleCalls())
+func (mock *MembershipServiceMock) HandOverRoleCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockHandOverRole.RLock()
+	calls = mock.calls.HandOverRole
+	mock.lockHandOverRole.RUnlock()
+	return calls
+}
+
+// HandlerFuncs calls HandlerFuncsFunc.
+func (mock *MembershipServiceMock) HandlerFuncs() map[string]http.HandlerFunc {
+	if mock.HandlerFuncsFunc == nil {
+		panic("MembershipServiceMock.HandlerFuncsFunc: method is nil but MembershipService.HandlerFuncs was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockHandlerFuncs.Lock()
+	mock.calls.HandlerFuncs = append(mock.calls.HandlerFuncs, callInfo)
+	mock.lockHandlerFuncs.Unlock()
+	return mock.HandlerFuncsFunc()
+}
+
+// HandlerFuncsCalls gets all the calls that were made to HandlerFuncs.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandlerFuncsCalls())
+func (mock *MembershipServiceMock) HandlerFuncsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockHandlerFuncs.RLock()
+	calls = mock.calls.HandlerFuncs
+	mock.lockHandlerFuncs.RUnlock()
+	return calls
+}
+
+// Handover calls HandoverFunc.
+func (mock *MembershipServiceMock) Handover(ctx context.Context, address string) error {
+	if mock.HandoverFunc == nil {
+		panic("MembershipServiceMock.HandoverFunc: method is nil but MembershipService.Handover was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Address string
+	}{
+		Ctx:     ctx,
+		Address: address,
+	}
+	mock.lockHandover.Lock()
+	mock.calls.Handover = append(mock.calls.Handover, callInfo)
+	mock.lockHandover.Unlock()
+	return mock.HandoverFunc(ctx, address)
+}
+
+// HandoverCalls gets all the calls that were made to Handover.
+// Check the length with:
+//
+//	len(mockedMembershipService.HandoverCalls())
+func (mock *MembershipServiceMock) HandoverCalls() []struct {
+	Ctx     context.Context
+	Address string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Address string
+	}
+	mock.lockHandover.RLock()
+	calls = mock.calls.Handover
+	mock.lockHandover.RUnlock()
+	return calls
+}
+
+// HeartbeatOfflineThreshold calls HeartbeatOfflineThresholdFunc.
+func (mock *MembershipServiceMock) HeartbeatOfflineThreshold() time.Duration {
+	if mock.HeartbeatOfflineThresholdFunc == nil {
+		panic("MembershipServiceMock.HeartbeatOfflineThresholdFunc: method is nil but MembershipService.HeartbeatOfflineThreshold was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockHeartbeatOfflineThreshold.Lock()
+	mock.calls.HeartbeatOfflineThreshold = append(mock.calls.HeartbeatOfflineThreshold, callInfo)
+	mock.lockHeartbeatOfflineThreshold.Unlock()
+	return mock.HeartbeatOfflineThresholdFunc()
+}
+
+// HeartbeatOfflineThresholdCalls gets all the calls that were made to HeartbeatOfflineThreshold.
+// Check the length with:
+//
+//	len(mockedMembershipService.HeartbeatOfflineThresholdCalls())
+func (mock *MembershipServiceMock) HeartbeatOfflineThresholdCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockHeartbeatOfflineThreshold.RLock()
+	calls = mock.calls.HeartbeatOfflineThreshold
+	mock.lockHeartbeatOfflineThreshold.RUnlock()
+	return calls
+}
+
+// IsMemberCertificate calls IsMemberCertificateFunc.
+func (mock *MembershipServiceMock) IsMemberCertificate(certificatePEM string) bool {
+	if mock.IsMemberCertificateFunc == nil {
+		panic("MembershipServiceMock.IsMemberCertificateFunc: method is nil but MembershipService.IsMemberCertificate was just called")
+	}
+	callInfo := struct {
+		CertificatePEM string
+	}{
+		CertificatePEM: certificatePEM,
+	}
+	mock.lockIsMemberCertificate.Lock()
+	mock.calls.IsMemberCertificate = append(mock.calls.IsMemberCertificate, callInfo)
+	mock.lockIsMemberCertificate.Unlock()
+	return mock.IsMemberCertificateFunc(certificatePEM)
+}
+
+// IsMemberCertificateCalls gets all the calls that were made to IsMemberCertificate.
+// Check the length with:
+//
+//	len(mockedMembershipService.IsMemberCertificateCalls())
+func (mock *MembershipServiceMock) IsMemberCertificateCalls() []struct {
+	CertificatePEM string
+} {
+	var calls []struct {
+		CertificatePEM string
+	}
+	mock.lockIsMemberCertificate.RLock()
+	calls = mock.calls.IsMemberCertificate
+	mock.lockIsMemberCertificate.RUnlock()
+	return calls
+}
+
+// Join calls JoinFunc.
+func (mock *MembershipServiceMock) Join(ctx context.Context, cfg api.ClusterJoinPost) error {
+	if mock.JoinFunc == nil {
+		panic("MembershipServiceMock.JoinFunc: method is nil but MembershipService.Join was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg api.ClusterJoinPost
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockJoin.Lock()
+	mock.calls.Join = append(mock.calls.Join, callInfo)
+	mock.lockJoin.Unlock()
+	return mock.JoinFunc(ctx, cfg)
+}
+
+// JoinCalls gets all the calls that were made to Join.
+// Check the length with:
+//
+//	len(mockedMembershipService.JoinCalls())
+func (mock *MembershipServiceMock) JoinCalls() []struct {
+	Ctx context.Context
+	Cfg api.ClusterJoinPost
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg api.ClusterJoinPost
+	}
+	mock.lockJoin.RLock()
+	calls = mock.calls.Join
+	mock.lockJoin.RUnlock()
+	return calls
+}
+
+// LeaderAddress calls LeaderAddressFunc.
+func (mock *MembershipServiceMock) LeaderAddress(ctx context.Context) (string, error) {
+	if mock.LeaderAddressFunc == nil {
+		panic("MembershipServiceMock.LeaderAddressFunc: method is nil but MembershipService.LeaderAddress was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockLeaderAddress.Lock()
+	mock.calls.LeaderAddress = append(mock.calls.LeaderAddress, callInfo)
+	mock.lockLeaderAddress.Unlock()
+	return mock.LeaderAddressFunc(ctx)
+}
+
+// LeaderAddressCalls gets all the calls that were made to LeaderAddress.
+// Check the length with:
+//
+//	len(mockedMembershipService.LeaderAddressCalls())
+func (mock *MembershipServiceMock) LeaderAddressCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockLeaderAddress.RLock()
+	calls = mock.calls.LeaderAddress
+	mock.lockLeaderAddress.RUnlock()
+	return calls
+}
+
+// LeaderContext calls LeaderContextFunc.
+func (mock *MembershipServiceMock) LeaderContext(name string) (context.Context, func(), bool) {
+	if mock.LeaderContextFunc == nil {
+		panic("MembershipServiceMock.LeaderContextFunc: method is nil but MembershipService.LeaderContext was just called")
+	}
+	callInfo := struct {
+		Name string
+	}{
+		Name: name,
+	}
+	mock.lockLeaderContext.Lock()
+	mock.calls.LeaderContext = append(mock.calls.LeaderContext, callInfo)
+	mock.lockLeaderContext.Unlock()
+	return mock.LeaderContextFunc(name)
+}
+
+// LeaderContextCalls gets all the calls that were made to LeaderContext.
+// Check the length with:
+//
+//	len(mockedMembershipService.LeaderContextCalls())
+func (mock *MembershipServiceMock) LeaderContextCalls() []struct {
+	Name string
+} {
+	var calls []struct {
+		Name string
+	}
+	mock.lockLeaderContext.RLock()
+	calls = mock.calls.LeaderContext
+	mock.lockLeaderContext.RUnlock()
+	return calls
+}
+
+// LocalMemberID calls LocalMemberIDFunc.
+func (mock *MembershipServiceMock) LocalMemberID() (int64, error) {
+	if mock.LocalMemberIDFunc == nil {
+		panic("MembershipServiceMock.LocalMemberIDFunc: method is nil but MembershipService.LocalMemberID was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockLocalMemberID.Lock()
+	mock.calls.LocalMemberID = append(mock.calls.LocalMemberID, callInfo)
+	mock.lockLocalMemberID.Unlock()
+	return mock.LocalMemberIDFunc()
+}
+
+// LocalMemberIDCalls gets all the calls that were made to LocalMemberID.
+// Check the length with:
+//
+//	len(mockedMembershipService.LocalMemberIDCalls())
+func (mock *MembershipServiceMock) LocalMemberIDCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockLocalMemberID.RLock()
+	calls = mock.calls.LocalMemberID
+	mock.lockLocalMemberID.RUnlock()
+	return calls
+}
+
+// MemberClient calls MemberClientFunc.
+func (mock *MembershipServiceMock) MemberClient(address string) (client.OperationsCenterClient, error) {
+	if mock.MemberClientFunc == nil {
+		panic("MembershipServiceMock.MemberClientFunc: method is nil but MembershipService.MemberClient was just called")
+	}
+	callInfo := struct {
+		Address string
+	}{
+		Address: address,
+	}
+	mock.lockMemberClient.Lock()
+	mock.calls.MemberClient = append(mock.calls.MemberClient, callInfo)
+	mock.lockMemberClient.Unlock()
+	return mock.MemberClientFunc(address)
+}
+
+// MemberClientCalls gets all the calls that were made to MemberClient.
+// Check the length with:
+//
+//	len(mockedMembershipService.MemberClientCalls())
+func (mock *MembershipServiceMock) MemberClientCalls() []struct {
+	Address string
+} {
+	var calls []struct {
+		Address string
+	}
+	mock.lockMemberClient.RLock()
+	calls = mock.calls.MemberClient
+	mock.lockMemberClient.RUnlock()
+	return calls
+}
+
+// NotifyUpgradeCompleted calls NotifyUpgradeCompletedFunc.
+func (mock *MembershipServiceMock) NotifyUpgradeCompleted(ctx context.Context) error {
+	if mock.NotifyUpgradeCompletedFunc == nil {
+		panic("MembershipServiceMock.NotifyUpgradeCompletedFunc: method is nil but MembershipService.NotifyUpgradeCompleted was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockNotifyUpgradeCompleted.Lock()
+	mock.calls.NotifyUpgradeCompleted = append(mock.calls.NotifyUpgradeCompleted, callInfo)
+	mock.lockNotifyUpgradeCompleted.Unlock()
+	return mock.NotifyUpgradeCompletedFunc(ctx)
+}
+
+// NotifyUpgradeCompletedCalls gets all the calls that were made to NotifyUpgradeCompleted.
+// Check the length with:
+//
+//	len(mockedMembershipService.NotifyUpgradeCompletedCalls())
+func (mock *MembershipServiceMock) NotifyUpgradeCompletedCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockNotifyUpgradeCompleted.RLock()
+	calls = mock.calls.NotifyUpgradeCompleted
+	mock.lockNotifyUpgradeCompleted.RUnlock()
+	return calls
+}
+
 // PersistSharedConfig calls PersistSharedConfigFunc.
-func (mock *MembershipServiceMock) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, error) {
+func (mock *MembershipServiceMock) PersistSharedConfig(ctx context.Context, change config.SharedChange) (config.SharedConfig, config.SharedConfig, error) {
 	if mock.PersistSharedConfigFunc == nil {
 		panic("MembershipServiceMock.PersistSharedConfigFunc: method is nil but MembershipService.PersistSharedConfig was just called")
 	}
@@ -266,6 +1457,182 @@ func (mock *MembershipServiceMock) PersistSharedConfigCalls() []struct {
 	mock.lockPersistSharedConfig.RLock()
 	calls = mock.calls.PersistSharedConfig
 	mock.lockPersistSharedConfig.RUnlock()
+	return calls
+}
+
+// PublishSharedConfig calls PublishSharedConfigFunc.
+func (mock *MembershipServiceMock) PublishSharedConfig(ctx context.Context, change config.SharedChange, previous config.SharedConfig) error {
+	if mock.PublishSharedConfigFunc == nil {
+		panic("MembershipServiceMock.PublishSharedConfigFunc: method is nil but MembershipService.PublishSharedConfig was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Change   config.SharedChange
+		Previous config.SharedConfig
+	}{
+		Ctx:      ctx,
+		Change:   change,
+		Previous: previous,
+	}
+	mock.lockPublishSharedConfig.Lock()
+	mock.calls.PublishSharedConfig = append(mock.calls.PublishSharedConfig, callInfo)
+	mock.lockPublishSharedConfig.Unlock()
+	return mock.PublishSharedConfigFunc(ctx, change, previous)
+}
+
+// PublishSharedConfigCalls gets all the calls that were made to PublishSharedConfig.
+// Check the length with:
+//
+//	len(mockedMembershipService.PublishSharedConfigCalls())
+func (mock *MembershipServiceMock) PublishSharedConfigCalls() []struct {
+	Ctx      context.Context
+	Change   config.SharedChange
+	Previous config.SharedConfig
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Change   config.SharedChange
+		Previous config.SharedConfig
+	}
+	mock.lockPublishSharedConfig.RLock()
+	calls = mock.calls.PublishSharedConfig
+	mock.lockPublishSharedConfig.RUnlock()
+	return calls
+}
+
+// Rebalance calls RebalanceFunc.
+func (mock *MembershipServiceMock) Rebalance(ctx context.Context) error {
+	if mock.RebalanceFunc == nil {
+		panic("MembershipServiceMock.RebalanceFunc: method is nil but MembershipService.Rebalance was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockRebalance.Lock()
+	mock.calls.Rebalance = append(mock.calls.Rebalance, callInfo)
+	mock.lockRebalance.Unlock()
+	return mock.RebalanceFunc(ctx)
+}
+
+// RebalanceCalls gets all the calls that were made to Rebalance.
+// Check the length with:
+//
+//	len(mockedMembershipService.RebalanceCalls())
+func (mock *MembershipServiceMock) RebalanceCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockRebalance.RLock()
+	calls = mock.calls.Rebalance
+	mock.lockRebalance.RUnlock()
+	return calls
+}
+
+// ReloadSharedConfig calls ReloadSharedConfigFunc.
+func (mock *MembershipServiceMock) ReloadSharedConfig(ctx context.Context) error {
+	if mock.ReloadSharedConfigFunc == nil {
+		panic("MembershipServiceMock.ReloadSharedConfigFunc: method is nil but MembershipService.ReloadSharedConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockReloadSharedConfig.Lock()
+	mock.calls.ReloadSharedConfig = append(mock.calls.ReloadSharedConfig, callInfo)
+	mock.lockReloadSharedConfig.Unlock()
+	return mock.ReloadSharedConfigFunc(ctx)
+}
+
+// ReloadSharedConfigCalls gets all the calls that were made to ReloadSharedConfig.
+// Check the length with:
+//
+//	len(mockedMembershipService.ReloadSharedConfigCalls())
+func (mock *MembershipServiceMock) ReloadSharedConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockReloadSharedConfig.RLock()
+	calls = mock.calls.ReloadSharedConfig
+	mock.lockReloadSharedConfig.RUnlock()
+	return calls
+}
+
+// RemoveMember calls RemoveMemberFunc.
+func (mock *MembershipServiceMock) RemoveMember(ctx context.Context, name string, force bool) error {
+	if mock.RemoveMemberFunc == nil {
+		panic("MembershipServiceMock.RemoveMemberFunc: method is nil but MembershipService.RemoveMember was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
+	}
+	mock.lockRemoveMember.Lock()
+	mock.calls.RemoveMember = append(mock.calls.RemoveMember, callInfo)
+	mock.lockRemoveMember.Unlock()
+	return mock.RemoveMemberFunc(ctx, name, force)
+}
+
+// RemoveMemberCalls gets all the calls that were made to RemoveMember.
+// Check the length with:
+//
+//	len(mockedMembershipService.RemoveMemberCalls())
+func (mock *MembershipServiceMock) RemoveMemberCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}
+	mock.lockRemoveMember.RLock()
+	calls = mock.calls.RemoveMember
+	mock.lockRemoveMember.RUnlock()
+	return calls
+}
+
+// Reset calls ResetFunc.
+func (mock *MembershipServiceMock) Reset(ctx context.Context) {
+	if mock.ResetFunc == nil {
+		panic("MembershipServiceMock.ResetFunc: method is nil but MembershipService.Reset was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockReset.Lock()
+	mock.calls.Reset = append(mock.calls.Reset, callInfo)
+	mock.lockReset.Unlock()
+	mock.ResetFunc(ctx)
+}
+
+// ResetCalls gets all the calls that were made to Reset.
+// Check the length with:
+//
+//	len(mockedMembershipService.ResetCalls())
+func (mock *MembershipServiceMock) ResetCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockReset.RLock()
+	calls = mock.calls.Reset
+	mock.lockReset.RUnlock()
 	return calls
 }
 
@@ -357,5 +1724,139 @@ func (mock *MembershipServiceMock) StopCalls() []struct {
 	mock.lockStop.RLock()
 	calls = mock.calls.Stop
 	mock.lockStop.RUnlock()
+	return calls
+}
+
+// TaskStatus calls TaskStatusFunc.
+func (mock *MembershipServiceMock) TaskStatus() api0.InternalClusterTaskStatus {
+	if mock.TaskStatusFunc == nil {
+		panic("MembershipServiceMock.TaskStatusFunc: method is nil but MembershipService.TaskStatus was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTaskStatus.Lock()
+	mock.calls.TaskStatus = append(mock.calls.TaskStatus, callInfo)
+	mock.lockTaskStatus.Unlock()
+	return mock.TaskStatusFunc()
+}
+
+// TaskStatusCalls gets all the calls that were made to TaskStatus.
+// Check the length with:
+//
+//	len(mockedMembershipService.TaskStatusCalls())
+func (mock *MembershipServiceMock) TaskStatusCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTaskStatus.RLock()
+	calls = mock.calls.TaskStatus
+	mock.lockTaskStatus.RUnlock()
+	return calls
+}
+
+// Trust calls TrustFunc.
+func (mock *MembershipServiceMock) Trust(ctx context.Context, token string, fingerprint string) error {
+	if mock.TrustFunc == nil {
+		panic("MembershipServiceMock.TrustFunc: method is nil but MembershipService.Trust was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Token       string
+		Fingerprint string
+	}{
+		Ctx:         ctx,
+		Token:       token,
+		Fingerprint: fingerprint,
+	}
+	mock.lockTrust.Lock()
+	mock.calls.Trust = append(mock.calls.Trust, callInfo)
+	mock.lockTrust.Unlock()
+	return mock.TrustFunc(ctx, token, fingerprint)
+}
+
+// TrustCalls gets all the calls that were made to Trust.
+// Check the length with:
+//
+//	len(mockedMembershipService.TrustCalls())
+func (mock *MembershipServiceMock) TrustCalls() []struct {
+	Ctx         context.Context
+	Token       string
+	Fingerprint string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Token       string
+		Fingerprint string
+	}
+	mock.lockTrust.RLock()
+	calls = mock.calls.Trust
+	mock.lockTrust.RUnlock()
+	return calls
+}
+
+// TrustedClients calls TrustedClientsFunc.
+func (mock *MembershipServiceMock) TrustedClients() map[string]x509.Certificate {
+	if mock.TrustedClientsFunc == nil {
+		panic("MembershipServiceMock.TrustedClientsFunc: method is nil but MembershipService.TrustedClients was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTrustedClients.Lock()
+	mock.calls.TrustedClients = append(mock.calls.TrustedClients, callInfo)
+	mock.lockTrustedClients.Unlock()
+	return mock.TrustedClientsFunc()
+}
+
+// TrustedClientsCalls gets all the calls that were made to TrustedClients.
+// Check the length with:
+//
+//	len(mockedMembershipService.TrustedClientsCalls())
+func (mock *MembershipServiceMock) TrustedClientsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTrustedClients.RLock()
+	calls = mock.calls.TrustedClients
+	mock.lockTrustedClients.RUnlock()
+	return calls
+}
+
+// UpdateClusterCertificate calls UpdateClusterCertificateFunc.
+func (mock *MembershipServiceMock) UpdateClusterCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+	if mock.UpdateClusterCertificateFunc == nil {
+		panic("MembershipServiceMock.UpdateClusterCertificateFunc: method is nil but MembershipService.UpdateClusterCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockUpdateClusterCertificate.Lock()
+	mock.calls.UpdateClusterCertificate = append(mock.calls.UpdateClusterCertificate, callInfo)
+	mock.lockUpdateClusterCertificate.Unlock()
+	return mock.UpdateClusterCertificateFunc(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateClusterCertificateCalls gets all the calls that were made to UpdateClusterCertificate.
+// Check the length with:
+//
+//	len(mockedMembershipService.UpdateClusterCertificateCalls())
+func (mock *MembershipServiceMock) UpdateClusterCertificateCalls() []struct {
+	Ctx            context.Context
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockUpdateClusterCertificate.RLock()
+	calls = mock.calls.UpdateClusterCertificate
+	mock.lockUpdateClusterCertificate.RUnlock()
 	return calls
 }

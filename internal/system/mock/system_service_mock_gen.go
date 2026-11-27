@@ -28,6 +28,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			GetCertificateFunc: func(ctx context.Context) (system.Certificate, error) {
 //				panic("mock out the GetCertificate method")
 //			},
+//			GetClusterConfigFunc: func(ctx context.Context) system.Cluster {
+//				panic("mock out the GetClusterConfig method")
+//			},
 //			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
 //				panic("mock out the GetNetworkConfig method")
 //			},
@@ -40,11 +43,17 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			GetUpdatesConfigFunc: func(ctx context.Context) system.Updates {
 //				panic("mock out the GetUpdatesConfig method")
 //			},
+//			PropagateCertificateFunc: func(ctx context.Context) error {
+//				panic("mock out the PropagateCertificate method")
+//			},
 //			TriggerCertificateRenewFunc: func(ctx context.Context, force bool) (bool, error) {
 //				panic("mock out the TriggerCertificateRenew method")
 //			},
 //			UpdateCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
+//			},
+//			UpdateClusterConfigFunc: func(ctx context.Context, cfg system.ClusterPut) error {
+//				panic("mock out the UpdateClusterConfig method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, cfg system.NetworkPut) error {
 //				panic("mock out the UpdateNetworkConfig method")
@@ -71,6 +80,9 @@ type SystemServiceMock struct {
 	// GetCertificateFunc mocks the GetCertificate method.
 	GetCertificateFunc func(ctx context.Context) (system.Certificate, error)
 
+	// GetClusterConfigFunc mocks the GetClusterConfig method.
+	GetClusterConfigFunc func(ctx context.Context) system.Cluster
+
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context) system.Network
 
@@ -83,11 +95,17 @@ type SystemServiceMock struct {
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
 	GetUpdatesConfigFunc func(ctx context.Context) system.Updates
 
+	// PropagateCertificateFunc mocks the PropagateCertificate method.
+	PropagateCertificateFunc func(ctx context.Context) error
+
 	// TriggerCertificateRenewFunc mocks the TriggerCertificateRenew method.
 	TriggerCertificateRenewFunc func(ctx context.Context, force bool) (bool, error)
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
+
+	// UpdateClusterConfigFunc mocks the UpdateClusterConfig method.
+	UpdateClusterConfigFunc func(ctx context.Context, cfg system.ClusterPut) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, cfg system.NetworkPut) error
@@ -113,6 +131,11 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetClusterConfig holds details about calls to the GetClusterConfig method.
+		GetClusterConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetNetworkConfig holds details about calls to the GetNetworkConfig method.
 		GetNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -133,6 +156,11 @@ type SystemServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// PropagateCertificate holds details about calls to the PropagateCertificate method.
+		PropagateCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// TriggerCertificateRenew holds details about calls to the TriggerCertificateRenew method.
 		TriggerCertificateRenew []struct {
 			// Ctx is the ctx argument value.
@@ -148,6 +176,13 @@ type SystemServiceMock struct {
 			CertificatePEM string
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
+		}
+		// UpdateClusterConfig holds details about calls to the UpdateClusterConfig method.
+		UpdateClusterConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg system.ClusterPut
 		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
@@ -180,12 +215,15 @@ type SystemServiceMock struct {
 	}
 	lockCleanCache              sync.RWMutex
 	lockGetCertificate          sync.RWMutex
+	lockGetClusterConfig        sync.RWMutex
 	lockGetNetworkConfig        sync.RWMutex
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
 	lockGetUpdatesConfig        sync.RWMutex
+	lockPropagateCertificate    sync.RWMutex
 	lockTriggerCertificateRenew sync.RWMutex
 	lockUpdateCertificate       sync.RWMutex
+	lockUpdateClusterConfig     sync.RWMutex
 	lockUpdateNetworkConfig     sync.RWMutex
 	lockUpdateSecurityConfig    sync.RWMutex
 	lockUpdateSettingsConfig    sync.RWMutex
@@ -253,6 +291,38 @@ func (mock *SystemServiceMock) GetCertificateCalls() []struct {
 	mock.lockGetCertificate.RLock()
 	calls = mock.calls.GetCertificate
 	mock.lockGetCertificate.RUnlock()
+	return calls
+}
+
+// GetClusterConfig calls GetClusterConfigFunc.
+func (mock *SystemServiceMock) GetClusterConfig(ctx context.Context) system.Cluster {
+	if mock.GetClusterConfigFunc == nil {
+		panic("SystemServiceMock.GetClusterConfigFunc: method is nil but SystemService.GetClusterConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetClusterConfig.Lock()
+	mock.calls.GetClusterConfig = append(mock.calls.GetClusterConfig, callInfo)
+	mock.lockGetClusterConfig.Unlock()
+	return mock.GetClusterConfigFunc(ctx)
+}
+
+// GetClusterConfigCalls gets all the calls that were made to GetClusterConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.GetClusterConfigCalls())
+func (mock *SystemServiceMock) GetClusterConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetClusterConfig.RLock()
+	calls = mock.calls.GetClusterConfig
+	mock.lockGetClusterConfig.RUnlock()
 	return calls
 }
 
@@ -384,6 +454,38 @@ func (mock *SystemServiceMock) GetUpdatesConfigCalls() []struct {
 	return calls
 }
 
+// PropagateCertificate calls PropagateCertificateFunc.
+func (mock *SystemServiceMock) PropagateCertificate(ctx context.Context) error {
+	if mock.PropagateCertificateFunc == nil {
+		panic("SystemServiceMock.PropagateCertificateFunc: method is nil but SystemService.PropagateCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockPropagateCertificate.Lock()
+	mock.calls.PropagateCertificate = append(mock.calls.PropagateCertificate, callInfo)
+	mock.lockPropagateCertificate.Unlock()
+	return mock.PropagateCertificateFunc(ctx)
+}
+
+// PropagateCertificateCalls gets all the calls that were made to PropagateCertificate.
+// Check the length with:
+//
+//	len(mockedSystemService.PropagateCertificateCalls())
+func (mock *SystemServiceMock) PropagateCertificateCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockPropagateCertificate.RLock()
+	calls = mock.calls.PropagateCertificate
+	mock.lockPropagateCertificate.RUnlock()
+	return calls
+}
+
 // TriggerCertificateRenew calls TriggerCertificateRenewFunc.
 func (mock *SystemServiceMock) TriggerCertificateRenew(ctx context.Context, force bool) (bool, error) {
 	if mock.TriggerCertificateRenewFunc == nil {
@@ -457,6 +559,42 @@ func (mock *SystemServiceMock) UpdateCertificateCalls() []struct {
 	mock.lockUpdateCertificate.RLock()
 	calls = mock.calls.UpdateCertificate
 	mock.lockUpdateCertificate.RUnlock()
+	return calls
+}
+
+// UpdateClusterConfig calls UpdateClusterConfigFunc.
+func (mock *SystemServiceMock) UpdateClusterConfig(ctx context.Context, cfg system.ClusterPut) error {
+	if mock.UpdateClusterConfigFunc == nil {
+		panic("SystemServiceMock.UpdateClusterConfigFunc: method is nil but SystemService.UpdateClusterConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg system.ClusterPut
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockUpdateClusterConfig.Lock()
+	mock.calls.UpdateClusterConfig = append(mock.calls.UpdateClusterConfig, callInfo)
+	mock.lockUpdateClusterConfig.Unlock()
+	return mock.UpdateClusterConfigFunc(ctx, cfg)
+}
+
+// UpdateClusterConfigCalls gets all the calls that were made to UpdateClusterConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.UpdateClusterConfigCalls())
+func (mock *SystemServiceMock) UpdateClusterConfigCalls() []struct {
+	Ctx context.Context
+	Cfg system.ClusterPut
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg system.ClusterPut
+	}
+	mock.lockUpdateClusterConfig.RLock()
+	calls = mock.calls.UpdateClusterConfig
+	mock.lockUpdateClusterConfig.RUnlock()
 	return calls
 }
 

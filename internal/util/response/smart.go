@@ -112,6 +112,12 @@ func statusCodeAndReason(err error) (int, api.ErrorReason) {
 
 	case errors.Is(err, domain.ErrNotAuthorized):
 		return http.StatusForbidden, api.ErrorReasonForbidden
+
+	case errors.Is(err, domain.ErrUnavailable):
+		return http.StatusServiceUnavailable, api.ErrorReasonUnavailable
+
+	case errors.Is(err, domain.ErrPreconditionFailed):
+		return http.StatusPreconditionFailed, api.ErrorReasonPreconditionFailed
 	}
 
 	statusCode, found := api.StatusErrorMatch(err)

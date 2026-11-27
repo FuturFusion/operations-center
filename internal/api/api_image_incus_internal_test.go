@@ -87,7 +87,7 @@ func TestImageIncusHandler_incusImageVersionFileGet_pathTraversal(t *testing.T) 
 
 			mux := http.NewServeMux()
 			r := &router{mux: mux}
-			registerImageIncusHandler(r.SubGroup("/authenticated"), r, nil, service)
+			registerImageIncusHandler(r.SubGroup("/authenticated"), r, nil, service, forwarder{clustered: func() bool { return false }})
 
 			// Run test
 			rec := httptest.NewRecorder()

@@ -11,9 +11,11 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -34,6 +36,7 @@ import (
 	incusAdapter "github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	clusteringSvc "github.com/FuturFusion/operations-center/internal/cluster"
+	"github.com/FuturFusion/operations-center/internal/cluster/memberfiles"
 	clusterServiceMiddleware "github.com/FuturFusion/operations-center/internal/cluster/middleware"
 	clusterRepoMiddleware "github.com/FuturFusion/operations-center/internal/cluster/repo/middleware"
 	clusterRepo "github.com/FuturFusion/operations-center/internal/cluster/repo/sqlite"
@@ -42,6 +45,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/imagefiletarget"
+	imageAdapterMiddleware "github.com/FuturFusion/operations-center/internal/image/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
@@ -59,12 +64,14 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bios"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updatefiletarget"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
 	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
@@ -133,6 +140,7 @@ type environment interface {
 	GetToken(ctx context.Context) (string, error)
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 	GetSecureBootPlatformKeyUpdate(ctx context.Context) ([]byte, error)
+	Clustered() bool
 }
 
 type Daemon struct {
@@ -142,12 +150,14 @@ type Daemon struct {
 	cacheRoot *os.Root
 	subRoots  []*os.Root
 
+	// forward forwards requests within the cluster once the API routes are set up.
+	forward atomic.Pointer[forwarder]
+
 	// Global mutex for any changes to the daemon config including authenticator
 	// oidcVerifier, authorizer and the likes.
 	configReloadMu *sync.Mutex
 
-	clientCertificate string
-	clientKey         string
+	clientKeypair *securitytls.ClientKeypairHolder
 
 	authenticator *authn.Authenticator
 	oidcVerifier  *authnoidc.Verifier
@@ -177,7 +187,9 @@ type Daemon struct {
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
 
-	restartCh chan struct{}
+	restartCh    chan struct{}
+	restarting   atomic.Bool
+	shuttingDown atomic.Bool
 }
 
 // dbtxWrapper is the global database of the services. It is registered once the database is open, while requests already check for it.
@@ -219,7 +231,7 @@ func (d *dbtxWrapper) QueryRowContext(ctx context.Context, query string, args ..
 type startingAuthorizer struct{}
 
 func (startingAuthorizer) CheckPermission(context.Context, *authz.RequestDetails, authz.Object, authz.Entitlement) error {
-	return api.StatusErrorf(http.StatusTooEarly, "Daemon is still starting")
+	return api.StatusErrorf(http.StatusServiceUnavailable, "Operations Center is starting up")
 }
 
 func NewDaemon(ctx context.Context, env environment) *Daemon {
@@ -233,6 +245,7 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 	d := &Daemon{
 		env:            env,
 		configReloadMu: &sync.Mutex{},
+		clientKeypair:  securitytls.NewClientKeypairHolder("", ""),
 		restartCh:      make(chan struct{}, 1),
 		listeners:      &listener.ListenerSet{},
 
@@ -242,11 +255,15 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 		serverBackgroundTasks: provisioningServer.NewBackgroundTasks(),
 	}
 
-	// Until the security configuration is loaded, only the unix socket is trusted.
+	// Until the security configuration is loaded, only the unix socket and the cluster members are trusted.
 	startingAuthenticator := authn.New([]authn.Auther{
 		authnmiddleware.NewAutherWithSlog(
 			authnunixsocket.UnixSocket{},
 			authnmiddleware.AutherWithSlogWithComponent(componentAuthnUnixSocket),
+		),
+		authnmiddleware.NewAutherWithSlog(
+			authntls.New(d.clusterMemberFingerprints),
+			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
 		),
 	}, authn.WithStarting())
 	d.authenticator = &startingAuthenticator
@@ -264,11 +281,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// A member removed from its cluster, which died before its shutdown finished the reset, starts as a standalone server.
+	_, err = clusteringSvc.CompletePendingReset(ctx, d.varRoot)
+	if err != nil {
+		return err
+	}
+
 	d.loadClientCertificate(ctx)
 
 	localDB, err := clusteringSvc.OpenLocalDB(ctx, d.varRoot)
 	if err != nil {
 		return err
+	}
+
+	// A member, which was offline while the cluster certificate was renewed, adopts it before anything presents or pins the certificate.
+	err = clusteringSvc.SyncClusterCertificate(ctx, d.varRoot, clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"), nil), config.GetLocalNetwork().ClusterAddress)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to check the cluster certificate of the other members", logger.Err(err))
 	}
 
 	err = d.initAndLoadServerCert()
@@ -300,12 +329,15 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// On update of the security configuration, perform reload of the security
-	// related infrastructure.
-	lifecycle.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Security) {
-		err := d.securityConfigReload(ctx, cfg)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to reload security config", logger.Err(err))
-		}
+	// related infrastructure. A failure is reported, so a change reloaded from
+	// another cluster member is reverted.
+	lifecycle.SecurityUpdateSignal.AddListenerWithErr(func(ctx context.Context, cfg apisystem.Security) error {
+		return d.securityConfigReload(ctx, cfg)
+	})
+
+	// Replace the client keypair when the cluster updates it.
+	lifecycle.ClientKeypairUpdateSignal.AddListener(func(_ context.Context, msg lifecycle.ClientKeypairMessage) {
+		d.clientKeypair.Set(msg.Certificate, msg.Key)
 	})
 
 	// On update of ACME configuration, perform renewal of the server certificate.
@@ -337,10 +369,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	client := incusAdapter.New(
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 		incusAdapter.WithEnvironment(d.env),
 		incusAdapter.WithSkipGetServer(true),
+		incusAdapter.WithOperationsCenterCluster(d.isClusterMemberCertificate, d.operationsCenterCertificate),
 	)
 
 	loader := incusScriptlet.NewLoader()
@@ -417,11 +449,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	secureBootMedia := provisioningAdapterMiddleware.NewSecureBootMediaPortWithSlog(
-		securebootmedia.New(secureBootMediaRoot),
+		securebootmedia.New(secureBootMediaRoot, d.mediaRecords(dbWithTransaction, provisioning.MediaTypeSecureBoot, config.SecureBootMediaCacheTTL)),
 	)
 
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress, secureBootMedia, secureBootCatalog)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter)
+	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
+	if err != nil {
+		return err
+	}
+
+	clusterArtifactRepo := provisioningClusterArtifactRepo.New(
+		dbWithTransaction,
+		artifactsRoot,
+		memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	)
+
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc, warningLogEmitter, clusterArtifactRepo)
 	if err != nil {
 		return err
 	}
@@ -438,10 +481,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Background tasks
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
-	tasks := append([]task.TaskFunc{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, secureBootMedia, warningLogEmitter)...)
+	tasks := append([]clusteringSvc.LeaderTask{lifecycleEventsMonitorTask(clusterSvc)}, d.backgroundTasks(updateSvc, imageSourceSvc, serverSvc, clusterSvc, warningLogEmitter)...)
+
+	// The mover and the removal checks reach the membership service once it is set up.
+	fileMover := memberfiles.NewMover(
+		func() memberfiles.Cluster { return d.membershipSvc },
+		provisioningSqlite.NewUpdate(dbWithTransaction),
+		imageSqlite.NewIncusImage(dbWithTransaction),
+		clusterArtifactRepo,
+	)
 
 	// Setup API routes
-	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks)
+	membershipSvc, isClustered, err := d.setupClusterMembershipService(ctx, localDB, tasks, warningSvc,
+		clusteringSvc.WithRemovalChecks(d.memberRemovalChecks(fileMover, serverSvc, secureBootMedia)...),
+		clusteringSvc.WithJoinCheck(d.joinCheck(serverSvc, clusterSvc)),
+	)
 	if err != nil {
 		return err
 	}
@@ -462,6 +516,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		incusImageSvc,
 		seedImageProgress,
 		secureBootMedia,
+		membershipSvc,
+		fileMover,
 		dbWithTransaction,
 	)
 	if err != nil {
@@ -480,7 +536,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Handler: componentMiddleware(
 			logger.RequestIDMiddleware(
 				logger.AccessLogMiddleware(
-					serveMux,
+					shutdownGate(&d.shuttingDown, serveMux),
 				),
 			),
 		),
@@ -516,7 +572,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, "", localDB)
+	globalDBTX, err := d.initGlobalDB(ctx, isClustered, membershipSvc, config.GetLocalNetwork().ClusterAddress, localDB)
 	if err != nil {
 		return err
 	}
@@ -529,13 +585,41 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
+	err = clusterArtifactRepo.MigrateNameLayout(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to migrate cluster artifacts: %w", err)
+	}
+
+	// File records deleted on other members while this one was offline should be removed.
+	err = d.pruneLocalFiles(ctx, updateSvc, incusImageSvc, clusterArtifactRepo.Prune)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to prune stale local files", logger.Err(err))
+	}
+
 	membershipSvc.StartLeaderTasks()
+
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, _ apisystem.Updates) {
+		d.selfRegisterClusterMember(ctx, serverSvc)
+	})
+
+	d.selfRegisterClusterMember(ctx, serverSvc)
+
+	for _, memberTask := range d.memberTasks(serverSvc, imageFlasher, secureBootMedia) {
+		d.shutdownFuncs = append(d.shutdownFuncs, memberTask(ctx))
+	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("IncusOS self registration: %w", err)
+	}
+
+	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSDisableAutoReboot(timeoutCtx)
+	cancel()
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to disable IncusOS auto-reboot on cluster member", logger.Err(err))
 	}
 
 	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
@@ -552,6 +636,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Stop the membership after the heartbeats, which need the database.
 	d.shutdownFuncs = append(d.shutdownFuncs, membershipSvc.Stop)
+
+	// Hand over the role first, since the leader changes the role of this member through its API.
+	// A restart to enable, join or reset the membership has no role to hand over and stops the API first.
+	d.shutdownFuncs = append([]func(context.Context) error{func(ctx context.Context) error {
+		if d.restarting.Load() {
+			return nil
+		}
+
+		return membershipSvc.HandOverRole(ctx)
+	}}, d.shutdownFuncs...)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -664,13 +758,12 @@ func (d *Daemon) loadClientCertificate(ctx context.Context) {
 		slog.WarnContext(ctx, "failed to read client key", slog.String("file", config.ClientKeyFilename), logger.Err(err))
 	}
 
-	d.clientCertificate = string(clientCert)
-	d.clientKey = string(clientKey)
+	d.clientKeypair.Set(string(clientCert), string(clientKey))
 }
 
-func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []task.TaskFunc) (clusteringSvc.MembershipService, bool, error) {
+func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clusterRepo.LocalDB, tasks []clusteringSvc.LeaderTask, warnings warning.WarningEmitter, opts ...clusteringSvc.Option) (clusteringSvc.MembershipService, bool, error) {
 	// go-cowsql opens the raft database by path.
-	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"))
+	localRepo := clusterRepo.NewRaftRepo(localDB, filepath.Join(d.varRoot.Name(), "database"), d.systemSvc)
 	isClustered, err := cowsqlmembership.Enabled(localRepo)
 	if err != nil {
 		return nil, false, err
@@ -681,9 +774,17 @@ func (d *Daemon) setupClusterMembershipService(ctx context.Context, localDB *clu
 		return nil, false, err
 	}
 
-	// A standalone member uses the server certificate as the cluster certificate.
+	// Until clustered, the server certificate is used as the cluster certificate.
+	clusterCert := localCert
+	if isClustered {
+		clusterCert, err = clusteringSvc.FindOrGenCertInfo(d.varRoot, "cluster.crt", "cluster.key")
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	// The raft repos aren't wrapped with slog, they run every transaction of the daemon.
-	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.varRoot, d.listeners, localRepo, localCert, localCert, tasks)
+	svc, err := clusteringSvc.NewClusterMembershipService(ctx, d.env, d.varRoot, d.systemSvc, d.listeners, localRepo, clusterCert, localCert, tasks, warnings, opts...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -709,7 +810,7 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 	configRepo := clusterRepoMiddleware.NewConfigRepoWithSlog(
 		clusterRepo.NewConfigRepo(globalRepo),
 	)
-	err = membership.Enable(ctx, clusterAddress, configRepo, globalRepo)
+	err = membership.Enable(ctx, clusterAddress, clusterRepo.NewJoinTokenRepo(globalRepo), configRepo, globalRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +820,7 @@ func (d *Daemon) initGlobalDB(ctx context.Context, isClustered bool, membership 
 		return nil, fmt.Errorf("Failed to read shared config: %w", err)
 	}
 
-	err = config.LoadShared(ctx, *sharedCfg, membership.PersistSharedConfig)
+	err = config.LoadShared(ctx, *sharedCfg, membership)
 	if err != nil {
 		return nil, err
 	}
@@ -795,6 +896,12 @@ func (d *Daemon) initAndLoadServerCert() error {
 	certificateFilename := config.ServerCertificateFilename
 	keyFilename := config.ServerKeyFilename
 
+	// When clustered, the server certificate is only used for member trust.
+	if d.env.Clustered() {
+		certificateFilename = config.ClusterCertificateFilename
+		keyFilename = config.ClusterKeyFilename
+	}
+
 	certificatePEM, err := d.varRoot.ReadFile(certificateFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read certificate from %q: %w", certificateFilename, err)
@@ -811,6 +918,15 @@ func (d *Daemon) initAndLoadServerCert() error {
 	}
 
 	return nil
+}
+
+// clusterMemberFingerprints returns the fingerprints of the certificates of the cluster members.
+func (d *Daemon) clusterMemberFingerprints() []string {
+	if d.membershipSvc == nil {
+		return []string{}
+	}
+
+	return slices.Collect(maps.Keys(d.membershipSvc.TrustedClients()))
 }
 
 func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Security) error {
@@ -855,17 +971,8 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 		}
 	}
 
-	trustedFingerprints := make([]string, 0, len(cfg.TrustedTLSClientCertFingerprints)+1)
-
-	// Always trust our own client certificate if present.
-	// This required to self connect if Operations Center is self-registered.
-	clientCertFingerprint, err := incustls.CertFingerprintStr(d.clientCertificate)
-	if err == nil {
-		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
-	}
-
 	// Setup client cert fingerprint authentication.
-	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+	trustedFingerprints := slices.Clone(cfg.TrustedTLSClientCertFingerprints)
 
 	// The trusted client certificates grant access just like a bare fingerprint does.
 	// The fingerprints of the valid certificates are used even if others fail to
@@ -877,6 +984,17 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
 
+	// Always trust our own client certificate if present.
+	// This required to self connect if Operations Center is self-registered.
+	clientFingerprint := func() []string {
+		fingerprint := d.clientKeypair.Get().Fingerprint
+		if fingerprint == "" {
+			return nil
+		}
+
+		return []string{fingerprint}
+	}
+
 	// The metrics only certificates authenticate like the other trusted certificates.
 	// The authorizer restricts them to metrics access.
 	metricsCertificateFingerprints, err := securitytls.CertificateFingerprints(cfg.TrustedTLSMetricsClientCertificates)
@@ -886,14 +1004,18 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	metricsFingerprints := slices.Concat(cfg.TrustedTLSMetricsClientCertFingerprints, metricsCertificateFingerprints)
 
+	configTLS := func() []string {
+		return slices.Concat(trustedFingerprints, clientFingerprint(), metricsFingerprints)
+	}
+
 	authers = append(authers,
 		authnmiddleware.NewAutherWithSlog(
-			authntls.New(slices.Concat(trustedFingerprints, metricsFingerprints)),
+			authntls.New(configTLS, d.clusterMemberFingerprints),
 			authnmiddleware.AutherWithSlogWithComponent(componentAuthnTLS),
 		),
 	)
 
-	d.authenticator.Replace(authn.New(authers))
+	d.authenticator.Replace(authn.New(authers, authn.WithTrustedForward(d.isClusterMemberRequest)))
 
 	authorizers := []authz.Authorizer{
 		authzmiddleware.NewAuthorizerWithSlog(
@@ -901,7 +1023,10 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzUnixSocket),
 		),
 		authzmiddleware.NewAuthorizerWithSlog(
-			authztls.New(ctx, trustedFingerprints, authztls.WithMetricsCertificateFingerprints(metricsFingerprints)),
+			authztls.New(ctx, trustedFingerprints,
+				authztls.WithCertificateFingerprintSources(clientFingerprint, d.clusterMemberFingerprints),
+				authztls.WithMetricsCertificateFingerprints(metricsFingerprints),
+			),
 			authzmiddleware.AuthorizerWithSlogWithComponent(componentAuthzTLS),
 		),
 	}
@@ -956,6 +1081,11 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 				imageFilesRepo,
 			),
 			simplestreams.New(),
+			image.WithFileTargets(
+				imageAdapterMiddleware.NewImageFileTargetPortWithSlog(
+					imagefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+				),
+			),
 		),
 	)
 
@@ -1005,6 +1135,11 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 
 	updateServiceOptions := []provisioningUpdate.Option{
 		provisioningUpdate.WithLatestLimit(3),
+		provisioningUpdate.WithFileTargets(
+			provisioningAdapterMiddleware.NewUpdateFileTargetPortWithSlog(
+				updatefiletarget.New(memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc })),
+			),
+		),
 	}
 
 	updateServer := updateserver.New(
@@ -1044,6 +1179,54 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 	), nil
 }
 
+// pruneLocalFiles removes the local files of updates, images and cluster artifacts not assigned to this member.
+func (d *Daemon) pruneLocalFiles(ctx context.Context, updateSvc provisioning.UpdateService, imageSvc image.ImageIncusService, pruneClusterArtifacts func(ctx context.Context) error) error {
+	localMemberID, err := d.membershipSvc.LocalMemberID()
+	if err != nil {
+		return err
+	}
+
+	updates, err := updateSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownUpdateFiles := map[string]bool{}
+	for _, update := range updates {
+		if update.MemberID != localMemberID {
+			continue
+		}
+
+		for _, updateFile := range update.Files {
+			knownUpdateFiles[path.Join(update.UUID.String(), updateFile.Filename)] = true
+		}
+	}
+
+	images, err := imageSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	knownImageFiles := map[string]bool{}
+	for _, img := range images {
+		if img.MemberID != localMemberID {
+			continue
+		}
+
+		for versionIdentifier, imageVersion := range img.Versions {
+			for filename := range imageVersion.Items {
+				knownImageFiles[path.Join(filepath.ToSlash(img.FilePath()), versionIdentifier, filename)] = true
+			}
+		}
+	}
+
+	return errors.Join(
+		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreUpdates, knownUpdateFiles),
+		memberfiles.DeleteUnknownFilesIn(d.varRoot, memberfiles.StoreImages, knownImageFiles),
+		pruneClusterArtifacts(ctx),
+	)
+}
+
 func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher, error) {
 	seedImageCacheRoot, err := d.openSubRoot(d.cacheRoot, seedImageCacheDir)
 	if err != nil {
@@ -1054,6 +1237,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		config.GetNetwork().OperationsCenterAddress,
 		d.apiCertificate,
 		flasher.WithCacheRoot(seedImageCacheRoot),
+		flasher.WithMediaRecords(d.mediaRecords(db, provisioning.MediaTypeSeedImage, config.SeedImageCacheTTL)),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
 	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -1141,6 +1325,10 @@ func (d *Daemon) setupServerService(
 		d.apiCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBackgroundTasks(d.serverBackgroundTasks),
+		provisioningServer.WithOperationsCenterMember(d.operationsCenterMember),
+		provisioningServer.WithOperationsCenterMembersContact(d.contactOperationsCenterMembers),
+		provisioningServer.WithOperationsCenterMemberCertificates(d.isClusterMemberCertificate),
+		provisioningServer.WithClustered(d.env.Clustered),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.WithSecureBootMediaPort(secureBootMedia, d.env, secureBootCatalog),
@@ -1191,14 +1379,8 @@ func (d *Daemon) setupClusterService(
 	tokenSvc provisioning.TokenService,
 	inventoryAggregateSvc inventory.InventoryAggregateService,
 	warningSvc provisioning.WarningServicePort,
+	clusterArtifactRepo provisioning.ClusterArtifactRepo,
 ) (provisioning.ClusterService, error) {
-	artifactsRoot, err := d.openSubRoot(d.varRoot, "artifacts")
-	if err != nil {
-		return nil, err
-	}
-
-	localClusterArtifactRepo := provisioningClusterArtifactRepo.New(db, artifactsRoot)
-
 	// Terraform runs as an external tool, which requires an absolute path. The
 	// directory is created in the temporary directory of the system.
 	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*") //nolint:forbidigo // External tool needs an absolute path.
@@ -1215,8 +1397,7 @@ func (d *Daemon) setupClusterService(
 
 	terraformProvisioner, err := terraform.New(
 		terraformRoot,
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 	)
 	if err != nil {
 		return nil, err
@@ -1228,7 +1409,7 @@ func (d *Daemon) setupClusterService(
 				provisioningSqlite.NewCluster(db),
 			),
 			provisioningRepoMiddleware.NewClusterArtifactRepoWithSlog(
-				localClusterArtifactRepo,
+				clusterArtifactRepo,
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
 				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
@@ -1275,9 +1456,30 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 				systemLocalfs.New(d.cacheRoot, seedImageCacheDir),
 			),
 			// Do not wrap with slog. This repo handles the private key of the server.
-			systemLocalfs.NewCertificate(d.varRoot),
+			systemLocalfs.NewCertificate(d.varRoot, systemLocalfs.WithClustered(d.env.Clustered)),
+			system.WithClusterCertificateUpdater(func(ctx context.Context, certificatePEM string, keyPEM string) error {
+				return d.membershipSvc.UpdateClusterCertificate(ctx, certificatePEM, keyPEM)
+			}),
+			system.WithClusterMemberCertificates(d.isClusterMemberCertificate),
+			system.WithClusterMembersOnlineCheck(func(ctx context.Context) error {
+				if !d.env.Clustered() || d.membershipSvc == nil {
+					return nil
+				}
+
+				return d.membershipSvc.CheckMembersOnline(ctx)
+			}),
 		),
 	)
+}
+
+// requestRestart asks the daemon to restart. It does not block.
+func (d *Daemon) requestRestart() {
+	d.restarting.Store(true)
+
+	select {
+	case d.restartCh <- struct{}{}:
+	default:
+	}
 }
 
 // RestartRequested is signaled, once the daemon asks to be restarted.
@@ -1299,6 +1501,8 @@ func (d *Daemon) setupAPIRoutes(
 	incusImageSvc image.ImageIncusService,
 	seedImageProgress provisioning.SeedImageProgressPort,
 	secureBootMedia provisioning.SecureBootMediaPort,
+	membershipSvc clusteringSvc.MembershipService,
+	fileMover memberfiles.Mover,
 	db *dbtxWrapper,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer, error) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1306,8 +1510,7 @@ func (d *Daemon) setupAPIRoutes(
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		serverMiddleware.NewServerClientWithErrorWrapper(
 			incusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+				d.clientKeypair,
 			),
 			domain.RetryableWrapper(),
 		),
@@ -1330,6 +1533,10 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	registerUIHandlers(ctx, router, embeddedUI, uiRoot)
+	for p, f := range membershipSvc.HandlerFuncs() {
+		router.HandleFunc(p, f)
+	}
+
 	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"
@@ -1353,6 +1560,24 @@ func (d *Daemon) setupAPIRoutes(
 		}
 	}
 
+	// The files stored on a member are only accessed by the other cluster members and through the local unix socket.
+	requireClusterMemberOrLocal := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			protocol, ok := r.Context().Value(authn.CtxProtocol).(string)
+			local := ok && protocol == api.AuthenticationMethodUnix
+			if !local && !d.isClusterMemberRequest(r) {
+				err := response.Forbidden(nil).Render(w)
+				if err != nil {
+					slog.WarnContext(r.Context(), "Render error response failed", logger.Err(err))
+				}
+
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
 	// The internal API is not versioned. It can change at any time.
 	internalRouter := router.SubGroup("/internal").AddMiddlewares(
 		d.authenticator.Middleware(),
@@ -1361,6 +1586,34 @@ func (d *Daemon) setupAPIRoutes(
 
 	debugRouter := internalRouter.SubGroup("/debug")
 	registerDebugHandler(debugRouter, d.authorizer)
+
+	internalUpdatesRouter := internalRouter.SubGroup("/updates").AddMiddlewares(requireClusterMemberOrLocal, requireDatabase)
+	refreshWarnings := memberRefreshWarnings{emitter: warningSvc, memberName: d.localMemberName}
+	registerInternalUpdateFilesHandler(internalUpdatesRouter, d.authorizer, updateSvc, refreshWarnings)
+
+	internalImagesRouter := internalRouter.SubGroup("/images").AddMiddlewares(requireClusterMemberOrLocal, requireDatabase)
+	registerInternalImageFilesHandler(internalImagesRouter, d.authorizer, incusImageSvc, imageSourceSvc, refreshWarnings)
+
+	internalFilesRouter := internalRouter.SubGroup("/files").AddMiddlewares(requireClusterMemberOrLocal)
+	isMemberAddress := func(ctx context.Context, address string) (bool, error) {
+		members, err := membershipSvc.GetMembersByID(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		for _, member := range members {
+			if member.Address == address {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	}
+
+	registerInternalMemberFilesHandler(internalFilesRouter, d.authorizer, memberfiles.NewLocal(d.varRoot), membershipSvc.MemberClient, isMemberAddress)
+
+	internalMembershipRouter := router.SubGroup("/internal/membership")
+	registerInternalClusterMembershipHandler(internalMembershipRouter, d.authenticator, d.isClusterMemberRequest, membershipSvc, d.requestRestart, serverSvc)
 
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)
@@ -1421,6 +1674,14 @@ func (d *Daemon) setupAPIRoutes(
 		return false
 	}
 
+	forward := forwarder{
+		clustered:  d.env.Clustered,
+		membership: membershipSvc,
+		targets:    memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+	}
+
+	d.forward.Store(&forward)
+
 	simplestreamsRouter := router.SubGroup("/incus-images")
 	simplestreamsRouter.AddMiddlewares(cors.Handler(cors.CORSConfig{
 		AllowedOrigins:   "*",
@@ -1429,38 +1690,43 @@ func (d *Daemon) setupAPIRoutes(
 		AllowCredentials: false,
 	}))
 
+	// Only the internal API and the IncusOS API are served while starting, the cluster members need them to bring up the database.
 	authenticatorMiddleware := d.authenticator.Middleware(
 		authn.WithIsAuthenticationRequired(isAuthenticationRequired),
 		authn.WithIsContentTypeCheckExempt(isContentTypeCheckExempt),
+		authn.WithRefuseWhileStarting(),
 	)
 
 	api10PreInit := router.SubGroup("/1.0")
 	api10PreInitAuth := api10PreInit.SubGroup("").AddMiddlewares(authenticatorMiddleware)
 	registerAPI10Handler(api10PreInitAuth)
 
-	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase)
+	api10router := api10PreInitAuth.AddMiddlewares(requireDatabase, requireLeader(forward))
 
 	imageRouter := api10router.SubGroup("/images")
 	imageSourceRouter := imageRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
 	imageIncusRouter := imageRouter.SubGroup("/incus")
-	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
+	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc, forward)
 	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
 	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 
 	metricsRouter := api10router.SubGroup("/metrics")
 	registerMetricsHandler(metricsRouter, d.authorizer, metrics.Gatherer())
 
+	membershipRouter := api10router.SubGroup("/membership")
+	registerClusterMembershipHandler(membershipRouter, d.authorizer, membershipSvc, d.requestRestart, fileMover, serverSvc)
+
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
-	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
+	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress, forward)
 
 	provisioningSecureBootMediaRouter := provisioningRouter.SubGroup("/secure-boot-media")
-	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia)
+	registerSecureBootMediaHandler(provisioningSecureBootMediaRouter, secureBootMedia, forward)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc, forward)
 
 	provisioningClusterTemplateRouter := provisioningRouter.SubGroup("/cluster-templates")
 	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)
@@ -1471,12 +1737,13 @@ func (d *Daemon) setupAPIRoutes(
 		"/1.0/provisioning/servers",
 		d.authorizer,
 		serverSvc,
-		d.clientCertificate,
-		d.clientKey,
+		d.clientKeypair,
 	)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
+	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc, forward, func(ctx context.Context) (context.Context, context.CancelFunc, bool) {
+		return d.leaderContext(ctx, taskName(componentTaskRefreshUpdates), slog.Default())
+	})
 
 	provisioningChannelRouter := provisioningRouter.SubGroup("/channels")
 	registerChannelsHandler(provisioningChannelRouter, d.authorizer, channelSvc)
@@ -1500,9 +1767,238 @@ var (
 	lifecycleMonitorRetryMax = time.Minute
 )
 
+// contactOperationsCenterMembers checks that the other cluster members can be reached.
+func (d *Daemon) contactOperationsCenterMembers(ctx context.Context, except string) error {
+	if !d.env.Clustered() || d.membershipSvc == nil {
+		return nil
+	}
+
+	return d.membershipSvc.ContactMembers(ctx, except)
+}
+
+// operationsCenterMember returns this cluster member as server of type "operations-center", nil if not clustered.
+func (d *Daemon) operationsCenterMember(ctx context.Context) (*provisioning.OperationsCenterMember, error) {
+	if !d.env.Clustered() {
+		return nil, nil
+	}
+
+	if d.membershipSvc == nil {
+		//domain-errors:internal The membership is set up, before servers are registered.
+		return nil, errors.New("Cluster membership is not available yet")
+	}
+
+	memberID, err := d.membershipSvc.LocalMemberID()
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := d.membershipSvc.GetMembersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	member, ok := members[memberID]
+	if !ok {
+		//domain-errors:internal The local member is always part of the cluster.
+		return nil, fmt.Errorf("Cluster member %d not found", memberID)
+	}
+
+	// The member record holds its own certificate while the member presents the cluster certificate.
+	certificatePEM, err := d.varRoot.ReadFile(config.ServerCertificateFilename)
+	if err != nil {
+		return nil, err
+	}
+
+	return &provisioning.OperationsCenterMember{
+		Name:          member.Name,
+		ConnectionURL: "https://" + member.Address,
+		Certificate:   string(certificatePEM),
+	}, nil
+}
+
+// isClusterMemberCertificate reports whether certificatePEM is the certificate of a cluster member.
+func (d *Daemon) isClusterMemberCertificate(certificatePEM string) bool {
+	if !d.env.Clustered() || d.membershipSvc == nil {
+		return false
+	}
+
+	return d.membershipSvc.IsMemberCertificate(certificatePEM)
+}
+
+// operationsCenterCertificate returns the certificate presented by all cluster members, empty if not clustered.
+func (d *Daemon) operationsCenterCertificate() string {
+	if !d.env.Clustered() {
+		return ""
+	}
+
+	d.configReloadMu.Lock()
+	defer d.configReloadMu.Unlock()
+
+	if len(d.apiCertificate.Certificate) == 0 {
+		return ""
+	}
+
+	return certificate.EncodeToPEM(d.apiCertificate.Certificate[0])
+}
+
+// selfRegisterClusterMember updates the server record of this cluster member.
+func (d *Daemon) selfRegisterClusterMember(ctx context.Context, serverSvc provisioning.ServerService) {
+	if !d.env.Clustered() {
+		return
+	}
+
+	err := serverSvc.SelfRegisterOperationsCenter(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to update the server record of this cluster member", logger.Err(err))
+	}
+}
+
+// mediaRecords returns the records of the generated media of mediaType, whose lease lasts for ttl.
+func (d *Daemon) mediaRecords(db dbdriver.DBTX, mediaType provisioning.MediaType, ttl time.Duration) mediarecord.Records {
+	return mediarecord.New(
+		provisioningRepoMiddleware.NewMediaRepoWithSlog(provisioningSqlite.NewMedia(db)),
+		memberfiles.NewTargets(func() memberfiles.Cluster { return d.membershipSvc }),
+		mediaType,
+		ttl,
+	)
+}
+
+// memberLocalPaths are the endpoints, which change data and are not forwarded to the leader.
+var memberLocalPaths = []string{
+	// Local configuration.
+	"/1.0/system/network",
+	"/1.0/system/settings",
+	"/1.0/system/:clean-cache",
+	// Cluster bootstrap APIs are local only.
+	"/1.0/membership/:enable",
+	"/1.0/membership/:join",
+	// Only accepted through the unix socket of this member.
+	"/1.0/provisioning/servers/:self_register",
+}
+
+// requireLeader returns a middleware, which forwards requests changing data to the cluster leader.
+func requireLeader(forward forwarder) func(next http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// IncusOS of this member sends its self updates through the unix socket.
+			localSelfUpdate := r.URL.Path == "/1.0/provisioning/servers/:self" && r.TLS == nil
+
+			if !slices.Contains([]string{http.MethodGet, http.MethodHead}, r.Method) && !slices.Contains(memberLocalPaths, r.URL.Path) && !localSelfUpdate {
+				resp := forward.toLeader(r)
+				if resp != nil {
+					err := resp.Render(w)
+					if err != nil {
+						slog.WarnContext(r.Context(), "Render forwarded response failed", slog.String("method", r.Method), slog.String("path", r.URL.Path), logger.Err(err))
+					}
+
+					return
+				}
+			}
+
+			next(w, r)
+		}
+	}
+}
+
+// isClusterLeader reports whether this member is the cluster leader.
+func (d *Daemon) isClusterLeader(ctx context.Context, leaderLog *slog.Logger) bool {
+	leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
+	if err != nil {
+		leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership", logger.Err(err))
+		return false
+	}
+
+	return isLeader
+}
+
+// leaderContext returns a context with the values of ctx for work of the leader task name, which ends when this member stops being the leader.
+// The work counts as work of the task until the returned function is called.
+func (d *Daemon) leaderContext(ctx context.Context, name string, leaderLog *slog.Logger) (context.Context, context.CancelFunc, bool) {
+	if !d.isClusterLeader(ctx, leaderLog) {
+		return nil, nil, false
+	}
+
+	term, workDone, ok := d.membershipSvc.LeaderContext(name)
+	if !ok {
+		return nil, nil, false
+	}
+
+	leaderCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	stop := context.AfterFunc(term, cancel)
+
+	return leaderCtx, func() {
+		stop()
+		cancel()
+		workDone()
+	}, true
+}
+
+// leaderOnly skips a run of f once this member is no longer the cluster leader, and counts a run as work of the leader task name.
+func (d *Daemon) leaderOnly(name string, f task.Func) task.Func {
+	return func(ctx context.Context) {
+		if !d.isClusterLeader(ctx, slog.Default()) {
+			return
+		}
+
+		_, done, ok := d.membershipSvc.LeaderContext(name)
+		if !ok {
+			return
+		}
+
+		defer done()
+
+		f(ctx)
+	}
+}
+
+// leaderTask returns the leader task named after component.
+func (d *Daemon) leaderTask(component logger.Component, f task.Func, schedule task.Schedule, stopDeadline time.Duration) clusteringSvc.LeaderTask {
+	name := taskName(component)
+
+	return clusteringSvc.LeaderTask{Name: name, Start: task.New(d.leaderOnly(name, f), schedule, stopDeadline)}
+}
+
+// taskName returns the name of the leader task logging as component.
+func taskName(component logger.Component) string {
+	return strings.TrimPrefix(string(component), "daemon.task.")
+}
+
+// localMemberName returns the name of this cluster member, or its cluster address if the name can't be looked up.
+func (d *Daemon) localMemberName(ctx context.Context) string {
+	address := config.GetLocalNetwork().ClusterAddress
+
+	members, err := d.membershipSvc.GetMembers(ctx)
+	if err != nil {
+		return address
+	}
+
+	for _, member := range members {
+		if member.Address == address {
+			return member.Name
+		}
+	}
+
+	return address
+}
+
+// isClusterMemberRequest reports whether r is sent by another cluster member.
+func (d *Daemon) isClusterMemberRequest(r *http.Request) bool {
+	if d.membershipSvc == nil || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return false
+	}
+
+	// Only the leaf certificate is proven by the TLS handshake, the rest of the chain is unverified.
+	_, ok := d.membershipSvc.TrustedClients()[incustls.CertFingerprint(r.TLS.PeerCertificates[0])]
+
+	return ok
+}
+
 // lifecycleEventsMonitorTask monitors the lifecycle events of the clusters until it is stopped.
-func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.TaskFunc {
-	return func(ctx context.Context) func(context.Context) error {
+func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) clusteringSvc.LeaderTask {
+	return clusteringSvc.LeaderTask{Name: "lifecycle_events_monitor", Start: func(ctx context.Context) func(context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
 		done := make(chan struct{})
 
@@ -1523,7 +2019,7 @@ func lifecycleEventsMonitorTask(clusterSvc provisioning.ClusterService) task.Tas
 				return fmt.Errorf("Failed to stop lifecycle events monitor: %w", stopCtx.Err())
 			}
 		}
-	}
+	}}
 }
 
 // startLifecycleEventsMonitor retries with backoff until the start succeeds or ctx is done.
@@ -1574,6 +2070,56 @@ func clusterHeartbeatTask(ctx context.Context, membershipSvc clusteringSvc.Membe
 	return clusterTaskStop
 }
 
+// memberTasks returns the background tasks every cluster member runs for its own caches.
+func (d *Daemon) memberTasks(serverSvc provisioning.ServerService, imageFlasher *flasher.Flasher, secureBootMedia provisioning.SecureBootMediaPort) []task.TaskFunc {
+	if config.IsBackgroundTasksDisabled() {
+		return []task.TaskFunc{}
+	}
+
+	// Start background task to prune the cache of generated seed images.
+	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
+		slog.InfoContext(ctx, "Seed image cache prune triggered")
+
+		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
+		if err != nil {
+			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Seed image cache prune completed")
+	})
+
+	// Start background task to prune the generated secure boot enrollment media.
+	pruneSecureBootMediaTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
+
+		// A media, that a deployment has attached to a BMC, is kept: the BMC
+		// reads it only when the server boots, so it would otherwise be pruned
+		// while the server still needs it.
+		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
+		if err != nil {
+			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
+	}
+
+	return []task.TaskFunc{
+		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
+		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
+	}
+}
+
 // firstRunDelay runs prepare and waits for delay on the first call, false if the context ends while waiting.
 func firstRunDelay(prepare func(context.Context), delay time.Duration) func(context.Context) bool {
 	var mu sync.Mutex
@@ -1612,14 +2158,13 @@ func (d *Daemon) backgroundTasks(
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
-	imageFlasher *flasher.Flasher,
-	secureBootMedia provisioning.SecureBootMediaPort,
 	warningSvc warning.WarningEmitter,
-) []task.TaskFunc {
+) []clusteringSvc.LeaderTask {
 	if config.IsBackgroundTasksDisabled() {
-		return []task.TaskFunc{}
+		return []clusteringSvc.LeaderTask{}
 	}
 
+	// A new leader removes the downloads of a former leader, which are left pending, before it refreshes the updates.
 	pruneUpdates := func(ctx context.Context) {
 		err := updateSvc.Prune(ctx)
 		if err != nil {
@@ -1629,10 +2174,9 @@ func (d *Daemon) backgroundTasks(
 
 	// Give IncusOS some time to apply seed data before actually starting to
 	// perform the refresh of the updates.
-	delayFirstUpdates := firstRunDelay(pruneUpdates, 0)
+	delayFirstUpdates := firstRunDelay(nil, 0)
 	if d.env.IsIncusOS() {
 		delayFirstUpdates = firstRunDelay(func(ctx context.Context) {
-			pruneUpdates(ctx)
 			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
 		}, 30*time.Second)
 	}
@@ -1765,19 +2309,6 @@ func (d *Daemon) backgroundTasks(
 		runServerDeploymentControlLoop(ctx, "tick", nil)
 	})
 
-	checkClusterLeader := func(ctx context.Context, leaderLog *slog.Logger) bool {
-		leaderCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-		defer cancel()
-
-		isLeader, err := d.membershipSvc.Gateway().IsLeader(leaderCtx)
-		if err != nil {
-			leaderLog.ErrorContext(ctx, "Failed to check for cluster leadership background task signal", logger.Err(err))
-			return false
-		}
-
-		return isLeader
-	}
-
 	// Trigger the server deployment control loop from the virtual media events,
 	// so attaching and detaching the installation media resolves promptly.
 	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
@@ -1785,25 +2316,31 @@ func (d *Daemon) backgroundTasks(
 			return
 		}
 
-		isLeader := checkClusterLeader(ctx, slog.Default())
-		if !isLeader {
+		leaderCtx, done, ok := d.leaderContext(ctx, taskName(componentTaskServerDeployment), slog.Default())
+		if !ok {
 			return
 		}
 
 		name := msg.Server
 
 		go func() {
-			time.Sleep(config.ServerDeploymentVirtualMediaTriggerDelay)
+			defer done()
 
-			runServerDeploymentControlLoop(context.WithoutCancel(ctx), "virtual media", &name)
+			select {
+			case <-time.After(config.ServerDeploymentVirtualMediaTriggerDelay):
+			case <-leaderCtx.Done():
+				return
+			}
+
+			runServerDeploymentControlLoop(leaderCtx, "virtual media", &name)
 		}()
 	})
 
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
 	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
 		log := slog.With(slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
-		isLeader := checkClusterLeader(ctx, log)
-		if !isLeader {
+		leaderCtx, done, ok := d.leaderContext(ctx, taskName(componentTaskServerDeployment), log)
+		if !ok {
 			return
 		}
 
@@ -1814,9 +2351,21 @@ func (d *Daemon) backgroundTasks(
 		// own goroutine, since it blocks on the BMC of the server.
 		name := slm.Server
 
-		go runServerDeploymentControlLoop(context.WithoutCancel(ctx), "server lifecycle", &name)
+		go func() {
+			defer done()
 
-		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+			runServerDeploymentControlLoop(leaderCtx, "server lifecycle", &name)
+		}()
+
+		// The cluster update loop gets its own term context, since the deployment loop ends leaderCtx when it is done.
+		clusterCtx, clusterDone, ok := d.leaderContext(ctx, taskName(componentTaskClusterUpdate), log)
+		if !ok {
+			return
+		}
+
+		defer clusterDone()
+
+		err := clusterSvc.ClusterUpdateControlLoop(clusterCtx, slm.Cluster)
 		if err != nil {
 			logCtx := slog.ErrorContext
 			if domain.IsRetryableError(err) {
@@ -1890,53 +2439,11 @@ func (d *Daemon) backgroundTasks(
 		slog.InfoContext(ctx, "BMC data resync completed")
 	})
 
-	// Start background task to prune the cache of generated seed images.
-	pruneSeedImageCacheTask := componentTask(componentTaskPruneSeedImageCache, func(ctx context.Context) {
-		slog.InfoContext(ctx, "Seed image cache prune triggered")
-
-		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
-		if err != nil {
-			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Seed image cache prune completed")
-	})
-
-	// Start background task to prune the generated secure boot enrollment media.
-	pruneSecureBootMediaTask := func(ctx context.Context) {
-		slog.InfoContext(ctx, "Secure boot enrollment media prune triggered")
-
-		// A media, that a deployment has attached to a BMC, is kept: the BMC
-		// reads it only when the server boots, so it would otherwise be pruned
-		// while the server still needs it.
-		inUse, err := attachedSecureBootMediaIDs(ctx, serverSvc)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		err = secureBootMedia.Prune(ctx, config.SecureBootMediaCacheTTL, inUse)
-		if err != nil {
-			slog.WarnContext(ctx, "Secure boot enrollment media prune failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Secure boot enrollment media prune completed")
-	}
-
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := componentTask(componentTaskRenewACMECertificate, func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
 
-		scope := api.WarningScope{
-			Scope:      "acme_certificate_update",
-			EntityType: "system",
-			Entity:     "operations-center",
-		}
+		scope := warning.ScopeACMECertificateUpdate
 
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {
@@ -2011,6 +2518,21 @@ func (d *Daemon) backgroundTasks(
 
 		acmeCfg := config.GetSecurity().ACME
 		warnings = warning.Warnings{}
+
+		// Check the cluster certificate presented by all members once.
+		clusterCertificate := d.operationsCenterCertificate()
+		if clusterCertificate != "" {
+			servers = slices.DeleteFunc(servers, func(server provisioning.Server) bool {
+				return server.Type == api.ServerTypeOperationsCenter && d.isClusterMemberCertificate(ptr.From(server.Certificate))
+			})
+
+			servers = append(servers, provisioning.Server{
+				Name:        api.ServerNameOperationsCenter,
+				Type:        api.ServerTypeOperationsCenter,
+				Certificate: &clusterCertificate,
+			})
+		}
+
 		for _, server := range servers {
 			if server.Certificate == nil {
 				continue
@@ -2046,18 +2568,19 @@ func (d *Daemon) backgroundTasks(
 		slog.InfoContext(ctx, "Certificates validity check completed")
 	})
 
-	return []task.TaskFunc{
-		task.New(refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second),
-		task.New(refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
-		task.New(clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
-		task.New(serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
-		task.New(pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
-		task.New(refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
-		task.New(refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
-		task.New(pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval), 10*time.Second),
-		task.New(pruneSecureBootMediaTask, task.Every(config.SecureBootMediaPruneInterval), 10*time.Second),
-		task.New(renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
-		task.New(certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
+	refreshUpdatesTask := d.leaderTask(componentTaskRefreshUpdates, refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...), 60*time.Second)
+	refreshUpdatesTask.BeforeStart = pruneUpdates
+
+	return []clusteringSvc.LeaderTask{
+		refreshUpdatesTask,
+		d.leaderTask(componentTaskRefreshImageSources, refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval), 60*time.Second),
+		d.leaderTask(componentTaskClusterUpdate, clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval), 5*time.Second),
+		d.leaderTask(componentTaskServerDeployment, serverDeploymentControlLoopTask, task.Every(config.ServerDeploymentControlLoopInterval), 5*time.Second),
+		d.leaderTask(componentTaskPollReadyServers, pollReadyServersTask, task.Every(config.ConnectivityCheckInterval), 1*time.Second),
+		d.leaderTask(componentTaskRefreshInventory, refreshInventoryTask, task.Every(config.InventoryUpdateInterval), 10*time.Second),
+		d.leaderTask(componentTaskRefreshBMCData, refreshBMCDataTask, task.Every(config.BMCDataResyncInterval), 10*time.Second),
+		d.leaderTask(componentTaskRenewACMECertificate, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval), 10*time.Second),
+		d.leaderTask(componentTaskCertificatesValidityCheck, certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval), 10*time.Second),
 
 		// Start background task to poll servers in pending state to become available.
 		d.backgroundPollingTask(
@@ -2185,7 +2708,7 @@ func (d *Daemon) backgroundPollingTask(
 	serverFilter provisioning.ServerFilter,
 	updateServerConfiguration bool,
 	interval time.Duration,
-) task.TaskFunc {
+) clusteringSvc.LeaderTask {
 	backgroundTask := componentTask(component, func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
 		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
@@ -2203,7 +2726,7 @@ func (d *Daemon) backgroundPollingTask(
 		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
 	})
 
-	return task.New(backgroundTask, task.Every(interval), time.Second)
+	return d.leaderTask(component, backgroundTask, task.Every(interval), time.Second)
 }
 
 func (d *Daemon) setupSocketListener(ctx context.Context) error {
@@ -2243,7 +2766,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLoca
 	errCh := make(chan error)
 
 	d.errgroup.Go(func() error {
-		oldServerListener, _ := d.listeners.Listeners()
+		oldServerListener, oldClusterListener := d.listeners.Listeners()
 
 		if oldServerListener != nil {
 			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldServerListener.Addr().String()))
@@ -2258,6 +2781,49 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.NetworkLoca
 		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
 		listenerCert := d.apiCertificate
+
+		if cfg.ClusterAddress != "" {
+			isCovered := cfg.RestServerAddress != "" && listener.IsAddressCovered(cfg.ClusterAddress, cfg.RestServerAddress)
+
+			// Stop the cluster listener if the https listener covers its address.
+			if isCovered && oldClusterListener != nil {
+				slog.InfoContext(ctx, "Stopping existing cluster https listener, the https listener covers its address", slog.Any("addr", oldClusterListener.Addr().String()))
+				err := oldClusterListener.Close()
+				if err != nil {
+					errCh <- err
+					return err
+				}
+
+				d.listeners.SetClusterListener(nil)
+			}
+
+			if !isCovered {
+				if oldClusterListener != nil {
+					slog.InfoContext(ctx, "Stopping existing cluster https listener", slog.Any("addr", oldClusterListener.Addr().String()))
+					err := oldClusterListener.Close()
+					if err != nil {
+						errCh <- err
+						return err
+					}
+				}
+
+				slog.InfoContext(ctx, "Start https cluster listener", slog.Any("addr", cfg.ClusterAddress))
+				tcpListener, err := net.Listen("tcp", cfg.ClusterAddress)
+				if err != nil {
+					errCh <- err
+					return err
+				}
+
+				clusterListener := listener.NewFancyTLSListener(tcpListener, listenerCert)
+
+				err = clusterListener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
+				}
+
+				d.listeners.SetClusterListener(clusterListener)
+			}
+		}
 
 		if cfg.RestServerAddress == "" {
 			d.listeners.SetServerListener(nil)
@@ -2327,20 +2893,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return nil
 	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
-				raddr, err := net.ResolveUnixAddr("unix", internalenvironment.IncusOSSocket)
-				if err != nil {
-					return nil, err
-				}
-
-				return net.DialUnix("unix", nil, raddr)
-			},
-
-			DisableKeepAlives: true,
-		},
-	}
+	client := incusOSClient()
 
 	// Special IncusOS provider configuration with provider "operations-center"
 	// but without URL, token and certificate.
@@ -2392,6 +2945,89 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 	return nil
 }
 
+// incusOSClient returns a client of the IncusOS API through its unix socket.
+func incusOSClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
+				raddr, err := net.ResolveUnixAddr("unix", internalenvironment.IncusOSSocket)
+				if err != nil {
+					return nil, err
+				}
+
+				return net.DialUnix("unix", nil, raddr)
+			},
+
+			DisableKeepAlives: true,
+		},
+	}
+}
+
+// incusOSDisableAutoReboot disables the auto-reboot after IncusOS updates, so cluster members reboot one at a time.
+func (d *Daemon) incusOSDisableAutoReboot(ctx context.Context) error {
+	if !d.env.IsIncusOS() || !d.env.Clustered() {
+		return nil
+	}
+
+	client := incusOSClient()
+
+	var update incusosapi.SystemUpdate
+
+	err := incusOSRequest(ctx, client, http.MethodGet, "http://unix/1.0/system/update", nil, &update)
+	if err != nil {
+		return err
+	}
+
+	if !update.Config.AutoReboot {
+		return nil
+	}
+
+	update.Config.AutoReboot = false
+
+	return incusOSRequest(ctx, client, http.MethodPut, "http://unix/1.0/system/update", update, nil)
+}
+
+// incusOSRequest sends content to the IncusOS API and decodes the response metadata to target, each if not nil.
+func incusOSRequest(ctx context.Context, client *http.Client, method string, url string, content any, target any) error {
+	var body io.Reader = http.NoBody
+	if content != nil {
+		data, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	apiResponse := api.Response{}
+	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch %s: %s: %w", url, resp.Status, err)
+	}
+
+	if apiResponse.Type == api.ErrorResponse {
+		return api.StatusErrorf(resp.StatusCode, "%v", apiResponse.Error)
+	}
+
+	if target == nil {
+		return nil
+	}
+
+	return json.Unmarshal(apiResponse.Metadata, target)
+}
+
 func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.SecurityACME) (valid bool, _ error) {
 	// ACME renews late in the validity period. A fixed threshold warns before the renewal starts.
 	if server.Type == api.ServerTypeOperationsCenter && acme.IsEnabled(acmeCfg) {
@@ -2401,6 +3037,42 @@ func validateServerCertificate(server provisioning.Server, acmeCfg apisystem.Sec
 	return certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
 }
 
+// getLocalServer returns the server record of this Operations Center.
+func (d *Daemon) getLocalServer(ctx context.Context, serverSvc provisioning.ServerService) (*provisioning.Server, error) {
+	member, err := d.operationsCenterMember(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if member != nil {
+		return serverSvc.GetByName(ctx, member.Name)
+	}
+
+	d.configReloadMu.Lock()
+	var leaf []byte
+	if len(d.apiCertificate.Certificate) > 0 {
+		leaf = d.apiCertificate.Certificate[0]
+	}
+
+	d.configReloadMu.Unlock()
+
+	servers, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Type: new(api.ServerTypeOperationsCenter),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, server := range servers {
+		cert, err := certificate.Decode([]byte(ptr.From(server.Certificate)))
+		if err == nil && bytes.Equal(cert.Raw, leaf) {
+			return &server, nil
+		}
+	}
+
+	return nil, domain.NewErrorf(domain.ErrNotFound, "", `No server of type "operations-center" holds the certificate of this Operations Center`)
+}
+
 func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.ServerService) error {
 	if !d.env.IsIncusOS() {
 		return nil
@@ -2408,20 +3080,12 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 
 	slog.DebugContext(ctx, "Self poll server status on IncusOS to update own inventory record")
 
-	operationCenters, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Type: new(api.ServerTypeOperationsCenter),
-	})
+	ocServer, err := d.getLocalServer(ctx, serverSvc)
 	if err != nil {
 		return fmt.Errorf("Failed to get self server instance: %w", err)
 	}
 
-	if len(operationCenters) != 1 {
-		return fmt.Errorf(`Expected exactly 1 server of type "operations-center", got: %d`, len(operationCenters))
-	}
-
-	serverSelf := operationCenters[0]
-
-	err = serverSvc.PollServer(ctx, serverSelf, true)
+	err = serverSvc.PollServer(ctx, *ocServer, true)
 	if err != nil {
 		return fmt.Errorf("Failed to self poll server instalce: %w", err)
 	}
@@ -2431,6 +3095,8 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 
 func (d *Daemon) Stop(ctx context.Context) error {
 	ctx = logger.ContextWithComponent(ctx, componentDaemon)
+
+	d.shuttingDown.Store(true)
 
 	d.configReloadMu.Lock()
 	if d.securityRetryCancel != nil {
@@ -2457,6 +3123,7 @@ func (d *Daemon) Stop(ctx context.Context) error {
 
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()
+	lifecycle.ClientKeypairUpdateSignal.Reset()
 	lifecycle.NetworkUpdateSignal.Reset()
 	lifecycle.SharedNetworkUpdateSignal.Reset()
 	lifecycle.SharedSettingsUpdateSignal.Reset()

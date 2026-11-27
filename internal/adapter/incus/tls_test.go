@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 )
 
 func Test(t *testing.T) {
@@ -27,7 +28,7 @@ func Test(t *testing.T) {
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 			t.Cleanup(server.Close)
 
-			c := incus.New("", "", incus.WithSkipGetServer(true))
+			c := incus.New(securitytls.NewClientKeypairHolder("", ""), incus.WithSkipGetServer(true))
 			cert, err := c.GetRemoteCertificate(t.Context(), provisioning.Server{
 				ConnectionURL: server.URL,
 			})

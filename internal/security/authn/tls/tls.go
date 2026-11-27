@@ -16,12 +16,12 @@ import (
 )
 
 type TLS struct {
-	trustedTLSClientCertFingerprints []string
+	trustedTLSClientCertFingerprints []func() []string
 }
 
 var _ authn.Auther = TLS{}
 
-func New(trustedTLSClientCertFingerprints []string) TLS {
+func New(trustedTLSClientCertFingerprints ...func() []string) TLS {
 	return TLS{
 		trustedTLSClientCertFingerprints: trustedTLSClientCertFingerprints,
 	}
@@ -38,12 +38,15 @@ func (t TLS) Auth(w http.ResponseWriter, r *http.Request) (trusted bool, usernam
 	}
 
 	// Only check the leaf certificate.
-	trusted, username = checkTrustState(r.Context(), *r.TLS.PeerCertificates[0], t.trustedTLSClientCertFingerprints)
-	if !trusted {
-		return false, "", "", nil
+	cert := r.TLS.PeerCertificates[0]
+	for _, fpSet := range t.trustedTLSClientCertFingerprints {
+		trusted, username := checkTrustState(r.Context(), *cert, fpSet())
+		if trusted {
+			return true, username, api.AuthenticationMethodTLS, nil
+		}
 	}
 
-	return true, username, api.AuthenticationMethodTLS, nil
+	return false, "", "", nil
 }
 
 // checkTrustState checks whether the given client certificate is trusted

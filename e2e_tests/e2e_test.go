@@ -36,6 +36,44 @@ func TestE2E_OperationsCenter(t *testing.T) {
 	})
 }
 
+// TestE2E_OperationsCenterCluster covers the cluster of Operations Center
+// VMs. It needs no IncusOS server.
+func TestE2E_OperationsCenterCluster(t *testing.T) {
+	runE2ESuite(t, nil, []e2eScenario{
+		{
+			name:              "write_through_any_member",
+			requiresOCCluster: true,
+			run:               ocClusterWriteThroughAnyMember,
+		},
+		{
+			name:              "seed_image_through_any_member",
+			requiresOCCluster: true,
+			run:               ocClusterSeedImageThroughAnyMember,
+		},
+		{
+			name:              "member_server_records",
+			requiresOCCluster: true,
+			run:               ocClusterMemberServerRecords,
+		},
+		{
+			name:              "leader_handover",
+			requiresOCCluster: true,
+			run:               ocClusterLeaderHandover,
+		},
+		{
+			name:              "stopped_member_catches_up",
+			requiresOCCluster: true,
+			run:               ocClusterStoppedMemberCatchesUp,
+		},
+		{
+			// Changes the membership, so it runs last.
+			name:              "remove_and_rejoin_member",
+			requiresOCCluster: true,
+			run:               ocClusterRemoveAndRejoinMember,
+		},
+	})
+}
+
 func TestE2E_StableServers(t *testing.T) {
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
@@ -75,6 +113,24 @@ func TestE2E_StableServers(t *testing.T) {
 			name:    "cluster_rolling_reboot",
 			cluster: names,
 			run:     clusterRollingReboot,
+		},
+		{
+			name:              "oc_rolling_reboot_through_members",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocClusterRollingRebootThroughMembers,
+		},
+		{
+			name:              "oc_leader_handover_managed_cluster",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocLeaderHandoverWithManagedCluster,
+		},
+		{
+			name:              "oc_address_points_to_other_member",
+			cluster:           names,
+			requiresOCCluster: true,
+			run:               ocAddressPointsToOtherMember,
 		},
 		{
 			name:    "factory_reset_cluster",

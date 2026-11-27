@@ -17318,6 +17318,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoGetByNameCluster: &provisioning.Cluster{
+				UUID:   uuidgen.FromPattern(t, "1"),
 				Status: api.ClusterStatusPending,
 			},
 
@@ -17329,6 +17330,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			nameArg: "one",
 			force:   true,
 			repoGetByNameCluster: &provisioning.Cluster{
+				UUID:   uuidgen.FromPattern(t, "1"),
 				Status: api.ClusterStatusPending,
 			},
 
@@ -17345,10 +17347,20 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name:                "error - force - repo.DeleteByName",
-			nameArg:             "one",
-			force:               true,
-			repoDeleteByNameErr: boom.Error,
+			name:                 "error - force - repo.DeleteByName",
+			nameArg:              "one",
+			force:                true,
+			repoGetByNameCluster: &provisioning.Cluster{},
+			repoDeleteByNameErr:  boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:             "error - force - repo.GetByName",
+			nameArg:          "one",
+			force:            true,
+			repoGetByNameErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -17453,12 +17465,22 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
+			var deletedUUID uuid.UUID
+			lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
+				deletedUUID = cum.UUID
+			})
+
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
+
+			// The UUID allows to remove the files of the cluster.
+			if err == nil {
+				require.Equal(t, tc.repoGetByNameCluster.UUID, deletedUUID)
+			}
 		})
 	}
 }
@@ -17732,6 +17754,9 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			})
 
 			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return &provisioning.Cluster{UUID: uuidgen.FromPattern(t, "1")}, nil
+				},
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
 				},
@@ -21040,6 +21065,62 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 			require.Empty(t, tc.serverSvcUpdateSystemLogging)
 		})
 	}
+}
+
+func TestClusterService_UpdateSystemLogging_revertAfterClientWentAway(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	repo := &mock.ClusterRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+			return &provisioning.Cluster{Name: name, Status: api.ClusterStatusReady}, nil
+		},
+	}
+
+	servers := []queue.Item[provisioning.Servers]{
+		// GetByName
+		{},
+		// serverSvc.GetAllWithFilter
+		{
+			Value: provisioning.Servers{
+				{Name: "one", Cluster: new("one"), Status: api.ServerStatusReady, VersionData: api.ServerVersionData{InMaintenance: new(api.NotInMaintenance)}},
+				{Name: "two", Cluster: new("one"), Status: api.ServerStatusReady, VersionData: api.ServerVersionData{InMaintenance: new(api.NotInMaintenance)}},
+			},
+		},
+	}
+
+	var updates []error
+	serverSvc := &serviceMock.ServerServiceMock{
+		PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+			return nil
+		},
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+			return queue.Pop(t, &servers)
+		},
+		GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+			return provisioning.ServerSystemLogging{}, nil
+		},
+		UpdateSystemLoggingFunc: func(ctx context.Context, name string, config provisioning.ServerSystemLogging) error {
+			// The client goes away while server two is updated.
+			if len(updates) == 1 {
+				cancel()
+			}
+
+			updates = append(updates, ctx.Err())
+			return ctx.Err()
+		},
+	}
+
+	clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
+
+	err := clusterSvc.UpdateSystemLogging(ctx, "one", incusosapi.SystemLogging{})
+	require.ErrorIs(t, err, context.Canceled)
+
+	// Server one is updated, server two fails and server one is reverted.
+	require.Len(t, updates, 3)
+	require.NoError(t, updates[2], "the revert runs after the client went away")
 }
 
 func TestClusterService_UpdateSystemKernel(t *testing.T) {

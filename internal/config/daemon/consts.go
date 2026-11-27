@@ -3,6 +3,8 @@ package config
 import (
 	_ "embed"
 	"time"
+
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 )
 
 // FIXME: Check which constants need to be public.
@@ -257,10 +259,10 @@ const (
 	ACMECertificateExpiryWarningLifetimeRatio = 0.9
 
 	// Filename of the client certificate.
-	ClientCertificateFilename = "client.crt"
+	ClientCertificateFilename = securitytls.ClientCertificateFilename
 
 	// Filename of the client key.
-	ClientKeyFilename = "client.key"
+	ClientKeyFilename = securitytls.ClientKeyFilename
 
 	// Filename of the server certificate.
 	ServerCertificateFilename = "server.crt"
@@ -268,11 +270,23 @@ const (
 	// Filename of the server key.
 	ServerKeyFilename = "server.key"
 
+	// Filename of the certificate shared by the cluster members.
+	ClusterCertificateFilename = "cluster.crt"
+
+	// Filename of the key shared by the cluster members.
+	ClusterKeyFilename = "cluster.key"
+
 	// Filename of the system config file.
 	ConfigFilename = "config.yml"
 
 	// Amount of time in seconds before an unresponsive cluster member is considered offline.
 	DefaultOfflineThresholdSeconds = 20
+
+	// Offline threshold in seconds, which a configured one has to exceed.
+	minOfflineThresholdSeconds = 10
+
+	// Default lifetime of a cluster membership join token.
+	DefaultMembershipJoinTokenExpiry = 3 * time.Hour
 )
 
 //go:embed default.yml

@@ -17,6 +17,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 )
 
 func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
@@ -155,7 +156,7 @@ func TestClient_UpdateCluster_certificateReplaced(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 
-			client := incus.New(certPEM, keyPEM, incus.WithSkipGetServer(true))
+			client := incus.New(securitytls.NewClientKeypairHolder(certPEM, keyPEM), incus.WithSkipGetServer(true))
 
 			serverCert := pem.EncodeToMemory(&pem.Block{
 				Type:  "CERTIFICATE",

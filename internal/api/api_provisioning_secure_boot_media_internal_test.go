@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/mediarecord/mediarecordtest"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootcerts"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/securebootmedia"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
@@ -25,7 +27,7 @@ func Test_secureBootMediaGet(t *testing.T) {
 		t.Run(imageType.String(), func(t *testing.T) {
 			t.Parallel()
 
-			err := securebootmedia.New(fsroot.Open(t, t.TempDir())).CheckSupported(t.Context(), imageType, images.UpdateFileArchitecture64BitX86)
+			err := securebootmedia.New(fsroot.Open(t, t.TempDir()), mediarecordtest.Records(mediarecordtest.NewRepo(), provisioning.MediaTypeSecureBoot, time.Hour)).CheckSupported(t.Context(), imageType, images.UpdateFileArchitecture64BitX86)
 			if err != nil {
 				t.Skipf("The secure boot enrollment media can not be generated here: %v", err)
 			}
@@ -38,7 +40,7 @@ func Test_secureBootMediaGet(t *testing.T) {
 
 			dir := filepath.Join(t.TempDir(), "secure-boot-media")
 			require.NoError(t, os.Mkdir(dir, 0o700))
-			media := securebootmedia.New(fsroot.Open(t, dir))
+			media := securebootmedia.New(fsroot.Open(t, dir), mediarecordtest.Records(mediarecordtest.NewRepo(), provisioning.MediaTypeSecureBoot, time.Hour))
 
 			id, err := media.Generate(t.Context(), imageType, images.UpdateFileArchitecture64BitX86, provisioning.SecureBootCertificates{
 				PK:  certificates[0],
@@ -51,7 +53,7 @@ func Test_secureBootMediaGet(t *testing.T) {
 			require.NoError(t, err)
 
 			serveMux := http.NewServeMux()
-			registerSecureBootMediaHandler(newRouter(serveMux).SubGroup("/1.0/provisioning/secure-boot-media"), media)
+			registerSecureBootMediaHandler(newRouter(serveMux).SubGroup("/1.0/provisioning/secure-boot-media"), media, forwarder{clustered: func() bool { return false }})
 
 			server := httptest.NewServer(serveMux)
 			t.Cleanup(server.Close)

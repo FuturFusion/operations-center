@@ -35,6 +35,7 @@ type TokenService interface {
 	ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, _ error)
 	PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error
 	GetPreparedTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (*TokenImage, error)
+	PreparedTokenSeedImageHolder(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (memberID int64, available bool, _ error)
 }
 
 type TokenRepo interface {
@@ -64,5 +65,7 @@ type FlasherPort interface {
 	SeedImageCacheGeneration(ctx context.Context, cachePrefix string) uint64
 	GenerateSeededImage(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
 	OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ SeedImageInfo, _ error)
+	SeededImageHolder(ctx context.Context, cacheID string, fingerprintID string) (memberID int64, available bool, _ error)
 	RemoveSeededImages(ctx context.Context, cachePrefix string) error
+	RemoveSeededImageRecords(ctx context.Context, cachePrefix string) error
 }

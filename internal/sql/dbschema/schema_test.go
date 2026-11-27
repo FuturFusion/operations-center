@@ -1,11 +1,13 @@
 package dbschema_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
@@ -130,6 +132,35 @@ INSERT INTO servers (id, name, type, connection_url, status, hardware_data, os_d
 	require.Equal(t, identifiers{}, got[3], "rows without identifiers are left untouched")
 }
 
+func TestSchemaEnsure_clusterUUID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO clusters (id, name, connection_url, status, last_updated, channel_id) VALUES
+  (1, 'one', 'https://one/', 'ready', '2025-03-12 10:57:43+00:00', 1),
+  (2, 'two', 'https://two/', 'ready', '2025-03-12 10:57:43+00:00', 1);
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var one, two string
+	err = db.QueryRow(`SELECT (SELECT uuid FROM clusters WHERE id = 1), (SELECT uuid FROM clusters WHERE id = 2)`).Scan(&one, &two)
+	require.NoError(t, err)
+
+	require.NoError(t, uuid.Validate(one))
+	require.NoError(t, uuid.Validate(two))
+	require.NotEqual(t, one, two, "each existing cluster gets its own UUID")
+}
+
 func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 	t.Parallel()
 
@@ -148,6 +179,56 @@ func TestSchemaEnsure_resourcesViewUUID(t *testing.T) {
 
 	_, err = db.Exec(`SELECT uuid FROM resources`)
 	require.NoError(t, err, "the resources view has the uuid column from v43 onwards")
+}
+
+func TestSchemaEnsure_updatesMemberID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files) VALUES
+  ('b32d0079-c48b-4957-b1cb-bef54125c861', 'origin', '1', '2025-03-12 10:57:43+00:00', 'none', '', '');
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var memberID int64
+	err = db.QueryRow(`SELECT member_id FROM updates`).Scan(&memberID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), memberID, "existing updates are stored by the standalone member")
+}
+
+func TestSchemaEnsure_incusImagesMemberID(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	err = dbschema.SetupVersion(db.DB, 43)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+INSERT INTO incus_images (name, description, operating_system, release, architecture, variant, versions, last_updated) VALUES
+  ('debian:13:amd64:default', '', 'debian', '13', 'amd64', 'default', '{}', '2025-03-12 10:57:43+00:00');
+`)
+	require.NoError(t, err)
+
+	_, err = dbschema.EnsureLocal(context.Background(), db.DB, tmpDir, dbschema.Updates(), dbschema.FreshSchema())
+	require.NoError(t, err)
+
+	var memberID int64
+	err = db.QueryRow(`SELECT member_id FROM incus_images`).Scan(&memberID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), memberID, "existing images are stored by the standalone member")
 }
 
 func TestSchemaEnsure_patchFile(t *testing.T) {

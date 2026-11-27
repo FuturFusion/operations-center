@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchSystemSecurity, updateSystemSecurity } from "api/settings";
 import SystemSecurityForm from "components/SystemSecurityForm";
 import { useNotification } from "context/notificationContext";
@@ -8,31 +8,32 @@ import QueryError from "components/QueryError";
 
 const SystemSecurityConfiguration = () => {
   const { notify } = useNotification();
-  const queryClient = useQueryClient();
+
+  const {
+    data: result = undefined,
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["system_security"],
+    queryFn: () => fetchSystemSecurity(),
+  });
 
   const onSubmit = (security: SystemSecurity) => {
-    updateSystemSecurity(JSON.stringify(security, null, 2))
+    updateSystemSecurity(JSON.stringify(security, null, 2), result?.etag ?? "")
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`System security updated`);
-          queryClient.invalidateQueries({ queryKey: ["system_security"] });
           return;
         }
         notify.error(errorMessage(response));
       })
       .catch((e) => {
         notify.error(`Error during system security update: ${e}`);
-      });
+      })
+      // The ETag changes with every update, after a refused one the current config is shown.
+      .finally(() => refetch());
   };
-
-  const {
-    data: security = undefined,
-    error,
-    isLoading,
-  } = useQuery({
-    queryKey: ["system_security"],
-    queryFn: () => fetchSystemSecurity(),
-  });
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -42,7 +43,7 @@ const SystemSecurityConfiguration = () => {
     return <QueryError error={error} label="the security settings" />;
   }
 
-  return <SystemSecurityForm security={security} onSubmit={onSubmit} />;
+  return <SystemSecurityForm security={result?.data} onSubmit={onSubmit} />;
 };
 
 export default SystemSecurityConfiguration;

@@ -2,6 +2,8 @@ acked
 ACL
 ACPI
 api
+authenticator
+authorizer
 Backend
 backoff
 balancer
@@ -10,6 +12,7 @@ bitness
 BMC
 BMCs
 CAs
+cgo
 changelog
 CLI
 config
@@ -20,11 +23,13 @@ DHCP
 DNS
 downloader
 ETag
+ETags
 expr
 Furo
 futurfusion
 FuturFusion
 gapped
+getter
 github
 GitHub
 goroutine
@@ -46,6 +51,7 @@ Keychain
 keypair
 lang
 Lenovo
+lifecycle
 linuxcontainers
 LLMs
 LVM
