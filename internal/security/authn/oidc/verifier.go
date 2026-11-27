@@ -66,12 +66,11 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		// If the verification fails, Incus will return an InvalidToken error. The client should then either use its refresh token to get a new valid access token, or log in again.
 		// If the Authorization header is missing, Incus returns an AuthenticationRequired error.
 		// Both returned errors contain information which are needed for the client to authenticate.
-		parts := strings.Split(auth, "Bearer ")
-		if len(parts) != 2 {
+		var found bool
+		token, found = strings.CutPrefix(auth, "Bearer ")
+		if !found {
 			return "", &AuthError{fmt.Errorf("Bad authorization token, expected a Bearer token")}
 		}
-
-		token = parts[1]
 	} else {
 		// When not using a Bearer token, fetch the equivalent from a cookie and move on with it.
 		cookie, err := r.Cookie("oidc_access")
@@ -156,6 +155,10 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	if claims.Subject == "" {
+		return "", fmt.Errorf("OIDC user is missing required claim %q", "sub")
+	}
+
 	return claims.Subject, nil
 }
 
@@ -163,6 +166,7 @@ func (o *Verifier) Login(w http.ResponseWriter, r *http.Request) {
 	// Get the provider.
 	provider, err := o.getProvider(r)
 	if err != nil {
+		writeProviderError(w, r, err)
 		return
 	}
 
@@ -227,6 +231,7 @@ func (o *Verifier) Callback(w http.ResponseWriter, r *http.Request) {
 	// Get the provider.
 	provider, err := o.getProvider(r)
 	if err != nil {
+		writeProviderError(w, r, err)
 		return
 	}
 
@@ -336,6 +341,13 @@ func (o *Verifier) IsRequest(r *http.Request) bool {
 	}
 
 	return false
+}
+
+// writeProviderError logs the error and responds with 502 Bad Gateway, because
+// the OIDC issuer is an upstream service.
+func writeProviderError(w http.ResponseWriter, r *http.Request, err error) {
+	slog.WarnContext(r.Context(), "Failed to get OIDC provider", logger.Err(err))
+	http.Error(w, "OIDC provider unavailable", http.StatusBadGateway)
 }
 
 func (o *Verifier) getProvider(r *http.Request) (rp.RelyingParty, error) {

@@ -16,7 +16,7 @@ func FormatFlag(value string) error {
 			switch option {
 			case "noheader", "header":
 			default:
-				return fmt.Errorf(`Invalid value for flag "--format": %q`, format)
+				return fmt.Errorf(`Invalid option for flag "--format": %q`, option)
 			}
 		}
 	}
