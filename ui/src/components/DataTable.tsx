@@ -1,6 +1,23 @@
-import { FC, ReactNode, useState } from "react";
+import {
+  FC,
+  ReactNode,
+  RefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Col, Form, Row, Table } from "react-bootstrap";
 import { MdArrowDropDown, MdArrowDropUp } from "react-icons/md";
+import ColumnSelector from "components/ColumnSelector";
+import {
+  autoHiddenColumns,
+  ColumnOverrides,
+  DataTableHeader,
+  loadColumnOverrides,
+  saveColumnOverrides,
+  toColumn,
+  visibleColumns,
+} from "util/dataTable";
 
 interface DataTableCol {
   content: ReactNode | string;
@@ -13,18 +30,62 @@ export interface DataTableRow {
   cols: DataTableCol[];
 }
 
-interface Props {
-  headers: string[];
+export interface DataTableProps {
+  headers: DataTableHeader[];
   rows: DataTableRow[];
+  // Remembers the user's column choices across visits under this id.
+  id?: string;
 }
 
-const DataTable: FC<Props> = ({ headers, rows }) => {
+// useElementWidth tracks the inner width of the element.
+const useElementWidth = (ref: RefObject<HTMLElement | null>) => {
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    const update = () => setWidth(element.clientWidth);
+    update();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return width;
+};
+
+const DataTable: FC<DataTableProps> = ({ headers, rows, id }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [sortProps, setSortProps] = useState({ order: "", column: "" });
-  const headersMap = Object.fromEntries(
-    headers.map((item, index) => [item, index]),
+  const [overrides, setOverrides] = useState<ColumnOverrides>(() =>
+    loadColumnOverrides(id),
   );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const width = useElementWidth(containerRef);
+
+  const columns = headers.map(toColumn);
+  const shown = visibleColumns(columns, width, overrides);
+  const autoHidden = autoHiddenColumns(columns, width, overrides);
+  const hasOptional = columns.some((column) => column.optional);
+
+  const headersMap = Object.fromEntries(
+    columns.map((item, index) => [item.name, index]),
+  );
+
+  const changeOverrides = (value: ColumnOverrides) => {
+    setOverrides(value);
+    saveColumnOverrides(id, value);
+  };
 
   const totalPages = Math.ceil(rows.length / itemsPerPage);
 
@@ -116,11 +177,12 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
   };
 
   const generateHeaders = () => {
-    const headerRow = headers.map((item, index) => {
+    const headerRow = shown.map((index) => {
+      const item = columns[index].name;
       const sortEnabled = isSortable(item);
       return (
         <th
-          key={index}
+          key={item}
           style={{ cursor: sortEnabled ? "pointer" : "default" }}
           onClick={sortEnabled ? () => handleHeaderClick(item) : undefined}
         >
@@ -140,7 +202,8 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
 
   const generateRows = () => {
     const dataRows = paginatedData.map((rowItem, rowIndex) => {
-      const row = rowItem.cols.map((item, index) => {
+      const row = shown.map((index) => {
+        const item = rowItem.cols[index];
         return (
           <td className={item.class} key={index}>
             {item.content}
@@ -158,7 +221,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
           </tr>
           {rowItem.additional_data && (
             <tr key={rowIndex} className="additional-data-row">
-              <td colSpan={rowItem.cols.length}>{rowItem.additional_data}</td>
+              <td colSpan={shown.length}>{rowItem.additional_data}</td>
             </tr>
           )}
         </>
@@ -169,7 +232,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
   };
 
   return (
-    <div className="mx-2 mx-md-4 mt-4">
+    <div className="mx-2 mx-md-4 mt-4" ref={containerRef}>
       <Row className="justify-content-end">
         <Col xs="auto">
           <Form.Control
@@ -194,8 +257,19 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
             <option value={100}>100</option>
           </Form.Select>
         </Col>
+        {hasOptional && (
+          <Col xs="auto">
+            <ColumnSelector
+              columns={columns}
+              visible={shown.map((index) => columns[index].name)}
+              autoHidden={autoHidden}
+              overrides={overrides}
+              onChange={changeOverrides}
+            />
+          </Col>
+        )}
       </Row>
-      <Table className="data-table" hover>
+      <Table className="data-table" hover responsive>
         <thead>{generateHeaders()}</thead>
         <tbody>{generateRows()}</tbody>
       </Table>
