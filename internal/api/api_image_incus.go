@@ -85,6 +85,7 @@ func (i *imageIncusHandler) simplestreamsPublicIndexGet(r *http.Request) respons
 	}
 
 	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		return json.NewEncoder(w).Encode(stream)
@@ -142,6 +143,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 	}
 
 	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		return json.NewEncoder(w).Encode(products)

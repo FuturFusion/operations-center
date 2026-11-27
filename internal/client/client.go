@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -224,10 +225,12 @@ func (c OperationsCenterClient) doRawRequest(ctx context.Context, method string,
 	}
 
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		resp.Body, err = gzip.NewReader(resp.Body)
+		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(fmt.Errorf("Failed to decompress response of %s %s: %w", method, u.Path, err), resp.Body.Close())
 		}
+
+		resp.Body = gzipReadCloser{Reader: gzipReader, parent: resp.Body}
 	}
 
 	return resp, nil

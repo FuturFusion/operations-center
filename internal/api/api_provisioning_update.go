@@ -325,6 +325,7 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 	// TODO: We do not yet have proper operations as in Incus, but returning a
 	// SyncResponse also feels wrong.
 	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 
 		body := api.ResponseRaw{
