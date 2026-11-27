@@ -487,44 +487,34 @@ func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, i
 	}, nil
 }
 
-// ResolveTokenSeedImageID returns the ID identifying the pre-seeded image a
-// token seed currently resolves to, without generating it.
+// PrepareTokenSeedImage starts the generation of the pre-seeded image for a
+// public token seed in the background. It returns the ID of the image, under
+// which the image is served.
 //
-// It establishes the address the image is served under, so it insists on the
-// token seed being public.
-func (s *tokenService) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
-	tokenSeed, err := s.publicTokenSeedForImage(ctx, id, name, imageType, architecture)
-	if err != nil {
-		return "", err
-	}
-
-	fingerprint, _, _, seeds, err := s.resolveSeedImage(ctx, imageType, architecture, channel, tokenSeed.Seeds)
-	if err != nil {
-		return "", err
-	}
-
-	return s.flasher.SeedImageFingerprintID(ctx, fingerprint, id, seeds)
-}
-
-// PrepareTokenSeedImage generates the pre-seeded image for a public token seed
-// and stores it, so that a request naming it can be answered without anything
-// having to be looked up.
-func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) error {
+// A request naming the ID waits for the generation to complete. So the ID can
+// be handed out right away, for example to a BMC, which fetches the image as
+// soon as it gets its address.
+func (s *tokenService) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 	generation := s.flasher.SeedImageCacheGeneration(ctx, provisioning.SeedImageCachePrefix(id, name))
 
 	tokenSeed, err := s.publicTokenSeedForImage(ctx, id, name, imageType, architecture)
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	fingerprint, updateUUID, filename, seeds, err := s.resolveSeedImage(ctx, imageType, architecture, channel, tokenSeed.Seeds)
+	if err != nil {
+		return "", err
+	}
+
+	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, updateUUID, filename)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, updateUUID.String(), err)
 	}
 
 	cacheID := provisioning.SeedImageCacheID(id, name, imageType, architecture, channel)
 
-	content, _, err := s.generateSeedImage(ctx, cacheID, generation, id, *tokenSeed, imageType, architecture, channel)
-	if err != nil {
-		return err
-	}
-
-	return content.Close()
+	return s.flasher.PrepareSeededImage(ctx, cacheID, generation, fingerprint, id, seeds, tokenSeed.Public, filereader)
 }
 
 // GetPreparedTokenSeedImage returns the pre-seeded image addressed by

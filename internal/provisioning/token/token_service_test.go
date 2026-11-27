@@ -2,6 +2,7 @@ package token_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -2806,4 +2807,190 @@ type closeTrackingReadSeeker struct {
 func (c closeTrackingReadSeeker) Close() error {
 	*c.closed = true
 	return nil
+}
+
+func TestTokenService_PrepareTokenSeedImage(t *testing.T) {
+	t.Parallel()
+
+	const isoGzFilename = "IncusOS_1.iso.gz"
+
+	tokenUUID := uuidgen.FromPattern(t, "1")
+	updateUUID := uuidgen.FromPattern(t, "3")
+
+	type preparedCall struct {
+		cacheID     string
+		generation  uint64
+		fingerprint string
+		public      bool
+	}
+
+	successCall := preparedCall{
+		cacheID:     provisioning.SeedImageCacheID(tokenUUID, "config", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"),
+		generation:  7,
+		fingerprint: updateUUID.String() + "\x00" + isoGzFilename,
+		public:      true,
+	}
+
+	tests := []struct {
+		name         string
+		imageTypeArg api.ImageType
+
+		repoGetTokenSeedByNamePublic        bool
+		repoGetTokenSeedByNameErr           error
+		updateSvcGetAllWithFilterErr        error
+		updateSvcGetUpdateFileByFilenameErr error
+		flasherErr                          error
+
+		assertErr         require.ErrorAssertionFunc
+		wantFingerprintID string
+		wantPreparedCalls []preparedCall
+	}{
+		{
+			name:                         "success",
+			imageTypeArg:                 api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic: true,
+
+			assertErr:         require.NoError,
+			wantFingerprintID: "abcdef012345",
+			wantPreparedCalls: []preparedCall{successCall},
+		},
+		{
+			name:                         "error - invalid image type",
+			imageTypeArg:                 api.ImageType("exe"),
+			repoGetTokenSeedByNamePublic: true,
+
+			assertErr:         errassert.ValidationError,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{},
+		},
+		{
+			name:                         "error - token seed is not public",
+			imageTypeArg:                 api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic: false,
+
+			assertErr:         errassert.OperationNotPermittedError,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{},
+		},
+		{
+			name:                         "error - repo.GetTokenSeedByName",
+			imageTypeArg:                 api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic: true,
+			repoGetTokenSeedByNameErr:    boom.Error,
+
+			assertErr:         boom.ErrorIs,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{},
+		},
+		{
+			name:                         "error - updateSvc.GetAllWithFilter",
+			imageTypeArg:                 api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic: true,
+			updateSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr:         boom.ErrorIs,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{},
+		},
+		{
+			name:                                "error - updateSvc.GetUpdateFileByFilename",
+			imageTypeArg:                        api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic:        true,
+			updateSvcGetUpdateFileByFilenameErr: boom.Error,
+
+			assertErr:         boom.ErrorIs,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{},
+		},
+		{
+			name:                         "error - flasher.PrepareSeededImage",
+			imageTypeArg:                 api.ImageTypeISO,
+			repoGetTokenSeedByNamePublic: true,
+			flasherErr:                   boom.Error,
+
+			assertErr:         boom.ErrorIs,
+			wantFingerprintID: "",
+			wantPreparedCalls: []preparedCall{successCall},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			repo := &mock.TokenRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return &provisioning.Token{}, nil
+				},
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{Name: name, Public: tc.repoGetTokenSeedByNamePublic}, tc.repoGetTokenSeedByNameErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{{UUID: updateUUID}}, tc.updateSvcGetAllWithFilterErr
+				},
+				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
+					return provisioning.UpdateFiles{
+						{
+							Filename:     isoGzFilename,
+							Type:         images.UpdateFileTypeImageISO,
+							Architecture: images.UpdateFileArchitecture64BitX86,
+						},
+					}, nil
+				},
+				GetUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
+					return io.NopCloser(strings.NewReader("image")), 5, tc.updateSvcGetUpdateFileByFilenameErr
+				},
+			}
+
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					return &provisioning.Channel{Name: name}, nil
+				},
+			}
+
+			preparedCalls := []preparedCall{}
+
+			flasherAdapter := &adapterMock.FlasherPortMock{
+				SeedImageCacheGenerationFunc: func(ctx context.Context, cachePrefix string) uint64 {
+					require.Empty(t, repo.GetTokenSeedByNameCalls(), "The generation is read before the token seed.")
+
+					return 7
+				},
+				PrepareSeededImageFunc: func(ctx context.Context, cacheID string, generation uint64, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (string, error) {
+					preparedCalls = append(preparedCalls, preparedCall{
+						cacheID:     cacheID,
+						generation:  generation,
+						fingerprint: fingerprint,
+						public:      public,
+					})
+
+					if tc.flasherErr != nil {
+						return "", errors.Join(tc.flasherErr, source.Close())
+					}
+
+					return "abcdef012345", source.Close()
+				},
+			}
+
+			client := &adapterMock.TokenClientPortMock{
+				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+					return provisioning.ServerSystemSecurity{}, nil
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
+
+			// Run test
+			fingerprintID, err := tokenSvc.PrepareTokenSeedImage(context.Background(), tokenUUID, "config", tc.imageTypeArg, images.UpdateFileArchitecture64BitX86, "stable")
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantFingerprintID, fingerprintID, "expect the ID returned by the flasher")
+			require.Equal(t, tc.wantPreparedCalls, preparedCalls, "expect the flasher to prepare the image of the token seed")
+		})
+	}
 }

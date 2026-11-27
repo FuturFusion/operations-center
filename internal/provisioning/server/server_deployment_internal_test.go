@@ -1920,7 +1920,7 @@ func Test_deploymentStatesAreAllDispatched(t *testing.T) {
 		GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
 			return nil, boom.Error
 		},
-		ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+		PrepareTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
 			return "", boom.Error
 		},
 	}
