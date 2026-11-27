@@ -549,11 +549,21 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter provisionin
 		servers = servers[:n]
 	}
 
+	// Many servers share a channel. Load the updates of each channel only once.
+	updatesByChannel := map[string]provisioning.Updates{}
 	for i := range servers {
-		err = s.enrichServerWithVersionDetails(ctx, &servers[i])
-		if err != nil {
-			return nil, err
+		channel := servers[i].Channel
+		updates, ok := updatesByChannel[channel]
+		if !ok {
+			updates, err = s.getUpdatesForChannel(ctx, channel)
+			if err != nil {
+				return nil, err
+			}
+
+			updatesByChannel[channel] = updates
 		}
+
+		s.applyVersionDetails(ctx, &servers[i], updates)
 	}
 
 	return servers, nil
@@ -656,17 +666,32 @@ func (s *serverService) GetByName(ctx context.Context, name string) (*provisioni
 }
 
 func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, server *provisioning.Server) error {
-	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: &server.Channel,
-	})
+	updates, err := s.getUpdatesForChannel(ctx, server.Channel)
 	if err != nil {
-		return fmt.Errorf("Failed to get channel for server %q: %w", server.Name, err)
+		return err
 	}
 
+	s.applyVersionDetails(ctx, server, updates)
+
+	return nil
+}
+
+func (s *serverService) getUpdatesForChannel(ctx context.Context, channel string) (provisioning.Updates, error) {
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
+		Channel: &channel,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get updates for channel %q: %w", channel, err)
+	}
+
+	return updates, nil
+}
+
+func (s *serverService) applyVersionDetails(ctx context.Context, server *provisioning.Server, updates provisioning.Updates) {
 	if len(updates) == 0 {
 		// No updates found, enrich without update version information.
 		server.VersionData.Compute("", nil)
-		return nil
+		return
 	}
 
 	serverOSAndApplications := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
@@ -676,15 +701,7 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		server.VersionData.Applications[i].NeedsUpdate = new(false)
 	}
 
-	// For each component installed on the server (OS, applications), we need to
-	// find the most recent update. Since updates are not necessarily covering
-	// all components (OS, applications), we need to iterate over the updates
-	// in decending order (the updates are already returned sorted correctly).
-	//
-	// For each component, where we found a corresponding update, we update the
-	// latestAvailableVersions map and remove the component from
-	// `serverComponents`. We are done with the work, if `serverComponents` is
-	// empty.
+	// Updates are sorted by version, highest first, so the first match gives each component its latest version.
 	latestAvailableVersions := make(map[string]string, len(updates))
 	for _, update := range updates {
 		if len(serverOSAndApplications) == 0 {
@@ -727,8 +744,6 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	}
 
 	server.VersionData.Compute(server.VersionData.OS.Name, latestAvailableVersions)
-
-	return nil
 }
 
 func availableVersionGreaterThan(currentVersion string, availableVersion string) bool {

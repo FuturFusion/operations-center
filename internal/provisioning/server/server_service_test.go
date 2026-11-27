@@ -801,15 +801,86 @@ func TestServerService_GetAll(t *testing.T) {
 func TestServerService_GetAllWithFilter(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name                         string
-		filter                       provisioning.ServerFilter
-		repoGetAllWithFilter         provisioning.Servers
-		repoGetAllWithFilterErr      error
-		updateSvcGetAllWithFilterErr error
+	newServer := func(name string, channel string) provisioning.Server {
+		return provisioning.Server{
+			Name:    name,
+			Channel: channel,
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "IncusOS",
+					Version:     "2",
+					VersionNext: "2",
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:    "incus",
+						Version: "2",
+					},
+				},
+			},
+		}
+	}
 
-		assertErr require.ErrorAssertionFunc
-		count     int
+	newServerWithAvailableVersion := func(name string, channel string, availableVersion string, needsUpdate bool) provisioning.Server {
+		return provisioning.Server{
+			Name:    name,
+			Channel: channel,
+			VersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:             "IncusOS",
+					Version:          "2",
+					VersionNext:      "2",
+					AvailableVersion: new(availableVersion),
+					NeedsUpdate:      new(needsUpdate),
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:             "incus",
+						Version:          "2",
+						AvailableVersion: new(availableVersion),
+						NeedsUpdate:      new(needsUpdate),
+					},
+				},
+				NeedsUpdate:   new(needsUpdate),
+				NeedsReboot:   new(false),
+				InMaintenance: new(api.NotInMaintenance),
+			},
+		}
+	}
+
+	newUpdate := func(version string) provisioning.Update {
+		return provisioning.Update{
+			Version: version,
+			Files: provisioning.UpdateFiles{
+				{
+					Filename: "x86_64/IncusOS_20260610.img.gz",
+				},
+				{
+					Filename: "x86_64/incus.raw.gz",
+				},
+			},
+		}
+	}
+
+	updatesByChannel := map[string]provisioning.Updates{
+		"stable":  {newUpdate("3"), newUpdate("2")},
+		"testing": {newUpdate("2")},
+	}
+
+	updatesOfChannel := func(channel string) (provisioning.Updates, error) {
+		return updatesByChannel[channel], nil
+	}
+
+	tests := []struct {
+		name                      string
+		filter                    provisioning.ServerFilter
+		repoGetAllWithFilter      provisioning.Servers
+		repoGetAllWithFilterErr   error
+		updateSvcGetAllWithFilter func(channel string) (provisioning.Updates, error)
+
+		assertErr          require.ErrorAssertionFunc
+		wantServers        provisioning.Servers
+		wantUpdateChannels []string
 	}{
 		{
 			name: "success - no filter expression",
@@ -817,16 +888,37 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				Cluster: new("one"),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
-				provisioning.Server{
-					Name: "one",
-				},
-				provisioning.Server{
-					Name: "two",
-				},
+				newServer("one", "stable"),
+				newServer("two", "stable"),
 			},
+			updateSvcGetAllWithFilter: updatesOfChannel,
 
 			assertErr: require.NoError,
-			count:     2,
+			wantServers: provisioning.Servers{
+				newServerWithAvailableVersion("one", "stable", "3", true),
+				newServerWithAvailableVersion("two", "stable", "3", true),
+			},
+			wantUpdateChannels: []string{"stable"},
+		},
+		{
+			name: "success - servers on two channels",
+			filter: provisioning.ServerFilter{
+				Cluster: new("one"),
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				newServer("one", "stable"),
+				newServer("two", "testing"),
+				newServer("three", "stable"),
+			},
+			updateSvcGetAllWithFilter: updatesOfChannel,
+
+			assertErr: require.NoError,
+			wantServers: provisioning.Servers{
+				newServerWithAvailableVersion("one", "stable", "3", true),
+				newServerWithAvailableVersion("two", "testing", "2", false),
+				newServerWithAvailableVersion("three", "stable", "3", true),
+			},
+			wantUpdateChannels: []string{"stable", "testing"},
 		},
 		{
 			name: "success - with filter expression",
@@ -834,23 +926,24 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				Expression: new(`name == "one"`),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
-				provisioning.Server{
-					Name: "one",
-				},
-				provisioning.Server{
-					Name: "two",
-				},
+				newServer("one", "stable"),
+				newServer("two", "testing"),
 			},
+			updateSvcGetAllWithFilter: updatesOfChannel,
 
 			assertErr: require.NoError,
-			count:     1,
+			wantServers: provisioning.Servers{
+				newServerWithAvailableVersion("one", "stable", "3", true),
+			},
+			wantUpdateChannels: []string{"stable"},
 		},
 		{
 			name:                    "error - repo",
 			repoGetAllWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			count:     0,
+			assertErr:          boom.ErrorIs,
+			wantServers:        nil,
+			wantUpdateChannels: nil,
 		},
 		{
 			name: "error - non bool expression",
@@ -863,8 +956,9 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: errassert.ValidationErrorContains("Failed to compile filter expression:"),
-			count:     0,
+			assertErr:          errassert.ValidationErrorContains("Failed to compile filter expression:"),
+			wantServers:        nil,
+			wantUpdateChannels: nil,
 		},
 		{
 			name: "error - filter expression too long",
@@ -872,8 +966,9 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				Expression: new(strings.Repeat("(", 500_000)),
 			},
 
-			assertErr: errassert.ValidationErrorContains("Expression is too long"),
-			count:     0,
+			assertErr:          errassert.ValidationErrorContains("Expression is too long"),
+			wantServers:        nil,
+			wantUpdateChannels: nil,
 		},
 		{
 			name: "error - filter expression run",
@@ -886,30 +981,53 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: errassert.ValidationErrorContains("Failed to execute filter expression:"),
-			count:     0,
+			assertErr:          errassert.ValidationErrorContains("Failed to execute filter expression:"),
+			wantServers:        nil,
+			wantUpdateChannels: nil,
 		},
 		{
-			name: "error - upodateSvc.GetAllWithFilter",
+			name: "error - updateSvc.GetAllWithFilter",
 			filter: provisioning.ServerFilter{
 				Cluster: new("one"),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
-				provisioning.Server{
-					Name: "one",
-				},
-				provisioning.Server{
-					Name: "two",
-				},
+				newServer("one", "stable"),
+				newServer("two", "stable"),
 			},
-			updateSvcGetAllWithFilterErr: boom.Error,
+			updateSvcGetAllWithFilter: func(channel string) (provisioning.Updates, error) {
+				return nil, boom.Error
+			},
 
-			assertErr: boom.ErrorIs,
+			assertErr:          boom.ErrorIs,
+			wantServers:        nil,
+			wantUpdateChannels: []string{"stable"},
+		},
+		{
+			name: "error - updateSvc.GetAllWithFilter fails for second channel",
+			filter: provisioning.ServerFilter{
+				Cluster: new("one"),
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				newServer("one", "stable"),
+				newServer("two", "testing"),
+			},
+			updateSvcGetAllWithFilter: func(channel string) (provisioning.Updates, error) {
+				return updatesByChannel[channel], map[string]error{"testing": boom.Error}[channel]
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(tt, err, a...)
+				require.ErrorContains(tt, err, `"testing"`, "error names the channel that failed")
+			},
+			wantServers:        nil,
+			wantUpdateChannels: []string{"stable", "testing"},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup
 			repo := &repoMock.ServerRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
@@ -920,20 +1038,27 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
+			var gotUpdateChannels []string
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return provisioning.Updates{}, tc.updateSvcGetAllWithFilterErr
+					require.NotNil(t, filter.Channel, "update lookup must specify a channel")
+					gotUpdateChannels = append(gotUpdateChannels, *filter.Channel)
+					return tc.updateSvcGetAllWithFilter(*filter.Channel)
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
-			server, err := serverSvc.GetAllWithFilter(t.Context(), tc.filter)
+			servers, err := serverSvc.GetAllWithFilter(t.Context(), tc.filter)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, server, tc.count)
+			require.Equal(t, tc.wantServers, servers, "every server gets the version details of its own channel")
+			require.Equal(t, tc.wantUpdateChannels, gotUpdateChannels, "update service is called once per channel, in server order")
 		})
 	}
 }
