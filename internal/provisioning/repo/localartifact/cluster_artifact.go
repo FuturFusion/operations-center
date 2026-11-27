@@ -23,7 +23,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 )
 
 type clusterArtifact struct {
@@ -49,7 +51,7 @@ func New(db sqlite.DBTX, root *os.Root) *clusterArtifact {
 // must be a single file name, so the path cannot leave the root.
 func artifactPath(elements ...string) (string, error) {
 	for _, element := range elements {
-		if !file.IsPathElement(element) {
+		if !pathutil.IsPathElement(element) {
 			return "", domain.NewValidationErrf("Invalid cluster artifact, %q is not a valid file name", element)
 		}
 	}
@@ -266,7 +268,7 @@ func copyFile(srcRoot *os.Root, src string, dstRoot *os.Root, dst string) (_ int
 		err = errors.Join(err, destination.Close())
 	}()
 
-	nBytes, err := file.SafeCopy(destination, source)
+	nBytes, err := iox.SafeCopy(destination, source)
 	return nBytes, err
 }
 
@@ -390,7 +392,7 @@ func copyToZip(w io.Writer, root *os.Root, name string) error {
 
 	defer f.Close()
 
-	_, err = file.SafeCopy(w, f)
+	_, err = iox.SafeCopy(w, f)
 
 	return err
 }

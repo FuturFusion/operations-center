@@ -203,3 +203,83 @@ func TestDaemon_openSubRoot(t *testing.T) {
 		})
 	}
 }
+
+func TestDaemon_setupSystemService(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, cacheDir string)
+
+		assertErr  require.ErrorAssertionFunc
+		assertAcme func(t *testing.T, acmePath string)
+	}{
+		{
+			name: "success - acme directory is created",
+			setup: func(t *testing.T, cacheDir string) {
+				t.Helper()
+			},
+
+			assertErr: require.NoError,
+			assertAcme: func(t *testing.T, acmePath string) {
+				t.Helper()
+
+				info, err := os.Stat(acmePath)
+				require.NoError(t, err)
+				require.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "acme directory must only be accessible by the owner")
+			},
+		},
+		{
+			name: "error - acme is not a directory",
+			setup: func(t *testing.T, cacheDir string) {
+				t.Helper()
+
+				require.NoError(t, os.MkdirAll(cacheDir, 0o700))
+				require.NoError(t, os.WriteFile(filepath.Join(cacheDir, "acme"), nil, 0o600))
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to open acme directory", a...)
+			},
+			assertAcme: func(t *testing.T, acmePath string) {
+				t.Helper()
+
+				info, err := os.Stat(acmePath)
+				require.NoError(t, err)
+				require.False(t, info.IsDir(), "existing file must not be replaced")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tmpDir := t.TempDir()
+			cacheDir := filepath.Join(tmpDir, "cache")
+			tc.setup(t, cacheDir)
+
+			d := &Daemon{
+				env: &mock.EnvironmentMock{
+					VarDirFunc: func() string {
+						return filepath.Join(tmpDir, "var")
+					},
+					CacheDirFunc: func() string {
+						return cacheDir
+					},
+				},
+			}
+
+			require.NoError(t, d.openRoots())
+			t.Cleanup(func() { require.NoError(t, d.closeRoots()) })
+
+			// Run test
+			_, err := d.setupSystemService(nil)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertAcme(t, filepath.Join(cacheDir, "acme"))
+		})
+	}
+}

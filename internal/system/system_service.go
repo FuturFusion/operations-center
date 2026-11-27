@@ -27,7 +27,6 @@ import (
 
 type environment interface {
 	VarDir() string
-	CacheDir() string
 	IsIncusOS() bool
 }
 
@@ -37,42 +36,34 @@ type systemService struct {
 	cacheRepo       CacheRepo
 	certificateRepo CertificateRepo
 
-	acmeUpdateCertificateFunc func(
-		ctx context.Context,
-		fsEnv interface {
-			CacheDir() string
-		},
-		cfg system.SecurityACME,
-		current *x509.Certificate,
-		force bool,
-	) (*system.CertificatePost, error)
+	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc
 }
 
 var _ SystemService = &systemService{}
 
-type SystemServiceOption func(s *systemService)
+// ACMEUpdateCertificateFunc requests a certificate from the ACME server.
+type ACMEUpdateCertificateFunc func(
+	ctx context.Context,
+	cfg system.SecurityACME,
+	current *x509.Certificate,
+	force bool,
+) (*system.CertificatePost, error)
 
 func NewSystemService(
 	env environment,
 	serverSvc ProvisioningServerService,
 	cacheRepo CacheRepo,
 	certificateRepo CertificateRepo,
-	opts ...SystemServiceOption,
+	acmeUpdateCertificateFunc ACMEUpdateCertificateFunc,
 ) *systemService {
-	systemSvc := &systemService{
+	return &systemService{
 		env:             env,
 		serverSvc:       serverSvc,
 		cacheRepo:       cacheRepo,
 		certificateRepo: certificateRepo,
 
-		acmeUpdateCertificateFunc: acme.UpdateCertificate,
+		acmeUpdateCertificateFunc: acmeUpdateCertificateFunc,
 	}
-
-	for _, opt := range opts {
-		opt(systemSvc)
-	}
-
-	return systemSvc
 }
 
 func (s *systemService) GetCertificate(ctx context.Context) (system.Certificate, error) {
@@ -252,7 +243,7 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 
 	cfg := config.GetSecurity().ACME
 
-	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, cfg, current, force)
+	newCert, err := s.acmeUpdateCertificateFunc(ctx, cfg, current, force)
 	if err != nil {
 		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
 	}

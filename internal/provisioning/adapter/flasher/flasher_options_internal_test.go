@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -21,8 +20,8 @@ func TestNew_WithCacheUsage(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	noSpace := func() (file.UsageInformation, error) {
-		return file.UsageInformation{TotalSpaceBytes: 100, AvailableSpaceBytes: 1}, nil
+	noSpace := func() (domain.UsageInformation, error) {
+		return domain.UsageInformation{TotalSpaceBytes: 100, AvailableSpaceBytes: 1}, nil
 	}
 
 	tests := []struct {

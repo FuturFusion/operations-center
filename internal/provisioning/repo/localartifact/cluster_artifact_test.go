@@ -21,7 +21,7 @@ import (
 	clusterEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/cowsql/cowsqltest"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/iox"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/fsroot"
@@ -261,7 +261,7 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.Positive(t, size, 0) // we don't know the exact size of the zip archive, but it is required to be none 0.
 
 	buf := bytes.Buffer{}
-	n, err := file.SafeCopy(&buf, rc)
+	n, err := iox.SafeCopy(&buf, rc)
 	require.NoError(t, err)
 	require.Equal(t, int64(size), n)
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -434,7 +435,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 
-	d.systemSvc = d.setupSystemService(serverSvc)
+	d.systemSvc, err = d.setupSystemService(serverSvc)
+	if err != nil {
+		return err
+	}
 
 	// Background tasks
 	// Monitor lifecycle events before the other tasks, e.g. the initial inventory refresh.
@@ -1267,7 +1271,12 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 	)
 }
 
-func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
+func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) (system.SystemService, error) {
+	acmeRoot, err := d.openSubRoot(d.cacheRoot, "acme")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open acme directory: %w", err)
+	}
+
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(
 			d.env, serverSvc,
@@ -1276,8 +1285,16 @@ func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system
 			),
 			// Do not wrap with slog. This repo handles the private key of the server.
 			systemLocalfs.NewCertificate(d.varRoot),
+			func(
+				ctx context.Context,
+				cfg apisystem.SecurityACME,
+				current *x509.Certificate,
+				force bool,
+			) (*apisystem.CertificatePost, error) {
+				return acme.UpdateCertificate(ctx, acmeRoot, cfg, current, force)
+			},
 		),
-	)
+	), nil
 }
 
 // RestartRequested is signaled, once the daemon asks to be restarted.

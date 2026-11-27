@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/pathutil"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -116,7 +116,7 @@ func fixArchitectureMapping(architecture string) string {
 // name. The name is used to store the file. So it must not contain path
 // separators and it must not be "." or "..".
 func ValidateIncusImageFilename(filename string) error {
-	if !file.IsPathElement(filename) {
+	if !pathutil.IsPathElement(filename) {
 		return domain.NewValidationErrf("Invalid incus image, %q is not a valid file name", filename)
 	}
 
