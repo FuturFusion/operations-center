@@ -1952,6 +1952,7 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 		}
 
 		seed = tokenSeed.Seeds
+		seed.ApplyApplicationsDefault()
 	}
 
 	if tokenID == nil {

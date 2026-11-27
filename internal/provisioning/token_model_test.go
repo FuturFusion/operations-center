@@ -448,3 +448,109 @@ func TestSeedImageCacheID(t *testing.T) {
 		)
 	})
 }
+
+func TestTokenImageSeedConfigs_ApplyApplicationsDefault(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		applications api.SeedApplications
+
+		wantApplications api.SeedApplications
+	}{
+		{
+			name: "no applications and empty version",
+			applications: api.SeedApplications{
+				Version: "",
+			},
+
+			wantApplications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+		},
+		{
+			name: "no applications and version 1",
+			applications: api.SeedApplications{
+				Version:      "1",
+				Applications: []api.SeedApplication{},
+			},
+
+			wantApplications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+		},
+		{
+			name: "applications and empty version",
+			applications: api.SeedApplications{
+				Version: "",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+					{
+						Name: "debug",
+					},
+				},
+			},
+
+			wantApplications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus-lts-7.0",
+					},
+					{
+						Name: "debug",
+					},
+				},
+			},
+		},
+		{
+			name: "applications and version 1",
+			applications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "migration-manager",
+					},
+				},
+			},
+
+			wantApplications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "migration-manager",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			seeds := provisioning.TokenImageSeedConfigs{
+				Applications: tc.applications,
+			}
+
+			// Run test
+			seeds.ApplyApplicationsDefault()
+
+			// Assert
+			require.Equal(t, tc.wantApplications, seeds.Applications, "applications seed after applying the default")
+		})
+	}
+}

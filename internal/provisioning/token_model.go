@@ -64,6 +64,21 @@ type TokenImageSeedConfigs struct {
 	Update           api.SeedUpdate           `json:"update"`
 }
 
+// ApplyApplicationsDefault fills an empty application list with incus and an empty version with "1".
+func (t *TokenImageSeedConfigs) ApplyApplicationsDefault() {
+	if len(t.Applications.Applications) == 0 {
+		t.Applications.Applications = []api.SeedApplication{
+			{
+				Name: "incus",
+			},
+		}
+	}
+
+	if t.Applications.Version == "" {
+		t.Applications.Version = "1"
+	}
+}
+
 // ApplyTrustedClientCertificates passes the given X509 PEM encoded client
 // certificates trusted by Operations Center on to the deployed system, so
 // whoever has access to Operations Center also has access to what Operations
