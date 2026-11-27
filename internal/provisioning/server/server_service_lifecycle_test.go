@@ -1016,6 +1016,70 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			assertLog: log.Noop,
 		},
 		{
+			name: "error - not type incus - not a cluster member",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+						Type:   api.ServerTypeOperationsCenter,
+					},
+				},
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not of type "incus"`),
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - not a cluster member",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+						Type:   api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			doCallback: func(context.Context, func(context.Context, error)) {},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not a cluster member`),
+			assertLog: log.Noop,
+		},
+		{
+			name:     "error - not a cluster member - force",
+			argForce: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+						Type:   api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+			doCallback: func(context.Context, func(context.Context, error)) {},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not a cluster member`),
+			assertLog: log.Noop,
+		},
+		{
 			name: "error - cluster lifecycle operation not permitted",
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -1611,9 +1675,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "success - lifecycle operation permitted",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1637,9 +1702,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			name:             "success - cluster update",
 			argClusterUpdate: true,
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1662,9 +1728,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			name:     "success - force",
 			argForce: true,
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1687,9 +1754,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			name:             "success - cluster update - operation in flight",
 			argClusterUpdate: true,
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				StatusInternal: provisioning.ServerStatusInternal{
 					Update: &provisioning.ServerUpdate{
 						StartedAt:       time.Now(),
@@ -1716,9 +1784,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			name:             "success - cluster update - attempt limit reached",
 			argClusterUpdate: true,
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				StatusInternal: provisioning.ServerStatusInternal{
 					Update: &provisioning.ServerUpdate{
 						StartedAt: time.Now(),
@@ -1745,9 +1814,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - callback error",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1771,9 +1841,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - callback error - previous state transient",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1798,9 +1869,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			name:             "error - cluster update - callback error",
 			argClusterUpdate: true,
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1830,20 +1902,74 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - not type incus",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeOperationsCenter,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeOperationsCenter,
 			},
 
 			assertErr: errassert.OperationNotPermittedError,
 			assertLog: log.Noop,
 		},
 		{
-			name: "error - cluster lifecycle operation not permitted",
+			name: "error - not type incus - not a cluster member",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeOperationsCenter,
+			},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not of type "incus"`),
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - not a cluster member",
 			repoGetByName: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusReady,
 				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			doCallback: func(context.Context, func(context.Context, error)) {},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not a cluster member`),
+			assertLog: log.Noop,
+		},
+		{
+			name:     "error - not a cluster member - force",
+			argForce: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+			doCallback: func(context.Context, func(context.Context, error)) {},
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Server "one" is not a cluster member`),
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1860,9 +1986,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1884,9 +2011,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - client.Restore",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1908,9 +2036,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		{
 			name: "error - client.Restore and reverter error",
 			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
+				Name:    "one",
+				Cluster: new("cluster"),
+				Status:  api.ServerStatusReady,
+				Type:    api.ServerTypeIncus,
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
