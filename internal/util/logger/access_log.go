@@ -64,3 +64,9 @@ func (r *responseRecorder) WriteHeader(statusCode int) {
 	r.statusCode = statusCode
 	r.w.WriteHeader(statusCode)
 }
+
+// Unwrap gives http.ResponseController access to the wrapped writer.
+// Without it, httputil.ReverseProxy cannot flush or hijack the connection.
+func (r *responseRecorder) Unwrap() http.ResponseWriter {
+	return r.w
+}

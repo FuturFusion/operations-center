@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -237,6 +239,73 @@ func TestNewSanitizingProxy(t *testing.T) {
 			require.Equal(t, tc.wantBody, string(body), "body from upstream is passed through")
 		})
 	}
+}
+
+func TestNewSanitizingProxy_error(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		context func() context.Context
+
+		wantStatusCode int
+	}{
+		{
+			name:    "upstream fails",
+			context: context.Background,
+
+			wantStatusCode: http.StatusBadGateway,
+		},
+		{
+			name: "deadline exceeded",
+			context: func() context.Context {
+				ctx, cancel := context.WithDeadline(context.Background(), time.Time{})
+				t.Cleanup(cancel)
+
+				return ctx
+			},
+
+			wantStatusCode: http.StatusBadGateway,
+		},
+		{
+			name: "client canceled",
+			context: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+
+				return ctx
+			},
+
+			wantStatusCode: statusClientClosedRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			transport := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return nil, errors.New("connection refused")
+			})
+
+			proxy := newSanitizingProxy(transport, "https", "incusos.example")
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequestWithContext(tc.context(), http.MethodGet, "/", http.NoBody)
+
+			// Run test
+			proxy.ServeHTTP(rec, req)
+
+			// Assert
+			require.Equal(t, tc.wantStatusCode, rec.Code, "status code of a failed proxied request")
+		})
+	}
+}
+
+type roundTripFunc func(r *http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }
 
 // sanitizedResponseHeaderNames are the response headers the proxy sets or removes.

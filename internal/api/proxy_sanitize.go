@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -16,6 +18,10 @@ const oidcResponseHeaderPrefix = "X-Operationscenter-Oidc-"
 // proxyResponseContentSecurityPolicy prevents the browser from running script
 // from a proxied response on the Operations Center origin.
 const proxyResponseContentSecurityPolicy = "sandbox; default-src 'none'; frame-ancestors 'none'"
+
+// statusClientClosedRequest is the non-standard status code 499 for a request
+// the client canceled before the response. The code is not a server error.
+const statusClientClosedRequest = 499
 
 // proxyResponseAllowedMediaTypes are the media types IncusOS returns. The proxy
 // replaces any other media type with application/octet-stream.
@@ -40,7 +46,26 @@ func newSanitizingProxy(transport http.RoundTripper, scheme string, host string)
 			stripClientCredentials(r)
 		},
 		ModifyResponse: sanitizeResponse,
+		ErrorHandler:   proxyErrorHandler,
 	}
+}
+
+// proxyErrorHandler replaces the default error handler of
+// httputil.ReverseProxy. The default always writes 502, also if the client
+// canceled the request.
+func proxyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(r.Context().Err(), context.Canceled) {
+		slog.DebugContext(r.Context(), "Client canceled proxied request", logger.Err(err))
+		w.WriteHeader(statusClientClosedRequest)
+		return
+	}
+
+	slog.WarnContext(r.Context(), "Proxied request failed",
+		slog.String("path", r.URL.Path),
+		logger.Err(err),
+	)
+
+	w.WriteHeader(http.StatusBadGateway)
 }
 
 // stripClientCredentials removes the credentials of the Operations Center user
