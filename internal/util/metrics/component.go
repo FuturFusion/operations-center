@@ -87,15 +87,24 @@ func Apply(enabled bool, names []string) {
 }
 
 // SetEnabledComponents enables the components with the given names and their
-// children. All other components are disabled.
+// children. All other components are disabled. A component that becomes
+// disabled loses its call series.
 func SetEnabledComponents(names []string) {
 	componentsMu.Lock()
 	defer componentsMu.Unlock()
 
 	enabledNames = slices.Clone(names)
 
+	callSeriesMu.Lock()
+	defer callSeriesMu.Unlock()
+
 	for name, c := range components {
-		c.enabled.Store(isEnabled(name, enabledNames))
+		enabled := isEnabled(name, enabledNames)
+
+		wasEnabled := c.enabled.Swap(enabled)
+		if wasEnabled && !enabled {
+			deleteCallSeries(name)
+		}
 	}
 }
 

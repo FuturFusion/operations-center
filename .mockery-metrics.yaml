@@ -1,0 +1,42 @@
+---
+
+all: False
+template: file://./internal/util/metrics/metrics.gotmpl
+require-template-schema-exists: false
+force-file-write: true
+formatter: goimports
+formatter-options:
+  goimports:
+    local-prefix: github.com/FuturFusion/operations-center
+    tab-indent: true
+include-auto-generated: true
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service)"
+exclude-interface-regex: "Provisioning.+Service"
+dir: >-
+  {{- $targetDir := "middleware" -}}
+  {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
+    {{- $targetDir = "server/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Repo" -}}
+    {{- $targetDir = "repo/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Port" -}}
+    {{- if .InterfaceDir | contains "adapter" -}}
+      {{- $targetDir = "../middleware" -}}
+    {{- else -}}
+      {{- $targetDir = "adapter/middleware" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: >-
+  {{ .InterfaceName | snakecase }}_metrics_gen.go
+structname: "{{ .InterfaceName }}WithMetrics"
+pkgname: middleware
+packages:
+  github.com/FuturFusion/operations-center/internal/cluster:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/image:
+  github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:
+  github.com/FuturFusion/operations-center/internal/system:
+  github.com/FuturFusion/operations-center/internal/warning:
