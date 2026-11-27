@@ -60,13 +60,14 @@ var ocObjectKinds = []ocObjectKind{
 	},
 	{
 		name:   "image source",
-		list:   `../bin/operations-center.linux.%s image incus source list -f json | jq -c '[ .[].name ]'`,
-		remove: `../bin/operations-center.linux.%s image incus source remove %s`,
-	},
-	{
-		name:   "image",
 		list:   `../bin/operations-center.linux.%s image incus list -f json | jq -c '[ .[].name ]'`,
 		remove: `../bin/operations-center.linux.%s image incus remove %s`,
+	},
+	{
+		name: "image",
+		// Images of other sources are removed together with their source.
+		list:   `../bin/operations-center.linux.%s image incus image list local -f json | jq -c '[ .[].name ]'`,
+		remove: `../bin/operations-center.linux.%s image incus image remove local %s`,
 	},
 }
 

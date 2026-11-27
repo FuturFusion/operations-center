@@ -17,20 +17,39 @@ type imageSourceHandler struct {
 	service image.IncusImageSourceService
 }
 
-func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, service image.IncusImageSourceService) {
+func registerIncusImageSourcesAndImagesHandler(router Router, simplestreamsRouter Router, authorizer *authz.Authorizer, sourceService image.IncusImageSourceService, imageService image.ImageIncusService) {
 	handler := &imageSourceHandler{
-		service: service,
+		service: sourceService,
 	}
+
+	imageHandler := &imageIncusHandler{
+		service:       imageService,
+		sourceService: sourceService,
+	}
+
+	// public simplestreams routes, available without authentication
+	simplestreamsRouter.HandleFunc("GET /streams/v1/index.json", response.With(imageHandler.simplestreamsPublicIndexGet))
+	simplestreamsRouter.HandleFunc("GET /streams/v1/images.json", response.With(imageHandler.simplestreamsPublicImagesGet))
+	// Allow download of incus image files without authentication
+	simplestreamsRouter.HandleFunc("GET /1.0/images/incus/{source}/images/{name}/{version}/{filename}", response.With(imageHandler.incusImageVersionFileGet))
 
 	router.HandleFunc("GET /{$}", response.With(handler.imageSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{$}", response.With(handler.imageSourcesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
-	router.HandleFunc("GET /{name}", response.With(handler.imageSourceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("PUT /{name}", response.With(handler.imageSourcePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("DELETE /{name}", response.With(handler.imageSourceDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("POST /{name}/:refresh", response.With(handler.imageSourceRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{source}", response.With(handler.imageSourceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{source}", response.With(handler.imageSourcePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("DELETE /{source}", response.With(handler.imageSourceDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /{source}/:refresh", response.With(handler.imageSourceRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+
+	router.HandleFunc("GET /{source}/images", response.With(imageHandler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{source}/images", response.With(imageHandler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{source}/images/{name}", response.With(imageHandler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{source}/images/{name}", response.With(imageHandler.incusImagePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("DELETE /{source}/images/{name}", response.With(imageHandler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("DELETE /{source}/images/{name}/{version}", response.With(imageHandler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("GET /{source}/images/{name}/{version}/{filename}", response.With(imageHandler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
-// swagger:operation GET /1.0/images/incus/sources image_sources image_sources_get
+// swagger:operation GET /1.0/images/incus image_sources image_sources_get
 //
 //	Get the list of image sources
 //
@@ -47,7 +66,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/images/incus/sources?recursion=1 image_sources image_sources_get_recursion
+// swagger:operation GET /1.0/images/incus?recursion=1 image_sources image_sources_get_recursion
 //
 //	Get the list of image sources
 //
@@ -96,13 +115,13 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(imageSourceNames))
 	for _, name := range imageSourceNames {
-		result = append(result, fmt.Sprintf("/%s/images/incus/sources/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/images/incus/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/images/incus/sources image_sources image_sources_post
+// swagger:operation POST /1.0/images/incus image_sources image_sources_post
 //
 //	Add an image source
 //
@@ -147,10 +166,10 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 		return response.SmartError(fmt.Errorf("Failed creating image source: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/sources/"+newImageSource.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+newImageSource.Name)
 }
 
-// swagger:operation GET /1.0/images/incus/sources/{name} image_sources image_source_get
+// swagger:operation GET /1.0/images/incus/{source} image_sources image_source_get
 //
 //	Get the image source
 //
@@ -161,7 +180,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 //	  - application/json
 //	parameters:
 //	  - in: path
-//	    name: name
+//	    name: source
 //	    description: Name of the source
 //	    type: string
 //	    required: true
@@ -175,7 +194,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
-	name := r.PathValue("name")
+	name := r.PathValue("source")
 
 	imageSource, err := i.service.GetByName(r.Context(), name)
 	if err != nil {
@@ -200,7 +219,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/images/incus/sources/{name} image_sources image_source_put
+// swagger:operation PUT /1.0/images/incus/{source} image_sources image_source_put
 //
 //	Update the image source
 //
@@ -213,7 +232,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	  - application/json
 //	parameters:
 //	  - in: path
-//	    name: name
+//	    name: source
 //	    description: Name of the source
 //	    type: string
 //	    required: true
@@ -237,7 +256,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
-	name := r.PathValue("name")
+	name := r.PathValue("source")
 
 	var imageSource api.ImageSourcePut
 
@@ -275,7 +294,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 	return response.SyncResponse(true, nil)
 }
 
-// swagger:operation DELETE /1.0/images/incus/sources/{name} image_sources image_source_delete
+// swagger:operation DELETE /1.0/images/incus/{source} image_sources image_source_delete
 //
 //	Delete the image source
 //
@@ -286,7 +305,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	  - application/json
 //	parameters:
 //	  - in: path
-//	    name: name
+//	    name: source
 //	    description: Name of the source
 //	    type: string
 //	    required: true
@@ -302,7 +321,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Response {
-	name := r.PathValue("name")
+	name := r.PathValue("source")
 
 	err := i.service.DeleteByName(r.Context(), name)
 	if err != nil {
@@ -312,7 +331,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_sources image_source_refresh_post
+// swagger:operation POST /1.0/images/incus/{source}/:refresh image_sources image_source_refresh_post
 //
 //	Refresh the image source
 //
@@ -325,7 +344,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	  - application/json
 //	parameters:
 //	  - in: path
-//	    name: name
+//	    name: source
 //	    description: Name of the source
 //	    type: string
 //	    required: true
@@ -341,7 +360,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceRefreshPost(r *http.Request) response.Response {
-	name := r.PathValue("name")
+	name := r.PathValue("source")
 
 	err := i.service.RefreshByName(r.Context(), name)
 	if err != nil {

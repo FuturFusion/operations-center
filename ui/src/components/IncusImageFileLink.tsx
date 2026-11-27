@@ -4,17 +4,18 @@ import { downloadIncusImageFile } from "api/image_incus";
 import { downloadFile } from "util/util";
 
 type Props = {
+  source: string;
   name: string;
   version: string;
   filename: string;
 };
 
-const IncusImageFileLink: FC<Props> = ({ name, version, filename }) => {
+const IncusImageFileLink: FC<Props> = ({ source, name, version, filename }) => {
   const { notify } = useNotification();
 
   const handleDownload = async () => {
     try {
-      const url = await downloadIncusImageFile(name, version, filename);
+      const url = await downloadIncusImageFile(source, name, version, filename);
 
       downloadFile(url, filename);
     } catch (error) {

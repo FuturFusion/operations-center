@@ -9,6 +9,7 @@ terminology of Operations Center.
 API </reference/api>
 Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
+Incus images </reference/image>
 Inventory </reference/inventory>
 Metrics </reference/metrics>
 Server </reference/server>

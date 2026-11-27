@@ -28,6 +28,8 @@ func Test_GetIncusImages(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		tcSourceArg string
+
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result []api.IncusImage)
 	}{
@@ -35,6 +37,8 @@ func Test_GetIncusImages(t *testing.T) {
 			name:       "success - empty list",
 			client:     d.socketClient,
 			dbSeedFunc: noop,
+
+			tcSourceArg: api.IncusImageSourceLocal,
 
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T, result []api.IncusImage) {
@@ -53,6 +57,8 @@ func Test_GetIncusImages(t *testing.T) {
 				seedIncusImage(t, d)
 			},
 
+			tcSourceArg: api.IncusImageSourceLocal,
+
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T, result []api.IncusImage) {
 				t.Helper()
@@ -63,9 +69,25 @@ func Test_GetIncusImages(t *testing.T) {
 			},
 		},
 		{
+			name:       "error - unknown source",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			tcSourceArg: "unknown",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+			},
+			assertFunc: func(t *testing.T, result []api.IncusImage) {
+				t.Helper()
+			},
+		},
+		{
 			name:       "error - not authorized",
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
+
+			tcSourceArg: api.IncusImageSourceLocal,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -80,7 +102,7 @@ func Test_GetIncusImages(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetIncusImages(t.Context())
+			result, err := tc.client.GetIncusImages(t.Context(), tc.tcSourceArg)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)
@@ -96,7 +118,8 @@ func Test_GetIncusImage(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		tcNameArg string
+		tcSourceArg string
+		tcNameArg   string
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T, result api.IncusImage)
@@ -110,7 +133,8 @@ func Test_GetIncusImage(t *testing.T) {
 				seedIncusImage(t, d)
 			},
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T, result api.IncusImage) {
@@ -129,7 +153,8 @@ func Test_GetIncusImage(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -143,7 +168,8 @@ func Test_GetIncusImage(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "almalinux:9:amd64:default",
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   "almalinux:9:amd64:default",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
@@ -157,10 +183,26 @@ func Test_GetIncusImage(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "not-a-valid-image-name",
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   "not-a-valid-image-name",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `expect name in the format "os:release:architecture:variant"`)
+			},
+			assertFunc: func(t *testing.T, result api.IncusImage) {
+				t.Helper()
+			},
+		},
+		{
+			name:       "error - invalid source name",
+			client:     d.socketClient,
+			dbSeedFunc: noop,
+
+			tcSourceArg: "my-source",
+			tcNameArg:   incusImageName,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "can only contain lower case letters, digits and underscores")
 			},
 			assertFunc: func(t *testing.T, result api.IncusImage) {
 				t.Helper()
@@ -172,7 +214,7 @@ func Test_GetIncusImage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetIncusImage(t.Context(), tc.tcNameArg)
+			result, err := tc.client.GetIncusImage(t.Context(), tc.tcSourceArg, tc.tcNameArg)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)
@@ -188,8 +230,9 @@ func Test_UpdateIncusImage(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		tcNameArg  string
-		incusImage api.IncusImagePut
+		tcSourceArg string
+		tcNameArg   string
+		incusImage  api.IncusImagePut
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T)
@@ -203,7 +246,8 @@ func Test_UpdateIncusImage(t *testing.T) {
 				seedIncusImage(t, d)
 			},
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 			incusImage: api.IncusImagePut{
 				Aliases:     api.IncusImageAlias{"almalinux/10/amd64"},
 				Description: "updated description",
@@ -213,7 +257,7 @@ func Test_UpdateIncusImage(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				incusImage, err := d.socketClient.GetIncusImage(t.Context(), incusImageName)
+				incusImage, err := d.socketClient.GetIncusImage(t.Context(), api.IncusImageSourceLocal, incusImageName)
 				require.NoError(t, err)
 				require.Equal(t, "updated description", incusImage.Description)
 				require.Equal(t, api.IncusImageAlias{"almalinux/10/amd64"}, incusImage.Aliases)
@@ -224,7 +268,8 @@ func Test_UpdateIncusImage(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -236,7 +281,8 @@ func Test_UpdateIncusImage(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "almalinux:9:amd64:default",
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   "almalinux:9:amd64:default",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
@@ -248,7 +294,8 @@ func Test_UpdateIncusImage(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: "not-a-valid-image-name",
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   "not-a-valid-image-name",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `expect name in the format "os:release:architecture:variant"`)
@@ -261,7 +308,7 @@ func Test_UpdateIncusImage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			err := tc.client.UpdateIncusImage(t.Context(), tc.tcNameArg, tc.incusImage)
+			err := tc.client.UpdateIncusImage(t.Context(), tc.tcSourceArg, tc.tcNameArg, tc.incusImage)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -277,6 +324,7 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		tcSourceArg   string
 		tcNameArg     string
 		tcVersionArg  string
 		tcFilenameArg string
@@ -291,9 +339,10 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 				t.Helper()
 
 				seedIncusImage(t, d)
-				seedFile(t, d, filepath.Join("images", "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
+				seedFile(t, d, filepath.Join("images", api.IncusImageSourceLocal, "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
 			},
 
+			tcSourceArg:   api.IncusImageSourceLocal,
 			tcNameArg:     incusImageName,
 			tcVersionArg:  incusImageVersion,
 			tcFilenameArg: "incus.tar.xz",
@@ -314,6 +363,7 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:   api.IncusImageSourceLocal,
 			tcNameArg:     incusImageName,
 			tcVersionArg:  incusImageVersion,
 			tcFilenameArg: "incus.tar.xz",
@@ -330,6 +380,7 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:   api.IncusImageSourceLocal,
 			tcNameArg:     "almalinux:9:amd64:default",
 			tcVersionArg:  incusImageVersion,
 			tcFilenameArg: "incus.tar.xz",
@@ -346,6 +397,7 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:   api.IncusImageSourceLocal,
 			tcNameArg:     incusImageName,
 			tcVersionArg:  incusImageVersion,
 			tcFilenameArg: "unknown.tar.xz",
@@ -359,7 +411,7 @@ func Test_GetIncusImageVersionFile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			result, err := tc.client.GetIncusImageVersionFile(t.Context(), tc.tcNameArg, tc.tcVersionArg, tc.tcFilenameArg)
+			result, err := tc.client.GetIncusImageVersionFile(t.Context(), tc.tcSourceArg, tc.tcNameArg, tc.tcVersionArg, tc.tcFilenameArg)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t, result)
@@ -375,6 +427,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
+		tcSourceArg  string
 		tcNameArg    string
 		tcVersionArg string
 
@@ -388,9 +441,10 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 				t.Helper()
 
 				seedIncusImage(t, d)
-				seedFile(t, d, filepath.Join("images", "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
+				seedFile(t, d, filepath.Join("images", api.IncusImageSourceLocal, "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
 			},
 
+			tcSourceArg:  api.IncusImageSourceLocal,
 			tcNameArg:    incusImageName,
 			tcVersionArg: incusImageVersion,
 
@@ -398,7 +452,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				incusImage, err := d.socketClient.GetIncusImage(t.Context(), incusImageName)
+				incusImage, err := d.socketClient.GetIncusImage(t.Context(), api.IncusImageSourceLocal, incusImageName)
 				require.NoError(t, err)
 				require.Empty(t, incusImage.Versions)
 			},
@@ -408,6 +462,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:  api.IncusImageSourceLocal,
 			tcNameArg:    incusImageName,
 			tcVersionArg: incusImageVersion,
 
@@ -421,6 +476,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:  api.IncusImageSourceLocal,
 			tcNameArg:    incusImageName,
 			tcVersionArg: "202512311200",
 
@@ -434,6 +490,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
+			tcSourceArg:  api.IncusImageSourceLocal,
 			tcNameArg:    "almalinux:9:amd64:default",
 			tcVersionArg: incusImageVersion,
 
@@ -448,7 +505,7 @@ func Test_DeleteIncusImageVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			err := tc.client.DeleteIncusImageVersion(t.Context(), tc.tcNameArg, tc.tcVersionArg)
+			err := tc.client.DeleteIncusImageVersion(t.Context(), tc.tcSourceArg, tc.tcNameArg, tc.tcVersionArg)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -464,7 +521,8 @@ func Test_DeleteIncusImage(t *testing.T) {
 		client     client.OperationsCenterClient
 		dbSeedFunc func(t *testing.T)
 
-		tcNameArg string
+		tcSourceArg string
+		tcNameArg   string
 
 		assertErr  require.ErrorAssertionFunc
 		assertFunc func(t *testing.T)
@@ -476,16 +534,17 @@ func Test_DeleteIncusImage(t *testing.T) {
 				t.Helper()
 
 				seedIncusImage(t, d)
-				seedFile(t, d, filepath.Join("images", "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
+				seedFile(t, d, filepath.Join("images", api.IncusImageSourceLocal, "almalinux", "10", "amd64", "default", incusImageVersion, "incus.tar.xz"), []byte("image-metadata"))
 			},
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: require.NoError,
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				_, err := d.socketClient.GetIncusImage(t.Context(), incusImageName)
+				_, err := d.socketClient.GetIncusImage(t.Context(), api.IncusImageSourceLocal, incusImageName)
 				require.ErrorIs(t, err, domain.ErrNotFound)
 			},
 		},
@@ -494,7 +553,8 @@ func Test_DeleteIncusImage(t *testing.T) {
 			client:     d.unauthorizedHTTPClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthenticated)
@@ -506,7 +566,8 @@ func Test_DeleteIncusImage(t *testing.T) {
 			client:     d.socketClient,
 			dbSeedFunc: noop,
 
-			tcNameArg: incusImageName,
+			tcSourceArg: api.IncusImageSourceLocal,
+			tcNameArg:   incusImageName,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotFound)
@@ -519,7 +580,7 @@ func Test_DeleteIncusImage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.dbSeedFunc(t)
 
-			err := tc.client.DeleteIncusImage(t.Context(), tc.tcNameArg)
+			err := tc.client.DeleteIncusImage(t.Context(), tc.tcSourceArg, tc.tcNameArg)
 
 			tc.assertErr(t, err)
 			tc.assertFunc(t)
@@ -540,6 +601,7 @@ func seedIncusImage(t *testing.T, d testDaemon) {
 	t.Helper()
 
 	_, err := imageEntities.CreateIncusImage(t.Context(), d.db, image.IncusImage{
+		Source:          api.IncusImageSourceLocal,
 		Name:            incusImageName,
 		Aliases:         []string{"almalinux/10"},
 		Description:     "AlmaLinux 10",
@@ -552,7 +614,7 @@ func seedIncusImage(t *testing.T, d testDaemon) {
 				Items: map[string]api.IncusImageVersionItem{
 					"incus.tar.xz": {
 						FileType: "incus.tar.xz",
-						Path:     "images/almalinux/10/amd64/default/" + incusImageVersion + "/incus.tar.xz",
+						Path:     "images/local/almalinux/10/amd64/default/" + incusImageVersion + "/incus.tar.xz",
 						Size:     14,
 					},
 				},

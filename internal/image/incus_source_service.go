@@ -2,10 +2,12 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type incusSourceService struct {
@@ -70,6 +72,10 @@ func (s *incusSourceService) GetByName(ctx context.Context, name string) (*Incus
 }
 
 func (s *incusSourceService) Update(ctx context.Context, newSource IncusImageSource) error {
+	if newSource.Name == api.IncusImageSourceLocal {
+		return errLocalSourceReadOnly()
+	}
+
 	err := newSource.Validate(ctx, s.incusImageSource)
 	if err != nil {
 		return fmt.Errorf("Validation failed for image source: %w", err)
@@ -81,6 +87,10 @@ func (s *incusSourceService) Update(ctx context.Context, newSource IncusImageSou
 func (s *incusSourceService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
 		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Image source name cannot be empty")
+	}
+
+	if name == api.IncusImageSourceLocal {
+		return errLocalSourceReadOnly()
 	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -104,6 +114,10 @@ func (s *incusSourceService) DeleteByName(ctx context.Context, name string) erro
 }
 
 func (s *incusSourceService) RefreshByName(ctx context.Context, name string) error {
+	if name == api.IncusImageSourceLocal {
+		return errLocalSourceReadOnly()
+	}
+
 	source, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Sync sources failed to sources: %w", err)
@@ -123,12 +137,22 @@ func (s *incusSourceService) RefreshAll(ctx context.Context) error {
 		return fmt.Errorf("Sync sources failed to sources: %w", err)
 	}
 
+	// A failing source must not block the refresh of the other sources.
+	var errs []error
 	for _, source := range sources {
+		if source.Name == api.IncusImageSourceLocal {
+			continue
+		}
+
 		err = s.incusImageSource.RefreshFromSource(ctx, source)
 		if err != nil {
-			return fmt.Errorf("Sync source %q failed: %w", source.Name, err)
+			errs = append(errs, fmt.Errorf("Sync source %q failed: %w", source.Name, err))
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
+}
+
+func errLocalSourceReadOnly() error {
+	return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Image source %q holds the manually uploaded images and can not be changed", api.IncusImageSourceLocal)
 }

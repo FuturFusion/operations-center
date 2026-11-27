@@ -3,10 +3,37 @@ package image
 import (
 	"context"
 	"net/url"
+	"regexp"
+	"slices"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+// The source name is used in image paths, file paths and API paths.
+var incusImageSourceNameRegexp = regexp.MustCompile(`^[a-z0-9_]+$`)
+
+// "create" clashes with the UI route to create a source.
+var reservedIncusImageSourceNames = []string{api.IncusImageSourceLocal, "create"}
+
+// ValidateIncusImageSourceName checks that name only contains lower case
+// letters, digits and underscores and is not reserved.
+func ValidateIncusImageSourceName(name string) error {
+	if name == "" {
+		return domain.NewValidationErrf("Invalid source, name can not be empty")
+	}
+
+	if !incusImageSourceNameRegexp.MatchString(name) {
+		return domain.NewValidationErrf("Invalid source, name %q can only contain lower case letters, digits and underscores", name)
+	}
+
+	if slices.Contains(reservedIncusImageSourceNames, name) {
+		return domain.NewValidationErrf("Invalid source, name %q is reserved", name)
+	}
+
+	return nil
+}
 
 type IncusImageSource struct {
 	ID               int64  `json:"-"`
@@ -18,13 +45,15 @@ type IncusImageSource struct {
 }
 
 func (s IncusImageSource) Validate(ctx context.Context, incusImageSource IncusImageSourcePort) error {
-	if s.Name == "" {
-		return domain.NewValidationErrf("Invalid source, name can not be empty")
+	err := ValidateIncusImageSourceName(s.Name)
+	if err != nil {
+		return err
 	}
 
-	_, err := url.Parse(s.URL)
+	// The URL is unique. The local source uses the empty URL.
+	err = validateIncusImageSourceURL(s.URL)
 	if err != nil {
-		return domain.NewValidationErrf("Invalid URL: %v", err)
+		return err
 	}
 
 	if s.FilterExpression == "" {
@@ -34,6 +63,24 @@ func (s IncusImageSource) Validate(ctx context.Context, incusImageSource IncusIm
 	err = incusImageSource.ValidateFilterExpression(ctx, s.FilterExpression)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid source, failed to validate filter expression: %v", err)
+	}
+
+	return nil
+}
+
+func validateIncusImageSourceURL(rawURL string) error {
+	if rawURL == "" {
+		return domain.NewValidationErrf("Invalid source, URL can not be empty")
+	}
+
+	sourceURL, err := url.Parse(rawURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid URL: %v", err)
+	}
+
+	// The image source is fetched with HTTP.
+	if sourceURL.Scheme != "http" && sourceURL.Scheme != "https" {
+		return domain.NewValidationErrf("Invalid URL %q, the scheme needs to be http or https", rawURL)
 	}
 
 	return nil

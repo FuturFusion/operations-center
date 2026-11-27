@@ -79,12 +79,13 @@ func (_d ImageIncusRepoWithSlog) Create(ctx context.Context, newIncusImage image
 }
 
 // DeleteByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, source string, name string) (err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 		)
 	}
@@ -106,16 +107,17 @@ func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, name string) 
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByName(ctx, name)
+	return _d._base.DeleteByName(ctx, source, name)
 }
 
 // ExistsByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, source string, name string) (b bool, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 		)
 	}
@@ -138,7 +140,7 @@ func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, name string) 
 			log.DebugContext(ctx, "<= method ExistsByName finished")
 		}
 	}()
-	return _d._base.ExistsByName(ctx, name)
+	return _d._base.ExistsByName(ctx, source, name)
 }
 
 // GetAll implements image.ImageIncusRepo.
@@ -170,37 +172,6 @@ func (_d ImageIncusRepoWithSlog) GetAll(ctx context.Context) (incusImages image.
 		}
 	}()
 	return _d._base.GetAll(ctx)
-}
-
-// GetAllNames implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	ctx = logger.ContextWithComponent(ctx, _d._component)
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.DebugContext(ctx, "=> calling GetAllNames")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("strings", strings),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			log.DebugContext(ctx, "<= method GetAllNames returned an error")
-		} else {
-			log.DebugContext(ctx, "<= method GetAllNames finished")
-		}
-	}()
-	return _d._base.GetAllNames(ctx)
 }
 
 // GetAllWithFilter implements image.ImageIncusRepo.
@@ -236,12 +207,13 @@ func (_d ImageIncusRepoWithSlog) GetAllWithFilter(ctx context.Context, filter im
 }
 
 // GetByName implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
+func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, source string, name string) (incusImage *image.IncusImage, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.String("source", source),
 			slog.String("name", name),
 		)
 	}
@@ -264,7 +236,7 @@ func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (in
 			log.DebugContext(ctx, "<= method GetByName finished")
 		}
 	}()
-	return _d._base.GetByName(ctx, name)
+	return _d._base.GetByName(ctx, source, name)
 }
 
 // Update implements image.ImageIncusRepo.

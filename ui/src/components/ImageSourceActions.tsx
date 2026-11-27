@@ -6,6 +6,7 @@ import { deleteImageSource, refreshImageSource } from "api/image_incus_source";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { ImageSource } from "types/image_incus_source";
+import { localImageSourceName } from "util/image_source";
 import { errorMessage } from "util/response";
 
 interface Props {
@@ -28,7 +29,9 @@ const ImageSourceActions: FC<Props> = ({ source }) => {
         if (response.error_code == 0) {
           notify.success(`Refresh of image source ${source.name} triggered`);
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
-          queryClient.invalidateQueries({ queryKey: ["incus-images"] });
+          queryClient.invalidateQueries({
+            queryKey: ["incus-images", source.name],
+          });
           return;
         }
         notify.error(errorMessage(response));
@@ -54,6 +57,10 @@ const ImageSourceActions: FC<Props> = ({ source }) => {
         notify.error(`Error during image source deletion: ${e}`);
       });
   };
+
+  if (source.name == localImageSourceName) {
+    return null;
+  }
 
   return (
     <div className="d-flex gap-2">

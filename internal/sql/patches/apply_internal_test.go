@@ -40,7 +40,7 @@ func TestApply_clusterPatchOnce(t *testing.T) {
 	running := make(chan struct{})
 	release := make(chan struct{})
 
-	setPatches(t, []patch{{name: "cluster", stage: PreSecurityInfrastructure, scope: scopeCluster, run: func(ctx context.Context, name string, _ *os.Root) error {
+	setPatches(t, []patch{{name: "cluster", stage: PreSecurityInfrastructure, scope: scopeCluster, run: func(ctx context.Context, name string, _ dbdriver.DBTX, _ *os.Root) error {
 		if runs.Add(1) == 1 {
 			close(running)
 			<-release
@@ -68,7 +68,7 @@ func TestApply_clusterPatchOnce(t *testing.T) {
 
 func TestApply_memberPatchOnEveryMember(t *testing.T) {
 	var runs atomic.Int32
-	setPatches(t, []patch{{name: "member", stage: PreSecurityInfrastructure, scope: scopeMember, run: func(ctx context.Context, name string, _ *os.Root) error {
+	setPatches(t, []patch{{name: "member", stage: PreSecurityInfrastructure, scope: scopeMember, run: func(ctx context.Context, name string, _ dbdriver.DBTX, _ *os.Root) error {
 		runs.Add(1)
 		return nil
 	}}})
@@ -90,7 +90,7 @@ func TestApply_failedClusterPatchRunsAgain(t *testing.T) {
 	fail := true
 
 	var runs atomic.Int32
-	setPatches(t, []patch{{name: "cluster", stage: PreSecurityInfrastructure, scope: scopeCluster, run: func(ctx context.Context, name string, _ *os.Root) error {
+	setPatches(t, []patch{{name: "cluster", stage: PreSecurityInfrastructure, scope: scopeCluster, run: func(ctx context.Context, name string, _ dbdriver.DBTX, _ *os.Root) error {
 		runs.Add(1)
 		if fail {
 			return boom

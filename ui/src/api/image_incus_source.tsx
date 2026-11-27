@@ -2,9 +2,13 @@ import { APIResponse } from "types/response";
 import { ImageSource } from "types/image_incus_source";
 import { processResponse } from "util/response";
 
+const imageSourceURL = (name: string): string => {
+  return `/1.0/images/incus/${encodeURIComponent(name)}`;
+};
+
 export const fetchImageSources = (): Promise<ImageSource[]> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources?recursion=1`)
+    fetch(`/1.0/images/incus?recursion=1`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -13,7 +17,7 @@ export const fetchImageSources = (): Promise<ImageSource[]> => {
 
 export const fetchImageSource = (name: string): Promise<ImageSource> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources/${name}`)
+    fetch(imageSourceURL(name))
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -22,7 +26,7 @@ export const fetchImageSource = (name: string): Promise<ImageSource> => {
 
 export const createImageSource = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources`, {
+    fetch(`/1.0/images/incus`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,7 +44,7 @@ export const updateImageSource = (
   body: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources/${name}`, {
+    fetch(imageSourceURL(name), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -55,7 +59,7 @@ export const updateImageSource = (
 
 export const deleteImageSource = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources/${name}`, {
+    fetch(imageSourceURL(name), {
       method: "DELETE",
     })
       .then((response) => response.json())
@@ -68,7 +72,7 @@ export const refreshImageSource = (
   name: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/sources/${name}/:refresh`, {
+    fetch(`${imageSourceURL(name)}/:refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

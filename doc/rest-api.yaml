@@ -1793,14 +1793,16 @@ definitions:
         properties:
             filter_expression:
                 description: |-
-                    FilterExression applied when fetching images from the image source.
-                    Only images matching the filter expression are fetched.
-                example: Architecture == "amd64"
+                    FilterExpression applied to each file when fetching images from the image
+                    source. Only files matching the filter expression are fetched.
+                example: architecture == "amd64"
                 type: string
                 x-go-name: FilterExpression
             name:
-                description: Name of the image source.
-                example: linuxcontainers.org
+                description: |-
+                    Name of the image source. It can only contain lower case letters, digits
+                    and underscores. The names "local" and "create" are reserved.
+                example: linuxcontainers
                 type: string
                 x-go-name: Name
             url:
@@ -1814,9 +1816,9 @@ definitions:
         properties:
             filter_expression:
                 description: |-
-                    FilterExression applied when fetching images from the image source.
-                    Only images matching the filter expression are fetched.
-                example: Architecture == "amd64"
+                    FilterExpression applied to each file when fetching images from the image
+                    source. Only files matching the filter expression are fetched.
+                example: architecture == "amd64"
                 type: string
                 x-go-name: FilterExpression
             url:
@@ -1851,7 +1853,9 @@ definitions:
                 type: string
                 x-go-name: LastUpdated
             name:
-                description: Name of the incus image in the format "os:release:architecture:variant".
+                description: |-
+                    Name of the incus image in the format "os:release:architecture:variant" in lower case.
+                    The name is unique per source.
                 example: almalinux:10:amd64:cloud
                 type: string
                 x-go-name: Name
@@ -1865,6 +1869,13 @@ definitions:
                 example: "10"
                 type: string
                 x-go-name: Release
+            source:
+                description: |-
+                    Source is the name of the image source of the incus image. Manually
+                    uploaded images have the source "local".
+                example: local
+                type: string
+                x-go-name: Source
             variant:
                 description: Variant of the incus image.
                 example: default
@@ -1934,9 +1945,9 @@ definitions:
         properties:
             filter_expression:
                 description: |-
-                    FilterExression applied when fetching images from the image source.
-                    Only images matching the filter expression are fetched.
-                example: Architecture == "amd64"
+                    FilterExpression applied to each file when fetching images from the image
+                    source. Only files matching the filter expression are fetched.
+                example: architecture == "amd64"
                 type: string
                 x-go-name: FilterExpression
             last_updated:
@@ -1946,8 +1957,10 @@ definitions:
                 type: string
                 x-go-name: LastUpdated
             name:
-                description: Name of the image source.
-                example: linuxcontainers.org
+                description: |-
+                    Name of the image source. It can only contain lower case letters, digits
+                    and underscores. The names "local" and "create" are reserved.
+                example: linuxcontainers
                 type: string
                 x-go-name: Name
             url:
@@ -9068,207 +9081,6 @@ paths:
                 - server
     /1.0/images/incus:
         get:
-            description: Returns a list of incus images (URLs).
-            operationId: incus_images_get
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/URLsResponse'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Get the list of incus images
-            tags:
-                - incus_images
-        post:
-            consumes:
-                - multipart/form-data
-            description: |-
-                Add a new incus image version. Also creates the incus image, if it does not
-                exist.
-            operationId: incus_images_post
-            parameters:
-                - description: |
-                    The fields of the request, as a JSON object of the IncusImagePost definition. In order to allow stream processing of the request, the order of the fields matters: request_json has to be sent first. If it is omitted, the first part is required to be the metadata tarball of the image, which is recognized by its content and is stored as incus.tar.xz, independent of the name it is uploaded with.
-                  in: formData
-                  name: request_json
-                  type: string
-                - description: |
-                    A single request may carry multiple files. Except for request_json, the form field names are irrelevant, the CLI prefixes them with "file", followed by an incrementing number, e.g. file00, file01. The type of every image file is detected from its content, the file name is ignored.
-                  in: formData
-                  name: fileNN
-                  type: file
-            produces:
-                - application/json
-            responses:
-                "201":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Add an incus image version
-            tags:
-                - incus_images
-    /1.0/images/incus/{name}:
-        delete:
-            description: Removes the incus image.
-            operationId: incus_image_delete
-            parameters:
-                - description: Name of the incus image
-                  in: path
-                  name: name
-                  required: true
-                  type: string
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "404":
-                    $ref: '#/responses/NotFound'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Delete the incus image
-            tags:
-                - incus_images
-        get:
-            description: Gets a specific incus image.
-            operationId: incus_image_get
-            parameters:
-                - description: Name of the incus image
-                  in: path
-                  name: name
-                  required: true
-                  type: string
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/IncusImageResponse'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "404":
-                    $ref: '#/responses/NotFound'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Get the incus image
-            tags:
-                - incus_images
-        put:
-            consumes:
-                - application/json
-            description: Updates the incus image.
-            operationId: incus_image_put
-            parameters:
-                - description: Name of the incus image
-                  in: path
-                  name: name
-                  required: true
-                  type: string
-                - description: Incus image
-                  in: body
-                  name: incus_image
-                  required: true
-                  schema:
-                    $ref: '#/definitions/IncusImagePut'
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "404":
-                    $ref: '#/responses/NotFound'
-                "412":
-                    $ref: '#/responses/PreconditionFailed'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Update the incus image
-            tags:
-                - incus_images
-    /1.0/images/incus/{name}/{version}:
-        delete:
-            description: Removes the incus image version.
-            operationId: incus_image_version_delete
-            parameters:
-                - description: Name of the incus image
-                  in: path
-                  name: name
-                  required: true
-                  type: string
-                - description: Version of the image
-                  in: path
-                  name: version
-                  required: true
-                  type: string
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "404":
-                    $ref: '#/responses/NotFound'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Delete the incus image version
-            tags:
-                - incus_images
-    /1.0/images/incus/{name}/{version}/{filename}:
-        get:
-            description: Gets a specific file from an incus image version.
-            operationId: incus_image_version_file_get
-            parameters:
-                - description: Name of the incus image
-                  in: path
-                  name: name
-                  required: true
-                  type: string
-                - description: Version of the image
-                  in: path
-                  name: version
-                  required: true
-                  type: string
-                - description: Name of the file
-                  in: path
-                  name: filename
-                  required: true
-                  type: string
-            produces:
-                - application/octet-stream
-            responses:
-                "200":
-                    description: File content
-                    schema:
-                        type: file
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "404":
-                    $ref: '#/responses/NotFound'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Get a specific file from an incus image version
-            tags:
-                - incus_images
-    /1.0/images/incus/sources:
-        get:
             description: Returns a list of image sources (URLs).
             operationId: image_sources_get
             produces:
@@ -9309,14 +9121,14 @@ paths:
             summary: Add an image source
             tags:
                 - image_sources
-    /1.0/images/incus/sources/{name}:
+    /1.0/images/incus/{source}:
         delete:
             description: Removes the image source.
             operationId: image_source_delete
             parameters:
                 - description: Name of the source
                   in: path
-                  name: name
+                  name: source
                   required: true
                   type: string
             produces:
@@ -9341,7 +9153,7 @@ paths:
             parameters:
                 - description: Name of the source
                   in: path
-                  name: name
+                  name: source
                   required: true
                   type: string
             produces:
@@ -9366,7 +9178,7 @@ paths:
             parameters:
                 - description: Name of the source
                   in: path
-                  name: name
+                  name: source
                   required: true
                   type: string
                 - description: Image source
@@ -9393,7 +9205,7 @@ paths:
             summary: Update the image source
             tags:
                 - image_sources
-    /1.0/images/incus/sources/{name}/:refresh:
+    /1.0/images/incus/{source}/:refresh:
         post:
             description: |-
                 Refresh the image source by fetching the available images, which
@@ -9403,7 +9215,7 @@ paths:
             parameters:
                 - description: Name of the source
                   in: path
-                  name: name
+                  name: source
                   required: true
                   type: string
             produces:
@@ -9422,7 +9234,270 @@ paths:
             summary: Refresh the image source
             tags:
                 - image_sources
-    /1.0/images/incus/sources?recursion=1:
+    /1.0/images/incus/{source}/images:
+        get:
+            description: Returns a list of incus images (URLs) of the image source.
+            operationId: incus_images_get
+            parameters:
+                - description: Name of the image source
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/URLsResponse'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of incus images
+            tags:
+                - incus_images
+        post:
+            consumes:
+                - multipart/form-data
+            description: |-
+                Add a new incus image version. Also creates the incus image, if it does not
+                exist. Images can only be uploaded to the image source "local".
+            operationId: incus_images_post
+            parameters:
+                - description: Name of the image source, only "local" is permitted
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: |
+                    The fields of the request, as a JSON object of the IncusImagePost definition. In order to allow stream processing of the request, the order of the fields matters: request_json has to be sent first. If it is omitted, the first part is required to be the metadata tarball of the image, which is recognized by its content and is stored as incus.tar.xz, independent of the name it is uploaded with.
+                  in: formData
+                  name: request_json
+                  type: string
+                - description: |
+                    A single request may carry multiple files. Except for request_json, the form field names are irrelevant, the CLI prefixes them with "file", followed by an incrementing number, e.g. file00, file01. The type of every image file is detected from its content, the file name is ignored.
+                  in: formData
+                  name: fileNN
+                  type: file
+            produces:
+                - application/json
+            responses:
+                "201":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an incus image version
+            tags:
+                - incus_images
+    /1.0/images/incus/{source}/images/{name}:
+        delete:
+            description: Removes the incus image.
+            operationId: incus_image_delete
+            parameters:
+                - description: Name of the image source of the incus image
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: Name of the incus image
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the incus image
+            tags:
+                - incus_images
+        get:
+            description: Gets a specific incus image.
+            operationId: incus_image_get
+            parameters:
+                - description: Name of the image source of the incus image
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: Name of the incus image
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/IncusImageResponse'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the incus image
+            tags:
+                - incus_images
+        put:
+            consumes:
+                - application/json
+            description: Updates the incus image.
+            operationId: incus_image_put
+            parameters:
+                - description: Name of the image source of the incus image
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: Name of the incus image
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Incus image
+                  in: body
+                  name: incus_image
+                  required: true
+                  schema:
+                    $ref: '#/definitions/IncusImagePut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the incus image
+            tags:
+                - incus_images
+    /1.0/images/incus/{source}/images/{name}/{version}:
+        delete:
+            description: Removes the incus image version.
+            operationId: incus_image_version_delete
+            parameters:
+                - description: Name of the image source of the incus image
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: Name of the incus image
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Version of the image
+                  in: path
+                  name: version
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the incus image version
+            tags:
+                - incus_images
+    /1.0/images/incus/{source}/images/{name}/{version}/{filename}:
+        get:
+            description: Gets a specific file from an incus image version.
+            operationId: incus_image_version_file_get
+            parameters:
+                - description: Name of the image source of the incus image
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+                - description: Name of the incus image
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Version of the image
+                  in: path
+                  name: version
+                  required: true
+                  type: string
+                - description: Name of the file
+                  in: path
+                  name: filename
+                  required: true
+                  type: string
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    description: File content
+                    schema:
+                        type: file
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a specific file from an incus image version
+            tags:
+                - incus_images
+    /1.0/images/incus/{source}/images?recursion=1:
+        get:
+            description: Returns a list of incus images (structs) of the image source.
+            operationId: incus_images_get_recursion
+            parameters:
+                - description: Name of the image source
+                  in: path
+                  name: source
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/IncusImagesResponse'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of incus images
+            tags:
+                - incus_images
+    /1.0/images/incus?recursion=1:
         get:
             description: Returns a list of image sources (structs).
             operationId: image_sources_get_recursion
@@ -9438,22 +9513,6 @@ paths:
             summary: Get the list of image sources
             tags:
                 - image_sources
-    /1.0/images/incus?recursion=1:
-        get:
-            description: Returns a list of incus images (structs).
-            operationId: incus_images_get_recursion
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/IncusImagesResponse'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Get the list of incus images
-            tags:
-                - incus_images
     /1.0/inventory/images:
         get:
             description: Returns a list of images (URLs).

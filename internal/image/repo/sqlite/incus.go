@@ -54,21 +54,15 @@ func (i incusImage) getAllWithFilter(ctx context.Context, filter *image.IncusIma
 	})
 }
 
-func (i incusImage) GetAllNames(ctx context.Context) ([]string, error) {
-	return transaction.DoAndReturn(ctx, func(ctx context.Context) ([]string, error) {
-		return entities.GetIncusImageNames(ctx, transaction.GetDBTX(ctx, i.db))
-	})
-}
-
-func (i incusImage) ExistsByName(ctx context.Context, name string) (bool, error) {
+func (i incusImage) ExistsByName(ctx context.Context, source string, name string) (bool, error) {
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (bool, error) {
-		return entities.IncusImageExists(ctx, transaction.GetDBTX(ctx, i.db), name)
+		return entities.IncusImageExists(ctx, transaction.GetDBTX(ctx, i.db), source, name)
 	})
 }
 
-func (i incusImage) GetByName(ctx context.Context, name string) (*image.IncusImage, error) {
+func (i incusImage) GetByName(ctx context.Context, source string, name string) (*image.IncusImage, error) {
 	return transaction.DoAndReturn(ctx, func(ctx context.Context) (*image.IncusImage, error) {
-		incusImage, err := entities.GetIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+		incusImage, err := entities.GetIncusImage(ctx, transaction.GetDBTX(ctx, i.db), source, name)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +73,7 @@ func (i incusImage) GetByName(ctx context.Context, name string) (*image.IncusIma
 
 func (i incusImage) Update(ctx context.Context, in image.IncusImage) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, i.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateIncusImage(ctx, tx, in.Name, in)
+		return entities.UpdateIncusImage(ctx, tx, in.Source, in.Name, in)
 	})
 }
 
@@ -90,8 +84,8 @@ func (i incusImage) Upsert(ctx context.Context, in image.IncusImage) error {
 	})
 }
 
-func (i incusImage) DeleteByName(ctx context.Context, name string) error {
+func (i incusImage) DeleteByName(ctx context.Context, source string, name string) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		return entities.DeleteIncusImage(ctx, transaction.GetDBTX(ctx, i.db), name)
+		return entities.DeleteIncusImage(ctx, transaction.GetDBTX(ctx, i.db), source, name)
 	})
 }

@@ -4,7 +4,7 @@ import { fetchImageSource } from "api/image_incus_source";
 import { formatDate } from "util/date";
 
 const ImageSourceOverview = () => {
-  const { name } = useParams();
+  const { source: name } = useParams();
 
   const {
     data: source = null,

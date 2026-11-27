@@ -18,7 +18,7 @@ const ImageSourceCreate = () => {
         if (response.error_code == 0) {
           notify.success(`Image source created`);
           queryClient.invalidateQueries({ queryKey: ["image-sources"] });
-          navigate("/ui/images-view/sources");
+          navigate("/ui/images/incus");
           return;
         }
         notify.error(errorMessage(response));
