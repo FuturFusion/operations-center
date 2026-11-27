@@ -70,6 +70,20 @@ func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Contex
 	return _d.base.GetClusterJoinToken(ctx, endpoint, memberName)
 }
 
+// GetClusterMemberStatuses implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetClusterMemberStatuses(ctx context.Context, endpoint provisioning.Endpoint) (statuses map[string]string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterMemberStatuses", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterMemberStatuses(ctx, endpoint)
+}
+
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
 	_since := time.Now()

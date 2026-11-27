@@ -71,6 +71,9 @@ type clusterService struct {
 	meshTunnelInterfaceDetectionTimeout    time.Duration
 	meshTunnelInterfaceDetectionRetryDelay time.Duration
 
+	clusterMembersOnlineTimeout    time.Duration
+	clusterMembersOnlineRetryDelay time.Duration
+
 	clusterUpdateControlLoopMu        sync.Mutex
 	clusterUpdateControlLoopClusterMu map[string]*sync.Mutex
 
@@ -135,6 +138,18 @@ func WithMeshTunnelInterfaceDetectionRetryDelay(delay time.Duration) Option {
 	}
 }
 
+func WithClusterMembersOnlineTimeout(timeout time.Duration) Option {
+	return func(s *clusterService) {
+		s.clusterMembersOnlineTimeout = timeout
+	}
+}
+
+func WithClusterMembersOnlineRetryDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.clusterMembersOnlineRetryDelay = delay
+	}
+}
+
 func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
 	return func(s *clusterService) {
 		s.warning = warn
@@ -181,6 +196,9 @@ func New(
 
 		meshTunnelInterfaceDetectionTimeout:    2 * time.Minute,
 		meshTunnelInterfaceDetectionRetryDelay: 5 * time.Second,
+
+		clusterMembersOnlineTimeout:    2 * time.Minute,
+		clusterMembersOnlineRetryDelay: 5 * time.Second,
 
 		clusterUpdateControlLoopClusterMu: map[string]*sync.Mutex{},
 		clusterUpdateProgress:             newClusterUpdateProgressLatch(),
@@ -538,6 +556,12 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	// Refresh OS Data, required for the detection of the network interface for
 	// the internal mesh.
 	err = s.refreshOSDataForMeshTunnelInterface(ctx, servers)
+	if err != nil {
+		return newCluster, err
+	}
+
+	// The Terraform configuration requires all cluster members to be online.
+	err = s.waitClusterMembersOnline(ctx, newCluster.Name, clusterEndpoint, len(servers))
 	if err != nil {
 		return newCluster, err
 	}
@@ -2081,6 +2105,76 @@ func (s *clusterService) refreshOSDataForMeshTunnelInterface(ctx context.Context
 		case <-time.After(s.meshTunnelInterfaceDetectionRetryDelay):
 		}
 	}
+}
+
+// waitClusterMembersOnline waits until the cluster reports the expected number
+// of members and all of them are online. A member that just joined can be
+// reported as offline until its heartbeat arrives. It returns an error after
+// clusterMembersOnlineTimeout.
+func (s *clusterService) waitClusterMembersOnline(ctx context.Context, clusterName string, clusterEndpoint provisioning.ClusterEndpoint, wantMembers int) error {
+	ctx, cancel := context.WithTimeout(ctx, s.clusterMembersOnlineTimeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 1; ; attempt++ {
+		err := s.checkClusterMembersOnline(ctx, clusterEndpoint, wantMembers)
+		if err == nil {
+			return nil
+		}
+
+		// A call cut off by the deadline only reports the deadline. Keep the
+		// diagnosis of the previous attempt in this case.
+		if ctx.Err() == nil || lastErr == nil {
+			lastErr = err
+		}
+
+		if ctx.Err() != nil {
+			return s.clusterMembersOnlineTimeoutErr(ctx, clusterName, lastErr)
+		}
+
+		slog.WarnContext(ctx, "Cluster members are not online yet, will retry", slog.String("cluster", clusterName), slog.Int("attempt", attempt), logger.Err(err))
+
+		select {
+		case <-ctx.Done():
+			return s.clusterMembersOnlineTimeoutErr(ctx, clusterName, lastErr)
+
+		case <-time.After(s.clusterMembersOnlineRetryDelay):
+		}
+	}
+}
+
+// clusterMembersOnlineTimeoutErr formats lastErr with %v on purpose. Its kind
+// must not decide the HTTP status. A retryable client error would become HTTP
+// 503, but a retry of the request fails, because the cluster already exists.
+func (s *clusterService) clusterMembersOnlineTimeoutErr(ctx context.Context, clusterName string, lastErr error) error {
+	//domain-errors:internal The members did not come online. A retry of the request does not help.
+	return fmt.Errorf("Members of cluster %q not online after %s: %w (last error: %v)", clusterName, s.clusterMembersOnlineTimeout, ctx.Err(), lastErr)
+}
+
+func (s *clusterService) checkClusterMembersOnline(ctx context.Context, clusterEndpoint provisioning.ClusterEndpoint, wantMembers int) error {
+	statuses, err := s.client.GetClusterMemberStatuses(ctx, clusterEndpoint)
+	if err != nil {
+		return err
+	}
+
+	if len(statuses) != wantMembers {
+		//domain-errors:internal Diagnostic text only. The wait reports it with %v.
+		return fmt.Errorf("Cluster reports %d members, expected %d", len(statuses), wantMembers)
+	}
+
+	var notOnline []string
+	for _, name := range slices.Sorted(maps.Keys(statuses)) {
+		if statuses[name] != "Online" {
+			notOnline = append(notOnline, fmt.Sprintf("%s (%s)", name, statuses[name]))
+		}
+	}
+
+	if len(notOnline) > 0 {
+		//domain-errors:internal Diagnostic text only. The wait reports it with %v.
+		return fmt.Errorf("Cluster members not online: %s", strings.Join(notOnline, ", "))
+	}
+
+	return nil
 }
 
 // waitBootstrapServerJoined waits until the bootstrap server answers with the

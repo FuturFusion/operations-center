@@ -343,6 +343,51 @@ func TestClient_Endpoint(t *testing.T) {
 			},
 		},
 		{
+			name: "GetClusterMemberStatuses",
+			clientCall: func(ctx context.Context, client incus.Client, endpoint provisioning.Server) (any, error) {
+				return client.GetClusterMemberStatuses(ctx, endpoint)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    { "server_name": "one", "status": "Online" },
+    { "server_name": "two", "status": "Offline" }
+  ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Equal(t, map[string]string{"one": "Online", "two": "Offline"}, res)
+					},
+					wantPaths: []string{"GET /1.0/cluster/members?recursion=1"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members?recursion=1"},
+				},
+			},
+		},
+		{
 			name: "GetClusterJoinToken",
 			clientCall: func(ctx context.Context, client incus.Client, endpoint provisioning.Server) (any, error) {
 				return client.GetClusterJoinToken(ctx, endpoint, "server1")

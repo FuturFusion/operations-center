@@ -116,6 +116,38 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 	return _d._base.GetClusterJoinToken(ctx, endpoint, memberName)
 }
 
+// GetClusterMemberStatuses implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetClusterMemberStatuses(ctx context.Context, endpoint provisioning.Endpoint) (statuses map[string]string, err error) {
+	ctx = logger.ContextWithComponent(ctx, _d._component)
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterMemberStatuses")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("statuses", statuses),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			log.DebugContext(ctx, "<= method GetClusterMemberStatuses returned an error")
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterMemberStatuses finished")
+		}
+	}()
+	return _d._base.GetClusterMemberStatuses(ctx, endpoint)
+}
+
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
 	ctx = logger.ContextWithComponent(ctx, _d._component)

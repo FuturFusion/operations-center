@@ -50,6 +50,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetClusterJoinToken(ctx context.Cont
 	return _d._base.GetClusterJoinToken(ctx, endpoint, memberName)
 }
 
+// GetClusterMemberStatuses implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetClusterMemberStatuses(ctx context.Context, endpoint provisioning.Endpoint) (statuses map[string]string, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetClusterMemberStatuses(ctx, endpoint)
+}
+
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithErrorWrapper) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
 	defer func() {
