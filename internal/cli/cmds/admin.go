@@ -44,6 +44,13 @@ func (c *CmdAdmin) Command() *cobra.Command {
 
 	cmd.AddCommand(adminSQLCmd.Command())
 
+	// bmc-recording
+	adminBMCRecordingCmd := cmdAdminBMCRecording{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(adminBMCRecordingCmd.Command())
+
 	// debug
 	adminDebugCmd := cmdAdminDebug{
 		ocClient: c.OCClient,
